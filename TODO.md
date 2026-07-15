@@ -197,9 +197,12 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       and structures, and keep height/column queries consistent. Add component
       and resource tests. Full build passes 76 tests; Javadocs and whitespace
       lint are clean. **Commit** ("Generate ocean and void exteriors").
-- [ ] 9.4 Expose exterior modes/boundaries/ocean transition and rate fields in
+- [x] 9.4 Expose exterior modes/boundaries/ocean transition and rate fields in
       Customize. Apply explicit Overworld and Nether wrappers while retaining
-      YAML-as-default behavior and vanilla End generation.
+      YAML-as-default behavior and vanilla End generation. Progression bounds
+      now use the tighter border/solid-terrain radius, including exterior-only
+      worlds. Full build passes 80 tests. **Commit** ("Add exterior world
+      creation controls").
 - [ ] 9.5 Constrain progression guarantees to supportive terrain, update README
       and Memory, run all JUnit tests and clean loader builds, inspect artifacts,
       address review/lint findings, and final **commit**. No live test required;

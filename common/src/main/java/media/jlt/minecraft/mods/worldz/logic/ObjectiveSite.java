@@ -1,5 +1,7 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
+import java.util.OptionalInt;
+
 /** Pure placement bounds for compact progression-objective fallback sites. */
 public final class ObjectiveSite {
     /** Preferred X coordinate keeps fallback sites near and visible from the origin. */
@@ -34,5 +36,28 @@ public final class ObjectiveSite {
      */
     public static int fallbackX(int radiusBlocks) {
         return Math.min(PREFERRED_X, Math.max(0, radiusBlocks - FALLBACK_MARGIN));
+    }
+
+    /**
+     * Finds the tightest square that can support a progression objective.
+     *
+     * @param borderEnabled whether the final border is a reachability bound
+     * @param finalBorderRadius final border half-width
+     * @param envelope exterior terrain bound
+     * @return effective supportive radius, or empty for an unlimited normal world
+     */
+    public static OptionalInt supportiveRadius(
+        boolean borderEnabled,
+        int finalBorderRadius,
+        ExteriorPlan.DimensionEnvelope envelope
+    ) {
+        if (!borderEnabled && envelope.mode() == ExteriorMode.NORMAL) {
+            return OptionalInt.empty();
+        }
+        int radius = borderEnabled ? finalBorderRadius : Integer.MAX_VALUE;
+        if (envelope.mode() != ExteriorMode.NORMAL) {
+            radius = Math.min(radius, envelope.solidRadiusBlocks());
+        }
+        return OptionalInt.of(radius);
     }
 }

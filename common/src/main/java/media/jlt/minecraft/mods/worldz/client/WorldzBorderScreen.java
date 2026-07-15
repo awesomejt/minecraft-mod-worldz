@@ -26,6 +26,8 @@ final class WorldzBorderScreen extends Screen {
     private EditBox initialRadius;
     private EditBox finalRadius;
     private EditBox resizeDays;
+    private EditBox resizeRateBlocks;
+    private EditBox resizeRateDays;
     private MultiLineTextWidget errorMessage;
 
     WorldzBorderScreen(WorldzCustomizeScreen parent, boolean overworld, WorldzCustomization.BorderSettings initial) {
@@ -40,7 +42,7 @@ final class WorldzBorderScreen extends Screen {
     @Override
     protected void init() {
         this.layout.addTitleHeader(this.title, this.font);
-        LinearLayout form = this.layout.addToContents(LinearLayout.vertical().spacing(7));
+        LinearLayout form = this.layout.addToContents(LinearLayout.vertical().spacing(5));
         form.defaultCellSetting().alignHorizontallyCenter();
 
         form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.customize.border.enabled"), this.font)
@@ -50,33 +52,60 @@ final class WorldzBorderScreen extends Screen {
 
         this.initialRadius = numberField(
             Component.translatable("jlt_worldz.customize.border.initial_radius"),
-            this.initial.initialRadiusBlocks()
+            this.initial.initialRadiusBlocks(),
+            150
         );
-        form.addChild(CommonLayouts.labeledElement(
+        this.finalRadius = numberField(
+            Component.translatable("jlt_worldz.customize.border.final_radius"),
+            this.initial.finalRadiusBlocks(),
+            150
+        );
+        LinearLayout radiusFields = LinearLayout.horizontal().spacing(10);
+        radiusFields.addChild(CommonLayouts.labeledElement(
             this.font,
             this.initialRadius,
             Component.translatable("jlt_worldz.customize.border.initial_radius")
         ));
-
-        this.finalRadius = numberField(
-            Component.translatable("jlt_worldz.customize.border.final_radius"),
-            this.initial.finalRadiusBlocks()
-        );
-        form.addChild(CommonLayouts.labeledElement(
+        radiusFields.addChild(CommonLayouts.labeledElement(
             this.font,
             this.finalRadius,
             Component.translatable("jlt_worldz.customize.border.final_radius")
         ));
+        form.addChild(radiusFields);
 
         this.resizeDays = numberField(
             Component.translatable("jlt_worldz.customize.border.resize_days"),
-            this.initial.resizeDays()
+            this.initial.resizeDays(),
+            FORM_WIDTH
         );
         form.addChild(CommonLayouts.labeledElement(
             this.font,
             this.resizeDays,
             Component.translatable("jlt_worldz.customize.border.resize_days")
         ));
+
+        this.resizeRateBlocks = numberField(
+            Component.translatable("jlt_worldz.customize.border.resize_rate_blocks"),
+            this.initial.resizeRateBlocks(),
+            150
+        );
+        this.resizeRateDays = numberField(
+            Component.translatable("jlt_worldz.customize.border.resize_rate_days"),
+            this.initial.resizeRateDays(),
+            150
+        );
+        LinearLayout rateFields = LinearLayout.horizontal().spacing(10);
+        rateFields.addChild(CommonLayouts.labeledElement(
+            this.font,
+            this.resizeRateBlocks,
+            Component.translatable("jlt_worldz.customize.border.resize_rate_blocks")
+        ));
+        rateFields.addChild(CommonLayouts.labeledElement(
+            this.font,
+            this.resizeRateDays,
+            Component.translatable("jlt_worldz.customize.border.resize_rate_days")
+        ));
+        form.addChild(rateFields);
 
         form.addChild(Checkbox.builder(
             Component.translatable(
@@ -99,8 +128,8 @@ final class WorldzBorderScreen extends Screen {
         this.repositionElements();
     }
 
-    private EditBox numberField(Component narration, int value) {
-        EditBox field = new EditBox(this.font, FORM_WIDTH, 20, narration);
+    private EditBox numberField(Component narration, int value, int width) {
+        EditBox field = new EditBox(this.font, width, 20, narration);
         field.setMaxLength(10);
         field.setValue(Integer.toString(value));
         return field;
@@ -113,6 +142,8 @@ final class WorldzBorderScreen extends Screen {
                 this.initialRadius.getValue(),
                 this.finalRadius.getValue(),
                 this.resizeDays.getValue(),
+                this.resizeRateBlocks.getValue(),
+                this.resizeRateDays.getValue(),
                 this.ensureObjective
             );
             this.parent.setBorder(this.overworld, settings);

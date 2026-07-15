@@ -101,6 +101,27 @@ class ProjectMetadataTest {
         assertTrue(neoForge.contains("CHUNK_GENERATORS.register(\"enveloped\""));
     }
 
+    @Test
+    void customizationScreensExposeExteriorAndRateFields() throws IOException {
+        String customize = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzCustomizeScreen.java"
+        ));
+        String border = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzBorderScreen.java"
+        ));
+        String exterior = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzExteriorScreen.java"
+        ));
+
+        assertTrue(customize.contains("WorldzExteriorScreen"));
+        assertTrue(customize.contains("this.overworldExterior"));
+        assertTrue(customize.contains("this.netherExterior"));
+        assertTrue(border.contains("resizeRateBlocks.getValue()"));
+        assertTrue(border.contains("resizeRateDays.getValue()"));
+        assertTrue(exterior.contains("ExteriorSettings.fromText"));
+        assertTrue(exterior.contains("case NORMAL -> this.overworld ? ExteriorMode.OCEAN : ExteriorMode.VOID"));
+    }
+
     private static Properties projectProperties() throws IOException {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(ROOT.resolve("gradle.properties"))) {

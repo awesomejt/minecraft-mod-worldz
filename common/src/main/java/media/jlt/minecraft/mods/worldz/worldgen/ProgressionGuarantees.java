@@ -3,6 +3,7 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 import com.mojang.datafixers.util.Pair;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ObjectiveSite;
+import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -21,6 +22,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.Structure;
 
+import java.util.OptionalInt;
+
 /** Creates compact progression sites when vanilla structures do not fit. */
 final class ProgressionGuarantees {
     private static final int NATURAL_STRUCTURE_MARGIN = 128;
@@ -28,54 +31,78 @@ final class ProgressionGuarantees {
     private ProgressionGuarantees() {
     }
 
-    static void ensureEndPortal(ServerLevel overworld, WorldLimitPlan.DimensionLimit limit) {
-        if (!limit.enabled() || !limit.ensureObjective()) {
+    static void ensureEndPortal(
+        ServerLevel overworld,
+        WorldLimitPlan.DimensionLimit limit,
+        ExteriorPlan.DimensionEnvelope envelope
+    ) {
+        if (!limit.ensureObjective()) {
             return;
         }
+        OptionalInt supportiveRadius = ObjectiveSite.supportiveRadius(
+            limit.enabled(), limit.finalRadiusBlocks(), envelope
+        );
+        if (supportiveRadius.isEmpty()) {
+            return;
+        }
+        int radius = supportiveRadius.getAsInt();
 
         BlockPos natural = overworld.findNearestMapStructure(
             StructureTags.EYE_OF_ENDER_LOCATED, BlockPos.ZERO, 100, false
         );
         if (natural != null && ObjectiveSite.fitsInside(
-            natural.getX(), natural.getZ(), limit.finalRadiusBlocks(), NATURAL_STRUCTURE_MARGIN
+            natural.getX(), natural.getZ(), radius, NATURAL_STRUCTURE_MARGIN
         )) {
-            WorldzCommon.LOGGER.info("Natural stronghold at {} fits inside the final Worldz border.", natural);
+            WorldzCommon.LOGGER.info("Natural stronghold at {} fits inside the Worldz supportive radius {}.", natural, radius);
             return;
         }
 
-        int x = ObjectiveSite.fallbackX(limit.finalRadiusBlocks());
+        int x = ObjectiveSite.fallbackX(radius);
         int z = 0;
         int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos center = new BlockPos(x, surfaceY, z);
         buildEndPortalSite(overworld, center);
         WorldzCommon.LOGGER.info(
-            "Created compact End portal site at {} because no natural stronghold safely fits the final border.", center
+            "Created compact End portal site at {} because no natural stronghold safely fits radius {}.", center, radius
         );
     }
 
-    static void ensureBlazeAccess(ServerLevel nether, WorldLimitPlan.DimensionLimit limit) {
-        if (!limit.enabled() || !limit.ensureObjective()) {
+    static void ensureBlazeAccess(
+        ServerLevel nether,
+        WorldLimitPlan.DimensionLimit limit,
+        ExteriorPlan.DimensionEnvelope envelope
+    ) {
+        if (!limit.ensureObjective()) {
             return;
         }
+        OptionalInt supportiveRadius = ObjectiveSite.supportiveRadius(
+            limit.enabled(), limit.finalRadiusBlocks(), envelope
+        );
+        if (supportiveRadius.isEmpty()) {
+            return;
+        }
+        int radius = supportiveRadius.getAsInt();
 
         Holder<Structure> fortress = nether.registryAccess()
             .lookupOrThrow(Registries.STRUCTURE)
             .getOrThrow(BuiltinStructures.FORTRESS);
-        int searchRadius = Math.min(100, Math.max(1, (limit.finalRadiusBlocks() + 15) / 16));
+        int searchRadius = Math.min(100, Math.max(1, (radius + 15) / 16));
         Pair<BlockPos, Holder<Structure>> natural = nether.getChunkSource()
             .getGenerator()
             .findNearestMapStructure(nether, HolderSet.direct(fortress), BlockPos.ZERO, searchRadius, false);
         if (natural != null && ObjectiveSite.fitsInside(
-            natural.getFirst().getX(), natural.getFirst().getZ(), limit.finalRadiusBlocks(), NATURAL_STRUCTURE_MARGIN
+            natural.getFirst().getX(), natural.getFirst().getZ(), radius, NATURAL_STRUCTURE_MARGIN
         )) {
-            WorldzCommon.LOGGER.info("Natural Nether fortress at {} fits inside the final Worldz border.", natural.getFirst());
+            WorldzCommon.LOGGER.info(
+                "Natural Nether fortress at {} fits inside the Worldz supportive radius {}.", natural.getFirst(), radius
+            );
             return;
         }
 
-        BlockPos spawner = new BlockPos(ObjectiveSite.fallbackX(limit.finalRadiusBlocks()), 64, 0);
+        BlockPos spawner = new BlockPos(ObjectiveSite.fallbackX(radius), 64, 0);
         buildBlazeSite(nether, spawner);
         WorldzCommon.LOGGER.info(
-            "Created compact blaze-spawner site at {} because no natural fortress safely fits the final border.", spawner
+            "Created compact blaze-spawner site at {} because no natural fortress safely fits radius {}.", spawner, radius
         );
     }
 

@@ -30,4 +30,29 @@ class ObjectiveSiteTest {
         assertEquals(4, ObjectiveSite.fallbackX(20));
         assertEquals(0, ObjectiveSite.fallbackX(10));
     }
+
+    @Test
+    void supportiveRadiusUsesTheTightestBorderOrTerrainBound() {
+        var voidEnvelope = new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, 384, 0);
+
+        assertEquals(384, ObjectiveSite.supportiveRadius(false, 512, voidEnvelope).orElseThrow());
+        assertEquals(256, ObjectiveSite.supportiveRadius(true, 256, voidEnvelope).orElseThrow());
+        assertEquals(384, ObjectiveSite.supportiveRadius(true, 512, voidEnvelope).orElseThrow());
+    }
+
+    @Test
+    void oceanTransitionIsExcludedFromSupportiveTerrain() {
+        var oceanEnvelope = new ExteriorPlan.DimensionEnvelope(ExteriorMode.OCEAN, 512, 96);
+
+        assertEquals(416, ObjectiveSite.supportiveRadius(false, 512, oceanEnvelope).orElseThrow());
+    }
+
+    @Test
+    void normalUnlimitedWorldHasNoObjectiveBound() {
+        assertTrue(ObjectiveSite.supportiveRadius(
+            false,
+            512,
+            ExteriorPlan.DimensionEnvelope.normal()
+        ).isEmpty());
+    }
 }

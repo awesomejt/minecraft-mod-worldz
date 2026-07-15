@@ -2,6 +2,8 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
+import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -27,7 +29,11 @@ public final class WorldLimitManager {
         }
 
         WorldLimitPlan plan = limitedSource.worldLimits();
-        if (!plan.enabled()) {
+        ExteriorPlan exterior = limitedSource.exteriorPlan();
+        boolean exteriorObjective = (plan.overworld().ensureObjective()
+            && exterior.overworld().mode() != ExteriorMode.NORMAL)
+            || (plan.nether().ensureObjective() && exterior.nether().mode() != ExteriorMode.NORMAL);
+        if (!plan.enabled() && !exteriorObjective) {
             return;
         }
 
@@ -37,11 +43,11 @@ public final class WorldLimitManager {
         }
 
         apply(overworld, plan.overworld(), "overworld");
-        ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld());
+        ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld(), exterior.overworld());
         ServerLevel nether = server.getLevel(Level.NETHER);
         if (nether != null) {
             apply(nether, plan.nether(), "Nether");
-            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether());
+            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether());
         }
         overworld.getDataStorage().set(WorldLimitState.TYPE, new WorldLimitState(true));
     }

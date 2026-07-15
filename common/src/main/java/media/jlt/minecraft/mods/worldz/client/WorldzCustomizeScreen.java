@@ -14,7 +14,7 @@ import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
-/** World-creation screen for biome, starter-zone, and dimension-border choices. */
+/** World-creation screen for biome, starter-zone, border, and exterior choices. */
 final class WorldzCustomizeScreen extends Screen {
     private static final Component TITLE = Component.translatable("jlt_worldz.customize.title");
     private static final int FORM_WIDTH = 310;
@@ -23,6 +23,8 @@ final class WorldzCustomizeScreen extends Screen {
     private final CreateWorldScreen parent;
     private WorldzCustomization.BorderSettings overworldBorder;
     private WorldzCustomization.BorderSettings netherBorder;
+    private WorldzCustomization.ExteriorSettings overworldExterior;
+    private WorldzCustomization.ExteriorSettings netherExterior;
     private MultiLineEditBox allowedBiomes;
     private EditBox starterBiome;
     private EditBox starterRadius;
@@ -36,6 +38,8 @@ final class WorldzCustomizeScreen extends Screen {
         this.parent = parent;
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
+        this.overworldExterior = initial.overworldExterior();
+        this.netherExterior = initial.netherExterior();
         this.allowedBiomesText = initial.allowedBiomesText();
         this.starterBiomeText = initial.starterBiome();
         this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
@@ -44,12 +48,12 @@ final class WorldzCustomizeScreen extends Screen {
     @Override
     protected void init() {
         this.layout.addTitleHeader(this.title, this.font);
-        LinearLayout form = this.layout.addToContents(LinearLayout.vertical().spacing(6));
+        LinearLayout form = this.layout.addToContents(LinearLayout.vertical().spacing(4));
         form.defaultCellSetting().alignHorizontallyCenter();
 
         this.allowedBiomes = MultiLineEditBox.builder()
             .setPlaceholder(Component.translatable("jlt_worldz.customize.allowed_biomes.hint"))
-            .build(this.font, FORM_WIDTH, 64, Component.translatable("jlt_worldz.customize.allowed_biomes"));
+            .build(this.font, FORM_WIDTH, 52, Component.translatable("jlt_worldz.customize.allowed_biomes"));
         this.allowedBiomes.setCharacterLimit(4096);
         this.allowedBiomes.setValue(this.allowedBiomesText);
         this.allowedBiomes.setValueListener(value -> this.allowedBiomesText = value);
@@ -86,6 +90,17 @@ final class WorldzCustomizeScreen extends Screen {
         ).build());
         form.addChild(borderButtons);
 
+        LinearLayout exteriorButtons = LinearLayout.horizontal().spacing(10);
+        exteriorButtons.addChild(Button.builder(
+            exteriorButtonLabel("overworld", this.overworldExterior),
+            button -> this.minecraft.gui.setScreen(new WorldzExteriorScreen(this, true, this.overworldExterior))
+        ).build());
+        exteriorButtons.addChild(Button.builder(
+            exteriorButtonLabel("nether", this.netherExterior),
+            button -> this.minecraft.gui.setScreen(new WorldzExteriorScreen(this, false, this.netherExterior))
+        ).build());
+        form.addChild(exteriorButtons);
+
         this.errorMessage = new MultiLineTextWidget(CommonComponents.EMPTY, this.font).setMaxWidth(FORM_WIDTH).setMaxRows(2).setCentered(true);
         form.addChild(this.errorMessage);
 
@@ -111,7 +126,9 @@ final class WorldzCustomizeScreen extends Screen {
                 this.starterBiome.getValue(),
                 this.starterRadius.getValue(),
                 this.overworldBorder,
-                this.netherBorder
+                this.netherBorder,
+                this.overworldExterior,
+                this.netherExterior
             );
             this.parent.getUiState().updateDimensions(
                 (registries, dimensions) -> WorldzPresetEditor.apply(registries, dimensions, customization)
@@ -131,6 +148,14 @@ final class WorldzCustomizeScreen extends Screen {
         }
     }
 
+    void setExterior(boolean overworld, WorldzCustomization.ExteriorSettings settings) {
+        if (overworld) {
+            this.overworldExterior = settings;
+        } else {
+            this.netherExterior = settings;
+        }
+    }
+
     @Override
     protected void repositionElements() {
         this.layout.arrangeElements();
@@ -145,6 +170,16 @@ final class WorldzCustomizeScreen extends Screen {
         return Component.translatable(
             "jlt_worldz.customize." + dimension + "_border",
             Component.translatable(enabled ? "options.on" : "options.off")
+        );
+    }
+
+    private static Component exteriorButtonLabel(
+        String dimension,
+        WorldzCustomization.ExteriorSettings exterior
+    ) {
+        return Component.translatable(
+            "jlt_worldz.customize." + dimension + "_exterior",
+            Component.translatable("jlt_worldz.customize.exterior.mode." + exterior.mode().serializedName())
         );
     }
 }

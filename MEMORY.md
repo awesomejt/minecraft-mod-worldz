@@ -85,6 +85,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   structures and decoration for wholly exterior chunks, removes displaced block
   entities, and delegates the End unchanged. Ocean uses deep-ocean biomes, a
   solid stone floor 16 blocks below sea level, bottom bedrock, water, and air.
+- 2026-07-15 — Customize retains independent exterior settings for both
+  dimensions and exposes rate blocks/days beside legacy total days. Nether mode
+  cycling intentionally offers only normal/void. Objective searches and compact
+  fallbacks use the minimum final-border and solid-terrain radius; therefore an
+  explicit exterior without a border still honors the default guarantee flag.
 
 ## Reference Log
 
@@ -198,6 +203,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   height-query agreement, build-height clamping, and envelope classification;
   resource/component tests cover both wrapped dimensions, the vanilla End, and
   both loader registrations. Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Exterior Customize — `./gradlew build` passed across common,
+  Fabric, and NeoForge with 80 JUnit tests. New coverage locks localized UI
+  fields, screen wiring, rate submission, Nether mode restrictions, and
+  effective progression radii for border-only, exterior-only, combined, and
+  ocean-transition worlds. Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 

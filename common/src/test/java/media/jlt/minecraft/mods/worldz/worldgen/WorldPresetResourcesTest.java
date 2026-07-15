@@ -73,6 +73,12 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.customize.nether_border.title"));
         assertTrue(language.has("jlt_worldz.customize.ensure_end_portal"));
         assertTrue(language.has("jlt_worldz.customize.ensure_blaze_access"));
+        assertTrue(language.has("jlt_worldz.customize.border.resize_rate_blocks"));
+        assertTrue(language.has("jlt_worldz.customize.border.resize_rate_days"));
+        assertTrue(language.has("jlt_worldz.customize.overworld_exterior.title"));
+        assertTrue(language.has("jlt_worldz.customize.nether_exterior.title"));
+        assertTrue(language.has("jlt_worldz.customize.exterior.mode.ocean"));
+        assertTrue(language.has("jlt_worldz.customize.exterior.mode.void"));
     }
 
     private static JsonObject resource(String path) throws IOException {
