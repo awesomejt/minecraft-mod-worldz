@@ -61,18 +61,18 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 2 — LimitedBiomeSource
 
-- [ ] 2.1 `worldgen/LimitedBiomeSource` per DESIGN §4: codec with optional
+- [x] 2.1 `worldgen/LimitedBiomeSource` per DESIGN §4: codec with optional
       fields + registry getters, config fallback at decode, resolved values
       on encode, filtered multi-noise delegate, starter-zone override in
       `getNoiseBiome`, possible-biomes union.
-- [ ] 2.2 Fail-safes: empty filter result → WARN + unfiltered overworld list;
+- [x] 2.2 Fail-safes: empty filter result → WARN + unfiltered overworld list;
       WARN for allowed ids with no overworld climate entry; unknown ids
       skipped with WARN.
-- [ ] 2.3 Registration under `jlt_worldz:limited`: Fabric — direct
+- [x] 2.3 Registration under `jlt_worldz:limited`: Fabric — direct
       `Registry.register` in `WorldzFabric.onInitialize`; NeoForge —
       `DeferredRegister.create(Registries.BIOME_SOURCE, MOD_ID)` on the mod
       bus in `WorldzNeoForge`.
-- [ ] 2.4 Build green on both loaders. **Commit** ("LimitedBiomeSource + registration").
+- [x] 2.4 Build green on both loaders. **Commit** ("LimitedBiomeSource + registration").
 
 ## Phase 3 — World preset data
 
@@ -125,4 +125,15 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 (record every departure from DESIGN.md here: what, where, why)
 
-- _none yet_
+- DESIGN §4's remembered `ResourceLocation` API is named `Identifier` in the
+  verified Minecraft 26.2 sources. All ids use `net.minecraft.resources.Identifier`.
+- Fabric registers the codec in `BuiltInRegistries.BIOME_SOURCE`; `Registries.BIOME_SOURCE`
+  is the corresponding registry key and is used by NeoForge's `DeferredRegister`.
+- A persisted `starter_radius` is treated as the marker that an absent
+  `starter_biome` is resolved-disabled. Without this distinction, the optional
+  field codec would omit an empty starter and reload an existing world's starter
+  from a newly edited config, violating the baked-settings requirement.
+- When the empty-filter fail-safe activates, `collectPossibleBiomes()` reports
+  the fallback delegate's vanilla overworld biomes (plus any starter), rather
+  than an empty configured set. This keeps feature/structure logic consistent
+  with the biomes the fail-safe actually returns.
