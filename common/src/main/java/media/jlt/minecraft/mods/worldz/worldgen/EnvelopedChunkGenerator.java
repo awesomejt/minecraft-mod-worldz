@@ -8,6 +8,8 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
+import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -46,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 
 /** Delegates vanilla generation, then replaces columns outside a persisted square envelope. */
 public final class EnvelopedChunkGenerator extends ChunkGenerator {
+    private static final int PRESERVED_SURFACE_SHELL_BLOCKS = 5;
     /** Codec registered as {@code jlt_worldz:enveloped}. */
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
@@ -56,6 +59,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private final ChunkGenerator delegate;
     private final Dimension dimension;
     private final ExteriorPlan.DimensionEnvelope envelope;
+    private final Optional<StarterLandContext> starterLand;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -66,6 +70,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.delegate = delegate;
         this.dimension = dimension;
         this.envelope = envelope;
+        this.starterLand = resolveStarterLand(delegate, dimension);
     }
 
     /**
@@ -153,6 +158,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkAccess chunk
     ) {
         this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
+        applyStarterLand(chunk, randomState, true);
         applyEnvelope(chunk);
     }
 
@@ -192,7 +198,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ResourceKey<Level> level
     ) {
         if (!isEntirelyExterior(centerChunk.getPos())) {
-            this.delegate.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
+            super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
         }
     }
 
@@ -205,6 +211,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
+                applyStarterLand(chunk, randomState, false);
                 applyEnvelope(chunk);
                 return chunk;
             });
@@ -240,7 +247,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         ExteriorMode mode = this.envelope.modeAt(x, z);
         if (mode == ExteriorMode.NORMAL) {
-            return this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
+            int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
+            return Math.max(naturalHeight, starterLandTargetHeight(x, z, heightAccessor, randomState));
         }
         return ExteriorTerrainProfile.baseHeight(
             mode,
@@ -260,7 +268,20 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         ExteriorMode mode = this.envelope.modeAt(x, z);
         if (mode == ExteriorMode.NORMAL) {
-            return this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
+            NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
+            int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
+            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, naturalFloor);
+            if (targetHeight <= naturalFloor) {
+                return naturalColumn;
+            }
+            BlockState[] states = copyColumn(naturalColumn, heightAccessor);
+            int minY = StarterLandProfile.foundationMinY(
+                naturalFloor,
+                this.starterLand.orElseThrow().plan().foundationDepthBlocks(),
+                heightAccessor.getMinY()
+            );
+            fillStarterColumn(states, heightAccessor.getMinY(), minY, targetHeight - 1, naturalFloor);
+            return new NoiseColumn(heightAccessor.getMinY(), states);
         }
         BlockState[] states = new BlockState[heightAccessor.getHeight()];
         int minY = heightAccessor.getMinY();
@@ -274,6 +295,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     public void addDebugScreenInfo(List<String> result, RandomState randomState, BlockPos feetPos) {
         this.delegate.addDebugScreenInfo(result, randomState, feetPos);
         result.add("Worldz exterior: " + this.envelope.mode().serializedName());
+        this.starterLand.ifPresent(context -> result.add(
+            "Worldz starter land: radius=" + context.radiusBlocks()
+                + ", transition=" + context.plan().transitionWidthBlocks()
+        ));
     }
 
     @Override
@@ -331,6 +356,134 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         }
     }
 
+    private void applyStarterLand(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
+        if (this.starterLand.isEmpty()) {
+            return;
+        }
+        StarterLandPlan plan = this.starterLand.get().plan();
+        ChunkPos chunkPos = chunk.getPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
+            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
+                int targetHeight = starterLandTargetHeight(x, z, chunk, naturalFloor);
+                if (targetHeight <= naturalFloor) {
+                    continue;
+                }
+                int minY = StarterLandProfile.foundationMinY(
+                    naturalFloor, plan.foundationDepthBlocks(), chunk.getMinY()
+                );
+                int maxY = repairOnly ? targetHeight - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : targetHeight - 1;
+                fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
+            }
+        }
+    }
+
+    private int starterLandTargetHeight(
+        int x,
+        int z,
+        LevelHeightAccessor heightAccessor,
+        RandomState randomState
+    ) {
+        if (this.starterLand.isEmpty()) {
+            return heightAccessor.getMinY();
+        }
+        int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
+        return starterLandTargetHeight(x, z, heightAccessor, naturalFloor);
+    }
+
+    private int starterLandTargetHeight(
+        int x,
+        int z,
+        LevelHeightAccessor heightAccessor,
+        int naturalFloor
+    ) {
+        if (this.starterLand.isEmpty()) {
+            return heightAccessor.getMinY();
+        }
+        StarterLandContext context = this.starterLand.get();
+        int target = StarterLandProfile.targetHeight(
+            x,
+            z,
+            context.radiusBlocks(),
+            context.plan().transitionWidthBlocks(),
+            naturalFloor,
+            getSeaLevel()
+        );
+        return Math.min(target, heightAccessor.getMaxY() + 1);
+    }
+
+    private int naturalOceanFloorHeight(
+        int x,
+        int z,
+        LevelHeightAccessor heightAccessor,
+        RandomState randomState
+    ) {
+        return this.delegate.getBaseHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, heightAccessor, randomState);
+    }
+
+    private static void fillStarterColumn(
+        ChunkAccess chunk,
+        BlockPos.MutableBlockPos pos,
+        int x,
+        int z,
+        int minY,
+        int maxY,
+        int naturalFloor
+    ) {
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        for (int y = minY; y <= maxY; y++) {
+            pos.set(x, y, z);
+            BlockState oldState = chunk.getBlockState(pos);
+            if (y >= naturalFloor || isReplaceableFoundation(oldState)) {
+                if (oldState.hasBlockEntity()) {
+                    chunk.removeBlockEntity(pos);
+                }
+                chunk.setBlockState(pos, stone, 0);
+            }
+        }
+    }
+
+    private static void fillStarterColumn(
+        BlockState[] states,
+        int columnMinY,
+        int minY,
+        int maxY,
+        int naturalFloor
+    ) {
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        for (int y = minY; y <= maxY; y++) {
+            int index = y - columnMinY;
+            if (index >= 0 && index < states.length && (y >= naturalFloor || isReplaceableFoundation(states[index]))) {
+                states[index] = stone;
+            }
+        }
+    }
+
+    private static BlockState[] copyColumn(NoiseColumn column, LevelHeightAccessor heightAccessor) {
+        BlockState[] states = new BlockState[heightAccessor.getHeight()];
+        int minY = heightAccessor.getMinY();
+        for (int index = 0; index < states.length; index++) {
+            states[index] = column.getBlock(minY + index);
+        }
+        return states;
+    }
+
+    private static boolean isReplaceableFoundation(BlockState state) {
+        return state.isAir() || !state.getFluidState().isEmpty();
+    }
+
+    private static Optional<StarterLandContext> resolveStarterLand(ChunkGenerator delegate, Dimension dimension) {
+        if (dimension != Dimension.OVERWORLD || !(delegate.getBiomeSource() instanceof LimitedBiomeSource source)) {
+            return Optional.empty();
+        }
+        StarterLandPlan plan = source.starterLandPlan();
+        if (!plan.enabled() || source.starterBiome().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new StarterLandContext(source.starterRadiusBlocks(), plan));
+    }
+
     private BlockState exteriorState(ExteriorMode mode, int y, LevelHeightAccessor heightAccessor) {
         if (mode == ExteriorMode.VOID) {
             return Blocks.AIR.defaultBlockState();
@@ -381,5 +534,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 default -> throw new IllegalArgumentException("Unknown Worldz generator dimension: " + value);
             };
         }
+    }
+
+    private record StarterLandContext(int radiusBlocks, StarterLandPlan plan) {
     }
 }

@@ -161,6 +161,20 @@ class ProjectMetadataTest {
         assertTrue(codecs.contains("fieldOf(\"foundation_depth\")"));
     }
 
+    @Test
+    void starterLandGenerationRunsAtConsistentChunkStages() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("applyStarterLand(chunk, randomState, false)"));
+        assertTrue(generator.contains("applyStarterLand(chunk, randomState, true)"));
+        assertTrue(generator.contains("StarterLandProfile.targetHeight"));
+        assertTrue(generator.contains("Heightmap.Types.OCEAN_FLOOR_WG"));
+        assertTrue(generator.contains("Math.max(naturalHeight, starterLandTargetHeight"));
+        assertTrue(generator.contains("super.createStructures("));
+    }
+
     private static Properties projectProperties() throws IOException {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(ROOT.resolve("gradle.properties"))) {

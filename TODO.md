@@ -250,9 +250,12 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       malformed configs without changing existing saved worlds. Full build
       passes 94 tests with clean Javadocs and whitespace lint. **Commit**
       ("Add starter land configuration").
-- [ ] 12.3 Apply the profile during Overworld noise, surface, and carver stages;
+- [x] 12.3 Apply the profile during Overworld noise, surface, and carver stages;
       make base-height/base-column queries agree; add component tests, lint,
-      review, and **commit** ("Generate guaranteed starter land").
+      review, and **commit**. The full build passes 95 tests; Javadocs and
+      whitespace lint are clean. Review confirmed surface-shell preservation,
+      exterior precedence, ocean-floor-based columns, and wrapper-aware
+      structure heights. **Commit** ("Generate guaranteed starter land").
 - [ ] 12.4 Expose starter-land choices during world creation, keep YAML as the
       default, update progression/spawn integration and resource tests, lint,
       review, and **commit** ("Add starter land controls").

@@ -275,6 +275,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   ground, zero-width behavior, foundation bounds, extreme-coordinate safety,
   YAML sanitation/defaults, and the optional codec compatibility contract.
   Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Starter-land generation — `./gradlew build` passed all modules
+  and 95 JUnit tests. The Overworld wrapper raises low columns from the
+  delegate's `OCEAN_FLOOR_WG` height before vanilla surface rules, repairs
+  air/fluid gaps down to the configured foundation depth after carvers, and
+  preserves a five-block surface shell. Base height/column queries apply the
+  same profile, structures run through the wrapper, and exterior replacement
+  remains the final authority. Nether/End and disabled or older plans are
+  untouched. Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 
