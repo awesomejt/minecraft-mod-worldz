@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.7", properties.getProperty("version"));
+        assertEquals("0.1.8", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -210,6 +210,71 @@ class ProjectMetadataTest {
         assertTrue(source.contains("this.worldLayoutPlan.sampleAt(blockX, blockZ).biomeId()"));
         assertTrue(source.contains("resolveLayoutBiomes(worldLayoutPlan, biomeGetter)"));
         assertTrue(source.contains("possible.addAll(layoutBiomes.values())"));
+    }
+
+    @Test
+    void starterZoneBeachRingPrefersALayoutBeachBiome() throws IOException {
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains("isInStarterTransitionRing(quartX, quartZ)"));
+        assertTrue(source.contains("this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX, blockZ)"));
+        assertTrue(source.contains("StarterZone.inRingQuart("));
+    }
+
+    @Test
+    void voidLayoutModeForcesASkyIslandExteriorAroundTheStarterZone() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("resolveEnvelope(delegate, dimension, envelope)"));
+        assertTrue(generator.contains("source.worldLayoutPlan().mode() != LayoutMode.VOID"));
+        assertTrue(generator.contains("new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, Math.max(islandRadius, 1), 0)"));
+    }
+
+    @Test
+    void landOnlyModeUsesTheGentlerRiverPreservingTarget() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("plan.mode() == LayoutMode.LAND_ONLY"));
+        assertTrue(generator.contains("LayoutTerrainProfile.landOnlyTarget(naturalFloor, seaLevel)"));
+    }
+
+    @Test
+    void starterLandTransitionBlendsTowardTheLayoutAdjustedFloor() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains(
+            "int blendBaseline = this.layout.isPresent()\n"
+                + "            ? layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel())\n"
+                + "            : naturalFloor;"
+        ));
+    }
+
+    @Test
+    void layoutScreenIsWiredIntoCustomizeAndPresetEditor() throws IOException {
+        String customize = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzCustomizeScreen.java"
+        ));
+        String layoutScreen = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzLayoutScreen.java"
+        ));
+        String presetEditor = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzPresetEditor.java"
+        ));
+
+        assertTrue(customize.contains("WorldzLayoutScreen"));
+        assertTrue(customize.contains("this.worldLayout"));
+        assertTrue(layoutScreen.contains("WorldzCustomization.LayoutSettings.fromText("));
+        assertTrue(layoutScreen.contains("this.parent.setLayout(settings)"));
+        assertTrue(presetEditor.contains("customization.worldLayoutPlan(new Random().nextLong())"));
+        assertTrue(presetEditor.contains("fromPlan(source.worldLayoutPlan())"));
     }
 
     private static Properties projectProperties() throws IOException {

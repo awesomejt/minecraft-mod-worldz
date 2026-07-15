@@ -27,6 +27,7 @@ final class WorldzCustomizeScreen extends Screen {
     private WorldzCustomization.ExteriorSettings overworldExterior;
     private WorldzCustomization.ExteriorSettings netherExterior;
     private StarterLandPlan starterLandPlan;
+    private WorldzCustomization.LayoutSettings worldLayout;
     private MultiLineEditBox allowedBiomes;
     private EditBox starterBiome;
     private EditBox starterRadius;
@@ -43,6 +44,7 @@ final class WorldzCustomizeScreen extends Screen {
         this.overworldExterior = initial.overworldExterior();
         this.netherExterior = initial.netherExterior();
         this.starterLandPlan = initial.starterLandPlan();
+        this.worldLayout = initial.worldLayout();
         this.allowedBiomesText = initial.allowedBiomesText();
         this.starterBiomeText = initial.starterBiome();
         this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
@@ -109,6 +111,11 @@ final class WorldzCustomizeScreen extends Screen {
         ).build());
         form.addChild(exteriorButtons);
 
+        form.addChild(Button.builder(
+            layoutButtonLabel(this.worldLayout),
+            button -> this.minecraft.gui.setScreen(new WorldzLayoutScreen(this, this.worldLayout))
+        ).width(FORM_WIDTH).build());
+
         this.errorMessage = new MultiLineTextWidget(CommonComponents.EMPTY, this.font).setMaxWidth(FORM_WIDTH).setMaxRows(2).setCentered(true);
         form.addChild(this.errorMessage);
 
@@ -137,7 +144,8 @@ final class WorldzCustomizeScreen extends Screen {
                 this.overworldBorder,
                 this.netherBorder,
                 this.overworldExterior,
-                this.netherExterior
+                this.netherExterior,
+                this.worldLayout
             );
             this.parent.getUiState().updateDimensions(
                 (registries, dimensions) -> WorldzPresetEditor.apply(registries, dimensions, customization)
@@ -167,6 +175,10 @@ final class WorldzCustomizeScreen extends Screen {
         } else {
             this.netherExterior = settings;
         }
+    }
+
+    void setLayout(WorldzCustomization.LayoutSettings settings) {
+        this.worldLayout = settings;
     }
 
     @Override
@@ -200,6 +212,13 @@ final class WorldzCustomizeScreen extends Screen {
         return Component.translatable(
             "jlt_worldz.customize." + dimension + "_exterior",
             Component.translatable("jlt_worldz.customize.exterior.mode." + exterior.mode().serializedName())
+        );
+    }
+
+    private static Component layoutButtonLabel(WorldzCustomization.LayoutSettings worldLayout) {
+        return Component.translatable(
+            "jlt_worldz.customize.layout",
+            Component.translatable("jlt_worldz.customize.layout.mode." + worldLayout.mode().serializedName())
         );
     }
 }

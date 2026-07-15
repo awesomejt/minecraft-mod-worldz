@@ -157,4 +157,81 @@ class WorldzCustomizationTest {
     private static WorldzCustomization.BorderSettings border(boolean enabled) {
         return new WorldzCustomization.BorderSettings(enabled, 512, 512, 0, true);
     }
+
+    @Test
+    void layoutSettingsCanonicalizeWeightedBiomesAndRoleOverrides() {
+        WorldzCustomization.LayoutSettings settings = WorldzCustomization.LayoutSettings.fromText(
+            "mixed",
+            "plains@3, desert",
+            "0.4",
+            "300",
+            "80",
+            " plains ",
+            "swamp=ocean"
+        );
+
+        assertEquals(LayoutMode.MIXED, settings.mode());
+        assertEquals("minecraft:plains", settings.singleBiome());
+        assertEquals("ocean", settings.roleOverrides().get("minecraft:swamp"));
+        assertEquals(0.4, settings.oceanCoverageFraction());
+        assertEquals(300, settings.regionScaleBlocks());
+        assertEquals(80, settings.coastBlendWidthBlocks());
+    }
+
+    @Test
+    void layoutSettingsRejectsTagsInWeightedBiomesAndOverrides() {
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "#is_overworld", "0.35", "512", "128", "", ""
+        ));
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "", "0.35", "512", "128", "#is_overworld", ""
+        ));
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "", "0.35", "512", "128", "", "#is_overworld=ocean"
+        ));
+    }
+
+    @Test
+    void layoutSettingsRejectsOutOfRangeAndMalformedFields() {
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "", "1.5", "512", "128", "", ""
+        ));
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "", "0.35", "1", "128", "", ""
+        ));
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "", "not-a-number", "512", "128", "", ""
+        ));
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "", "0.35", "512", "128", "", "malformed-no-equals"
+        ));
+    }
+
+    @Test
+    void legacyLayoutSettingsMatchWorldLayoutPlanDefaults() {
+        WorldzCustomization.LayoutSettings legacy = WorldzCustomization.LayoutSettings.legacy();
+
+        assertEquals(LayoutMode.LEGACY, legacy.mode());
+        assertTrue(legacy.biomes().isEmpty());
+        assertEquals(WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, legacy.regionScaleBlocks());
+    }
+
+    @Test
+    void worldLayoutPlanResolvesRoleOverridesAndUsesTheSuppliedSeed() {
+        WorldzCustomization.LayoutSettings settings = WorldzCustomization.LayoutSettings.fromText(
+            "mixed", "plains@3, desert, ocean, swamp", "0.4", "300", "80", "", "swamp=ocean"
+        );
+        WorldzCustomization customization = new WorldzCustomization(
+            List.of("plains"), "", 512, StarterLandPlan.disabled(), border(false), border(false),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(), settings
+        );
+
+        WorldLayoutPlan plan = customization.worldLayoutPlan(42L);
+
+        assertEquals(42L, plan.seed());
+        assertEquals(
+            List.of("minecraft:ocean", "minecraft:swamp"),
+            plan.oceanBiomes().stream().map(WorldLayoutPlan.BiomeWeight::biomeId).toList()
+        );
+    }
 }

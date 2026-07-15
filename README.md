@@ -32,7 +32,8 @@ For singleplayer:
    restart Minecraft.
 3. Create a world and select **Worldz** under **World Type**.
 4. Select **Customize** to change the biome list, starter zone and land,
-   borders, exterior terrain, or resize rates for this world only.
+   borders, exterior terrain, coordinated layout, or resize rates for this
+   world only.
 
 The Customize screen starts with the YAML values. Selecting **Done** bakes the
 screen values into the new world without rewriting the YAML file, so each new
@@ -251,15 +252,24 @@ match — so a mixed world's ocean biomes generate real (lowered) ocean rather
 than a land shape mislabeled underwater, and vice versa. `mode` requires at
 least one usable biome for every role it needs; an incomplete configuration
 logs a warning and falls back to `legacy` rather than failing world creation.
+The **Layout** button in Customize exposes every one of these fields for a
+single new world without editing the YAML file.
 
-`void` is accepted but currently behaves like `legacy` (no terrain change) —
-its sky-island overlay is still planned. The existing `starterBiome`/
-`starterRadiusBlocks`/guaranteed-starter-land settings still work unchanged
-alongside every layout mode (they take priority over the layout's own choice
-at the origin), but the mode-specific starter overlays DESIGN §17 describes
-(e.g. ocean mode's guaranteed island-to-beach-to-open-water transition) and the
-Customize-screen controls for `layout` itself are still planned. See DESIGN
-§17 for the full model and TODO.md Phase 15 for what remains.
+`land_only` only raises columns that are clearly deep ocean, leaving shallow
+natural depressions like rivers and ponds alone. `mixed`/`ocean` place a beach
+biome in a ring just outside a configured starter zone when one is available,
+so the guaranteed starter island tapers through a beach before reaching open
+water instead of cutting off abruptly; the starter-land transition itself now
+blends toward the layout's own adjusted terrain (e.g. the capped ocean depth)
+rather than unrelated raw vanilla shape. `void` forces a sky-void exterior
+around the starter zone (radius plus its transition width, or a 256-block
+fallback with no starter biome configured) so a guaranteed island floats in an
+otherwise infinite void — configure a starter biome and enable starter land for
+a solid island; without one, whatever vanilla terrain naturally exists in that
+fallback radius is what floats. `single_biome` fills the world with one biome
+and raises or caps its terrain to match that biome's role. See DESIGN §17 for
+the full model and TODO.md Phase 15 for what remains (a fully radial coast
+blend at grid corners, and seed-informed spawn placement).
 
 ## Caveats
 

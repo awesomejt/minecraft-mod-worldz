@@ -125,8 +125,6 @@ public record WorldLayoutPlan(
 
     /**
      * Resolves a plan from sanitized YAML configuration and a caller-supplied seed.
-     * Each configured weighted biome id is classified into a role via
-     * {@link BiomeRoles#resolve(String, Map)} using the configured overrides.
      *
      * @param config sanitized startup configuration
      * @param seed sampling seed (see {@link #seed()})
@@ -134,13 +132,51 @@ public record WorldLayoutPlan(
      */
     public static WorldLayoutPlan fromConfig(WorldzConfig config, long seed) {
         var layout = config.layout;
+        return resolve(
+            layout.mode,
+            layout.biomes,
+            layout.roleOverrides,
+            layout.oceanCoverageFraction,
+            layout.regionScaleBlocks,
+            layout.coastBlendWidthBlocks,
+            layout.singleBiome,
+            seed
+        );
+    }
+
+    /**
+     * Resolves a plan from raw weighted-biome text entries and role overrides, shared by
+     * YAML config loading and the world-creation Customize screen. Each weighted biome id
+     * is classified into a role via {@link BiomeRoles#resolve(String, Map)} using the
+     * given overrides.
+     *
+     * @param mode layout mode
+     * @param weightedBiomeEntries raw {@code id}/{@code id@weight} entries, syntax-validated here
+     * @param roleOverrideEntries raw biome id to role-name overrides, syntax-validated here
+     * @param oceanCoverageFraction {@code MIXED} target ocean fraction
+     * @param regionScaleBlocks grid-cell edge length in blocks
+     * @param coastBlendWidthBlocks coast-blend width
+     * @param singleBiome {@code SINGLE_BIOME} biome id, or blank/empty when unused
+     * @param seed sampling seed (see {@link #seed()})
+     * @return immutable resolved plan
+     */
+    public static WorldLayoutPlan resolve(
+        LayoutMode mode,
+        List<String> weightedBiomeEntries,
+        Map<String, String> roleOverrideEntries,
+        double oceanCoverageFraction,
+        int regionScaleBlocks,
+        int coastBlendWidthBlocks,
+        String singleBiome,
+        long seed
+    ) {
         Map<String, BiomeRole> overrides = new LinkedHashMap<>();
-        layout.roleOverrides.forEach((id, role) -> overrides.put(id, BiomeRole.parse(role)));
+        roleOverrideEntries.forEach((id, role) -> overrides.put(id, BiomeRole.parse(role)));
 
         List<BiomeWeight> land = new ArrayList<>();
         List<BiomeWeight> ocean = new ArrayList<>();
         List<BiomeWeight> beach = new ArrayList<>();
-        for (WeightedBiomeListSpec.Entry entry : WeightedBiomeListSpec.parse(layout.biomes).entries()) {
+        for (WeightedBiomeListSpec.Entry entry : WeightedBiomeListSpec.parse(weightedBiomeEntries).entries()) {
             BiomeWeight weight = new BiomeWeight(entry.id(), entry.weight());
             switch (BiomeRoles.resolve(entry.id(), overrides)) {
                 case LAND -> land.add(weight);
@@ -150,15 +186,15 @@ public record WorldLayoutPlan(
         }
 
         return new WorldLayoutPlan(
-            layout.mode,
+            mode,
             seed,
-            layout.regionScaleBlocks,
-            layout.oceanCoverageFraction,
-            layout.coastBlendWidthBlocks,
+            regionScaleBlocks,
+            oceanCoverageFraction,
+            coastBlendWidthBlocks,
             land,
             ocean,
             beach,
-            layout.singleBiome.isBlank() ? Optional.empty() : Optional.of(layout.singleBiome),
+            singleBiome == null || singleBiome.isBlank() ? Optional.empty() : Optional.of(singleBiome),
             overrides,
             0,
             0,
@@ -185,6 +221,23 @@ public record WorldLayoutPlan(
             case VOID -> new LayoutSample(BiomeRole.LAND, Optional.empty(), 1.0);
             case MIXED -> sampleMixed(blockX, blockZ);
         };
+    }
+
+    /**
+     * Samples one specific role's weighted biome list directly, bypassing the
+     * mode's own role classification at this column. Used for starter-zone
+     * overlays (e.g. a beach ring) that need a particular role's biome
+     * regardless of what the base layout would otherwise place there.
+     *
+     * @param role role to sample
+     * @param blockX block X
+     * @param blockZ block Z
+     * @return the sampled biome id, empty if that role has no candidates
+     */
+    public Optional<String> sampleRole(BiomeRole role, int blockX, int blockZ) {
+        long cellX = Math.floorDiv((long) blockX - layoutOriginBlockX, regionScaleBlocks);
+        long cellZ = Math.floorDiv((long) blockZ - layoutOriginBlockZ, regionScaleBlocks);
+        return weightedPick(rolePool(role), cellX, cellZ, biomeSalt(role));
     }
 
     private LayoutSample sampleUniform(BiomeRole role, List<BiomeWeight> candidates, int blockX, int blockZ, String salt) {

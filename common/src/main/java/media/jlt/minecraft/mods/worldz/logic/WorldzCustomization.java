@@ -2,11 +2,15 @@ package media.jlt.minecraft.mods.worldz.logic;
 
 import media.jlt.minecraft.mods.worldz.config.BorderConfig;
 import media.jlt.minecraft.mods.worldz.config.ExteriorConfig;
+import media.jlt.minecraft.mods.worldz.config.LayoutConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Immutable, loader-neutral values selected for one new Worldz world.
@@ -19,6 +23,7 @@ import java.util.List;
  * @param netherBorder Nether border selection
  * @param overworldExterior Overworld exterior-terrain selection
  * @param netherExterior Nether exterior-terrain selection
+ * @param worldLayout coordinated world-layout selection
  */
 public record WorldzCustomization(
     List<String> allowedBiomes,
@@ -28,7 +33,8 @@ public record WorldzCustomization(
     BorderSettings overworldBorder,
     BorderSettings netherBorder,
     ExteriorSettings overworldExterior,
-    ExteriorSettings netherExterior
+    ExteriorSettings netherExterior,
+    LayoutSettings worldLayout
 ) {
     /** Validates and snapshots customization values. */
     public WorldzCustomization {
@@ -54,8 +60,8 @@ public record WorldzCustomization(
             "Starter radius"
         );
         if (starterLandPlan == null || overworldBorder == null || netherBorder == null
-            || overworldExterior == null || netherExterior == null) {
-            throw new IllegalArgumentException("Starter-land, border, and exterior settings are required.");
+            || overworldExterior == null || netherExterior == null || worldLayout == null) {
+            throw new IllegalArgumentException("Starter-land, border, exterior, and layout settings are required.");
         }
         if (netherExterior.mode() == ExteriorMode.OCEAN) {
             throw new IllegalArgumentException("Ocean exterior is only supported in the Overworld.");
@@ -88,7 +94,8 @@ public record WorldzCustomization(
             overworldBorder,
             netherBorder,
             ExteriorSettings.normal(),
-            ExteriorSettings.normal()
+            ExteriorSettings.normal(),
+            LayoutSettings.legacy()
         );
     }
 
@@ -120,7 +127,8 @@ public record WorldzCustomization(
             overworldBorder,
             netherBorder,
             overworldExterior,
-            netherExterior
+            netherExterior,
+            LayoutSettings.legacy()
         );
     }
     /**
@@ -138,7 +146,8 @@ public record WorldzCustomization(
             BorderSettings.fromConfig(config.overworldBorder),
             BorderSettings.fromConfig(config.netherBorder),
             ExteriorSettings.fromConfig(config.overworldExterior),
-            ExteriorSettings.fromConfig(config.netherExterior)
+            ExteriorSettings.fromConfig(config.netherExterior),
+            LayoutSettings.fromConfig(config)
         );
     }
 
@@ -203,7 +212,8 @@ public record WorldzCustomization(
             overworldBorder,
             netherBorder,
             overworldExterior,
-            netherExterior
+            netherExterior,
+            LayoutSettings.legacy()
         );
     }
 
@@ -242,7 +252,50 @@ public record WorldzCustomization(
             overworldBorder,
             netherBorder,
             overworldExterior,
-            netherExterior
+            netherExterior,
+            LayoutSettings.legacy()
+        );
+    }
+
+    /**
+     * Parses editable biome fields while preserving explicit starter-land and layout plans.
+     *
+     * @param allowedBiomes newline- or comma-separated biome ids and tags
+     * @param starterBiome optional direct biome id
+     * @param starterRadiusBlocks decimal starter radius
+     * @param starterLandPlan validated starter-land values
+     * @param overworldBorder validated overworld border values
+     * @param netherBorder validated Nether border values
+     * @param overworldExterior validated Overworld exterior values
+     * @param netherExterior validated Nether exterior values
+     * @param worldLayout validated layout values
+     * @return canonical immutable customization values
+     */
+    public static WorldzCustomization fromText(
+        String allowedBiomes,
+        String starterBiome,
+        String starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        BorderSettings overworldBorder,
+        BorderSettings netherBorder,
+        ExteriorSettings overworldExterior,
+        ExteriorSettings netherExterior,
+        LayoutSettings worldLayout
+    ) {
+        List<String> allowed = Arrays.stream(allowedBiomes.split("[,\\r\\n]+"))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .toList();
+        return new WorldzCustomization(
+            allowed,
+            starterBiome,
+            parseInteger(starterRadiusBlocks, "Starter radius"),
+            starterLandPlan,
+            overworldBorder,
+            netherBorder,
+            overworldExterior,
+            netherExterior,
+            worldLayout
         );
     }
 
@@ -274,6 +327,17 @@ public record WorldzCustomization(
             overworldExterior.toPlan(overworldBorder),
             netherExterior.toPlan(netherBorder)
         );
+    }
+
+    /**
+     * Resolves the layout selection into a persisted plan with a caller-supplied seed.
+     * A fresh seed should be generated once, at world-creation time.
+     *
+     * @param seed sampling seed (see {@link WorldLayoutPlan#seed()})
+     * @return immutable resolved layout plan
+     */
+    public WorldLayoutPlan worldLayoutPlan(long seed) {
+        return worldLayout.toPlan(seed);
     }
 
     /**
@@ -564,11 +628,195 @@ public record WorldzCustomization(
         }
     }
 
+    /**
+     * Editable coordinated world-layout values.
+     *
+     * @param mode layout mode
+     * @param biomes weighted {@code id}/{@code id@weight} entries; tags are not accepted
+     * @param oceanCoverageFraction {@code MIXED} target ocean fraction, {@code 0..1}
+     * @param regionScaleBlocks grid-cell edge length in blocks
+     * @param coastBlendWidthBlocks coast-blend width
+     * @param singleBiome {@code SINGLE_BIOME} biome id, or empty when unused
+     * @param roleOverrides biome id to role-name overrides
+     */
+    public record LayoutSettings(
+        LayoutMode mode,
+        List<String> biomes,
+        double oceanCoverageFraction,
+        int regionScaleBlocks,
+        int coastBlendWidthBlocks,
+        String singleBiome,
+        Map<String, String> roleOverrides
+    ) {
+        /** Validates and canonicalizes editable layout values. */
+        public LayoutSettings {
+            if (mode == null) {
+                throw new IllegalArgumentException("Layout mode is required.");
+            }
+            WeightedBiomeListSpec biomeSpec = WeightedBiomeListSpec.parse(biomes);
+            if (!biomeSpec.invalidEntries().isEmpty()) {
+                throw new IllegalArgumentException("Invalid layout biome: " + biomeSpec.invalidEntries().getFirst());
+            }
+            biomes = biomeSpec.entries().stream().map(WeightedBiomeListSpec.Entry::configValue).toList();
+
+            singleBiome = singleBiome == null ? "" : singleBiome.trim();
+            if (!singleBiome.isEmpty()) {
+                BiomeListSpec singleSpec = BiomeListSpec.parse(List.of(singleBiome));
+                if (singleSpec.entries().size() != 1 || singleSpec.entries().getFirst().tag()) {
+                    throw new IllegalArgumentException("Single biome must be one biome ID, not a tag.");
+                }
+                singleBiome = singleSpec.entries().getFirst().id();
+            }
+
+            Map<String, String> canonicalOverrides = new LinkedHashMap<>();
+            if (roleOverrides != null) {
+                roleOverrides.forEach((rawId, rawRole) -> {
+                    BiomeListSpec idSpec = BiomeListSpec.parse(List.of(rawId == null ? "" : rawId));
+                    if (idSpec.entries().size() != 1 || idSpec.entries().getFirst().tag()) {
+                        throw new IllegalArgumentException("Role override id must be one biome ID, not a tag: " + rawId);
+                    }
+                    BiomeRole role = BiomeRole.parse(rawRole);
+                    canonicalOverrides.put(idSpec.entries().getFirst().id(), role.serializedName());
+                });
+            }
+            roleOverrides = canonicalOverrides;
+
+            requireRange(
+                regionScaleBlocks,
+                WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS,
+                WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS,
+                "Region scale"
+            );
+            requireRange(coastBlendWidthBlocks, 0, WorldzConfig.MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS, "Coast blend width");
+            if (oceanCoverageFraction < 0.0 || oceanCoverageFraction > 1.0) {
+                throw new IllegalArgumentException("Ocean coverage fraction must be between 0 and 1.");
+            }
+        }
+
+        /**
+         * Returns the backward-compatible legacy default (today's climate-filter-only behavior).
+         *
+         * @return disabled layout selection
+         */
+        public static LayoutSettings legacy() {
+            return new LayoutSettings(
+                LayoutMode.LEGACY,
+                List.of(),
+                WorldLayoutPlan.DEFAULT_OCEAN_COVERAGE_FRACTION,
+                WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS,
+                WorldLayoutPlan.DEFAULT_COAST_BLEND_WIDTH_BLOCKS,
+                "",
+                Map.of()
+            );
+        }
+
+        /**
+         * Copies sanitized YAML values.
+         *
+         * @param config sanitized startup configuration
+         * @return immutable editable values
+         */
+        public static LayoutSettings fromConfig(WorldzConfig config) {
+            LayoutConfig layout = config.layout;
+            return new LayoutSettings(
+                layout.mode,
+                layout.biomes,
+                layout.oceanCoverageFraction,
+                layout.regionScaleBlocks,
+                layout.coastBlendWidthBlocks,
+                layout.singleBiome,
+                layout.roleOverrides
+            );
+        }
+
+        /**
+         * Parses client text fields into validated layout values.
+         *
+         * @param mode serialized layout mode name
+         * @param biomesText newline- or comma-separated weighted biome entries
+         * @param oceanCoverageFraction decimal ocean coverage fraction
+         * @param regionScaleBlocks decimal region scale
+         * @param coastBlendWidthBlocks decimal coast blend width
+         * @param singleBiome single-biome-mode biome id, or empty
+         * @param roleOverridesText newline- or comma-separated {@code id=role} entries
+         * @return validated immutable layout values
+         */
+        public static LayoutSettings fromText(
+            String mode,
+            String biomesText,
+            String oceanCoverageFraction,
+            String regionScaleBlocks,
+            String coastBlendWidthBlocks,
+            String singleBiome,
+            String roleOverridesText
+        ) {
+            List<String> biomes = Arrays.stream(biomesText.split("[,\\r\\n]+"))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
+            Map<String, String> overrides = new LinkedHashMap<>();
+            for (String line : roleOverridesText.split("[,\\r\\n]+")) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                int at = trimmed.indexOf('=');
+                if (at < 0) {
+                    throw new IllegalArgumentException("Role override '" + trimmed + "' must be formatted as id=role.");
+                }
+                overrides.put(trimmed.substring(0, at).trim(), trimmed.substring(at + 1).trim());
+            }
+            return new LayoutSettings(
+                LayoutMode.parse(mode),
+                biomes,
+                parseDouble(oceanCoverageFraction, "Ocean coverage fraction"),
+                parseInteger(regionScaleBlocks, "Region scale"),
+                parseInteger(coastBlendWidthBlocks, "Coast blend width"),
+                singleBiome,
+                overrides
+            );
+        }
+
+        /**
+         * Renders weighted biome entries one per line for the multi-line editor.
+         *
+         * @return newline-separated canonical values
+         */
+        public String biomesText() {
+            return String.join("\n", biomes);
+        }
+
+        /**
+         * Renders role overrides one per line for the multi-line editor.
+         *
+         * @return newline-separated {@code id=role} entries
+         */
+        public String roleOverridesText() {
+            List<String> lines = new ArrayList<>();
+            roleOverrides.forEach((id, role) -> lines.add(id + "=" + role));
+            return String.join("\n", lines);
+        }
+
+        private WorldLayoutPlan toPlan(long seed) {
+            return WorldLayoutPlan.resolve(
+                mode, biomes, roleOverrides, oceanCoverageFraction, regionScaleBlocks, coastBlendWidthBlocks, singleBiome, seed
+            );
+        }
+    }
+
     private static int parseInteger(String value, String name) {
         try {
             return Integer.parseInt(value.trim());
         } catch (NullPointerException | NumberFormatException exception) {
             throw new IllegalArgumentException(name + " must be a whole number.", exception);
+        }
+    }
+
+    private static double parseDouble(String value, String name) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NullPointerException | NumberFormatException exception) {
+            throw new IllegalArgumentException(name + " must be a number.", exception);
         }
     }
 

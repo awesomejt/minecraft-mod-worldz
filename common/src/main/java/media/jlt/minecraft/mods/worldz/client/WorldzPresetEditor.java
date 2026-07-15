@@ -26,11 +26,13 @@ import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 
 /** Shared Worldz preset editor registered by each loader on the client. */
@@ -79,7 +81,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             customization.starterLandPlan(),
             customization.worldLimitPlan(),
             customization.exteriorPlan(),
-            WorldLayoutPlan.legacy(),
+            customization.worldLayoutPlan(new Random().nextLong()),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
@@ -121,7 +123,8 @@ public final class WorldzPresetEditor implements PresetEditor {
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
             fromPlan(exterior.overworld()),
-            fromPlan(exterior.nether())
+            fromPlan(exterior.nether()),
+            fromPlan(source.worldLayoutPlan())
         );
     }
 
@@ -182,5 +185,27 @@ public final class WorldzPresetEditor implements PresetEditor {
             envelope.boundaryRadiusBlocks(),
             envelope.oceanTransitionWidthBlocks()
         );
+    }
+
+    private static WorldzCustomization.LayoutSettings fromPlan(WorldLayoutPlan plan) {
+        List<String> biomes = new ArrayList<>();
+        plan.landBiomes().forEach(weight -> biomes.add(renderWeight(weight)));
+        plan.oceanBiomes().forEach(weight -> biomes.add(renderWeight(weight)));
+        plan.beachBiomes().forEach(weight -> biomes.add(renderWeight(weight)));
+        Map<String, String> overrides = new LinkedHashMap<>();
+        plan.roleOverrides().forEach((id, role) -> overrides.put(id, role.serializedName()));
+        return new WorldzCustomization.LayoutSettings(
+            plan.mode(),
+            biomes,
+            plan.oceanCoverageFraction(),
+            plan.regionScaleBlocks(),
+            plan.coastBlendWidthBlocks(),
+            plan.singleBiome().orElse(""),
+            overrides
+        );
+    }
+
+    private static String renderWeight(WorldLayoutPlan.BiomeWeight weight) {
+        return weight.weight() == 1.0 ? weight.biomeId() : weight.biomeId() + "@" + weight.weight();
     }
 }

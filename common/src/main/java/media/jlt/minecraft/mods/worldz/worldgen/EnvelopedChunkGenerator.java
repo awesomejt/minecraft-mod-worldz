@@ -59,6 +59,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * {@code foundationDepthBlocks} instead.
      */
     private static final int DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS = 8;
+    /** Fallback sky-void island radius when {@code VOID} mode has no configured starter biome. */
+    private static final int DEFAULT_VOID_ISLAND_RADIUS_BLOCKS = 256;
     /** Codec registered as {@code jlt_worldz:enveloped}. */
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
@@ -80,7 +82,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
         this.dimension = dimension;
-        this.envelope = envelope;
+        this.envelope = resolveEnvelope(delegate, dimension, envelope);
         this.starterLand = resolveStarterLand(delegate, dimension);
         this.layout = resolveLayout(delegate, dimension);
     }
@@ -288,8 +290,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             BlockState[] states = null;
 
             if (this.layout.isPresent()) {
-                double landFactor = this.layout.get().plan().sampleAt(x, z).landFactor();
-                int layoutFloor = LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, getSeaLevel());
+                int layoutFloor = layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel());
                 if (layoutFloor > naturalFloor) {
                     states = copyColumn(naturalColumn, heightAccessor);
                     int minY = StarterLandProfile.foundationMinY(
@@ -405,8 +406,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     continue;
                 }
                 int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
-                double landFactor = plan.sampleAt(x, z).landFactor();
-                int layoutFloor = LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, seaLevel);
+                int layoutFloor = layoutFloorFor(plan, x, z, naturalFloor, seaLevel);
                 if (layoutFloor > naturalFloor) {
                     int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
                     int maxY = repairOnly ? layoutFloor - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : layoutFloor - 1;
@@ -436,9 +436,21 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return naturalHeight;
         }
         int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-        double landFactor = this.layout.get().plan().sampleAt(x, z).landFactor();
-        int layoutFloor = LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, getSeaLevel());
+        int layoutFloor = layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel());
         return naturalHeight + (layoutFloor - naturalFloor);
+    }
+
+    /**
+     * Computes the layout's target floor height, using a gentler deep-ocean-only
+     * raise for {@code LAND_ONLY} so shallow natural depressions (rivers, ponds)
+     * are not flattened into land, and the generic land/ocean blend otherwise.
+     */
+    private static int layoutFloorFor(WorldLayoutPlan plan, int x, int z, int naturalFloor, int seaLevel) {
+        if (plan.mode() == LayoutMode.LAND_ONLY) {
+            return LayoutTerrainProfile.landOnlyTarget(naturalFloor, seaLevel);
+        }
+        double landFactor = plan.sampleAt(x, z).landFactor();
+        return LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, seaLevel);
     }
 
     private void applyStarterLand(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
@@ -495,12 +507,18 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 0.0,
                 z * StarterLandProfile.RELIEF_NOISE_SCALE
             );
+        // Blend back toward the layout-adjusted floor (not raw vanilla terrain) so the
+        // starter island's transition connects to what generation will actually leave
+        // beyond it (e.g. an ocean-mode cap), rather than jumping to unrelated natural shape.
+        int blendBaseline = this.layout.isPresent()
+            ? layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel())
+            : naturalFloor;
         int target = StarterLandProfile.targetHeight(
             x,
             z,
             context.radiusBlocks(),
             context.plan().transitionWidthBlocks(),
-            naturalFloor,
+            blendBaseline,
             getSeaLevel(),
             context.plan().profileVersion(),
             reliefNoise
@@ -605,6 +623,29 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
     private static boolean isReplaceableFoundation(BlockState state) {
         return state.isAir() || !state.getFluidState().isEmpty();
+    }
+
+    /**
+     * Forces a sky-void exterior around the starter island when the layout mode is
+     * {@code VOID}, overriding any explicitly configured exterior for that dimension.
+     * The island radius matches the starter zone plus its natural-land transition so
+     * the guaranteed land is never cut off by the void boundary.
+     */
+    private static ExteriorPlan.DimensionEnvelope resolveEnvelope(
+        ChunkGenerator delegate,
+        Dimension dimension,
+        ExteriorPlan.DimensionEnvelope configured
+    ) {
+        if (dimension != Dimension.OVERWORLD || !(delegate.getBiomeSource() instanceof LimitedBiomeSource source)) {
+            return configured;
+        }
+        if (source.worldLayoutPlan().mode() != LayoutMode.VOID) {
+            return configured;
+        }
+        int islandRadius = source.starterBiome().isPresent()
+            ? source.starterRadiusBlocks() + source.starterLandPlan().transitionWidthBlocks()
+            : DEFAULT_VOID_ISLAND_RADIUS_BLOCKS;
+        return new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, Math.max(islandRadius, 1), 0);
     }
 
     private static Optional<StarterLandContext> resolveStarterLand(ChunkGenerator delegate, Dimension dimension) {

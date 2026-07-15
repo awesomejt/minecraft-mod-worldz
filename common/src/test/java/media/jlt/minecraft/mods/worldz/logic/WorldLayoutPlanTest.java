@@ -88,6 +88,30 @@ class WorldLayoutPlanTest {
     }
 
     @Test
+    void sampleRoleReturnsOnlyThatRolesCandidatesRegardlessOfMode() {
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, OCEAN, BEACH,
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        for (int cell = 0; cell < 40; cell++) {
+            int x = cell * 256 + 10;
+            assertTrue(Set.of("minecraft:ocean").contains(plan.sampleRole(BiomeRole.OCEAN, x, -x).orElseThrow()));
+            assertTrue(Set.of("minecraft:beach").contains(plan.sampleRole(BiomeRole.BEACH, x, -x).orElseThrow()));
+        }
+    }
+
+    @Test
+    void sampleRoleIsEmptyWhenThatRoleHasNoCandidates() {
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, List.of(), List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        assertTrue(plan.sampleRole(BiomeRole.BEACH, 100, 100).isEmpty());
+    }
+
+    @Test
     void mixedModeOnlyReturnsAllowedBiomesForTheSampledRole() {
         WorldLayoutPlan plan = mixedPlan(99L, 0.35, 400, 40, BEACH);
         Set<String> allowedLand = Set.of("minecraft:plains", "minecraft:desert");

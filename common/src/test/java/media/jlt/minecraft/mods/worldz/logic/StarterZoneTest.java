@@ -57,4 +57,19 @@ class StarterZoneTest {
         assertFalse(StarterZone.containsQuart(1, 0, 0));
         assertFalse(StarterZone.containsQuart(0, -1, 0));
     }
+
+    @Test
+    void ringExcludesInnerZoneAndIncludesOuterBand() {
+        assertFalse(StarterZone.inRingQuart(0, 0, 512, 640));
+        assertFalse(StarterZone.inRingQuart(128, 0, 512, 640));
+        assertTrue(StarterZone.inRingQuart(129, 0, 512, 640));
+        assertTrue(StarterZone.inRingQuart(160, 0, 512, 640));
+        assertFalse(StarterZone.inRingQuart(161, 0, 512, 640));
+    }
+
+    @Test
+    void ringIsEmptyWhenOuterRadiusDoesNotExceedInner() {
+        assertFalse(StarterZone.inRingQuart(0, 0, 512, 512));
+        assertFalse(StarterZone.inRingQuart(0, 0, 512, 256));
+    }
 }

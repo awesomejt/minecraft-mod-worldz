@@ -37,4 +37,22 @@ public final class StarterZone {
         }
         return absoluteX * absoluteX + absoluteZ * absoluteZ <= radius * radius;
     }
+
+    /**
+     * Tests a quart-coordinate position against the ring strictly outside one
+     * radius and inclusively within a larger one, e.g. a starter zone's
+     * outward blend transition.
+     *
+     * @param quartX quart X coordinate relative to the origin
+     * @param quartZ quart Z coordinate relative to the origin
+     * @param innerRadiusBlocks excluded inner radius in blocks
+     * @param outerRadiusBlocks included outer radius in blocks
+     * @return whether the position is in the ring
+     */
+    public static boolean inRingQuart(int quartX, int quartZ, int innerRadiusBlocks, int outerRadiusBlocks) {
+        if (outerRadiusBlocks <= innerRadiusBlocks) {
+            return false;
+        }
+        return !containsQuart(quartX, quartZ, innerRadiusBlocks) && containsQuart(quartX, quartZ, outerRadiusBlocks);
+    }
 }

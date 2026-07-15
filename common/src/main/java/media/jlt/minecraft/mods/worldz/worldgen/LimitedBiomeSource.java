@@ -9,6 +9,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.AllowedEntryFilter;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
+import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
@@ -377,6 +378,20 @@ public final class LimitedBiomeSource extends BiomeSource {
         return this.starterBiome.isPresent() && StarterZone.containsQuart(quartX, quartZ, this.starterRadiusBlocks);
     }
 
+    /**
+     * Tests a quart-coordinate position against the starter-land transition ring
+     * just outside the starter zone, where a beach-role layout biome is preferred.
+     *
+     * @param quartX quart X coordinate
+     * @param quartZ quart Z coordinate
+     * @return whether the source has a starter biome and the position is in its transition ring
+     */
+    public boolean isInStarterTransitionRing(int quartX, int quartZ) {
+        return this.starterBiome.isPresent() && StarterZone.inRingQuart(
+            quartX, quartZ, this.starterRadiusBlocks, this.starterRadiusBlocks + this.starterLandPlan.transitionWidthBlocks()
+        );
+    }
+
     @Override
     protected MapCodec<? extends BiomeSource> codec() {
         return CODEC;
@@ -398,6 +413,13 @@ public final class LimitedBiomeSource extends BiomeSource {
             return this.starterBiome.orElseThrow();
         }
         if (this.worldLayoutPlan.mode() != LayoutMode.LEGACY) {
+            if (isInStarterTransitionRing(quartX, quartZ)) {
+                Optional<Holder<Biome>> beach = this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX, blockZ)
+                    .map(this.resolution.get().layoutBiomes()::get);
+                if (beach.isPresent()) {
+                    return beach.get();
+                }
+            }
             Optional<Holder<Biome>> sampled = this.worldLayoutPlan.sampleAt(blockX, blockZ).biomeId()
                 .map(this.resolution.get().layoutBiomes()::get);
             if (sampled.isPresent()) {

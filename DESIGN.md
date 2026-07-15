@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.7`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.8`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -557,6 +557,54 @@ seed string, since no decode-time hook available to a `BiomeSource` codec
 currently exposes it); once resolved, the codec persists that value so reloads
 stay stable. Tying it to the real world seed is deferred alongside Phase 16's
 related finalized-seed-timing investigation.
+
+### Implementation (Phase 15.5)
+
+The Customize screen gains a **Layout** button opening `WorldzLayoutScreen`,
+mirroring the exterior/border/starter-land sub-screens: a mode-cycle button,
+the weighted-biome and role-override lists as multi-line text, and the
+remaining numeric fields. `WorldzCustomization.LayoutSettings` is the editable
+counterpart to `WorldLayoutPlan` — validated the same strict way as the
+outer record's `allowedBiomes`/`starterBiome` (throwing on a malformed entry
+rather than silently dropping it, since this is direct user input) — and
+`WorldLayoutPlan.resolve(...)` is factored out of `fromConfig` so both YAML
+loading and Customize share the exact same role-partitioning logic. Selecting
+**Done** generates a fresh random sampling seed for that world via
+`WorldzCustomization.worldLayoutPlan(seed)`, exactly like the fieldless
+preset's own resolution.
+
+Three of the four remaining starter-overlay requirements from §17 are
+implemented as targeted, independent refinements rather than a new per-mode
+overlay generator:
+
+- **Land-only rivers**: a new `LayoutTerrainProfile.landOnlyTarget` raises only
+  columns whose natural floor is already deep-ocean-shaped (below the ocean
+  ceiling), leaving shallower natural depressions — rivers, ponds — untouched.
+  `LAND_ONLY` uses this instead of the generic land/ocean blend.
+- **Mixed/ocean coasts and beaches**: within the starter zone's existing
+  transition ring (`StarterZone.inRingQuart`, reusing the starter-land
+  `transitionWidthBlocks`), `LimitedBiomeSource` prefers a beach-role biome
+  from the layout (`WorldLayoutPlan.sampleRole`) over the base layout's own
+  choice, when one is configured. Independently, the starter-land height
+  transition itself (`EnvelopedChunkGenerator.starterLandTargetHeight`) now
+  blends back toward the layout-adjusted floor instead of raw vanilla terrain,
+  so the island connects smoothly to what generation actually leaves beyond it
+  (e.g. an ocean mode's capped depth) rather than jumping to unrelated natural
+  shape.
+- **Sky-void island**: `VOID` mode forces the Overworld exterior to
+  `ExteriorMode.VOID` with its boundary at the starter radius plus transition
+  width (or a 256-block fallback with no starter biome configured),
+  overriding any explicitly configured exterior. This reuses the existing
+  exterior-envelope mechanism entirely rather than a new one; `VOID` still
+  skips the land/ocean height adjustment itself (§ above), since the exterior
+  override already replaces everything beyond the island.
+- **Single-biome terrain** already worked unchanged from Phase 15.4 (its
+  landFactor already reflects the one biome's resolved role) and needed no
+  further change here.
+
+A fully radial 2D coast blend (the single-nearest-boundary simplification from
+§17 can show a minor kink very close to a grid corner) remains a candidate for
+later polish once Jason's in-game acceptance testing shows whether it matters.
 
 ## 18. Seed-informed spawn and layout origin
 

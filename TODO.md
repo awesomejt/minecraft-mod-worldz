@@ -365,11 +365,33 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       test was run; Jason will perform acceptance testing for actual generated
       terrain shape. **Commit** ("Make LimitedBiomeSource and
       EnvelopedChunkGenerator consume the layout").
-- [ ] 15.5 Expose layout mode, ocean coverage, scale, biome roles, and weights
+- [x] 15.5 Expose layout mode, ocean coverage, scale, biome roles, and weights
       in Customize without removing the simple allowed-biome list. Integrate
       starter overlays: land-only rivers, mixed coasts, ocean starter island
       and beaches, single-biome terrain, and sky-void island. Add localization,
       UI/resource tests, documentation, and commit.
+      Added `WorldzLayoutScreen` (mode-cycle button, weighted-biome and
+      role-override text areas, numeric fields) wired into
+      `WorldzCustomizeScreen` via a new `WorldzCustomization.LayoutSettings`
+      nested record and a shared `WorldLayoutPlan.resolve(...)` factory (used
+      by both YAML loading and Customize). Selecting Done generates a fresh
+      random sampling seed for that world. Starter overlays: `LAND_ONLY` now
+      uses a new `LayoutTerrainProfile.landOnlyTarget` that only raises
+      clearly-deep-ocean floors, leaving rivers/ponds alone;
+      `LimitedBiomeSource` prefers a beach-role biome in the existing starter
+      zone's transition ring (`StarterZone.inRingQuart`,
+      `WorldLayoutPlan.sampleRole`); the starter-land height transition now
+      blends toward the layout-adjusted floor instead of raw vanilla terrain
+      so an island connects smoothly to (e.g.) an ocean mode's capped depth;
+      `VOID` mode forces a sky-void exterior around the starter radius (or a
+      256-block fallback), reusing the existing exterior mechanism rather than
+      building a new one. Single-biome terrain needed no change. Added lang
+      keys, 17 new JUnit/component tests, and doc updates. Released as 0.1.8.
+      Full clean build passes common, Fabric, and NeoForge with 151 JUnit
+      tests; Javadocs and `git diff --check` are clean. No live test was run;
+      Jason will perform acceptance testing, especially for the coast/beach
+      blending and the sky-void island. **Commit** ("Expose layout in
+      Customize and add starter overlays").
 - [ ] 15.6 Integrate borders, exteriors, spawn, progression objectives, and
       structure eligibility with supportive layout terrain. Run the clean
       multiloader build and artifact review; defer live acceptance to Jason.

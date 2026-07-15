@@ -198,6 +198,29 @@ Durable decisions, verified API notes, and rationale that should survive across 
   same seed string twice won't yet reproduce the same layout. Revisit once
   Phase 16's finalized-seed-timing spike identifies where the real seed
   becomes available.
+- 2026-07-15 — `WorldzCustomization.LayoutSettings` validates strictly (throws
+  on a malformed weighted-biome entry, tag, or role-override, same as the
+  outer record's `allowedBiomes`/`starterBiome`) rather than leniently dropping
+  bad entries the way `WorldzConfig.sanitizeLayout` does for YAML. Direct
+  Customize-screen input should surface a mistake immediately in the error
+  message widget; a background YAML file must never block world creation over
+  a typo, so it stays lenient there instead.
+- 2026-07-15 — `VOID` layout mode implements its sky-island by forcing
+  `EnvelopedChunkGenerator`'s existing exterior-envelope mechanism to
+  `ExteriorMode.VOID` at the starter radius, rather than building a separate
+  "void everywhere except an island" system. The exterior mechanism already
+  does exactly that (solid inside a boundary, void outside), so this reuses
+  well-tested code instead of duplicating it — same instinct as reusing
+  `ExteriorPlan`'s Chebyshev-distance envelope for other DESIGN §17 pieces.
+- 2026-07-15 — The starter-land transition (`StarterLandProfile.targetHeight`)
+  now blends back toward the layout-adjusted floor instead of raw vanilla
+  terrain when a layout is active, by swapping only the `naturalHeight`
+  argument fed into it (not the value used for `foundationMinY`/column-editing
+  overwrite checks, which must stay tied to the true natural floor). This was
+  a one-parameter fix because at full starter strength the formula already
+  collapses to `shapedMinimum` regardless of that argument, and at zero
+  strength it returns that argument unchanged — exactly the "blend toward X"
+  behavior needed, just pointed at a different X.
 
 ## Reference Log
 
@@ -485,6 +508,31 @@ Durable decisions, verified API notes, and rationale that should survive across 
   tests (9 new); artifact inspection confirmed 0.1.7 in both loader filenames.
   Javadocs and `git diff --check` are clean. No live test was run; Jason will
   perform acceptance testing for actual generated terrain shape.
+- 2026-07-15 / Layout Customize UI + starter overlays + release 0.1.8 — Added
+  `WorldzLayoutScreen` and `WorldzCustomization.LayoutSettings` (validated
+  strictly like the outer record's other direct-input fields, unlike YAML's
+  lenient sanitize), plumbed through a new shared `WorldLayoutPlan.resolve(...)`
+  factory so YAML loading and Customize share one role-partitioning
+  implementation instead of two. Customize's Done button now generates a
+  fresh random seed via `customization.worldLayoutPlan(new Random().nextLong())`,
+  matching the fieldless preset. Implemented three of the four remaining
+  starter-overlay gaps from §17 as targeted refinements rather than a new
+  overlay generator: `LAND_ONLY` uses a new `LayoutTerrainProfile.landOnlyTarget`
+  (raises only clearly-deep-ocean floors, so rivers/ponds survive);
+  `LimitedBiomeSource` prefers a beach-role biome
+  (`WorldLayoutPlan.sampleRole`) within the starter zone's existing transition
+  ring (`StarterZone.inRingQuart`); the starter-land height transition now
+  blends toward the layout-adjusted floor (via the same `layoutFloorFor`
+  dispatch `EnvelopedChunkGenerator` uses elsewhere) instead of raw vanilla
+  terrain, so an island connects smoothly to what generation actually leaves
+  beyond it. `VOID` mode forces a sky-void exterior at the starter radius plus
+  transition width (256-block fallback with no starter biome), reusing the
+  existing exterior-envelope mechanism rather than a new one — single-biome
+  terrain needed no change. `./gradlew clean build` passes all modules and 151
+  JUnit tests (17 new); artifact inspection confirmed 0.1.8 in both loader
+  filenames. Javadocs and `git diff --check` are clean. No live test was run;
+  Jason will perform acceptance testing, especially for the coast/beach
+  blending and the sky-void island.
 
 ## API Deviations
 
