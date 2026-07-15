@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.8`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.9`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -605,6 +605,43 @@ overlay generator:
 A fully radial 2D coast blend (the single-nearest-boundary simplification from
 §17 can show a minor kink very close to a grid corner) remains a candidate for
 later polish once Jason's in-game acceptance testing shows whether it matters.
+
+### Integration audit (Phase 15.6)
+
+Borders, exteriors, spawn, progression objectives, and structure eligibility
+were each checked against non-legacy layout terrain; only progression
+objectives needed new code.
+
+- **Progression objectives** — `ObjectiveSite.isSupportiveColumn` rejects a
+  natural stronghold/fortress reference point sitting on a layout-classified
+  ocean column (in addition to the existing border/exterior `fitsInside`
+  check), and a new `ObjectiveSite.supportiveFallbackZ` tries a small
+  deterministic set of nearby Z offsets for the compact fallback site when the
+  default column is not supportive, falling back to the original point
+  unchanged if none are. Both are Overworld-only (`VOID` is excluded, same as
+  the terrain-adjustment exclusion above, since its exterior boundary already
+  bounds the island); the Nether's fortress guarantee is untouched since
+  layout never adjusts the Nether.
+- **Borders** — already orthogonal: a border is a coordinate limit, not a
+  terrain guarantee, and never claimed to guarantee habitable land on its own
+  even before layouts existed (that is what starter land and progression
+  objectives are for). No change needed.
+- **Exteriors** — already composes correctly since Phase 15.4:
+  `applyLayoutAdjustment` skips any column where the exterior mode is not
+  `NORMAL`, so an explicitly configured exterior always wins over the layout
+  in its own boundary, and `VOID` layout mode's forced exterior (§ above) is
+  exactly this same mechanism from the other direction.
+- **Spawn** — vanilla's Overworld spawn search reads biomes through
+  `LimitedBiomeSource.getNoiseBiome` and heights through
+  `EnvelopedChunkGenerator.getBaseHeight`/`getBaseColumn`, both already
+  layout-aware since Phase 15.4; no dedicated spawn-guard code exists in this
+  mod (Phase 5 remained conditional on smoke testing and was never needed), so
+  there is nothing separate to integrate.
+- **Structure eligibility** — already the core motivation for Phase 15.4: once
+  a column's reported biome and generated terrain agree, vanilla's own
+  biome-tag-based structure-set eligibility naturally keeps land structures
+  off real (lowered) ocean and lets ocean structures appear there instead,
+  which is the fix DESIGN §17 originally called for.
 
 ## 18. Seed-informed spawn and layout origin
 

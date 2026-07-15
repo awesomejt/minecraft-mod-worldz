@@ -392,9 +392,26 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       Jason will perform acceptance testing, especially for the coast/beach
       blending and the sky-void island. **Commit** ("Expose layout in
       Customize and add starter overlays").
-- [ ] 15.6 Integrate borders, exteriors, spawn, progression objectives, and
+- [x] 15.6 Integrate borders, exteriors, spawn, progression objectives, and
       structure eligibility with supportive layout terrain. Run the clean
       multiloader build and artifact review; defer live acceptance to Jason.
+      Audited all five: only progression objectives needed new code. Added
+      `ObjectiveSite.isSupportiveColumn` (rejects a natural stronghold sitting
+      on layout-classified ocean, Overworld-only, `VOID` excluded since its
+      exterior boundary already bounds the island) and
+      `ObjectiveSite.supportiveFallbackZ` (tries a few nearby deterministic Z
+      offsets for the compact End-portal fallback site, unchanged if none are
+      supportive). Borders, exteriors, and spawn were already correct by
+      construction (borders are coordinate-only; `applyLayoutAdjustment`
+      already yields to a configured exterior; vanilla spawn already reads
+      through the layout-aware biome/height queries from 15.4); structure
+      eligibility was already the core motivation Phase 15.4 addressed.
+      Released as 0.1.9. Full clean build passes common, Fabric, and NeoForge
+      with 157 JUnit tests (6 new); artifact inspection confirmed 0.1.9 and
+      the new classes in both loader jars. Javadocs and `git diff --check` are
+      clean. No live test was run; Jason will perform final acceptance
+      testing across all of Phase 15. **Commit** ("Require layout-supportive
+      terrain for progression objectives").
 
 ## Phase 16 — Seed-informed spawn strategy
 

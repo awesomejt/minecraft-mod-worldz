@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ObjectiveSite;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -34,7 +35,8 @@ final class ProgressionGuarantees {
     static void ensureEndPortal(
         ServerLevel overworld,
         WorldLimitPlan.DimensionLimit limit,
-        ExteriorPlan.DimensionEnvelope envelope
+        ExteriorPlan.DimensionEnvelope envelope,
+        WorldLayoutPlan layoutPlan
     ) {
         if (!limit.ensureObjective()) {
             return;
@@ -50,15 +52,15 @@ final class ProgressionGuarantees {
         BlockPos natural = overworld.findNearestMapStructure(
             StructureTags.EYE_OF_ENDER_LOCATED, BlockPos.ZERO, 100, false
         );
-        if (natural != null && ObjectiveSite.fitsInside(
-            natural.getX(), natural.getZ(), radius, NATURAL_STRUCTURE_MARGIN
-        )) {
+        if (natural != null
+            && ObjectiveSite.fitsInside(natural.getX(), natural.getZ(), radius, NATURAL_STRUCTURE_MARGIN)
+            && ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX(), natural.getZ())) {
             WorldzCommon.LOGGER.info("Natural stronghold at {} fits inside the Worldz supportive radius {}.", natural, radius);
             return;
         }
 
         int x = ObjectiveSite.fallbackX(radius);
-        int z = 0;
+        int z = ObjectiveSite.supportiveFallbackZ(layoutPlan, x, radius, NATURAL_STRUCTURE_MARGIN);
         int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos center = new BlockPos(x, surfaceY, z);
         buildEndPortalSite(overworld, center);

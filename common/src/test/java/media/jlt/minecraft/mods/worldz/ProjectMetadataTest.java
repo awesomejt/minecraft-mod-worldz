@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.8", properties.getProperty("version"));
+        assertEquals("0.1.9", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -221,6 +221,20 @@ class ProjectMetadataTest {
         assertTrue(source.contains("isInStarterTransitionRing(quartX, quartZ)"));
         assertTrue(source.contains("this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX, blockZ)"));
         assertTrue(source.contains("StarterZone.inRingQuart("));
+    }
+
+    @Test
+    void progressionObjectivesRequireLayoutSupportiveTerrain() throws IOException {
+        String guarantees = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/ProgressionGuarantees.java"
+        ));
+        String manager = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/WorldLimitManager.java"
+        ));
+
+        assertTrue(guarantees.contains("ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX(), natural.getZ())"));
+        assertTrue(guarantees.contains("ObjectiveSite.supportiveFallbackZ(layoutPlan, x, radius, NATURAL_STRUCTURE_MARGIN)"));
+        assertTrue(manager.contains("limitedSource.worldLayoutPlan()"));
     }
 
     @Test

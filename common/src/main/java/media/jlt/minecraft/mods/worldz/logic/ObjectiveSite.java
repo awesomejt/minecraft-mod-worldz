@@ -8,8 +8,49 @@ public final class ObjectiveSite {
     public static final int PREFERRED_X = 32;
     /** Space reserved between a fallback site center and the border. */
     public static final int FALLBACK_MARGIN = 16;
+    /** Deterministic Z offsets tried, in order, when the preferred column is not layout-supportive. */
+    private static final int[] FALLBACK_Z_CANDIDATES = {0, 64, -64, 128, -128};
 
     private ObjectiveSite() {
+    }
+
+    /**
+     * Tests whether an Overworld layout (if active) classifies a column as
+     * land-supportive rather than open ocean. Modes the wrapper does not
+     * terrain-adjust ({@code LEGACY}, and {@code VOID} — bounded by its own
+     * sky-island exterior instead) are always considered supportive here.
+     *
+     * @param plan the world's coordinated-layout plan
+     * @param x block X
+     * @param z block Z
+     * @return whether the column is safe to place a progression objective on
+     */
+    public static boolean isSupportiveColumn(WorldLayoutPlan plan, int x, int z) {
+        if (plan.mode() == LayoutMode.LEGACY || plan.mode() == LayoutMode.VOID) {
+            return true;
+        }
+        return plan.sampleAt(x, z).role() != BiomeRole.OCEAN;
+    }
+
+    /**
+     * Chooses a fallback Z offset at the given X: the preferred {@code 0} when
+     * it is layout-supportive and fits, else the first nearby deterministic
+     * candidate that is both supportive and inside the supportive radius,
+     * else {@code 0} unchanged so a site is still placed somewhere.
+     *
+     * @param plan the world's coordinated-layout plan
+     * @param x chosen fallback X coordinate
+     * @param radiusBlocks supportive radius (see {@link #supportiveRadius})
+     * @param structureMarginBlocks required structure extent around the point
+     * @return a Z offset that fits inside the radius, preferring a supportive column
+     */
+    public static int supportiveFallbackZ(WorldLayoutPlan plan, int x, int radiusBlocks, int structureMarginBlocks) {
+        for (int z : FALLBACK_Z_CANDIDATES) {
+            if (fitsInside(x, z, radiusBlocks, structureMarginBlocks) && isSupportiveColumn(plan, x, z)) {
+                return z;
+            }
+        }
+        return 0;
     }
 
     /**

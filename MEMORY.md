@@ -221,6 +221,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   collapses to `shapedMinimum` regardless of that argument, and at zero
   strength it returns that argument unchanged — exactly the "blend toward X"
   behavior needed, just pointed at a different X.
+- 2026-07-15 — The compact End-portal fallback site tries a small fixed set of
+  nearby Z offsets (`{64, -64, 128, -128}`) when its default column isn't
+  layout-supportive, rather than a general search or relocating along X too.
+  Kept deliberately small and deterministic (same philosophy as the existing
+  "near positive X" fallback): enough to usually dodge one bad grid cell
+  without turning objective placement into an open-ended search that could
+  behave unpredictably near a small border.
 
 ## Reference Log
 
@@ -533,6 +540,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   filenames. Javadocs and `git diff --check` are clean. No live test was run;
   Jason will perform acceptance testing, especially for the coast/beach
   blending and the sky-void island.
+- 2026-07-15 / Layout integration audit + release 0.1.9 — Audited borders,
+  exteriors, spawn, progression objectives, and structure eligibility against
+  non-legacy layout terrain; only progression objectives had a real gap.
+  Added `ObjectiveSite.isSupportiveColumn` (Overworld-only, `VOID` excluded)
+  and `ObjectiveSite.supportiveFallbackZ` (tries `{0, 64, -64, 128, -128}` Z
+  offsets at the existing fallback X, falling back to `0` unchanged if none
+  are supportive) so the End-portal guarantee never accepts a natural
+  stronghold on planned ocean or plants its compact fallback there either.
+  Confirmed without code changes: borders are coordinate-only and never
+  guaranteed habitable land even pre-layout; `applyLayoutAdjustment` already
+  yields to a configured exterior (Phase 15.4); vanilla spawn already reads
+  through the same layout-aware biome/height queries; structure eligibility
+  was the core motivation Phase 15.4 already addressed (matching biome to
+  terrain lets vanilla's own biome-tag eligibility do the rest). `./gradlew
+  clean build` passes all modules and 157 JUnit tests (6 new); artifact
+  inspection confirmed 0.1.9 and the new classes in both loader jars. Javadocs
+  and `git diff --check` are clean. No live test was run; Jason will perform
+  final acceptance testing across all of Phase 15.
 
 ## API Deviations
 

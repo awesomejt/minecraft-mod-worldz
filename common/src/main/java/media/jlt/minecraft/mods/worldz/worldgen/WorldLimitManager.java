@@ -45,7 +45,7 @@ public final class WorldLimitManager {
         }
 
         long overworldStartTick = initializeBorder(overworld, plan.overworld(), "Overworld");
-        ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld(), exterior.overworld());
+        ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld(), exterior.overworld(), limitedSource.worldLayoutPlan());
         ServerLevel nether = server.getLevel(Level.NETHER);
         long netherStartTick = -1L;
         if (nether != null) {

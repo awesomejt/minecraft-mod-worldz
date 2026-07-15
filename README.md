@@ -194,10 +194,13 @@ normal and void only; the End always retains vanilla generation.
 
 When a progression guarantee is enabled, Worldz uses a natural stronghold or
 Nether fortress if one fits safely inside both the final border and solid
-terrain. Otherwise it creates
+terrain — for the Overworld End portal, a coordinated `layout` also rejects a
+natural stronghold sitting on planned ocean. Otherwise it creates
 a compact fallback near `(32, 0)`: a visible surface End-portal frame in the
 overworld, or an enclosed nether-brick blaze-spawner room at approximately
-`(32, 64, 0)` in the Nether. The fallback portal contains no eyes. Exact
+`(32, 64, 0)` in the Nether. If `(32, 0)` itself is planned ocean, the
+Overworld fallback tries a few nearby points before falling back to `(32, 0)`
+unchanged. The fallback portal contains no eyes. Exact
 coordinates are written to the game log. An exterior-only world also receives
 the guarantee even when its border is disabled. Fallback sites are placed within
 the tightest configured bound, so they may become reachable before a growing
