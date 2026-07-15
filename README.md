@@ -4,7 +4,9 @@ Limit newly created Minecraft worlds to one or more chosen biomes while keeping
 vanilla terrain shapes, caves, rivers, mountains, Nether, and End. An optional
 circular starter biome can be forced around the world origin. Worlds may also
 use configurable square borders and replace terrain outside a central square
-with ocean or void. Supports Fabric and NeoForge for Minecraft 26.2.
+with ocean or void. Optional starter-land reinforcement prevents a chosen
+starter biome from becoming a thin island over deep water. Supports Fabric and
+NeoForge for Minecraft 26.2.
 
 ## Supported loaders
 
@@ -29,8 +31,8 @@ For singleplayer:
 2. Edit `config/jlt_worldz.yaml` if you want different reusable defaults, then
    restart Minecraft.
 3. Create a world and select **Worldz** under **World Type**.
-4. Select **Customize** to change the biome list, starter zone, borders,
-   exterior terrain, or resize rates for this world only.
+4. Select **Customize** to change the biome list, starter zone and land,
+   borders, exterior terrain, or resize rates for this world only.
 
 The Customize screen starts with the YAML values. Selecting **Done** bakes the
 screen values into the new world without rewriting the YAML file, so each new
@@ -61,6 +63,9 @@ migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 | `allowedBiomes` | `["minecraft:plains"]` | Biome ids and/or `#` biome-tag ids. A single biome produces a single-biome overworld. |
 | `starterBiome` | `""` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
 | `starterRadiusBlocks` | `512` | Inclusive circular radius, clamped to `64..4096` blocks. |
+| `ensureStarterLand` | `true` | Raise low natural terrain beneath a selected starter biome; has no effect when the starter biome is empty. |
+| `starterLandTransitionBlocks` | `128` | Smooth blend beyond the starter radius back to natural terrain, clamped to `0..4096`. |
+| `starterLandFoundationDepthBlocks` | `32` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
 | `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
@@ -76,6 +81,9 @@ allowedBiomes:
   - 'minecraft:snowy_plains'
 starterBiome: 'minecraft:cherry_grove'
 starterRadiusBlocks: 512
+ensureStarterLand: true
+starterLandTransitionBlocks: 128
+starterLandFoundationDepthBlocks: 32
 ```
 
 ```yaml
@@ -86,6 +94,26 @@ starterRadiusBlocks: 512
 ```
 
 Quote biome tags in YAML because an unquoted `#` begins a comment.
+
+### Guaranteed starter land
+
+A starter biome changes biome selection, but vanilla terrain noise can still
+place that biome over deep ocean, aquifers, or extensive caves. With
+`ensureStarterLand: true`, Worldz keeps natural high ground unchanged and raises
+only insufficient columns to at least two blocks above sea level. Raised land
+starts at the original ocean floor, so it is connected to the terrain below
+instead of becoming a thin floating platform.
+
+The full guarantee covers `starterRadiusBlocks`. Beyond it,
+`starterLandTransitionBlocks` uses a smooth circular blend back to the original
+terrain height. Vanilla surface rules still add the starter biome's normal
+grass, dirt, sand, or other materials. `starterLandFoundationDepthBlocks`
+repairs deep air or water gaps below the original floor while leaving a surface
+shell available for natural cave openings. Set `ensureStarterLand: false` to
+retain completely vanilla terrain shapes beneath the forced biome.
+
+These settings are available from the **Starter Land** button in Customize.
+They affect only the Overworld; Nether and End terrain are unchanged.
 
 ### Limited-world borders
 
@@ -178,7 +206,9 @@ succeeds.
 Configuration is baked into a Worldz world's saved biome source when that world
 is created. Later config edits affect only newly created worlds; reopening an
 existing Worldz world keeps its original biome list, starter biome, starter
-radius, border schedules (including pending delays), and exterior envelopes.
+radius and land plan, border schedules (including pending delays), and exterior
+envelopes. Worlds created before starter-land support decode with reinforcement
+disabled, so unexplored chunks in those saves do not change shape.
 
 ## How biome limiting works
 
@@ -223,7 +253,8 @@ Artifacts are written to:
 
 The common test suite covers config handling, biome/tag syntax, climate-entry
 filtering, starter-zone and exterior boundary math, border rates, ocean column
-profiles, progression bounds, customization wiring, and preset resources.
+profiles, starter-land blending and persistence, progression bounds,
+customization wiring, and preset resources.
 Manual acceptance should create fresh Worldz worlds on both loaders and confirm
 terrain and border behavior in-game; see [`TODO.md`](TODO.md) for the checklist.
 

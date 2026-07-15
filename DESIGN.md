@@ -16,7 +16,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.2`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.3`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 

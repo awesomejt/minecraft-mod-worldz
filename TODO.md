@@ -263,10 +263,13 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       Existing spawn/progression paths consume corrected height queries or
       generated heightmaps. Full build passes 96 tests with clean Javadocs and
       whitespace lint. **Commit** ("Add starter land controls").
-- [ ] 12.5 Update README/config/technical docs and Memory, run the clean
-      multiloader build, inspect artifacts, address findings, update TODO, and
-      final **commit**. No live test is required; Jason will manually test near
-      completion. **Commit** ("Document guaranteed starter land").
+- [x] 12.5 Update README/config/technical docs and Memory, release as 0.1.3,
+      run the clean multiloader build, inspect artifacts, address findings,
+      update TODO, and final **commit**. The clean build passes 96 tests; both
+      loader jars contain the terrain profile, codec, generator integration,
+      Customize screen, YAML dependency, and 0.1.3 metadata. Javadocs and
+      whitespace lint are clean. No live test was required; Jason will perform
+      manual acceptance. **Commit** ("Release guaranteed starter land").
 
 ---
 

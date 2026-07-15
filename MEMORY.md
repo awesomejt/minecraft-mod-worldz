@@ -98,6 +98,8 @@ Durable decisions, verified API notes, and rationale that should survive across 
 - 2026-07-15 — Release 0.1.2 packages the exterior terrain envelopes,
   rate-based resizing, world-creation controls, supportive progression bounds,
   and persisted initial resize delays completed after 0.1.1.
+- 2026-07-15 — Version 0.1.3 identifies the guaranteed starter-land feature;
+  0.1.2 had already been built and documented before this terrain work began.
 - 2026-07-15 — The reported floating starter island was not an active Worldz
   ocean envelope: the saved Worldz3 settings encoded normal Overworld/Nether
   exteriors. A starter biome controls biome selection, but vanilla noise,
@@ -291,6 +293,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
   players edit fields in either order. Spawn/progression use the wrapper's
   corrected queries or finished chunk heightmaps. `./gradlew build` passes 96
   tests; Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Release 0.1.3 — `./gradlew clean build` passed common, Fabric,
+  and NeoForge with 96 JUnit tests. Artifact inspection confirmed 0.1.3 in both
+  loader filenames and embedded manifests, plus the starter-land model,
+  profile, codec, wrapper integration, editor, localization, and bundled YAML
+  dependency. README, generated YAML docs, example config, DESIGN, TODO, and
+  Memory describe the terrain guarantee and old-save compatibility. Javadocs
+  and `git diff --check` are clean. The known Fabric Loom warning about
+  SnakeYAML's non-semver `2.6` coordinate remains harmless. Per the user, no
+  live test was run; manual acceptance is deferred to Jason.
 
 ## API Deviations
 
