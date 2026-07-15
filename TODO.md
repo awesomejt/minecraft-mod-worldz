@@ -225,9 +225,12 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       expose the value in Customize, and add component/resource tests. Full
       build passes 86 tests with clean Javadocs and whitespace lint. **Commit**
       ("Start border resizing after a delay").
-- [ ] 10.4 Update user/technical docs, run the clean multiloader build, inspect
-      artifacts, review quality, update Memory/TODO, and final **commit**. No
-      live testing required.
+- [x] 10.4 Update user/technical docs, run the clean multiloader build, inspect
+      artifacts, review quality, update Memory/TODO, and final **commit**. The
+      clean build passes 86 tests and both 0.1.1 jars contain the delayed-state
+      manager, border UI, localization, and bundled YAML dependency. Javadocs
+      and whitespace lint are clean. No live testing required. **Commit**
+      ("Document delayed border resizing").
 
 ---
 

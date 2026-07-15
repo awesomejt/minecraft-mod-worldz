@@ -66,6 +66,7 @@ class ProjectMetadataTest {
         assertFalse(readme.contains("config/jlt_worldz.example.json"));
         assertTrue(design.contains("Config `config/jlt_worldz.yaml`"));
         assertTrue(readme.contains("`resizeRateBlocks: 64` and `resizeRateDays: 5`"));
+        assertTrue(readme.contains("`resizeDelayDays` holds the initial radius"));
         assertTrue(readme.contains("### Ocean and void exteriors"));
         assertTrue(readme.contains("Nether supports\nnormal and void only"));
         assertFalse(readme.contains("Nether and End generation remain vanilla"));

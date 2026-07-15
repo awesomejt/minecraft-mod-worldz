@@ -49,7 +49,7 @@ public final class WorldLimitState extends SavedData {
      */
     public WorldLimitState(boolean initialized, long overworldStartTick, long netherStartTick) {
         if (overworldStartTick < NO_PENDING_START || netherStartTick < NO_PENDING_START) {
-            throw new IllegalArgumentException("pending border start ticks must be -1 or positive");
+            throw new IllegalArgumentException("pending border start ticks must be -1 or nonnegative");
         }
         this.initialized = initialized;
         this.overworldStartTick = overworldStartTick;

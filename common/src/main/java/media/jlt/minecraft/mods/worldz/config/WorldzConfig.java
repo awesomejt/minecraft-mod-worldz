@@ -354,8 +354,8 @@ public final class WorldzConfig {
         docs.put("allowedBiomes", "Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: [minecraft:plains].");
         docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.");
         docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.");
-        docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance. End portal is reachable by the final size when enabled.");
-        docs.put("netherBorder", "Optional independent Nether border. Blaze access is reachable by the final size when enabled.");
+        docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance; resizeDelayDays waits at the initial radius. End portal is reachable by the final size when enabled.");
+        docs.put("netherBorder", "Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.");
         docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");
         docs.put("netherExterior", "Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.");
         return docs;

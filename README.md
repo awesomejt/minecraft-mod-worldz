@@ -100,6 +100,7 @@ overworldBorder:
   initialRadiusBlocks: 512
   finalRadiusBlocks: 2048
   resizeDays: 100
+  resizeDelayDays: 0
   resizeRateBlocks: 0
   resizeRateDays: 0
   ensureEndPortal: true
@@ -108,15 +109,22 @@ netherBorder:
   initialRadiusBlocks: 256
   finalRadiusBlocks: 512
   resizeDays: 100
+  resizeDelayDays: 0
   resizeRateBlocks: 0
   resizeRateDays: 0
   ensureBlazeAccess: true
 ```
 
 Equal initial and final radii make a static border. A larger final radius grows
-linearly; a smaller one shrinks. `resizeDays: 0` applies the final radius
-immediately. The transition uses elapsed Minecraft game time and resumes rather
-than restarting when the save is reopened.
+linearly; a smaller one shrinks. With no delay, `resizeDays: 0` applies the final
+radius immediately. The transition uses elapsed Minecraft game time and resumes
+rather than restarting when the save is reopened.
+
+`resizeDelayDays` holds the initial radius before any growth or collapse begins.
+For example, a collapsing world can start large for 30 days and then shrink over
+the configured duration. Only in-game server ticks count: closing the world
+pauses both the delay and transition. If `resizeDays` and the rate fields are
+zero, the border jumps to its final radius when the delay expires.
 
 Set both rate fields to resize by a distance over an interval. For example,
 `resizeRateBlocks: 64` and `resizeRateDays: 5` changes the radius continuously
@@ -170,7 +178,7 @@ succeeds.
 Configuration is baked into a Worldz world's saved biome source when that world
 is created. Later config edits affect only newly created worlds; reopening an
 existing Worldz world keeps its original biome list, starter biome, starter
-radius, border schedules, and exterior envelopes.
+radius, border schedules (including pending delays), and exterior envelopes.
 
 ## How biome limiting works
 

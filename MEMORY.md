@@ -240,6 +240,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   clears that pending tick, and stops doing plan lookups once neither dimension
   is waiting. Customize displays total duration and delay side by side. Loader
   wiring/localization component tests, Javadocs, and whitespace lint are clean.
+- 2026-07-15 / Delay completion — `./gradlew clean build` passed common, Fabric,
+  and NeoForge with 86 JUnit tests. Jar inspection confirmed the shared delayed
+  manager/state, border editor, localization, and bundled SnakeYAML in both
+  0.1.1 artifacts. README, generated YAML documentation, canonical example,
+  DESIGN, TODO, and Memory describe the delay and offline-time semantics. The
+  known Fabric Loom non-semver warning for SnakeYAML `2.6` remains harmless. Per
+  the user, no live test was run.
 
 ## API Deviations
 
