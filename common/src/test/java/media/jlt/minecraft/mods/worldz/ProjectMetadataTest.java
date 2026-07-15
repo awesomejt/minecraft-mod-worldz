@@ -33,6 +33,12 @@ class ProjectMetadataTest {
         assertTrue(neoForgeMetadata.contains("license = \"${license}\""));
         assertTrue(license.startsWith("MIT License\n\nCopyright (c) 2026 Jason Taylor"));
         assertFalse(license.contains("CC0 1.0"));
+        assertTrue(Files.readString(
+            ROOT.resolve("common/src/main/resources/META-INF/LICENSES/Apache-2.0.txt")
+        ).contains("Apache License\n                           Version 2.0"));
+        assertTrue(Files.readString(
+            ROOT.resolve("common/src/main/resources/META-INF/NOTICE")
+        ).contains("SnakeYAML 2.6"));
     }
 
     @Test
@@ -47,6 +53,18 @@ class ProjectMetadataTest {
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
         assertEquals("26.2", properties.getProperty("minecraft_version"));
+    }
+
+    @Test
+    void canonicalConfigurationExampleIsYaml() throws IOException {
+        String readme = Files.readString(ROOT.resolve("README.md"));
+        String design = Files.readString(ROOT.resolve("DESIGN.md"));
+
+        assertTrue(Files.isRegularFile(ROOT.resolve("config/jlt_worldz.example.yaml")));
+        assertFalse(Files.exists(ROOT.resolve("config/jlt_worldz.example.json")));
+        assertTrue(readme.contains("config/jlt_worldz.yaml"));
+        assertFalse(readme.contains("config/jlt_worldz.example.json"));
+        assertTrue(design.contains("Config `config/jlt_worldz.yaml`"));
     }
 
     private static Properties projectProperties() throws IOException {

@@ -46,6 +46,8 @@ test {
 }
 
 dependencies {
+	implementation "org.yaml:snakeyaml:${snakeyaml_version}"
+
 	testImplementation platform("org.junit:junit-bom:5.14.2")
 	testImplementation "org.junit.jupiter:junit-jupiter"
 	testImplementation "com.google.code.gson:gson:2.14.0"

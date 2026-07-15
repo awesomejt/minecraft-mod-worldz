@@ -25,7 +25,7 @@ world types are untouched.
 For singleplayer:
 
 1. Start Minecraft once so the default config is created.
-2. Edit `config/jlt_worldz.json` if desired, then restart Minecraft.
+2. Edit `config/jlt_worldz.yaml` if desired, then restart Minecraft.
 3. Create a world and select **Worldz** under **World Type**.
 
 For a dedicated server, set these values before creating the world:
@@ -39,8 +39,10 @@ the server to create a new one. Worldz never converts an existing world.
 
 ## Configuration
 
-The mod reads `config/jlt_worldz.json` at startup. A complete documented example
-is available at [`config/jlt_worldz.example.json`](config/jlt_worldz.example.json).
+The mod reads `config/jlt_worldz.yaml` at startup. A complete documented example
+is available at [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml).
+If an older `jlt_worldz.json` exists and no YAML config exists yet, Worldz
+migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 
 | Setting | Default | Description |
 |---|---|---|
@@ -51,25 +53,23 @@ is available at [`config/jlt_worldz.example.json`](config/jlt_worldz.example.jso
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:
 
-```json
-{
-  "allowedBiomes": [
-    "minecraft:plains",
-    "minecraft:desert",
-    "minecraft:snowy_plains"
-  ],
-  "starterBiome": "minecraft:cherry_grove",
-  "starterRadiusBlocks": 512
-}
+```yaml
+allowedBiomes:
+  - 'minecraft:plains'
+  - 'minecraft:desert'
+  - 'minecraft:snowy_plains'
+starterBiome: 'minecraft:cherry_grove'
+starterRadiusBlocks: 512
 ```
 
-```json
-{
-  "allowedBiomes": ["#minecraft:is_overworld"],
-  "starterBiome": "",
-  "starterRadiusBlocks": 512
-}
+```yaml
+allowedBiomes:
+  - '#minecraft:is_overworld'
+starterBiome: ''
+starterRadiusBlocks: 512
 ```
+
+Quote biome tags in YAML because an unquoted `#` begins a comment.
 
 Syntax errors use safe defaults and leave the broken file untouched. Invalid
 list entries are logged and removed; unknown biome or tag ids are logged when a

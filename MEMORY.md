@@ -28,6 +28,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   holders through `possibleBiomes()`. Unsupported configured biomes are warned
   and ignored, so advertising them to feature/structure logic would contradict
   what the delegate can generate.
+- 2026-07-14 — Switch the canonical config to `jlt_worldz.yaml` at the user's
+  request. Use SnakeYAML 2.6's `SafeConstructor` and manually validate a plain
+  map/list/scalar tree rather than constructing Java beans. If YAML is absent,
+  a valid legacy JSON config is parsed as YAML-compatible input, written to
+  YAML, and retained as `.json.bak`; malformed input remains untouched.
 
 ## Reference Log
 
@@ -53,6 +58,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   https://docs.oracle.com/en/java/javase/25/core/java-core-libraries-developer-guide.pdf
 - Completion audit: canonical MIT license identifier and text —
   https://spdx.org/licenses/MIT.html
+- YAML migration: SnakeYAML 2.6 artifact metadata, Apache-2.0 license, and
+  upstream project link — https://central.sonatype.com/artifact/org.yaml/snakeyaml
+- YAML migration: verified Fabric `include` and NeoForge `jarJar` dependency
+  patterns against the maintained sibling mods `../info` and `../trees`.
 
 ## Verification Log
 
@@ -81,6 +90,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Two project-metadata tests now lock the license, root project name, package
   group, mod identity, version, Java level, and Minecraft version. The suite
   now contains 33 tests.
+- 2026-07-14 / YAML migration — Replaced the runtime Gson config parser with a
+  safe map-based YAML parser/emitter and added JSON-to-YAML migration. Focused
+  config tests cover defaults, sanitation, type failures, precedence, legacy
+  backup, and preservation of malformed YAML/JSON. Both loader artifacts embed
+  the parser dependency, attribution notice, and full Apache-2.0 license. A
+  clean `./gradlew clean build` and the final `./gradlew build` passed with 37
+  JUnit tests; jar inspection confirmed SnakeYAML and license resources in both
+  loader artifacts.
 
 ## API Deviations
 

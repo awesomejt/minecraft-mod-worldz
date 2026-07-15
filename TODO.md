@@ -7,7 +7,7 @@
 1. `DESIGN.md` (this repo) — the mod spec.
 2. `../reseed` — the structural template. Copy its build wiring; do not modify it.
 3. `../trees/common/src/main/java/media/jlt/minecraft/mods/trees/config/` —
-   the config-class pattern (flat JSON + `_docs`, sanitization, tests) and how
+   the config-class pattern (flat YAML + `_docs`, sanitization, tests) and how
    the loader entrypoints hand the config dir to common code.
 
 **Ground rules**
@@ -56,8 +56,13 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 - [x] 1.3 `logic/BiomeListSpec` (+ starter-zone math helper): pure parsing /
       validation / quart-distance per DESIGN §5, with unit tests including
       boundary cases (`r*r` inclusive, block→quart conversion).
-- [x] 1.4 `config/jlt_worldz.example.json` checked into the repo.
+- [x] 1.4 `config/jlt_worldz.example.yaml` checked into the repo.
 - [x] 1.5 Build green. **Commit** ("Config + pure biome-list logic").
+- [x] 1.6 Config switched to safe, map-based YAML at the user's request;
+      existing JSON configs migrate automatically to YAML with a `.json.bak`
+      backup. Fabric and NeoForge bundle SnakeYAML 2.6. JUnit covers YAML
+      parsing, persistence, malformed input, type checks, precedence, and
+      JSON migration. **Commit** ("Migrate Worldz config to YAML").
 
 ## Phase 2 — LimitedBiomeSource
 
@@ -93,7 +98,7 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 4 — Smoke test [Jason]
 
-Automated coverage before manual testing: 33 passing JUnit tests cover project
+Automated coverage before manual testing: 37 passing JUnit tests cover project
 identity/license metadata, config load/sanitation, biome/tag parsing,
 climate-entry filtering, starter-zone math,
 and preset/tag/lang resources. Dedicated-server creation also passed on both
@@ -173,3 +178,7 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
 - The root project is named `mod-worldz`, but the loader artifacts retain the
   reseed multiloader naming scheme (`jlt_worldz-<loader>-26.2-<version>`) so
   Fabric and NeoForge outputs are unambiguous; there is no root artifact.
+- At the user's request, the config format is YAML rather than the original
+  JSON design. Parsing uses SnakeYAML's safe constructor plus explicit
+  map/list/scalar validation. Legacy JSON remains readable because JSON is a
+  YAML-compatible input form and is migrated to the canonical `.yaml` file.

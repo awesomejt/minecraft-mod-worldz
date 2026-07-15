@@ -1,15 +1,16 @@
 package media.jlt.minecraft.mods.worldz.config;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import org.slf4j.Logger;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -25,7 +26,8 @@ public final class WorldzConfig {
     /** Largest supported starter-zone radius. */
     public static final int MAX_STARTER_RADIUS_BLOCKS = 4096;
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final String YAML_EXTENSION = ".yaml";
+    private static final String LEGACY_JSON_EXTENSION = ".json";
 
     /** Biome ids and biome-tag ids allowed in new Worldz worlds. */
     public List<String> allowedBiomes = new ArrayList<>(List.of("minecraft:plains"));
@@ -41,7 +43,8 @@ public final class WorldzConfig {
     }
 
     /**
-     * Loads {@code <configDir>/<modId>.json}, creating a default file when absent.
+     * Loads {@code <configDir>/<modId>.yaml}, creating a default file when absent.
+     * A legacy JSON config is migrated because JSON is valid YAML input.
      *
      * @param configDir loader-provided configuration directory
      * @param modId stable mod id used as the filename
@@ -49,21 +52,32 @@ public final class WorldzConfig {
      * @return sanitized configuration, or defaults when input cannot be read
      */
     public static WorldzConfig load(Path configDir, String modId, Logger logger) {
-        Path configFile = configDir.resolve(modId + ".json");
-        if (!Files.exists(configFile)) {
-            WorldzConfig defaults = new WorldzConfig().sanitize(logger);
-            try {
-                defaults.save(configFile);
-            } catch (IOException exception) {
-                logger.warn("Could not create config {}: {}", configFile, exception.getMessage());
-            }
-            return defaults;
+        Path configFile = configDir.resolve(modId + YAML_EXTENSION);
+        if (Files.exists(configFile)) {
+            return loadExisting(configFile, logger);
         }
 
-        String original;
+        Path legacyFile = configDir.resolve(modId + LEGACY_JSON_EXTENSION);
+        if (Files.exists(legacyFile)) {
+            WorldzConfig migrated = loadLegacy(legacyFile, configFile, logger);
+            if (migrated != null) {
+                return migrated;
+            }
+            return new WorldzConfig().sanitize(logger);
+        }
+
+        WorldzConfig defaults = new WorldzConfig().sanitize(logger);
         try {
-            original = Files.readString(configFile);
-            WorldzConfig config = parse(original, logger).sanitize(logger);
+            defaults.save(configFile);
+        } catch (IOException exception) {
+            logger.warn("Could not create config {}: {}", configFile, exception.getMessage());
+        }
+        return defaults;
+    }
+
+    private static WorldzConfig loadExisting(Path configFile, Logger logger) {
+        try {
+            WorldzConfig config = parse(Files.readString(configFile), logger).sanitize(logger);
             config.save(configFile);
             return config;
         } catch (Exception exception) {
@@ -73,24 +87,43 @@ public final class WorldzConfig {
         }
     }
 
-    static WorldzConfig parse(String json, Logger logger) {
-        JsonElement root = JsonParser.parseString(json);
-        if (!root.isJsonObject()) {
-            throw new IllegalArgumentException("root value must be a JSON object");
+    private static WorldzConfig loadLegacy(Path legacyFile, Path configFile, Logger logger) {
+        try {
+            WorldzConfig config = parse(Files.readString(legacyFile), logger).sanitize(logger);
+            config.save(configFile);
+            Path backup = legacyFile.resolveSibling(legacyFile.getFileName() + ".bak");
+            try {
+                Files.move(legacyFile, backup, StandardCopyOption.REPLACE_EXISTING);
+                logger.info("Migrated legacy config {} to {}; old file kept as {}.", legacyFile, configFile, backup);
+            } catch (IOException exception) {
+                logger.warn("Migrated legacy config to {}, but could not move {} to a backup: {}",
+                    configFile, legacyFile, exception.getMessage());
+            }
+            return config;
+        } catch (Exception exception) {
+            logger.warn("Could not migrate legacy config {}: {}. Using defaults without changing the file.",
+                legacyFile, exception.getMessage());
+            return null;
+        }
+    }
+
+    static WorldzConfig parse(String yaml, Logger logger) {
+        Object loaded = createYaml().load(yaml);
+        if (!(loaded instanceof Map<?, ?> object)) {
+            throw new IllegalArgumentException("root value must be a YAML mapping");
         }
 
-        JsonObject object = root.getAsJsonObject();
         WorldzConfig config = new WorldzConfig();
-        if (object.has("allowedBiomes")) {
+        if (object.containsKey("allowedBiomes")) {
             config.allowedBiomes = readStringList(object.get("allowedBiomes"), "allowedBiomes", logger);
         }
-        if (object.has("starterBiome")) {
+        if (object.containsKey("starterBiome")) {
             config.starterBiome = readString(object.get("starterBiome"), "starterBiome");
         }
-        if (object.has("starterRadiusBlocks")) {
+        if (object.containsKey("starterRadiusBlocks")) {
             config.starterRadiusBlocks = readInt(object.get("starterRadiusBlocks"), "starterRadiusBlocks");
         }
-        if (object.has("_docs")) {
+        if (object.containsKey("_docs")) {
             config._docs = readDocs(object.get("_docs"), logger);
         }
         return config;
@@ -136,8 +169,13 @@ public final class WorldzConfig {
             + ", starterRadiusBlocks=" + starterRadiusBlocks;
     }
 
-    String toJson() {
-        return GSON.toJson(this);
+    String toYaml() {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("allowedBiomes", allowedBiomes);
+        values.put("starterBiome", starterBiome);
+        values.put("starterRadiusBlocks", starterRadiusBlocks);
+        values.put("_docs", _docs);
+        return createYaml().dump(values);
     }
 
     private void save(Path configFile) throws IOException {
@@ -146,7 +184,7 @@ public final class WorldzConfig {
             Files.createDirectories(parent);
         }
         Path temporary = configFile.resolveSibling(configFile.getFileName() + ".tmp");
-        Files.writeString(temporary, toJson() + System.lineSeparator());
+        Files.writeString(temporary, toYaml());
         try {
             Files.move(temporary, configFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException unsupportedAtomicMove) {
@@ -154,16 +192,15 @@ public final class WorldzConfig {
         }
     }
 
-    private static List<String> readStringList(JsonElement element, String name, Logger logger) {
-        if (!element.isJsonArray()) {
-            throw new IllegalArgumentException(name + " must be an array");
+    private static List<String> readStringList(Object value, String name, Logger logger) {
+        if (!(value instanceof List<?> list)) {
+            throw new IllegalArgumentException(name + " must be a sequence");
         }
         List<String> values = new ArrayList<>();
-        JsonArray array = element.getAsJsonArray();
-        for (int index = 0; index < array.size(); index++) {
-            JsonElement value = array.get(index);
-            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
-                values.add(value.getAsString());
+        for (int index = 0; index < list.size(); index++) {
+            Object entry = list.get(index);
+            if (entry instanceof String string) {
+                values.add(string);
             } else {
                 logger.warn("Ignoring non-string {} entry at index {}.", name, index);
             }
@@ -171,36 +208,42 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static String readString(JsonElement element, String name) {
-        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+    private static String readString(Object value, String name) {
+        if (!(value instanceof String string)) {
             throw new IllegalArgumentException(name + " must be a string");
         }
-        return element.getAsString();
+        return string;
     }
 
-    private static int readInt(JsonElement element, String name) {
-        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
-            throw new IllegalArgumentException(name + " must be an integer");
-        }
+    private static int readInt(Object value, String name) {
         try {
-            return element.getAsBigDecimal().intValueExact();
-        } catch (ArithmeticException | NumberFormatException exception) {
+            return switch (value) {
+                case Integer integer -> integer;
+                case Byte byteValue -> byteValue.intValue();
+                case Short shortValue -> shortValue.intValue();
+                case Long longValue -> Math.toIntExact(longValue);
+                case BigInteger bigInteger -> bigInteger.intValueExact();
+                case BigDecimal bigDecimal -> bigDecimal.intValueExact();
+                default -> throw new IllegalArgumentException(name + " must be an integer");
+            };
+        } catch (ArithmeticException exception) {
             throw new IllegalArgumentException(name + " must be an integer", exception);
         }
     }
 
-    private static Map<String, String> readDocs(JsonElement element, Logger logger) {
-        if (!element.isJsonObject()) {
-            logger.warn("Ignoring non-object _docs value.");
+    private static Map<String, String> readDocs(Object value, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            logger.warn("Ignoring non-mapping _docs value.");
             return new LinkedHashMap<>();
         }
         Map<String, String> docs = new LinkedHashMap<>();
-        element.getAsJsonObject().entrySet().forEach(entry -> {
-            JsonElement value = entry.getValue();
-            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
-                docs.put(entry.getKey(), value.getAsString());
+        map.forEach((key, entry) -> {
+            if (!(key instanceof String stringKey)) {
+                logger.warn("Ignoring non-string _docs key '{}'.", key);
+            } else if (entry instanceof String stringValue) {
+                docs.put(stringKey, stringValue);
             } else {
-                logger.warn("Ignoring non-string _docs entry '{}'.", entry.getKey());
+                logger.warn("Ignoring non-string _docs entry '{}'.", stringKey);
             }
         });
         return docs;
@@ -212,5 +255,24 @@ public final class WorldzConfig {
         docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.");
         docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.");
         return docs;
+    }
+
+    private static Yaml createYaml() {
+        LoaderOptions loaderOptions = new LoaderOptions();
+        loaderOptions.setAllowDuplicateKeys(false);
+        loaderOptions.setAllowRecursiveKeys(false);
+
+        DumperOptions dumperOptions = new DumperOptions();
+        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        dumperOptions.setIndent(2);
+        dumperOptions.setPrettyFlow(true);
+        dumperOptions.setWidth(120);
+
+        return new Yaml(
+            new SafeConstructor(loaderOptions),
+            new Representer(dumperOptions),
+            dumperOptions,
+            loaderOptions
+        );
     }
 }

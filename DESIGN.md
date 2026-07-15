@@ -11,7 +11,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 ## 1. Identity
 
 - Repo: `minecraft-mod-worldz`; `rootProject.name`/`archivesName` `mod-worldz`.
-- Mod id **`jlt_worldz`**. Config `config/jlt_worldz.json`, lang keys under
+- Mod id **`jlt_worldz`**. Config `config/jlt_worldz.yaml`, lang keys under
   `*.jlt_worldz.*`.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
@@ -22,7 +22,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 
 ## 2. Player-facing behavior
 
-1. Player edits `config/jlt_worldz.json` (or accepts defaults), then creates a
+1. Player edits `config/jlt_worldz.yaml` (or accepts defaults), then creates a
    new world and picks the **"Worldz"** world type in the world-creation
    screen (or sets `level-type=jlt_worldz:worldz` in `server.properties`).
 2. The overworld generates with normal terrain shape (rivers, mountains,
@@ -116,7 +116,7 @@ maps to holders. All syntax validation and the quart-distance/radius math
 (block→quart conversion, boundary inclusive) live here or in a small
 `StarterZone` helper — pure JUnit targets.
 
-## 6. Config (`config/jlt_worldz.json`, flat + `_docs`, mirror trees' `ModConfig` pattern)
+## 6. Config (`config/jlt_worldz.yaml`, flat + `_docs`, mirror trees' `ModConfig` pattern)
 
 Loaded at startup; each loader entrypoint passes its config-dir `Path` into
 `WorldzCommon.init(...)` (check how trees wires this and mirror it).
@@ -131,7 +131,8 @@ Sanitization mirrors trees: malformed file → defaults + WARN (do not
 overwrite the user's broken file), unknown keys tolerated, non-string list
 entries dropped with WARN, radius clamped. Registry-existence of ids can only
 be checked at world creation (§4.1); config load checks syntax only. Ship
-`config/jlt_worldz.example.json` in the repo like trees does.
+`config/jlt_worldz.example.yaml` in the repo. A legacy `jlt_worldz.json` is
+migrated automatically and retained as `jlt_worldz.json.bak`.
 
 ## 7. Spawn guard (conditional — build only if smoke test shows it's needed)
 
