@@ -35,13 +35,15 @@ exactly. Execution checklist: `TODO.md` in this repo.
    of the origin (where world spawn lands) is that biome, regardless of the
    allowed list.
 4. Config values are **baked into the world at creation** (persisted in
-   `level.dat` via the biome-source codec). Editing the config later only
+   the saved world-generation settings via generator/biome-source codecs).
+   Editing the config later only
    affects newly created worlds. Worlds not using the Worldz preset are
-   untouched. Nether and End are vanilla (deferred, §10).
+   untouched. Nether terrain is vanilla unless its exterior is void; End
+   generation remains vanilla.
 
-## 3. Architecture — world preset + custom biome source
+## 3. Architecture — preset, biome source, and generator wrapper
 
-Two pieces, both loader-neutral apart from one registry call:
+Three pieces, loader-neutral apart from registry calls:
 
 1. A custom `BiomeSource` type **`jlt_worldz:limited`** registered in the
    vanilla `Registries.BIOME_SOURCE` codec registry (stable API; this is how
@@ -51,9 +53,13 @@ Two pieces, both loader-neutral apart from one registry call:
    uses that biome source with *no explicit fields*, plus a
    `data/minecraft/tags/worldgen/world_preset/normal.json` tag entry so it
    appears in the world-type dropdown.
+3. A delegating `ChunkGenerator` type **`jlt_worldz:enveloped`**, registered in
+   `Registries.CHUNK_GENERATOR`, which wraps the preset's Overworld and Nether
+   generators and applies the resolved terrain envelope (§14).
 
-The codec's fields are all optional. Absent fields (the shipped preset's case)
-are resolved from the mod config **at decode time** — i.e. at world creation.
+The biome-source codec's fields are all optional. Absent fields (the shipped
+preset's case) are resolved from the mod config **at decode time** — i.e. at
+world creation.
 The encode path always writes the *resolved* values, so once the world saves
 its `level.dat`, the settings are self-contained and config-independent.
 
@@ -180,16 +186,19 @@ zone → move spawn to the origin column at the
   deferred).
 - Existing worlds are never modified; config changes don't affect
   already-created worlds.
-- Nether and End generate vanilla in 0.1.1.
+- Nether biomes remain vanilla; its terrain may optionally become void outside
+  the envelope. End generation remains vanilla.
 
 ## 11. Deferred (not 0.1.1)
 
 - Nether/End biome limiting.
 - `FixedBiomeSource` mode to allow non-overworld biomes (single-biome mushroom
   island world, crimson-forest overworld, …).
-- Per-dimension config; multiple starter zones; square zone shape option.
+- Per-dimension biome limiting; multiple starter zones; square starter-zone
+  shape option.
 - `/jlt_worldz reload` command (config only matters at world creation, so low
   value).
+- CurseForge/Modrinth publishing (same open flag as the other four mods).
 
 ## 12. Optional limited-world borders
 
@@ -219,7 +228,8 @@ entire stronghold or Nether fortress inside the border.
 
 At first server start, Worldz locates the nearest natural objective. A natural
 structure is accepted only when its reference point plus a 128-block safety
-margin fits inside the final border. Otherwise Worldz creates a deterministic
+margin fits inside the tightest final-border and solid-terrain radius.
+Otherwise Worldz creates a deterministic
 compact fallback near positive X: a surface End-portal frame with no eyes, or
 an enclosed nether-brick room containing a real blaze spawner. Exact fallback
 coordinates are logged. The compact sites remain inside the smallest supported
@@ -231,14 +241,15 @@ ensures placement occurs only once.
 When Worldz is selected on the singleplayer world-creation screen, vanilla's
 **Customize** button opens a Worldz editor. It exposes the allowed biome/tag
 list, optional starter biome and radius, and both dimensions' enabled state,
-initial/final border radii, resize days, and progression guarantee. The YAML
+initial/final border radii, total/rate timing, progression guarantee, exterior
+mode, boundary, and ocean transition where supported. The YAML
 configuration seeds the first editor state but does not restrict the registered
 biome IDs or tags a player may enter.
 
 Selecting **Done** resolves IDs and tags against the active world-generation
-registries, creates an explicit `LimitedBiomeSource`, and replaces only the
-selected overworld noise generator. Nether and End generators remain those of
-the Worldz preset. The explicit source serializes all selections into the new
+registries, creates an explicit `LimitedBiomeSource`, and replaces the
+Overworld and Nether wrappers. The End generator remains that of the Worldz
+preset. The explicit source and wrappers serialize all selections into the new
 world, so later config edits and later worlds are independent. Reopening the
 editor before creation shows the already applied per-world selections.
 
@@ -277,7 +288,7 @@ unwrapped Worldz saves remain unchanged.
 Progression guarantees must fit within terrain that can support them, not only
 inside the final border. Natural strongholds/fortresses outside the solid region
 are rejected, and compact fallback objectives are clamped inside both the
-eventual accessible border and the terrain boundary. Ocean is traversable and
-may contain normal ocean content, but fallback End portals remain in the solid
-starter region rather than on the seabed.
-- CurseForge/Modrinth publishing (same open flag as the other four mods).
+eventual accessible border and the terrain boundary. Ocean is traversable, but
+normal structures and decoration are suppressed in wholly exterior chunks;
+fallback End portals remain in the solid starter region rather than on the
+seabed.

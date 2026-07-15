@@ -203,10 +203,13 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       now use the tighter border/solid-terrain radius, including exterior-only
       worlds. Full build passes 80 tests. **Commit** ("Add exterior world
       creation controls").
-- [ ] 9.5 Constrain progression guarantees to supportive terrain, update README
+- [x] 9.5 Constrain progression guarantees to supportive terrain, update README
       and Memory, run all JUnit tests and clean loader builds, inspect artifacts,
-      address review/lint findings, and final **commit**. No live test required;
-      Jason will perform acceptance testing when the feature is nearly done.
+      address review/lint findings, and final **commit**. The clean multiloader
+      build passes 80 tests and both 0.1.1 jars contain the generator, UI,
+      preset, YAML dependency, and license resources. Javadocs and whitespace
+      lint are clean. No live test required; Jason will perform acceptance
+      testing. **Commit** ("Document exterior world generation").
 
 ---
 

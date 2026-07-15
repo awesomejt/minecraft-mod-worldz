@@ -208,6 +208,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   fields, screen wiring, rate submission, Nether mode restrictions, and
   effective progression radii for border-only, exterior-only, combined, and
   ocean-transition worlds. Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Exterior completion — `./gradlew clean build` passed all modules
+  and 80 JUnit tests. Artifact inspection confirmed the enveloped generator,
+  exterior screen, wrapped preset, SnakeYAML, and Apache license in both 0.1.1
+  loader jars. README and DESIGN now describe rate precedence, automatic and
+  explicit envelopes, ocean transition, persistence, supportive progression
+  bounds, and the vanilla End. Fabric Loom still prints its known warning that
+  dependency version `2.6` is not valid semver; bundling succeeds. Per the user,
+  no live test was run and manual acceptance is deferred until handoff.
 
 ## API Deviations
 
