@@ -60,12 +60,12 @@ migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 
 | Setting | Default | Description |
 |---|---|---|
-| `allowedBiomes` | `["minecraft:plains"]` | Biome ids and/or `#` biome-tag ids. A single biome produces a single-biome overworld. |
-| `starterBiome` | `""` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
-| `starterRadiusBlocks` | `512` | Inclusive circular radius, clamped to `64..4096` blocks. |
+| `allowedBiomes` | desert/badlands/cave mix | Biome ids and/or `#` biome-tag ids. A single biome produces a single-biome overworld. See [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for the exact default list. |
+| `starterBiome` | `"minecraft:plains"` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
+| `starterRadiusBlocks` | `256` | Inclusive circular radius, clamped to `64..4096` blocks. |
 | `ensureStarterLand` | `true` | Raise low natural terrain beneath a selected starter biome; has no effect when the starter biome is empty. |
 | `starterLandTransitionBlocks` | `128` | Smooth blend beyond the starter radius back to natural terrain, clamped to `0..4096`. |
-| `starterLandFoundationDepthBlocks` | `32` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
+| `starterLandFoundationDepthBlocks` | `48` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
 | `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |

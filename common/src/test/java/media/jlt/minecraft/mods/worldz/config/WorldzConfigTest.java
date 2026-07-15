@@ -23,6 +23,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class WorldzConfigTest {
     private static final Logger LOGGER = NOPLogger.NOP_LOGGER;
     private static final Yaml YAML = new Yaml(new SafeConstructor(new LoaderOptions()));
+    private static final List<String> DEFAULT_ALLOWED_BIOMES = List.of(
+        "minecraft:desert",
+        "minecraft:beach",
+        "minecraft:river",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands",
+        "minecraft:stony_shore",
+        "minecraft:dripstone_caves",
+        "minecraft:lush_caves",
+        "minecraft:deep_dark"
+    );
 
     @TempDir
     Path temporaryDirectory;
@@ -31,12 +43,12 @@ class WorldzConfigTest {
     void missingConfigCreatesDocumentedDefaults() throws IOException {
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
-        assertEquals(List.of("minecraft:plains"), config.allowedBiomes);
-        assertEquals("", config.starterBiome);
-        assertEquals(512, config.starterRadiusBlocks);
+        assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
+        assertEquals("minecraft:plains", config.starterBiome);
+        assertEquals(256, config.starterRadiusBlocks);
         assertTrue(config.ensureStarterLand);
         assertEquals(128, config.starterLandTransitionBlocks);
-        assertEquals(32, config.starterLandFoundationDepthBlocks);
+        assertEquals(48, config.starterLandFoundationDepthBlocks);
         assertFalse(config.overworldBorder.enabled);
         assertTrue(config.overworldBorder.ensureObjective);
         assertFalse(config.netherBorder.enabled);
@@ -57,7 +69,7 @@ class WorldzConfigTest {
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
-        assertEquals(List.of("minecraft:plains"), config.allowedBiomes);
+        assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
         assertEquals(malformed, Files.readString(configFile));
     }
 
@@ -74,7 +86,7 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
         assertEquals(List.of("minecraft:desert"), config.allowedBiomes);
-        assertEquals(512, config.starterRadiusBlocks);
+        assertEquals(256, config.starterRadiusBlocks);
         assertFalse(Files.readString(configFile).contains("futureOption"));
     }
 
@@ -341,7 +353,7 @@ class WorldzConfigTest {
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
-        assertEquals(512, config.starterRadiusBlocks);
+        assertEquals(256, config.starterRadiusBlocks);
         assertEquals(invalid, Files.readString(configFile));
     }
 
@@ -362,7 +374,7 @@ class WorldzConfigTest {
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
-        assertEquals(List.of("minecraft:plains"), config.allowedBiomes);
+        assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
         assertEquals(invalid, Files.readString(configFile));
     }
 
@@ -404,7 +416,7 @@ class WorldzConfigTest {
 
         assertEquals(
             "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
-                + ", starterLand=transition=128, foundation=32"
+                + ", starterLand=transition=128, foundation=48"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
                 + ", layout=<legacy>",
@@ -451,7 +463,7 @@ class WorldzConfigTest {
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
-        assertEquals(List.of("minecraft:plains"), config.allowedBiomes);
+        assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
         assertEquals(malformed, Files.readString(legacy));
         assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.yaml")));
     }

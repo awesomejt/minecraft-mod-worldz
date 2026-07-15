@@ -53,17 +53,28 @@ public final class WorldzConfig {
     private static final String LEGACY_JSON_EXTENSION = ".json";
 
     /** Biome ids and biome-tag ids allowed in new Worldz worlds. */
-    public List<String> allowedBiomes = new ArrayList<>(List.of("minecraft:plains"));
+    public List<String> allowedBiomes = new ArrayList<>(List.of(
+        "minecraft:desert",
+        "minecraft:beach",
+        "minecraft:river",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands",
+        "minecraft:stony_shore",
+        "minecraft:dripstone_caves",
+        "minecraft:lush_caves",
+        "minecraft:deep_dark"
+    ));
     /** Optional biome id forced around the origin. */
-    public String starterBiome = "";
+    public String starterBiome = "minecraft:plains";
     /** Starter-zone radius measured in blocks. */
-    public int starterRadiusBlocks = 512;
+    public int starterRadiusBlocks = 256;
     /** Whether low terrain beneath a starter biome is raised into usable land. */
     public boolean ensureStarterLand = true;
     /** Outward distance used to blend reinforced land into natural terrain. */
     public int starterLandTransitionBlocks = 128;
     /** Depth below the natural ocean floor repaired as solid foundation. */
-    public int starterLandFoundationDepthBlocks = 32;
+    public int starterLandFoundationDepthBlocks = 48;
     /** Optional overworld border and End-portal reachability settings. */
     public BorderConfig overworldBorder = new BorderConfig();
     /** Optional Nether border and blaze-access settings. */
@@ -461,12 +472,12 @@ public final class WorldzConfig {
 
     private static Map<String, String> defaultDocs() {
         Map<String, String> docs = new LinkedHashMap<>();
-        docs.put("allowedBiomes", "Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: [minecraft:plains].");
-        docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.");
-        docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.");
+        docs.put("allowedBiomes", "Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: a desert/badlands/cave biome mix with a plains starter.");
+        docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: minecraft:plains. Empty disables the starter zone. Tags are not accepted.");
+        docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 256. Range: 64..4096.");
         docs.put("ensureStarterLand", "Raise insufficient natural terrain beneath a selected starter biome. Default: true; no effect without a starter biome.");
         docs.put("starterLandTransitionBlocks", "Smooth outward blend from guaranteed starter land to natural terrain. Default: 128. Range: 0..4096.");
-        docs.put("starterLandFoundationDepthBlocks", "Solid repair depth below the natural ocean floor. Default: 32. Range: 0..384.");
+        docs.put("starterLandFoundationDepthBlocks", "Solid repair depth below the natural ocean floor. Default: 48. Range: 0..384.");
         docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance; resizeDelayDays waits at the initial radius. End portal is reachable by the final size when enabled.");
         docs.put("netherBorder", "Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.");
         docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");

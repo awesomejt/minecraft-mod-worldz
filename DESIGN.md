@@ -133,9 +133,9 @@ Loaded at startup; each loader entrypoint passes its config-dir `Path` into
 
 | Field | Default | Notes |
 |---|---|---|
-| `allowedBiomes` | `["minecraft:plains"]` | ids and/or `#tags`; order irrelevant |
-| `starterBiome` | `""` | empty = feature off; need not be in `allowedBiomes` |
-| `starterRadiusBlocks` | `512` | clamp `64..4096` |
+| `allowedBiomes` | desert/badlands/cave mix | ids and/or `#tags`; order irrelevant; see `config/jlt_worldz.example.yaml` for the exact default list |
+| `starterBiome` | `"minecraft:plains"` | empty = feature off; need not be in `allowedBiomes` |
+| `starterRadiusBlocks` | `256` | clamp `64..4096` |
 
 Sanitization mirrors trees: malformed file → defaults + WARN (do not
 overwrite the user's broken file), unknown keys tolerated, non-string list
@@ -504,7 +504,7 @@ code) exercising the two algorithms above before committing to them:
 |---|---|---|
 | `regionScaleBlocks` | `512` | matches the existing `starterRadiusBlocks` default, so one grid cell reads as "about one starter zone wide"; mean same-role run length measured ~2.2–2.7 cells (~1100–1400 blocks), occasional runs past 19 cells, giving continent/ocean-scale coherence without a second scale concept to explain |
 | `oceanCoverageFraction` | `0.35` | measured within ±1.5 percentage points of target at a 64×64 sample and ±0.3 points at 128×128; recommend a JUnit tolerance of ±5 percentage points at ≥64×64 cells to stay comfortably outside sampling noise |
-| `coastBlendWidthBlocks` | `128` | same 512:128 (25%) ratio as `starterLandTransitionBlocks`/`starterRadiusBlocks`, for one consistent "quarter-radius blend" rule of thumb across the mod |
+| `coastBlendWidthBlocks` | `128` | a 512:128 (25%) ratio to `regionScaleBlocks`, echoing `starterLandTransitionBlocks`'s original 128-block blend width for one consistent "quarter-scale blend" rule of thumb across the mod |
 
 `MIXED`'s recommended starting biome lists mirror the existing default allowed
 list philosophy: unweighted (implicit weight `1`) unless the player raises one,
