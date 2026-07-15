@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.worldgen;
 
+import com.google.common.base.Suppliers;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -26,44 +27,37 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /** A multi-noise biome source restricted to configured overworld biomes. */
 public final class LimitedBiomeSource extends BiomeSource {
     /** Codec registered as {@code jlt_worldz:limited}. */
     public static final MapCodec<LimitedBiomeSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-        Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(source -> Optional.of(source.allowedBiomes)),
+        Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(source -> Optional.of(source.allowedBiomes())),
         Biome.CODEC.optionalFieldOf("starter_biome").forGetter(source -> source.starterBiome),
         Codec.INT.optionalFieldOf("starter_radius").forGetter(source -> Optional.of(source.starterRadiusBlocks)),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
-    private final HolderSet<Biome> allowedBiomes;
     private final Optional<Holder<Biome>> starterBiome;
     private final int starterRadiusBlocks;
-    private final MultiNoiseBiomeSource delegate;
-    private final Set<Holder<Biome>> possibleBiomes;
+    private final Supplier<Resolution> resolution;
 
     private LimitedBiomeSource(
-        HolderSet<Biome> allowedBiomes,
+        Supplier<HolderSet<Biome>> allowedBiomes,
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
-        Climate.ParameterList<Holder<Biome>> delegateParameters,
-        boolean usingFallback
+        HolderGetter<Biome> biomeGetter
     ) {
-        this.allowedBiomes = allowedBiomes;
         this.starterBiome = starterBiome;
         this.starterRadiusBlocks = starterRadiusBlocks;
-        this.delegate = MultiNoiseBiomeSource.createFromList(delegateParameters);
-
-        Set<Holder<Biome>> possible = new LinkedHashSet<>();
-        if (usingFallback) {
-            possible.addAll(this.delegate.possibleBiomes());
-        } else {
-            allowedBiomes.stream().forEach(possible::add);
-        }
-        starterBiome.ifPresent(possible::add);
-        this.possibleBiomes = Set.copyOf(possible);
+        // World presets are decoded before dynamic-registry tags are bound in
+        // 26.2. Defer tag expansion and climate filtering until Minecraft first
+        // asks this biome source for its possible biomes or an actual biome.
+        this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
+            allowedBiomes.get(), starterBiome, biomeGetter
+        ));
     }
 
     private static LimitedBiomeSource resolve(
@@ -73,7 +67,9 @@ public final class LimitedBiomeSource extends BiomeSource {
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
-        HolderSet<Biome> allowed = encodedBiomes.orElseGet(() -> resolveConfiguredBiomes(config, biomeGetter));
+        Supplier<HolderSet<Biome>> allowed = encodedBiomes
+            .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
+            .orElseGet(() -> () -> resolveConfiguredBiomes(config, biomeGetter));
 
         // Every encoded instance has starter_radius. Its presence distinguishes a
         // persisted "no starter biome" from the fieldless preset that consults config.
@@ -82,6 +78,14 @@ public final class LimitedBiomeSource extends BiomeSource {
             : encodedStarterBiome.or(() -> resolveConfiguredStarter(config, biomeGetter));
         int radius = encodedStarterRadius.orElse(config.starterRadiusBlocks);
 
+        return new LimitedBiomeSource(allowed, starter, radius, biomeGetter);
+    }
+
+    private static Resolution resolveAllowedBiomes(
+        HolderSet<Biome> allowed,
+        Optional<Holder<Biome>> starterBiome,
+        HolderGetter<Biome> biomeGetter
+    ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
             MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD,
             biomeGetter
@@ -115,7 +119,15 @@ public final class LimitedBiomeSource extends BiomeSource {
         } else {
             delegateParameters = new Climate.ParameterList<>(filtered);
         }
-        return new LimitedBiomeSource(allowed, starter, radius, delegateParameters, usingFallback);
+        MultiNoiseBiomeSource delegate = MultiNoiseBiomeSource.createFromList(delegateParameters);
+        Set<Holder<Biome>> possible = new LinkedHashSet<>();
+        if (usingFallback) {
+            possible.addAll(delegate.possibleBiomes());
+        } else {
+            possible.addAll(matched);
+        }
+        starterBiome.ifPresent(possible::add);
+        return new Resolution(HolderSet.direct(List.copyOf(allowedSet)), delegate, Set.copyOf(possible));
     }
 
     private static HolderSet<Biome> resolveConfiguredBiomes(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
@@ -162,7 +174,7 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @return resolved allowed biomes
      */
     public HolderSet<Biome> allowedBiomes() {
-        return this.allowedBiomes;
+        return this.resolution.get().allowedBiomes();
     }
 
     /**
@@ -201,7 +213,7 @@ public final class LimitedBiomeSource extends BiomeSource {
 
     @Override
     protected Stream<Holder<Biome>> collectPossibleBiomes() {
-        return this.possibleBiomes.stream();
+        return this.resolution.get().possibleBiomes().stream();
     }
 
     @Override
@@ -209,6 +221,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         if (isInStarterZone(quartX, quartZ)) {
             return this.starterBiome.orElseThrow();
         }
-        return this.delegate.getNoiseBiome(quartX, quartY, quartZ, sampler);
+        return this.resolution.get().delegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
+    }
+
+    private record Resolution(
+        HolderSet<Biome> allowedBiomes,
+        MultiNoiseBiomeSource delegate,
+        Set<Holder<Biome>> possibleBiomes
+    ) {
     }
 }

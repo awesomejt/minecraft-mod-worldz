@@ -88,7 +88,8 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
       ("Worldz world preset").
       Automated status: Fabric reached title-screen resource reload; Fabric and
       NeoForge dedicated servers both created and saved fresh
-      `level-type=jlt_worldz:worldz` worlds. Visual dropdown confirmation remains.
+      `level-type=jlt_worldz:worldz` worlds, including tag-based and starter-zone
+      configs. Visual dropdown confirmation remains.
 
 ## Phase 4 — Smoke test [Jason]
 
@@ -104,8 +105,12 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 - [ ] 4.5 [Jason] Dedicated-server check (either loader):
       `level-type=jlt_worldz:worldz` in server.properties generates a limited
       world.
-- [ ] 4.6 Config-change isolation: reopen the 4.1 world after changing
+- [x] 4.6 Config-change isolation: reopen the 4.1 world after changing
       `allowedBiomes` — world must be unchanged (settings baked at creation).
+      Automated equivalent passed on Fabric: a plains + cherry starter world
+      reopened after the config changed to desert + no starter, retained its
+      saved settings, and still located cherry at origin and plains outside the
+      512-block zone.
 
 ## Phase 5 — Spawn guard (only if 4.3 showed spawn outside the zone)
 
@@ -116,7 +121,7 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 6 — Wrap-up
 
-- [ ] 6.1 README.md: what it does, config reference, world-type selection
+- [x] 6.1 README.md: what it does, config reference, world-type selection
       (client + server.properties), caveats from DESIGN §10. Mirror reseed's
       README structure.
 - [ ] 6.2 Check off remaining boxes here, fill the Deviation log, final
@@ -145,3 +150,7 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
   is still unbound during preset decode. Instead it constructs the public vanilla
   `Preset.OVERWORLD` parameter list with the retrieved biome getter; this uses the
   identical vanilla provider and is safe during parallel registry loading.
+- Configured biome tags are expanded lazily on the first biome-source query,
+  rather than during codec decode. Minecraft 26.2 decodes world presets before
+  dynamic-registry tags are bound; eager expansion crashes datapack loading.
+  The resolved direct holder list is still what gets persisted into the world.
