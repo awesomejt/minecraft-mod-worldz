@@ -38,21 +38,25 @@ public final class LimitedBiomeSource extends BiomeSource {
         Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(source -> Optional.of(source.allowedBiomes())),
         Biome.CODEC.optionalFieldOf("starter_biome").forGetter(source -> source.starterBiome),
         Codec.INT.optionalFieldOf("starter_radius").forGetter(source -> Optional.of(source.starterRadiusBlocks)),
+        WorldLimitCodecs.PLAN_CODEC.optionalFieldOf("world_limits").forGetter(source -> Optional.of(source.worldLimits)),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
     private final Optional<Holder<Biome>> starterBiome;
     private final int starterRadiusBlocks;
+    private final WorldLimitPlan worldLimits;
     private final Supplier<Resolution> resolution;
 
     private LimitedBiomeSource(
         Supplier<HolderSet<Biome>> allowedBiomes,
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
+        WorldLimitPlan worldLimits,
         HolderGetter<Biome> biomeGetter
     ) {
         this.starterBiome = starterBiome;
         this.starterRadiusBlocks = starterRadiusBlocks;
+        this.worldLimits = worldLimits;
         // World presets are decoded before dynamic-registry tags are bound in
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
         // asks this biome source for its possible biomes or an actual biome.
@@ -65,6 +69,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<HolderSet<Biome>> encodedBiomes,
         Optional<Holder<Biome>> encodedStarterBiome,
         Optional<Integer> encodedStarterRadius,
+        Optional<WorldLimitPlan> encodedWorldLimits,
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
@@ -78,8 +83,11 @@ public final class LimitedBiomeSource extends BiomeSource {
             ? encodedStarterBiome
             : encodedStarterBiome.or(() -> resolveConfiguredStarter(config, biomeGetter));
         int radius = encodedStarterRadius.orElse(config.starterRadiusBlocks);
+        WorldLimitPlan limits = encodedStarterRadius.isPresent()
+            ? encodedWorldLimits.orElseGet(WorldLimitPlan::disabled)
+            : encodedWorldLimits.orElseGet(() -> WorldLimitPlan.fromConfig(config));
 
-        return new LimitedBiomeSource(allowed, starter, radius, biomeGetter);
+        return new LimitedBiomeSource(allowed, starter, radius, limits, biomeGetter);
     }
 
     private static Resolution resolveAllowedBiomes(
@@ -188,6 +196,15 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public int starterRadiusBlocks() {
         return this.starterRadiusBlocks;
+    }
+
+    /**
+     * Returns the border plan baked into this world at creation.
+     *
+     * @return immutable persisted limit settings
+     */
+    public WorldLimitPlan worldLimits() {
+        return this.worldLimits;
     }
 
     /**

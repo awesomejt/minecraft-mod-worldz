@@ -39,6 +39,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Initial/final radii plus `resizeDays` express static, growing, and shrinking
   borders. Optional progression objectives need to be reachable at the final
   size (up to the requested reference of 100 in-game days), not on day zero.
+- 2026-07-14 — Persist `WorldLimitPlan` inside `LimitedBiomeSource`, not in the
+  global config or only in border saved data. The fieldless preset snapshots
+  current config; encoded sources missing the new field are recognized by the
+  already-present `starter_radius` resolved marker and decode to disabled
+  limits. A separate saved-data marker records that native border interpolation
+  has been started so reopening a world never resets its schedule.
 
 ## Reference Log
 

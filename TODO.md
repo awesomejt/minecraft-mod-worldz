@@ -145,8 +145,11 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       blaze-access guarantee. Pure `BorderSchedule` tests cover static, growth,
       shrink, endpoint clamping, and invalid values. Borders default disabled.
       **Commit** ("Add limited-world border configuration").
-- [ ] 7.2 Persist and apply border schedules only to newly created Worldz
-      worlds on Fabric and NeoForge. Preserve progress across restarts.
+- [x] 7.2 Persist and apply border schedules only to newly created Worldz
+      worlds on Fabric and NeoForge. The plan is baked into the biome-source
+      codec and a saved-data marker prevents restarts from resetting native
+      border interpolation. Older Worldz saves decode with limits disabled.
+      **Commit** ("Apply persistent Worldz border schedules").
 - [ ] 7.3 Guarantee an End portal inside the final overworld border while
       preserving Eye of Ender discoverability.
 - [ ] 7.4 Guarantee either a blaze spawner or sufficient natural fortress area
