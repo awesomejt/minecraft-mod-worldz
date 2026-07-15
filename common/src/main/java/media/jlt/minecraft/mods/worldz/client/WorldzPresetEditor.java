@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
+import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
@@ -21,10 +22,13 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.WorldDimensions;
+import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -52,14 +56,14 @@ public final class WorldzPresetEditor implements PresetEditor {
      * @param registries loaded world-generation registries
      * @param dimensions currently selected dimensions
      * @param customization validated player choices
-     * @return dimensions with only the overworld generator replaced
+     * @return dimensions with explicit Overworld and Nether envelopes
      */
     public static WorldDimensions apply(
         RegistryAccess.Frozen registries,
         WorldDimensions dimensions,
         WorldzCustomization customization
     ) {
-        ChunkGenerator currentGenerator = dimensions.overworld();
+        ChunkGenerator currentGenerator = unwrap(dimensions.overworld());
         if (!(currentGenerator instanceof NoiseBasedChunkGenerator noiseGenerator)) {
             throw new IllegalArgumentException("Worldz customization requires the Worldz noise generator.");
         }
@@ -76,7 +80,24 @@ public final class WorldzPresetEditor implements PresetEditor {
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
-        return dimensions.replaceOverworldGenerator(registries, customizedGenerator);
+        var exterior = customization.exteriorPlan();
+        var replaced = new LinkedHashMap<>(dimensions.dimensions());
+        LevelStem overworld = replaced.get(LevelStem.OVERWORLD);
+        replaced.put(
+            LevelStem.OVERWORLD,
+            new LevelStem(overworld.type(), EnvelopedChunkGenerator.customized(customizedGenerator, true, exterior.overworld()))
+        );
+        LevelStem nether = replaced.get(LevelStem.NETHER);
+        if (nether != null) {
+            replaced.put(
+                LevelStem.NETHER,
+                new LevelStem(
+                    nether.type(),
+                    EnvelopedChunkGenerator.customized(unwrap(nether.generator()), false, exterior.nether())
+                )
+            );
+        }
+        return new WorldDimensions(Map.copyOf(replaced));
     }
 
     private static WorldzCustomization currentCustomization(WorldCreationContext settings) {
@@ -98,6 +119,10 @@ public final class WorldzPresetEditor implements PresetEditor {
             fromPlan(exterior.overworld()),
             fromPlan(exterior.nether())
         );
+    }
+
+    private static ChunkGenerator unwrap(ChunkGenerator generator) {
+        return generator instanceof EnvelopedChunkGenerator enveloped ? enveloped.delegate() : generator;
     }
 
     private static HolderSet<Biome> resolveAllowedBiomes(List<String> values, Registry<Biome> biomes) {

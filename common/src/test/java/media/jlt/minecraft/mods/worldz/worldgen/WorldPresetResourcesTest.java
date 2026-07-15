@@ -16,23 +16,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorldPresetResourcesTest {
     @Test
-    void overworldUsesBareLimitedBiomeSourceWithVanillaNoiseSettings() throws IOException {
+    void overworldUsesEnvelopedLimitedBiomeSourceWithVanillaNoiseDelegate() throws IOException {
         JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/worldz.json")
             .getAsJsonObject("dimensions");
         assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
         JsonObject overworld = dimensions.getAsJsonObject("minecraft:overworld");
         JsonObject generator = overworld.getAsJsonObject("generator");
-        JsonObject biomeSource = generator.getAsJsonObject("biome_source");
+        JsonObject delegate = generator.getAsJsonObject("delegate");
+        JsonObject biomeSource = delegate.getAsJsonObject("biome_source");
 
         assertEquals("minecraft:overworld", overworld.get("type").getAsString());
-        assertEquals("minecraft:noise", generator.get("type").getAsString());
-        assertEquals("minecraft:overworld", generator.get("settings").getAsString());
+        assertEquals("jlt_worldz:enveloped", generator.get("type").getAsString());
+        assertEquals("overworld", generator.get("dimension").getAsString());
+        assertEquals("minecraft:noise", delegate.get("type").getAsString());
+        assertEquals("minecraft:overworld", delegate.get("settings").getAsString());
+        assertFalse(generator.has("exterior"));
         assertEquals(1, biomeSource.size());
         assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
     }
 
     @Test
-    void netherAndEndRemainVanilla() throws IOException {
+    void netherIsEnvelopedWhileEndRemainsVanilla() throws IOException {
         JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/worldz.json")
             .getAsJsonObject("dimensions");
 
@@ -41,9 +45,12 @@ class WorldPresetResourcesTest {
         assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
 
         JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
-        assertEquals("minecraft:nether", netherGenerator.get("settings").getAsString());
-        assertEquals("minecraft:multi_noise", netherGenerator.getAsJsonObject("biome_source").get("type").getAsString());
-        assertEquals("minecraft:nether", netherGenerator.getAsJsonObject("biome_source").get("preset").getAsString());
+        JsonObject delegate = netherGenerator.getAsJsonObject("delegate");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        assertEquals("nether", netherGenerator.get("dimension").getAsString());
+        assertEquals("minecraft:nether", delegate.get("settings").getAsString());
+        assertEquals("minecraft:multi_noise", delegate.getAsJsonObject("biome_source").get("type").getAsString());
+        assertEquals("minecraft:nether", delegate.getAsJsonObject("biome_source").get("preset").getAsString());
     }
 
     @Test

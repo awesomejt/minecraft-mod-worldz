@@ -79,6 +79,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   exterior terrain; a fieldless new-world preset snapshots sanitized YAML.
   Rate timing rounds a partial final interval up to a whole game tick and uses
   overflow-checked long arithmetic.
+- 2026-07-15 — `jlt_worldz:enveloped` persists a vanilla-compatible delegate,
+  dimension identity, and resolved envelope. It changes blocks only outside the
+  square, reapplies the profile after noise/surface/carvers/features, skips
+  structures and decoration for wholly exterior chunks, removes displaced block
+  entities, and delegates the End unchanged. Ocean uses deep-ocean biomes, a
+  solid stone floor 16 blocks below sea level, bottom bedrock, water, and air.
 
 ## Reference Log
 
@@ -187,6 +193,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   classification/resolution, YAML sanitation and compatibility, codec defaults,
   customization validation, rate precedence, growth/shrink interpolation, and
   partial-interval rounding. Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Exterior generation — `./gradlew build` passed across common,
+  Fabric, and NeoForge with 76 JUnit tests. Pure tests cover ocean layers,
+  height-query agreement, build-height clamping, and envelope classification;
+  resource/component tests cover both wrapped dimensions, the vanilla End, and
+  both loader registrations. Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 

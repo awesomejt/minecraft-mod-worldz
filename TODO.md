@@ -191,11 +191,12 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       and saved-world decoding. Added focused JUnit tests; full build passes 71
       tests with clean Javadocs and whitespace lint. **Commit** ("Add exterior
       and rate configuration").
-- [ ] 9.3 Register and implement the delegating `jlt_worldz:enveloped` chunk
+- [x] 9.3 Register and implement the delegating `jlt_worldz:enveloped` chunk
       generator for both loaders. Wrap Overworld and Nether in the preset,
       generate block-level void/ocean exteriors, suppress exterior decoration
       and structures, and keep height/column queries consistent. Add component
-      and resource tests and **commit**.
+      and resource tests. Full build passes 76 tests; Javadocs and whitespace
+      lint are clean. **Commit** ("Generate ocean and void exteriors").
 - [ ] 9.4 Expose exterior modes/boundaries/ocean transition and rate fields in
       Customize. Apply explicit Overworld and Nether wrappers while retaining
       YAML-as-default behavior and vanilla End generation.

@@ -86,6 +86,21 @@ class ProjectMetadataTest {
         ).contains("RegisterPresetEditorsEvent"));
     }
 
+    @Test
+    void envelopedGeneratorCodecIsRegisteredByBothLoaders() throws IOException {
+        String fabric = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/WorldzFabric.java")
+        );
+        String neoForge = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForge.java")
+        );
+
+        assertTrue(fabric.contains("BuiltInRegistries.CHUNK_GENERATOR"));
+        assertTrue(fabric.contains("EnvelopedChunkGenerator.CODEC"));
+        assertTrue(neoForge.contains("Registries.CHUNK_GENERATOR"));
+        assertTrue(neoForge.contains("CHUNK_GENERATORS.register(\"enveloped\""));
+    }
+
     private static Properties projectProperties() throws IOException {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(ROOT.resolve("gradle.properties"))) {

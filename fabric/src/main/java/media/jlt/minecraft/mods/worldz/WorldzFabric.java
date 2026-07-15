@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz;
 
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
+import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -22,6 +23,11 @@ public final class WorldzFabric implements ModInitializer {
             BuiltInRegistries.BIOME_SOURCE,
             Identifier.fromNamespaceAndPath(WorldzCommon.MOD_ID, "limited"),
             LimitedBiomeSource.CODEC
+        );
+        Registry.register(
+            BuiltInRegistries.CHUNK_GENERATOR,
+            Identifier.fromNamespaceAndPath(WorldzCommon.MOD_ID, "enveloped"),
+            EnvelopedChunkGenerator.CODEC
         );
         ServerLifecycleEvents.SERVER_STARTED.register(WorldLimitManager::onServerStarted);
     }

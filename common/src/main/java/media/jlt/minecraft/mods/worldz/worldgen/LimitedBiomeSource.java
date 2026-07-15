@@ -10,10 +10,12 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.AllowedEntryFilter;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
@@ -21,6 +23,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList;
@@ -48,6 +51,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final int starterRadiusBlocks;
     private final WorldLimitPlan worldLimits;
     private final ExteriorPlan exteriorPlan;
+    private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
 
@@ -64,12 +68,15 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.starterRadiusBlocks = starterRadiusBlocks;
         this.worldLimits = worldLimits;
         this.exteriorPlan = exteriorPlan;
+        this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
+            ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
+            : Optional.empty();
         this.configDefaults = configDefaults;
         // World presets are decoded before dynamic-registry tags are bound in
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
         // asks this biome source for its possible biomes or an actual biome.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
-            allowedBiomes.get(), starterBiome, biomeGetter
+            allowedBiomes.get(), starterBiome, this.oceanBiome, biomeGetter
         ));
     }
 
@@ -135,6 +142,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private static Resolution resolveAllowedBiomes(
         HolderSet<Biome> allowed,
         Optional<Holder<Biome>> starterBiome,
+        Optional<Holder<Biome>> oceanBiome,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -172,6 +180,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             possible.addAll(matched);
         }
         starterBiome.ifPresent(possible::add);
+        oceanBiome.ifPresent(possible::add);
         return new Resolution(HolderSet.direct(List.copyOf(allowedSet)), delegate, Set.copyOf(possible));
     }
 
@@ -290,6 +299,10 @@ public final class LimitedBiomeSource extends BiomeSource {
 
     @Override
     public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
+        if (this.exteriorPlan.overworld().modeAt(QuartPos.toBlock(quartX), QuartPos.toBlock(quartZ))
+            == ExteriorMode.OCEAN) {
+            return this.oceanBiome.orElseThrow(() -> new IllegalStateException("Deep ocean biome is unavailable."));
+        }
         if (isInStarterZone(quartX, quartZ)) {
             return this.starterBiome.orElseThrow();
         }
