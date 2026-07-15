@@ -138,6 +138,22 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
 - [ ] 6.2 Check off remaining boxes here, fill the Deviation log, final
       **commit**. Do not push, tag, or publish — [Jason] decides.
 
+## Phase 7 — Optional limited worlds
+
+- [x] 7.1 YAML schema for independent overworld/Nether borders: enabled,
+      initial/final half-width, linear resize days, and optional End-portal or
+      blaze-access guarantee. Pure `BorderSchedule` tests cover static, growth,
+      shrink, endpoint clamping, and invalid values. Borders default disabled.
+      **Commit** ("Add limited-world border configuration").
+- [ ] 7.2 Persist and apply border schedules only to newly created Worldz
+      worlds on Fabric and NeoForge. Preserve progress across restarts.
+- [ ] 7.3 Guarantee an End portal inside the final overworld border while
+      preserving Eye of Ender discoverability.
+- [ ] 7.4 Guarantee either a blaze spawner or sufficient natural fortress area
+      inside the final Nether border.
+- [ ] 7.5 JUnit hardening, full loader builds, documentation, review, and
+      commits. No live test required; Jason will perform acceptance testing.
+
 ---
 
 ## Deviation log
@@ -182,3 +198,7 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
   JSON design. Parsing uses SnakeYAML's safe constructor plus explicit
   map/list/scalar validation. Legacy JSON remains readable because JSON is a
   YAML-compatible input form and is migrated to the canonical `.yaml` file.
+- DESIGN §12 was added after implementation began at the user's request.
+  Minecraft's vanilla square border is used, configuration names its
+  center-to-side half-width a radius, and progression objectives only need to
+  become reachable by the end of a growth schedule rather than on day zero.

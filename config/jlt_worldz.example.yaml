@@ -2,7 +2,21 @@ allowedBiomes:
   - 'minecraft:plains'
 starterBiome: ''
 starterRadiusBlocks: 512
+overworldBorder:
+  enabled: false
+  initialRadiusBlocks: 512
+  finalRadiusBlocks: 512
+  resizeDays: 0
+  ensureEndPortal: true
+netherBorder:
+  enabled: false
+  initialRadiusBlocks: 512
+  finalRadiusBlocks: 512
+  resizeDays: 0
+  ensureBlazeAccess: true
 _docs:
   allowedBiomes: 'Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: [minecraft:plains].'
   starterBiome: 'Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.'
   starterRadiusBlocks: 'Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.'
+  overworldBorder: 'Optional square border centered at 0,0. Radius is center-to-side distance. End portal is reachable by the final size when enabled.'
+  netherBorder: 'Optional independent Nether border. Blaze access is reachable by the final size when enabled.'

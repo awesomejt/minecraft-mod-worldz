@@ -189,4 +189,25 @@ zone → move spawn to the origin column at the
 - Per-dimension config; multiple starter zones; square zone shape option.
 - `/jlt_worldz reload` command (config only matters at world creation, so low
   value).
+
+## 12. Optional limited-world borders
+
+Worldz can apply independent, origin-centered vanilla square borders to the
+overworld and Nether. Configuration expresses each border as its half-width
+(`radiusBlocks`) for player readability; the vanilla API receives twice that
+value as its diameter. Borders are disabled by default.
+
+Each dimension has an initial radius, final radius, and resize duration in
+Minecraft days. Equal radii make a static border. A larger final radius grows
+linearly; a smaller final radius shrinks linearly. A zero-day transition applies
+the final size immediately. The vanilla border state persists the transition so
+restarts do not reset its progress. Existing worlds are not retroactively
+limited.
+
+Optional progression guarantees keep an End portal and blaze access within the
+final overworld and Nether borders respectively. They need not be reachable on
+day zero, but must be reachable when the configured resize period ends (100
+days is the reference gameplay target). For strict small borders, guaranteeing
+the functional portal or blaze-spawning area takes priority over fitting an
+entire stronghold or Nether fortress inside the border.
 - CurseForge/Modrinth publishing (same open flag as the other four mods).

@@ -25,6 +25,12 @@ public final class WorldzConfig {
     public static final int MIN_STARTER_RADIUS_BLOCKS = 64;
     /** Largest supported starter-zone radius. */
     public static final int MAX_STARTER_RADIUS_BLOCKS = 4096;
+    /** Smallest supported world-border half-width. */
+    public static final int MIN_BORDER_RADIUS_BLOCKS = 64;
+    /** Largest half-width accepted by vanilla's world border. */
+    public static final int MAX_BORDER_RADIUS_BLOCKS = 14_999_992;
+    /** Longest supported border transition in in-game days. */
+    public static final int MAX_BORDER_RESIZE_DAYS = 1_000_000;
 
     private static final String YAML_EXTENSION = ".yaml";
     private static final String LEGACY_JSON_EXTENSION = ".json";
@@ -35,6 +41,10 @@ public final class WorldzConfig {
     public String starterBiome = "";
     /** Starter-zone radius measured in blocks. */
     public int starterRadiusBlocks = 512;
+    /** Optional overworld border and End-portal reachability settings. */
+    public BorderConfig overworldBorder = new BorderConfig();
+    /** Optional Nether border and blaze-access settings. */
+    public BorderConfig netherBorder = new BorderConfig();
     /** Human-readable inline documentation persisted with the config. */
     public Map<String, String> _docs = defaultDocs();
 
@@ -123,6 +133,12 @@ public final class WorldzConfig {
         if (object.containsKey("starterRadiusBlocks")) {
             config.starterRadiusBlocks = readInt(object.get("starterRadiusBlocks"), "starterRadiusBlocks");
         }
+        if (object.containsKey("overworldBorder")) {
+            config.overworldBorder = readBorderConfig(object.get("overworldBorder"), "overworldBorder", "ensureEndPortal");
+        }
+        if (object.containsKey("netherBorder")) {
+            config.netherBorder = readBorderConfig(object.get("netherBorder"), "netherBorder", "ensureBlazeAccess");
+        }
         if (object.containsKey("_docs")) {
             config._docs = readDocs(object.get("_docs"), logger);
         }
@@ -153,6 +169,9 @@ public final class WorldzConfig {
             logger.warn("Clamped starterRadiusBlocks from {} to {}.", originalRadius, starterRadiusBlocks);
         }
 
+        overworldBorder = sanitizeBorder(overworldBorder, "overworldBorder", logger);
+        netherBorder = sanitizeBorder(netherBorder, "netherBorder", logger);
+
         _docs = _docs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(_docs);
         defaultDocs().forEach(_docs::putIfAbsent);
         return this;
@@ -166,7 +185,9 @@ public final class WorldzConfig {
     public String summary() {
         return "allowedBiomes=" + allowedBiomes
             + ", starterBiome=" + (starterBiome.isEmpty() ? "<none>" : starterBiome)
-            + ", starterRadiusBlocks=" + starterRadiusBlocks;
+            + ", starterRadiusBlocks=" + starterRadiusBlocks
+            + ", overworldBorder=" + borderSummary(overworldBorder, "endPortal")
+            + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess");
     }
 
     String toYaml() {
@@ -174,6 +195,8 @@ public final class WorldzConfig {
         values.put("allowedBiomes", allowedBiomes);
         values.put("starterBiome", starterBiome);
         values.put("starterRadiusBlocks", starterRadiusBlocks);
+        values.put("overworldBorder", borderMap(overworldBorder, "ensureEndPortal"));
+        values.put("netherBorder", borderMap(netherBorder, "ensureBlazeAccess"));
         values.put("_docs", _docs);
         return createYaml().dump(values);
     }
@@ -215,6 +238,36 @@ public final class WorldzConfig {
         return string;
     }
 
+    private static boolean readBoolean(Object value, String name) {
+        if (!(value instanceof Boolean booleanValue)) {
+            throw new IllegalArgumentException(name + " must be a boolean");
+        }
+        return booleanValue;
+    }
+
+    private static BorderConfig readBorderConfig(Object value, String name, String objectiveKey) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        BorderConfig config = new BorderConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("initialRadiusBlocks")) {
+            config.initialRadiusBlocks = readInt(map.get("initialRadiusBlocks"), name + ".initialRadiusBlocks");
+        }
+        if (map.containsKey("finalRadiusBlocks")) {
+            config.finalRadiusBlocks = readInt(map.get("finalRadiusBlocks"), name + ".finalRadiusBlocks");
+        }
+        if (map.containsKey("resizeDays")) {
+            config.resizeDays = readInt(map.get("resizeDays"), name + ".resizeDays");
+        }
+        if (map.containsKey(objectiveKey)) {
+            config.ensureObjective = readBoolean(map.get(objectiveKey), name + "." + objectiveKey);
+        }
+        return config;
+    }
+
     private static int readInt(Object value, String name) {
         try {
             return switch (value) {
@@ -254,7 +307,53 @@ public final class WorldzConfig {
         docs.put("allowedBiomes", "Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: [minecraft:plains].");
         docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.");
         docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.");
+        docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance. End portal is reachable by the final size when enabled.");
+        docs.put("netherBorder", "Optional independent Nether border. Blaze access is reachable by the final size when enabled.");
         return docs;
+    }
+
+    private static BorderConfig sanitizeBorder(BorderConfig config, String name, Logger logger) {
+        BorderConfig sanitized = config == null ? new BorderConfig() : config;
+        sanitized.initialRadiusBlocks = clampWithWarning(
+            sanitized.initialRadiusBlocks, MIN_BORDER_RADIUS_BLOCKS, MAX_BORDER_RADIUS_BLOCKS,
+            name + ".initialRadiusBlocks", logger
+        );
+        sanitized.finalRadiusBlocks = clampWithWarning(
+            sanitized.finalRadiusBlocks, MIN_BORDER_RADIUS_BLOCKS, MAX_BORDER_RADIUS_BLOCKS,
+            name + ".finalRadiusBlocks", logger
+        );
+        sanitized.resizeDays = clampWithWarning(
+            sanitized.resizeDays, 0, MAX_BORDER_RESIZE_DAYS, name + ".resizeDays", logger
+        );
+        return sanitized;
+    }
+
+    private static int clampWithWarning(int value, int minimum, int maximum, String name, Logger logger) {
+        int clamped = Math.clamp(value, minimum, maximum);
+        if (clamped != value) {
+            logger.warn("Clamped {} from {} to {}.", name, value, clamped);
+        }
+        return clamped;
+    }
+
+    private static Map<String, Object> borderMap(BorderConfig config, String objectiveKey) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("initialRadiusBlocks", config.initialRadiusBlocks);
+        values.put("finalRadiusBlocks", config.finalRadiusBlocks);
+        values.put("resizeDays", config.resizeDays);
+        values.put(objectiveKey, config.ensureObjective);
+        return values;
+    }
+
+    private static String borderSummary(BorderConfig config, String objectiveName) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "initial=" + config.initialRadiusBlocks
+            + ", final=" + config.finalRadiusBlocks
+            + ", days=" + config.resizeDays
+            + ", " + objectiveName + "=" + config.ensureObjective;
     }
 
     private static Yaml createYaml() {

@@ -33,6 +33,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   map/list/scalar tree rather than constructing Java beans. If YAML is absent,
   a valid legacy JSON config is parsed as YAML-compatible input, written to
   YAML, and retained as `.json.bak`; malformed input remains untouched.
+- 2026-07-14 — Limited-world borders use Minecraft's vanilla square border,
+  centered at `(0,0)`, with config values expressed as center-to-side radii.
+  Overworld and Nether schedules are independent and disabled by default.
+  Initial/final radii plus `resizeDays` express static, growing, and shrinking
+  borders. Optional progression objectives need to be reachable at the final
+  size (up to the requested reference of 100 in-game days), not on day zero.
 
 ## Reference Log
 
@@ -62,6 +68,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   upstream project link — https://central.sonatype.com/artifact/org.yaml/snakeyaml
 - YAML migration: verified Fabric `include` and NeoForge `jarJar` dependency
   patterns against the maintained sibling mods `../info` and `../trees`.
+- Limited worlds: authoritative Minecraft 26.2 generated sources for
+  `WorldBorder`, `ServerLevel`, `ChunkGenerator`, structure placement, portal
+  clamping, and spawner configuration —
+  `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
+- Limited worlds: Fabric server lifecycle event guidance —
+  https://github.com/FabricMC/fabric-api/blob/26.1.2/CONTRIBUTING.md
+- Limited worlds: NeoForge game-event bus guidance —
+  https://docs.neoforged.net/docs/concepts/events/
 
 ## Verification Log
 

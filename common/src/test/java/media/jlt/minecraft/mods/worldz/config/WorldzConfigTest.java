@@ -31,6 +31,9 @@ class WorldzConfigTest {
         assertEquals(List.of("minecraft:plains"), config.allowedBiomes);
         assertEquals("", config.starterBiome);
         assertEquals(512, config.starterRadiusBlocks);
+        assertFalse(config.overworldBorder.enabled);
+        assertTrue(config.overworldBorder.ensureObjective);
+        assertFalse(config.netherBorder.enabled);
         Path generated = temporaryDirectory.resolve("jlt_worldz.yaml");
         assertTrue(Files.isRegularFile(generated));
         Object example = YAML.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
@@ -94,6 +97,62 @@ class WorldzConfigTest {
 
         assertEquals(64, below.starterRadiusBlocks);
         assertEquals(4096, above.starterRadiusBlocks);
+    }
+
+    @Test
+    void borderSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            overworldBorder:
+              enabled: true
+              initialRadiusBlocks: 32
+              finalRadiusBlocks: 2000
+              resizeDays: 100
+              ensureEndPortal: false
+            netherBorder:
+              enabled: true
+              initialRadiusBlocks: 256
+              finalRadiusBlocks: 128
+              resizeDays: 25
+              ensureBlazeAccess: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.overworldBorder.enabled);
+        assertEquals(64, config.overworldBorder.initialRadiusBlocks);
+        assertEquals(2000, config.overworldBorder.finalRadiusBlocks);
+        assertEquals(100, config.overworldBorder.resizeDays);
+        assertFalse(config.overworldBorder.ensureObjective);
+        assertTrue(config.netherBorder.enabled);
+        assertEquals(256, config.netherBorder.initialRadiusBlocks);
+        assertEquals(128, config.netherBorder.finalRadiusBlocks);
+        assertEquals(25, config.netherBorder.resizeDays);
+        assertTrue(config.netherBorder.ensureObjective);
+    }
+
+    @Test
+    void invalidNestedBorderTypeMakesFileInvalidWithoutOverwritingIt() throws IOException {
+        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        String invalid = "overworldBorder: true";
+        Files.writeString(configFile, invalid);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertFalse(config.overworldBorder.enabled);
+        assertEquals(invalid, Files.readString(configFile));
+    }
+
+    @Test
+    void invalidBorderScalarMakesFileInvalidWithoutOverwritingIt() throws IOException {
+        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        String invalid = """
+            overworldBorder:
+              enabled: 'yes'
+            """;
+        Files.writeString(configFile, invalid);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertFalse(config.overworldBorder.enabled);
+        assertEquals(invalid, Files.readString(configFile));
     }
 
     @Test
@@ -163,7 +222,8 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(
-            "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256",
+            "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
+                + ", overworldBorder=<disabled>, netherBorder=<disabled>",
             config.summary()
         );
     }
