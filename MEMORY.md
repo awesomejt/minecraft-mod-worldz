@@ -52,6 +52,9 @@ Durable decisions, verified API notes, and rationale that should survive across 
   avoids global structure-set changes or brittle worldgen mixins. Eyes of Ender
   do not target the fallback, so it is deliberately visible near the origin and
   its exact coordinate is logged.
+- 2026-07-14 — Release 0.1.1 uses the version already selected in the user's
+  working tree. A project-metadata test deliberately pins the release version,
+  so every future bump must update that contract in the same iteration.
 
 ## Reference Log
 
@@ -130,6 +133,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   and validation, schedule growth/shrink/static interpolation, immutable plan
   snapshots, extreme coordinate bounds, and fallback placement. Javadoc was
   reviewed cleanly; live acceptance remains explicitly assigned to Jason.
+- 2026-07-14 / Release 0.1.1 — The initial clean build reproduced the user's
+  failure: 49 tests passed and `ProjectMetadataTest` alone failed because it
+  still expected 0.1.0. After aligning the metadata contract and documentation,
+  `./gradlew clean build` passed all 50 tests and produced versioned Fabric and
+  NeoForge artifacts.
 
 ## API Deviations
 

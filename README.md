@@ -137,7 +137,7 @@ starter biome overrides the entire vertical column inside its circular zone.
   support for those biomes is deferred.
 - Existing worlds are never modified, and config changes do not alter worlds
   already created with Worldz.
-- Nether and End generation remain vanilla in version 0.1.0.
+- Nether and End generation remain vanilla in version 0.1.1.
 - Worldz does not currently provide an in-game config screen or reload command.
 - Shrinking a border does not delete chunks that were previously generated; it
   makes the area outside the new border inaccessible.

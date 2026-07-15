@@ -160,6 +160,9 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
 - [x] 7.5 JUnit hardening, full loader builds, documentation, review, and
       commits. No live test required; Jason will perform acceptance testing.
       Final clean build passed with 50 tests.
+- [x] 7.6 Release version bumped to 0.1.1, metadata contract and documentation
+      aligned, and both loader artifacts rebuilt. **Commit** ("Release Worldz
+      0.1.1").
 
 ---
 
