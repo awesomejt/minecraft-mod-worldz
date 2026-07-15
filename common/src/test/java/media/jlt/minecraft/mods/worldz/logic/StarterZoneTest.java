@@ -41,4 +41,20 @@ class StarterZoneTest {
         assertFalse(StarterZone.containsQuart(Integer.MIN_VALUE, Integer.MIN_VALUE, 4096));
         assertFalse(StarterZone.containsQuart(Integer.MAX_VALUE, Integer.MAX_VALUE, 4096));
     }
+
+    @Test
+    void includesExactDiagonalBoundaryAndIsSymmetric() {
+        assertTrue(StarterZone.containsQuart(3, 4, 20));
+        assertTrue(StarterZone.containsQuart(-3, 4, 20));
+        assertTrue(StarterZone.containsQuart(3, -4, 20));
+        assertTrue(StarterZone.containsQuart(-3, -4, 20));
+        assertFalse(StarterZone.containsQuart(4, 4, 20));
+    }
+
+    @Test
+    void zeroRadiusIncludesOnlyTheOriginQuart() {
+        assertTrue(StarterZone.containsQuart(0, 0, 0));
+        assertFalse(StarterZone.containsQuart(1, 0, 0));
+        assertFalse(StarterZone.containsQuart(0, -1, 0));
+    }
 }

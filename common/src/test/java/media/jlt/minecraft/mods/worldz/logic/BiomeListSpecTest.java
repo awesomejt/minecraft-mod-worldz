@@ -2,10 +2,12 @@ package media.jlt.minecraft.mods.worldz.logic;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BiomeListSpecTest {
@@ -57,5 +59,24 @@ class BiomeListSpecTest {
         assertEquals("minecraft:plains", new BiomeListSpec.Entry("minecraft:plains", false).configValue());
         assertEquals("#minecraft:is_overworld", new BiomeListSpec.Entry("minecraft:is_overworld", true).configValue());
         assertFalse(new BiomeListSpec.Entry("minecraft:plains", false).tag());
+    }
+
+    @Test
+    void nullListAndNullElementAreReportedWithoutThrowing() {
+        BiomeListSpec nullList = BiomeListSpec.parse(null);
+        BiomeListSpec nullElement = BiomeListSpec.parse(Arrays.asList(null, "plains"));
+
+        assertTrue(nullList.entries().isEmpty());
+        assertEquals(List.of("null"), nullList.invalidEntries());
+        assertEquals(List.of(new BiomeListSpec.Entry("minecraft:plains", false)), nullElement.entries());
+        assertEquals(List.of("null"), nullElement.invalidEntries());
+    }
+
+    @Test
+    void resultCollectionsAreImmutableSnapshots() {
+        BiomeListSpec spec = BiomeListSpec.parse(List.of("plains", "bad value"));
+
+        assertThrows(UnsupportedOperationException.class, () -> spec.entries().clear());
+        assertThrows(UnsupportedOperationException.class, () -> spec.invalidEntries().clear());
     }
 }

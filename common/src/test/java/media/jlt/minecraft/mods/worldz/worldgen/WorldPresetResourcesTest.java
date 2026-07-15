@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,6 +18,7 @@ class WorldPresetResourcesTest {
     void overworldUsesBareLimitedBiomeSourceWithVanillaNoiseSettings() throws IOException {
         JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/worldz.json")
             .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
         JsonObject overworld = dimensions.getAsJsonObject("minecraft:overworld");
         JsonObject generator = overworld.getAsJsonObject("generator");
         JsonObject biomeSource = generator.getAsJsonObject("biome_source");
@@ -48,6 +50,7 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
+        assertEquals(1, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
     }
 
@@ -55,6 +58,7 @@ class WorldPresetResourcesTest {
     void languageFileUsesVerifiedWorldPresetKey() throws IOException {
         JsonObject language = resource("/assets/jlt_worldz/lang/en_us.json");
 
+        assertEquals(1, language.size());
         assertEquals("Worldz", language.get("generator.jlt_worldz.worldz").getAsString());
     }
 

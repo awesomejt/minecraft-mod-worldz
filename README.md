@@ -114,10 +114,10 @@ Artifacts are written to:
 - `fabric/build/libs/jlt_worldz-fabric-26.2-<version>.jar`
 - `neoforge/build/libs/jlt_worldz-neoforge-26.2-<version>.jar`
 
-The common test suite covers config handling, biome/tag syntax, starter-zone
-boundary math, and preset resource structure. Runtime smoke testing should also
-create fresh Worldz worlds on both loaders and confirm biome behavior in-game;
-see [`TODO.md`](TODO.md) for the current checklist.
+The common test suite covers config handling, biome/tag syntax, climate-entry
+filtering, starter-zone boundary math, and preset resource structure. Runtime
+smoke testing should also create fresh Worldz worlds on both loaders and confirm
+biome behavior in-game; see [`TODO.md`](TODO.md) for the current checklist.
 
 ## License
 

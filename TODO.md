@@ -93,6 +93,11 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 4 — Smoke test [Jason]
 
+Automated coverage before manual testing: 31 passing JUnit tests cover config
+load/sanitation, biome/tag parsing, climate-entry filtering, starter-zone math,
+and preset/tag/lang resources. Dedicated-server creation also passed on both
+loaders; the items below remain the requested visual/gameplay acceptance pass.
+
 - [ ] 4.1 [Jason] Fabric client: create a Worldz world with default config
       (plains only); fly around, F3 shows only plains; terrain still has
       rivers/hills shape.

@@ -7,6 +7,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
+import media.jlt.minecraft.mods.worldz.logic.AllowedEntryFilter;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import net.minecraft.core.Holder;
@@ -91,16 +92,10 @@ public final class LimitedBiomeSource extends BiomeSource {
             biomeGetter
         ).parameters();
         Set<Holder<Biome>> allowedSet = new LinkedHashSet<>(allowed.stream().toList());
-        Set<Holder<Biome>> matched = new LinkedHashSet<>();
-        List<Pair<Climate.ParameterPoint, Holder<Biome>>> filtered = overworld.values().stream()
-            .filter(pair -> {
-                boolean keep = allowedSet.contains(pair.getSecond());
-                if (keep) {
-                    matched.add(pair.getSecond());
-                }
-                return keep;
-            })
-            .toList();
+        AllowedEntryFilter.Result<Pair<Climate.ParameterPoint, Holder<Biome>>, Holder<Biome>> filteredResult =
+            AllowedEntryFilter.filter(overworld.values(), Pair::getSecond, allowedSet);
+        List<Pair<Climate.ParameterPoint, Holder<Biome>>> filtered = filteredResult.entries();
+        Set<Holder<Biome>> matched = filteredResult.matchedValues();
 
         allowedSet.stream()
             .filter(holder -> !matched.contains(holder))

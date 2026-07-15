@@ -16,6 +16,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Minecraft 26.2 decodes world presets before dynamic-registry tags are bound;
   eager `HolderSet.Named.stream()` access prevents datapacks from loading. The
   memoized resolution is encoded as a direct holder list in world-gen settings.
+- 2026-07-14 — Extract climate-entry selection into the pure generic
+  `AllowedEntryFilter`. This keeps every climate point for an allowed biome,
+  preserves vanilla entry order, separately tracks distinct matched biomes,
+  and makes the core filtering behavior directly testable without booting
+  Minecraft registries.
 
 ## Reference Log
 
@@ -35,6 +40,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
 - Documentation: NeoForge client installation guide — https://docs.neoforged.net/user/docs/client/
 - Tag lifecycle fix: NeoForge holder-set migration primer (named holder sets are
   dynamically managed tag representations) — https://docs.neoforged.net/primer/docs/1.21.2/
+- Test hardening: JUnit 5 user guide (`@Test`, assertions, and `@TempDir`) —
+  https://docs.junit.org/5.13.1/user-guide/index.html
+- Test hardening: Java 25 unmodifiable collection snapshots —
+  https://docs.oracle.com/en/java/javase/25/core/java-core-libraries-developer-guide.pdf
 
 ## Verification Log
 
@@ -52,6 +61,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   global config changed to desert with no starter. Its saved settings remained
   plains + cherry, `locate biome` found cherry at the origin and plains 520
   blocks away, and the server stopped cleanly.
+- 2026-07-14 / JUnit hardening — The common suite increased from 20 to 31
+  passing tests. New coverage directly verifies climate-entry filtering
+  (including duplicate parameter entries and immutable results), malformed
+  field types, empty allowed lists, docs sanitation, summaries, null parser
+  inputs, immutable parser results, exact diagonal/zero-radius zone boundaries,
+  and exact preset/tag/lang resource membership.
 
 ## API Deviations
 
