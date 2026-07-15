@@ -95,6 +95,9 @@ Durable decisions, verified API notes, and rationale that should survive across 
   persisted per-dimension start tick is due; offline real time does not count.
   Delay `0` preserves existing behavior, while a zero-duration resize with a
   positive delay jumps to its final radius only after the wait.
+- 2026-07-15 — Release 0.1.2 packages the exterior terrain envelopes,
+  rate-based resizing, world-creation controls, supportive progression bounds,
+  and persisted initial resize delays completed after 0.1.1.
 
 ## Reference Log
 
@@ -247,6 +250,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   DESIGN, TODO, and Memory describe the delay and offline-time semantics. The
   known Fabric Loom non-semver warning for SnakeYAML `2.6` remains harmless. Per
   the user, no live test was run.
+- 2026-07-15 / Release 0.1.2 — `./gradlew clean build` passed all modules and 86
+  JUnit tests. Artifact inspection confirmed `0.1.2` in both loader filenames,
+  Fabric `fabric.mod.json`, and NeoForge `neoforge.mods.toml`. Javadocs and
+  `git diff --check` are clean; the known SnakeYAML semver warning is unchanged.
 
 ## API Deviations
 

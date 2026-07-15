@@ -232,6 +232,13 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       and whitespace lint are clean. No live testing required. **Commit**
       ("Document delayed border resizing").
 
+## Phase 11 — Release 0.1.2
+
+- [x] 11.1 Bump project and metadata-test versions to 0.1.2, update technical
+      documentation, run the clean multiloader build, inspect both release
+      artifacts, update Memory, and **commit** ("Release version 0.1.2"). Clean
+      build passes 86 tests; filenames and embedded loader metadata are 0.1.2.
+
 ---
 
 ## Deviation log

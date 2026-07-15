@@ -16,7 +16,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.1`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.2`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -189,7 +189,7 @@ zone → move spawn to the origin column at the
 - Nether biomes remain vanilla; its terrain may optionally become void outside
   the envelope. End generation remains vanilla.
 
-## 11. Deferred (not 0.1.1)
+## 11. Deferred
 
 - Nether/End biome limiting.
 - `FixedBiomeSource` mode to allow non-overworld biomes (single-biome mushroom
