@@ -31,21 +31,21 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 0 — Repo skeleton (copy from ../reseed)
 
-- [ ] 0.1 Copy `gradlew`, `gradlew.bat`, `gradle/wrapper/`, `build-logic/`
+- [x] 0.1 Copy `gradlew`, `gradlew.bat`, `gradle/wrapper/`, `build-logic/`
       (sources only — no `.gradle/` caches), `.github/workflows/build.yml`,
       and `LICENSE` from `../reseed`.
-- [ ] 0.2 `settings.gradle` copied and adapted: `rootProject.name = 'mod-worldz'`.
-- [ ] 0.3 `gradle.properties` copied and adapted: `version=0.1.0`,
+- [x] 0.2 `settings.gradle` copied and adapted: `rootProject.name = 'mod-worldz'`.
+- [x] 0.3 `gradle.properties` copied and adapted: `version=0.1.0`,
       `mod_id=jlt_worldz`, `mod_name=JLT Worldz`, description from DESIGN §1;
       all version numbers unchanged from reseed.
-- [ ] 0.4 `common/`, `fabric/`, `neoforge/` module `build.gradle` files copied
+- [x] 0.4 `common/`, `fabric/`, `neoforge/` module `build.gradle` files copied
       from reseed (keep the gametest wiring if it comes along; it's harmless).
-- [ ] 0.5 Entrypoints `WorldzCommon` / `WorldzFabric` / `WorldzNeoForge` in
+- [x] 0.5 Entrypoints `WorldzCommon` / `WorldzFabric` / `WorldzNeoForge` in
       `media.jlt.minecraft.mods.worldz` (log-only init, mirroring reseed),
       `fabric.mod.json` + `neoforge.mods.toml` adapted (id, name, entrypoint
       class, sources URL `minecraft-mod-worldz`; drop reseed's
       `fabric-gametest` entrypoint).
-- [ ] 0.6 `./gradlew build` green. **Commit** ("Repo skeleton from reseed template").
+- [x] 0.6 `./gradlew build` green. **Commit** ("Repo skeleton from reseed template").
 
 ## Phase 1 — Config
 

@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"id": "jlt_worldz",
+	"version": "${version}",
+	"name": "JLT Worldz",
+	"description": "Limit new worlds to a chosen set of biomes, with an optional starter biome around world spawn.",
+	"authors": [
+		"Jason Taylor"
+	],
+	"contact": {
+		"sources": "https://github.com/awesomejt/minecraft-mod-worldz"
+	},
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"media.jlt.minecraft.mods.worldz.WorldzFabric"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
