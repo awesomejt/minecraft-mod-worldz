@@ -269,6 +269,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   JUnit tests. Artifact inspection confirmed `0.1.2` in both loader filenames,
   Fabric `fabric.mod.json`, and NeoForge `neoforge.mods.toml`. Javadocs and
   `git diff --check` are clean; the known SnakeYAML semver warning is unchanged.
+- 2026-07-15 / Starter-land model — `./gradlew build` passed all modules and 94
+  JUnit tests. New pure coverage locks plan validation/config snapshots,
+  smoothstep transition endpoints and midpoint, preservation of natural high
+  ground, zero-width behavior, foundation bounds, extreme-coordinate safety,
+  YAML sanitation/defaults, and the optional codec compatibility contract.
+  Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 

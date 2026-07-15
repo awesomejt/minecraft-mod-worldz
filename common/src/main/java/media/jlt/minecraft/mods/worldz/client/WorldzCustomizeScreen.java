@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.client;
 
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
+import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -25,6 +26,7 @@ final class WorldzCustomizeScreen extends Screen {
     private WorldzCustomization.BorderSettings netherBorder;
     private WorldzCustomization.ExteriorSettings overworldExterior;
     private WorldzCustomization.ExteriorSettings netherExterior;
+    private StarterLandPlan starterLandPlan;
     private MultiLineEditBox allowedBiomes;
     private EditBox starterBiome;
     private EditBox starterRadius;
@@ -40,6 +42,7 @@ final class WorldzCustomizeScreen extends Screen {
         this.netherBorder = initial.netherBorder();
         this.overworldExterior = initial.overworldExterior();
         this.netherExterior = initial.netherExterior();
+        this.starterLandPlan = initial.starterLandPlan();
         this.allowedBiomesText = initial.allowedBiomesText();
         this.starterBiomeText = initial.starterBiome();
         this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
@@ -125,6 +128,7 @@ final class WorldzCustomizeScreen extends Screen {
                 this.allowedBiomes.getValue(),
                 this.starterBiome.getValue(),
                 this.starterRadius.getValue(),
+                this.starterLandPlan,
                 this.overworldBorder,
                 this.netherBorder,
                 this.overworldExterior,

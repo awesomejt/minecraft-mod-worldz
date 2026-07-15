@@ -30,6 +30,8 @@ class WorldzCustomizationTest {
 
         assertEquals(List.of("minecraft:plains", "#minecraft:is_overworld"), customization.allowedBiomes());
         assertEquals("minecraft:desert", customization.starterBiome());
+        assertTrue(customization.starterLandPlan().enabled());
+        assertEquals(128, customization.starterLandPlan().transitionWidthBlocks());
         assertTrue(customization.overworldBorder().enabled());
         assertEquals(1024, customization.overworldBorder().finalRadiusBlocks());
         assertEquals(64, customization.overworldBorder().resizeRateBlocks());

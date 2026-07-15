@@ -2,6 +2,9 @@ allowedBiomes:
   - 'minecraft:plains'
 starterBiome: ''
 starterRadiusBlocks: 512
+ensureStarterLand: true
+starterLandTransitionBlocks: 128
+starterLandFoundationDepthBlocks: 32
 overworldBorder:
   enabled: false
   initialRadiusBlocks: 512
@@ -32,6 +35,9 @@ _docs:
   allowedBiomes: 'Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: [minecraft:plains].'
   starterBiome: 'Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.'
   starterRadiusBlocks: 'Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.'
+  ensureStarterLand: 'Raise insufficient natural terrain beneath a selected starter biome. Default: true; no effect without a starter biome.'
+  starterLandTransitionBlocks: 'Smooth outward blend from guaranteed starter land to natural terrain. Default: 128. Range: 0..4096.'
+  starterLandFoundationDepthBlocks: 'Solid repair depth below the natural ocean floor. Default: 32. Range: 0..384.'
   overworldBorder: 'Optional square border centered at 0,0. Radius is center-to-side distance; resizeDelayDays waits at the initial radius. End portal is reachable by the final size when enabled.'
   netherBorder: 'Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.'
   overworldExterior: 'Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.'

@@ -146,6 +146,21 @@ class ProjectMetadataTest {
         assertTrue(exterior.contains("case NORMAL -> this.overworld ? ExteriorMode.OCEAN : ExteriorMode.VOID"));
     }
 
+    @Test
+    void starterLandPlanIsPersistedWithCompatibilityFallback() throws IOException {
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+        String codecs = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/StarterLandCodecs.java"
+        ));
+
+        assertTrue(source.contains("optionalFieldOf(\"starter_land\")"));
+        assertTrue(source.contains("encodedStarterLand.orElseGet(StarterLandPlan::disabled)"));
+        assertTrue(codecs.contains("fieldOf(\"transition_width\")"));
+        assertTrue(codecs.contains("fieldOf(\"foundation_depth\")"));
+    }
+
     private static Properties projectProperties() throws IOException {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(ROOT.resolve("gradle.properties"))) {

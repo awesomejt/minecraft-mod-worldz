@@ -75,6 +75,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             allowed,
             starter,
             customization.starterRadiusBlocks(),
+            customization.starterLandPlan(),
             customization.worldLimitPlan(),
             customization.exteriorPlan(),
             biomes
@@ -114,6 +115,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             allowed,
             starter,
             source.starterRadiusBlocks(),
+            source.starterLandPlan(),
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
             fromPlan(exterior.overworld()),

@@ -12,6 +12,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
+import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
@@ -42,6 +43,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(source -> Optional.of(source.allowedBiomes())),
         Biome.CODEC.optionalFieldOf("starter_biome").forGetter(source -> source.starterBiome),
         Codec.INT.optionalFieldOf("starter_radius").forGetter(source -> Optional.of(source.starterRadiusBlocks)),
+        StarterLandCodecs.PLAN_CODEC.optionalFieldOf("starter_land").forGetter(source -> Optional.of(source.starterLandPlan)),
         WorldLimitCodecs.PLAN_CODEC.optionalFieldOf("world_limits").forGetter(source -> Optional.of(source.worldLimits)),
         ExteriorCodecs.PLAN_CODEC.optionalFieldOf("exterior_plan").forGetter(source -> Optional.of(source.exteriorPlan)),
         RegistryOps.retrieveGetter(Registries.BIOME)
@@ -49,6 +51,7 @@ public final class LimitedBiomeSource extends BiomeSource {
 
     private final Optional<Holder<Biome>> starterBiome;
     private final int starterRadiusBlocks;
+    private final StarterLandPlan starterLandPlan;
     private final WorldLimitPlan worldLimits;
     private final ExteriorPlan exteriorPlan;
     private final Optional<Holder<Biome>> oceanBiome;
@@ -59,6 +62,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Supplier<HolderSet<Biome>> allowedBiomes,
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
         WorldLimitPlan worldLimits,
         ExteriorPlan exteriorPlan,
         boolean configDefaults,
@@ -66,6 +70,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     ) {
         this.starterBiome = starterBiome;
         this.starterRadiusBlocks = starterRadiusBlocks;
+        this.starterLandPlan = starterLandPlan;
         this.worldLimits = worldLimits;
         this.exteriorPlan = exteriorPlan;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
@@ -84,6 +89,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<HolderSet<Biome>> encodedBiomes,
         Optional<Holder<Biome>> encodedStarterBiome,
         Optional<Integer> encodedStarterRadius,
+        Optional<StarterLandPlan> encodedStarterLand,
         Optional<WorldLimitPlan> encodedWorldLimits,
         Optional<ExteriorPlan> encodedExteriorPlan,
         HolderGetter<Biome> biomeGetter
@@ -99,6 +105,9 @@ public final class LimitedBiomeSource extends BiomeSource {
             ? encodedStarterBiome
             : encodedStarterBiome.or(() -> resolveConfiguredStarter(config, biomeGetter));
         int radius = encodedStarterRadius.orElse(config.starterRadiusBlocks);
+        StarterLandPlan starterLand = encodedStarterRadius.isPresent()
+            ? encodedStarterLand.orElseGet(StarterLandPlan::disabled)
+            : encodedStarterLand.orElseGet(() -> StarterLandPlan.fromConfig(config));
         WorldLimitPlan limits = encodedStarterRadius.isPresent()
             ? encodedWorldLimits.orElseGet(WorldLimitPlan::disabled)
             : encodedWorldLimits.orElseGet(() -> WorldLimitPlan.fromConfig(config));
@@ -106,7 +115,9 @@ public final class LimitedBiomeSource extends BiomeSource {
             ? encodedExteriorPlan.orElseGet(ExteriorPlan::normal)
             : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
 
-        return new LimitedBiomeSource(allowed, starter, radius, limits, exterior, encodedStarterRadius.isEmpty(), biomeGetter);
+        return new LimitedBiomeSource(
+            allowed, starter, radius, starterLand, limits, exterior, encodedStarterRadius.isEmpty(), biomeGetter
+        );
     }
 
     /**
@@ -115,6 +126,7 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @param allowedBiomes resolved direct allowed-biome holders
      * @param starterBiome optional resolved starter biome
      * @param starterRadiusBlocks starter-zone radius
+     * @param starterLandPlan persisted terrain guarantee
      * @param worldLimits persisted border plan
      * @param exteriorPlan persisted exterior-terrain plan
      * @param biomeGetter biome registry lookup used for vanilla climate parameters
@@ -124,6 +136,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         HolderSet<Biome> allowedBiomes,
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
         WorldLimitPlan worldLimits,
         ExteriorPlan exteriorPlan,
         HolderGetter<Biome> biomeGetter
@@ -132,6 +145,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             () -> allowedBiomes,
             starterBiome,
             starterRadiusBlocks,
+            starterLandPlan,
             worldLimits,
             exteriorPlan,
             false,
@@ -247,6 +261,15 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public int starterRadiusBlocks() {
         return this.starterRadiusBlocks;
+    }
+
+    /**
+     * Returns the terrain guarantee baked into this world.
+     *
+     * @return immutable starter-land plan
+     */
+    public StarterLandPlan starterLandPlan() {
+        return this.starterLandPlan;
     }
 
     /**

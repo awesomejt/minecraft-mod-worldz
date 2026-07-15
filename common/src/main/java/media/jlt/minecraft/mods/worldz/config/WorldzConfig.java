@@ -26,6 +26,10 @@ public final class WorldzConfig {
     public static final int MIN_STARTER_RADIUS_BLOCKS = 64;
     /** Largest supported starter-zone radius. */
     public static final int MAX_STARTER_RADIUS_BLOCKS = 4096;
+    /** Largest supported natural-terrain blend beyond the starter zone. */
+    public static final int MAX_STARTER_LAND_TRANSITION_BLOCKS = 4096;
+    /** Largest supported repair depth beneath the natural ocean floor. */
+    public static final int MAX_STARTER_LAND_FOUNDATION_DEPTH_BLOCKS = 384;
     /** Smallest supported world-border half-width. */
     public static final int MIN_BORDER_RADIUS_BLOCKS = 64;
     /** Largest half-width accepted by vanilla's world border. */
@@ -44,6 +48,12 @@ public final class WorldzConfig {
     public String starterBiome = "";
     /** Starter-zone radius measured in blocks. */
     public int starterRadiusBlocks = 512;
+    /** Whether low terrain beneath a starter biome is raised into usable land. */
+    public boolean ensureStarterLand = true;
+    /** Outward distance used to blend reinforced land into natural terrain. */
+    public int starterLandTransitionBlocks = 128;
+    /** Depth below the natural ocean floor repaired as solid foundation. */
+    public int starterLandFoundationDepthBlocks = 32;
     /** Optional overworld border and End-portal reachability settings. */
     public BorderConfig overworldBorder = new BorderConfig();
     /** Optional Nether border and blaze-access settings. */
@@ -140,6 +150,19 @@ public final class WorldzConfig {
         if (object.containsKey("starterRadiusBlocks")) {
             config.starterRadiusBlocks = readInt(object.get("starterRadiusBlocks"), "starterRadiusBlocks");
         }
+        if (object.containsKey("ensureStarterLand")) {
+            config.ensureStarterLand = readBoolean(object.get("ensureStarterLand"), "ensureStarterLand");
+        }
+        if (object.containsKey("starterLandTransitionBlocks")) {
+            config.starterLandTransitionBlocks = readInt(
+                object.get("starterLandTransitionBlocks"), "starterLandTransitionBlocks"
+            );
+        }
+        if (object.containsKey("starterLandFoundationDepthBlocks")) {
+            config.starterLandFoundationDepthBlocks = readInt(
+                object.get("starterLandFoundationDepthBlocks"), "starterLandFoundationDepthBlocks"
+            );
+        }
         if (object.containsKey("overworldBorder")) {
             config.overworldBorder = readBorderConfig(object.get("overworldBorder"), "overworldBorder", "ensureEndPortal");
         }
@@ -181,6 +204,14 @@ public final class WorldzConfig {
         if (starterRadiusBlocks != originalRadius) {
             logger.warn("Clamped starterRadiusBlocks from {} to {}.", originalRadius, starterRadiusBlocks);
         }
+        starterLandTransitionBlocks = clampWithWarning(
+            starterLandTransitionBlocks, 0, MAX_STARTER_LAND_TRANSITION_BLOCKS,
+            "starterLandTransitionBlocks", logger
+        );
+        starterLandFoundationDepthBlocks = clampWithWarning(
+            starterLandFoundationDepthBlocks, 0, MAX_STARTER_LAND_FOUNDATION_DEPTH_BLOCKS,
+            "starterLandFoundationDepthBlocks", logger
+        );
 
         overworldBorder = sanitizeBorder(overworldBorder, "overworldBorder", logger);
         netherBorder = sanitizeBorder(netherBorder, "netherBorder", logger);
@@ -201,6 +232,9 @@ public final class WorldzConfig {
         return "allowedBiomes=" + allowedBiomes
             + ", starterBiome=" + (starterBiome.isEmpty() ? "<none>" : starterBiome)
             + ", starterRadiusBlocks=" + starterRadiusBlocks
+            + ", starterLand=" + (ensureStarterLand
+                ? "transition=" + starterLandTransitionBlocks + ", foundation=" + starterLandFoundationDepthBlocks
+                : "<disabled>")
             + ", overworldBorder=" + borderSummary(overworldBorder, "endPortal")
             + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess")
             + ", overworldExterior=" + exteriorSummary(overworldExterior)
@@ -212,6 +246,9 @@ public final class WorldzConfig {
         values.put("allowedBiomes", allowedBiomes);
         values.put("starterBiome", starterBiome);
         values.put("starterRadiusBlocks", starterRadiusBlocks);
+        values.put("ensureStarterLand", ensureStarterLand);
+        values.put("starterLandTransitionBlocks", starterLandTransitionBlocks);
+        values.put("starterLandFoundationDepthBlocks", starterLandFoundationDepthBlocks);
         values.put("overworldBorder", borderMap(overworldBorder, "ensureEndPortal"));
         values.put("netherBorder", borderMap(netherBorder, "ensureBlazeAccess"));
         values.put("overworldExterior", exteriorMap(overworldExterior));
@@ -354,6 +391,9 @@ public final class WorldzConfig {
         docs.put("allowedBiomes", "Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: [minecraft:plains].");
         docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: empty (disabled). Tags are not accepted.");
         docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.");
+        docs.put("ensureStarterLand", "Raise insufficient natural terrain beneath a selected starter biome. Default: true; no effect without a starter biome.");
+        docs.put("starterLandTransitionBlocks", "Smooth outward blend from guaranteed starter land to natural terrain. Default: 128. Range: 0..4096.");
+        docs.put("starterLandFoundationDepthBlocks", "Solid repair depth below the natural ocean floor. Default: 32. Range: 0..384.");
         docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance; resizeDelayDays waits at the initial radius. End portal is reachable by the final size when enabled.");
         docs.put("netherBorder", "Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.");
         docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");

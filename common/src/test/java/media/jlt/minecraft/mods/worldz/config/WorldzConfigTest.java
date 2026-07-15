@@ -32,6 +32,9 @@ class WorldzConfigTest {
         assertEquals(List.of("minecraft:plains"), config.allowedBiomes);
         assertEquals("", config.starterBiome);
         assertEquals(512, config.starterRadiusBlocks);
+        assertTrue(config.ensureStarterLand);
+        assertEquals(128, config.starterLandTransitionBlocks);
+        assertEquals(32, config.starterLandFoundationDepthBlocks);
         assertFalse(config.overworldBorder.enabled);
         assertTrue(config.overworldBorder.ensureObjective);
         assertFalse(config.netherBorder.enabled);
@@ -100,6 +103,19 @@ class WorldzConfigTest {
 
         assertEquals(64, below.starterRadiusBlocks);
         assertEquals(4096, above.starterRadiusBlocks);
+    }
+
+    @Test
+    void starterLandSettingsLoadAndClampIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            ensureStarterLand: false
+            starterLandTransitionBlocks: 5000
+            starterLandFoundationDepthBlocks: -4
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.ensureStarterLand);
+        assertEquals(4096, config.starterLandTransitionBlocks);
+        assertEquals(0, config.starterLandFoundationDepthBlocks);
     }
 
     @Test
@@ -274,6 +290,9 @@ class WorldzConfigTest {
         assertFalse(config._docs.containsKey("invalid"));
         assertTrue(config._docs.containsKey("starterBiome"));
         assertTrue(config._docs.containsKey("starterRadiusBlocks"));
+        assertTrue(config._docs.containsKey("ensureStarterLand"));
+        assertTrue(config._docs.containsKey("starterLandTransitionBlocks"));
+        assertTrue(config._docs.containsKey("starterLandFoundationDepthBlocks"));
     }
 
     @Test
@@ -288,6 +307,7 @@ class WorldzConfigTest {
 
         assertEquals(
             "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
+                + ", starterLand=transition=128, foundation=32"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>",
             config.summary()

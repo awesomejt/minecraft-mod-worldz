@@ -14,6 +14,7 @@ import java.util.List;
  * @param allowedBiomes biome ids and biome-tag ids
  * @param starterBiome optional direct biome id
  * @param starterRadiusBlocks starter-zone radius
+ * @param starterLandPlan starter terrain guarantee
  * @param overworldBorder overworld border selection
  * @param netherBorder Nether border selection
  * @param overworldExterior Overworld exterior-terrain selection
@@ -23,6 +24,7 @@ public record WorldzCustomization(
     List<String> allowedBiomes,
     String starterBiome,
     int starterRadiusBlocks,
+    StarterLandPlan starterLandPlan,
     BorderSettings overworldBorder,
     BorderSettings netherBorder,
     ExteriorSettings overworldExterior,
@@ -51,8 +53,9 @@ public record WorldzCustomization(
             WorldzConfig.MAX_STARTER_RADIUS_BLOCKS,
             "Starter radius"
         );
-        if (overworldBorder == null || netherBorder == null || overworldExterior == null || netherExterior == null) {
-            throw new IllegalArgumentException("Border and exterior settings are required.");
+        if (starterLandPlan == null || overworldBorder == null || netherBorder == null
+            || overworldExterior == null || netherExterior == null) {
+            throw new IllegalArgumentException("Starter-land, border, and exterior settings are required.");
         }
         if (netherExterior.mode() == ExteriorMode.OCEAN) {
             throw new IllegalArgumentException("Ocean exterior is only supported in the Overworld.");
@@ -81,10 +84,43 @@ public record WorldzCustomization(
             allowedBiomes,
             starterBiome,
             starterRadiusBlocks,
+            StarterLandPlan.disabled(),
             overworldBorder,
             netherBorder,
             ExteriorSettings.normal(),
             ExteriorSettings.normal()
+        );
+    }
+
+    /**
+     * Creates customization values with an explicit exterior and a disabled starter-land compatibility plan.
+     *
+     * @param allowedBiomes biome ids and biome-tag ids
+     * @param starterBiome optional direct biome id
+     * @param starterRadiusBlocks starter-zone radius
+     * @param overworldBorder overworld border selection
+     * @param netherBorder Nether border selection
+     * @param overworldExterior Overworld exterior selection
+     * @param netherExterior Nether exterior selection
+     */
+    public WorldzCustomization(
+        List<String> allowedBiomes,
+        String starterBiome,
+        int starterRadiusBlocks,
+        BorderSettings overworldBorder,
+        BorderSettings netherBorder,
+        ExteriorSettings overworldExterior,
+        ExteriorSettings netherExterior
+    ) {
+        this(
+            allowedBiomes,
+            starterBiome,
+            starterRadiusBlocks,
+            StarterLandPlan.disabled(),
+            overworldBorder,
+            netherBorder,
+            overworldExterior,
+            netherExterior
         );
     }
     /**
@@ -98,6 +134,7 @@ public record WorldzCustomization(
             config.allowedBiomes,
             config.starterBiome,
             config.starterRadiusBlocks,
+            StarterLandPlan.fromConfig(config),
             BorderSettings.fromConfig(config.overworldBorder),
             BorderSettings.fromConfig(config.netherBorder),
             ExteriorSettings.fromConfig(config.overworldExterior),
@@ -162,6 +199,46 @@ public record WorldzCustomization(
             allowed,
             starterBiome,
             parseInteger(starterRadiusBlocks, "Starter radius"),
+            StarterLandPlan.disabled(),
+            overworldBorder,
+            netherBorder,
+            overworldExterior,
+            netherExterior
+        );
+    }
+
+    /**
+     * Parses editable biome fields while preserving an explicit starter-land plan.
+     *
+     * @param allowedBiomes newline- or comma-separated biome ids and tags
+     * @param starterBiome optional direct biome id
+     * @param starterRadiusBlocks decimal starter radius
+     * @param starterLandPlan validated starter-land values
+     * @param overworldBorder validated overworld border values
+     * @param netherBorder validated Nether border values
+     * @param overworldExterior validated Overworld exterior values
+     * @param netherExterior validated Nether exterior values
+     * @return canonical immutable customization values
+     */
+    public static WorldzCustomization fromText(
+        String allowedBiomes,
+        String starterBiome,
+        String starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        BorderSettings overworldBorder,
+        BorderSettings netherBorder,
+        ExteriorSettings overworldExterior,
+        ExteriorSettings netherExterior
+    ) {
+        List<String> allowed = Arrays.stream(allowedBiomes.split("[,\\r\\n]+"))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .toList();
+        return new WorldzCustomization(
+            allowed,
+            starterBiome,
+            parseInteger(starterRadiusBlocks, "Starter radius"),
+            starterLandPlan,
             overworldBorder,
             netherBorder,
             overworldExterior,

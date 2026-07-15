@@ -245,9 +245,10 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       Minecraft 26.2 noise/surface/carver and base-column APIs, define a
       natural-height-preserving circular terrain profile, document persistence
       compatibility, and **commit** ("Design guaranteed starter land").
-- [ ] 12.2 Add YAML fields, immutable persisted plan/codecs, customization
+- [x] 12.2 Add YAML fields, immutable persisted plan/codecs, customization
       values, pure profile math, and focused JUnit coverage; sanitize old and
-      malformed configs without changing existing saved worlds. **Commit**
+      malformed configs without changing existing saved worlds. Full build
+      passes 94 tests with clean Javadocs and whitespace lint. **Commit**
       ("Add starter land configuration").
 - [ ] 12.3 Apply the profile during Overworld noise, surface, and carver stages;
       make base-height/base-column queries agree; add component tests, lint,
