@@ -313,3 +313,41 @@ neither older configs nor existing Worldz schedules are restarted.
 Progression guarantees are created during initial world setup, not after the
 delay. Their locations still use the final reachable/supportive radius, while
 the changing border determines when players can reach them.
+
+## 16. Guaranteed starter land
+
+Worldz may guarantee usable land beneath an enabled Overworld starter-biome
+zone. This is independent of the exterior and border systems: it works in an
+otherwise normal infinite world, and it may also form the central land mass of
+an ocean or void envelope. The YAML defaults and Customize screen expose
+`ensureStarterLand`, a transition width, and a foundation depth. The guarantee
+has no effect when no starter biome is selected.
+
+The starter-land profile is circular, matching the starter-biome radius. In
+the core it requires the first air block to be at least two blocks above sea
+level. Natural columns already meeting that height remain unchanged. For lower
+columns, a smoothstep curve across the configured transition ring blends the
+required height back toward the delegate generator's original height. The
+result follows natural relief instead of creating a flat platform or a hard
+cliff at the starter-zone edge.
+
+During the noise stage, insufficient columns are raised with ordinary stone
+from their original ocean-floor height to the profile height. The configurable
+foundation depth also repairs gaps immediately below that original floor. The
+delegate's biome-aware surface pass then supplies normal dirt, grass, sand, or
+other surface material. After carvers, Worldz repairs only the deep foundation
+below the surface shell so caves may still reach the surface naturally without
+leaving the guaranteed land as a thin floating island above an aquifer.
+
+The wrapped generator applies the same pure profile to `getBaseHeight` and
+`getBaseColumn`; spawn selection, structure placement, and generation therefore
+observe the terrain that chunks receive. Exterior replacement still has final
+authority outside its envelope. Starter-land work is limited to the Overworld
+and never modifies the Nether or End.
+
+The resolved starter-land plan is encoded with `LimitedBiomeSource` alongside
+the starter biome and radius. A fieldless preset snapshots the current YAML
+default, and Customize persists its explicit selection. For backward
+compatibility, an already encoded source lacking the new field decodes with the
+guarantee disabled, so installing this version cannot reshape unexplored chunks
+in an existing Worldz save.

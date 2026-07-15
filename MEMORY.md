@@ -98,6 +98,16 @@ Durable decisions, verified API notes, and rationale that should survive across 
 - 2026-07-15 — Release 0.1.2 packages the exterior terrain envelopes,
   rate-based resizing, world-creation controls, supportive progression bounds,
   and persisted initial resize delays completed after 0.1.1.
+- 2026-07-15 — The reported floating starter island was not an active Worldz
+  ocean envelope: the saved Worldz3 settings encoded normal Overworld/Nether
+  exteriors. A starter biome controls biome selection, but vanilla noise,
+  aquifers, and carvers can still produce a shallow island over deep water.
+- 2026-07-15 — Guaranteed starter land will be an optional Overworld-only
+  persisted plan. It raises only columns below sea level + 2, fills upward from
+  the delegate's natural ocean floor, retains the delegate's surface rules, and
+  uses a smooth circular transition back to untouched natural heights. The same
+  pure profile drives base height/column queries. Encoded older sources missing
+  the plan decode disabled; fieldless new presets use YAML defaults.
 
 ## Reference Log
 
@@ -152,6 +162,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   https://github.com/neoforged/NeoForge/blob/26.2.x/src/main/java/net/neoforged/neoforge/event/tick/ServerTickEvent.java
 - Delayed borders: authoritative Minecraft 26.2 `WorldBorder` and saved-data
   sources — `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`
+- Starter land: authoritative Minecraft 26.2 `NoiseBasedChunkGenerator`,
+  `ChunkGenerator`, `ChunkPyramid`, `NoiseColumn`, `Heightmap`, and chunk-stage
+  sources — `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
+- Starter land: Fabric codec guidance for persisted world-generation values —
+  https://docs.fabricmc.net/develop/serialization/codecs
 
 ## Verification Log
 

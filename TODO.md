@@ -239,6 +239,27 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       artifacts, update Memory, and **commit** ("Release version 0.1.2"). Clean
       build passes 86 tests; filenames and embedded loader metadata are 0.1.2.
 
+## Phase 12 — Guaranteed starter land
+
+- [x] 12.1 Diagnose the reported thin floating starter island, verify the
+      Minecraft 26.2 noise/surface/carver and base-column APIs, define a
+      natural-height-preserving circular terrain profile, document persistence
+      compatibility, and **commit** ("Design guaranteed starter land").
+- [ ] 12.2 Add YAML fields, immutable persisted plan/codecs, customization
+      values, pure profile math, and focused JUnit coverage; sanitize old and
+      malformed configs without changing existing saved worlds. **Commit**
+      ("Add starter land configuration").
+- [ ] 12.3 Apply the profile during Overworld noise, surface, and carver stages;
+      make base-height/base-column queries agree; add component tests, lint,
+      review, and **commit** ("Generate guaranteed starter land").
+- [ ] 12.4 Expose starter-land choices during world creation, keep YAML as the
+      default, update progression/spawn integration and resource tests, lint,
+      review, and **commit** ("Add starter land controls").
+- [ ] 12.5 Update README/config/technical docs and Memory, run the clean
+      multiloader build, inspect artifacts, address findings, update TODO, and
+      final **commit**. No live test is required; Jason will manually test near
+      completion. **Commit** ("Document guaranteed starter land").
+
 ---
 
 ## Deviation log
