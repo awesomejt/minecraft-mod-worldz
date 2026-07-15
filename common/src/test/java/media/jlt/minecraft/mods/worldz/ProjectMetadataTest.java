@@ -67,6 +67,25 @@ class ProjectMetadataTest {
         assertTrue(design.contains("Config `config/jlt_worldz.yaml`"));
     }
 
+    @Test
+    void clientPresetEditorIsDeclaredForFabricAndImplementedForNeoForge() throws IOException {
+        JsonObject fabricMetadata = JsonParser.parseString(Files.readString(
+            ROOT.resolve("fabric/src/main/resources/fabric.mod.json")
+        )).getAsJsonObject();
+        JsonObject mixinConfig = JsonParser.parseString(Files.readString(
+            ROOT.resolve("fabric/src/main/resources/jlt_worldz.mixins.json")
+        )).getAsJsonObject();
+
+        assertEquals("jlt_worldz.mixins.json", fabricMetadata.getAsJsonArray("mixins").get(0).getAsString());
+        assertEquals(
+            "client.WorldCreationUiStateMixin",
+            mixinConfig.getAsJsonArray("client").get(0).getAsString()
+        );
+        assertTrue(Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        ).contains("RegisterPresetEditorsEvent"));
+    }
+
     private static Properties projectProperties() throws IOException {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(ROOT.resolve("gradle.properties"))) {

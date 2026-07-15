@@ -17,6 +17,9 @@
 			"media.jlt.minecraft.mods.worldz.WorldzFabric"
 		]
 	},
+	"mixins": [
+		"jlt_worldz.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.19.3",
 		"minecraft": "~26.2",

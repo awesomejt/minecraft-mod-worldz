@@ -1,0 +1,150 @@
+package media.jlt.minecraft.mods.worldz.client;
+
+import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.MultiLineEditBox;
+import net.minecraft.client.gui.components.MultiLineTextWidget;
+import net.minecraft.client.gui.layouts.CommonLayouts;
+import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.layouts.LinearLayout;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
+
+/** World-creation screen for biome, starter-zone, and dimension-border choices. */
+final class WorldzCustomizeScreen extends Screen {
+    private static final Component TITLE = Component.translatable("jlt_worldz.customize.title");
+    private static final int FORM_WIDTH = 310;
+
+    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
+    private final CreateWorldScreen parent;
+    private WorldzCustomization.BorderSettings overworldBorder;
+    private WorldzCustomization.BorderSettings netherBorder;
+    private MultiLineEditBox allowedBiomes;
+    private EditBox starterBiome;
+    private EditBox starterRadius;
+    private MultiLineTextWidget errorMessage;
+    private String allowedBiomesText;
+    private String starterBiomeText;
+    private String starterRadiusText;
+
+    WorldzCustomizeScreen(CreateWorldScreen parent, WorldzCustomization initial) {
+        super(TITLE);
+        this.parent = parent;
+        this.overworldBorder = initial.overworldBorder();
+        this.netherBorder = initial.netherBorder();
+        this.allowedBiomesText = initial.allowedBiomesText();
+        this.starterBiomeText = initial.starterBiome();
+        this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
+    }
+
+    @Override
+    protected void init() {
+        this.layout.addTitleHeader(this.title, this.font);
+        LinearLayout form = this.layout.addToContents(LinearLayout.vertical().spacing(6));
+        form.defaultCellSetting().alignHorizontallyCenter();
+
+        this.allowedBiomes = MultiLineEditBox.builder()
+            .setPlaceholder(Component.translatable("jlt_worldz.customize.allowed_biomes.hint"))
+            .build(this.font, FORM_WIDTH, 64, Component.translatable("jlt_worldz.customize.allowed_biomes"));
+        this.allowedBiomes.setCharacterLimit(4096);
+        this.allowedBiomes.setValue(this.allowedBiomesText);
+        this.allowedBiomes.setValueListener(value -> this.allowedBiomesText = value);
+        form.addChild(CommonLayouts.labeledElement(
+            this.font,
+            this.allowedBiomes,
+            Component.translatable("jlt_worldz.customize.allowed_biomes")
+        ));
+
+        this.starterBiome = textField(Component.translatable("jlt_worldz.customize.starter_biome"), this.starterBiomeText, 256);
+        this.starterBiome.setResponder(value -> this.starterBiomeText = value);
+        form.addChild(CommonLayouts.labeledElement(
+            this.font,
+            this.starterBiome,
+            Component.translatable("jlt_worldz.customize.starter_biome")
+        ));
+
+        this.starterRadius = textField(Component.translatable("jlt_worldz.customize.starter_radius"), this.starterRadiusText, 10);
+        this.starterRadius.setResponder(value -> this.starterRadiusText = value);
+        form.addChild(CommonLayouts.labeledElement(
+            this.font,
+            this.starterRadius,
+            Component.translatable("jlt_worldz.customize.starter_radius")
+        ));
+
+        LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
+        borderButtons.addChild(Button.builder(
+            borderButtonLabel("overworld", this.overworldBorder.enabled()),
+            button -> this.minecraft.gui.setScreen(new WorldzBorderScreen(this, true, this.overworldBorder))
+        ).build());
+        borderButtons.addChild(Button.builder(
+            borderButtonLabel("nether", this.netherBorder.enabled()),
+            button -> this.minecraft.gui.setScreen(new WorldzBorderScreen(this, false, this.netherBorder))
+        ).build());
+        form.addChild(borderButtons);
+
+        this.errorMessage = new MultiLineTextWidget(CommonComponents.EMPTY, this.font).setMaxWidth(FORM_WIDTH).setMaxRows(2).setCentered(true);
+        form.addChild(this.errorMessage);
+
+        LinearLayout footer = this.layout.addToFooter(LinearLayout.horizontal().spacing(8));
+        footer.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.apply()).build());
+        footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, button -> this.onClose()).build());
+
+        this.layout.visitWidgets(this::addRenderableWidget);
+        this.repositionElements();
+    }
+
+    private EditBox textField(Component narration, String value, int maximumLength) {
+        EditBox field = new EditBox(this.font, FORM_WIDTH, 20, narration);
+        field.setMaxLength(maximumLength);
+        field.setValue(value);
+        return field;
+    }
+
+    private void apply() {
+        try {
+            WorldzCustomization customization = WorldzCustomization.fromText(
+                this.allowedBiomes.getValue(),
+                this.starterBiome.getValue(),
+                this.starterRadius.getValue(),
+                this.overworldBorder,
+                this.netherBorder
+            );
+            this.parent.getUiState().updateDimensions(
+                (registries, dimensions) -> WorldzPresetEditor.apply(registries, dimensions, customization)
+            );
+            this.onClose();
+        } catch (IllegalArgumentException exception) {
+            this.errorMessage.setMessage(Component.literal(exception.getMessage()).withStyle(ChatFormatting.RED));
+            this.repositionElements();
+        }
+    }
+
+    void setBorder(boolean overworld, WorldzCustomization.BorderSettings settings) {
+        if (overworld) {
+            this.overworldBorder = settings;
+        } else {
+            this.netherBorder = settings;
+        }
+    }
+
+    @Override
+    protected void repositionElements() {
+        this.layout.arrangeElements();
+    }
+
+    @Override
+    public void onClose() {
+        this.minecraft.gui.setScreen(this.parent);
+    }
+
+    private static Component borderButtonLabel(String dimension, boolean enabled) {
+        return Component.translatable(
+            "jlt_worldz.customize." + dimension + "_border",
+            Component.translatable(enabled ? "options.on" : "options.off")
+        );
+    }
+}

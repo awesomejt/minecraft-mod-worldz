@@ -25,8 +25,17 @@ world types are untouched.
 For singleplayer:
 
 1. Start Minecraft once so the default config is created.
-2. Edit `config/jlt_worldz.yaml` if desired, then restart Minecraft.
+2. Edit `config/jlt_worldz.yaml` if you want different reusable defaults, then
+   restart Minecraft.
 3. Create a world and select **Worldz** under **World Type**.
+4. Select **Customize** to change the biome list, starter zone, Overworld
+   border, or Nether border for this world only.
+
+The Customize screen starts with the YAML values. Selecting **Done** bakes the
+screen values into the new world without rewriting the YAML file, so each new
+singleplayer world can use completely different settings. Biomes and biome tags
+can be entered one per line or separated by commas; the screen validates IDs
+against the registries loaded for that world.
 
 For a dedicated server, set these values before creating the world:
 
@@ -39,8 +48,10 @@ the server to create a new one. Worldz never converts an existing world.
 
 ## Configuration
 
-The mod reads `config/jlt_worldz.yaml` at startup. A complete documented example
-is available at [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml).
+The mod reads `config/jlt_worldz.yaml` at startup. These values are the defaults
+for the singleplayer Customize screen and the direct inputs for dedicated-server
+world creation. A complete documented example is available at
+[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml).
 If an older `jlt_worldz.json` exists and no YAML config exists yet, Worldz
 migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 
@@ -138,7 +149,8 @@ starter biome overrides the entire vertical column inside its circular zone.
 - Existing worlds are never modified, and config changes do not alter worlds
   already created with Worldz.
 - Nether and End generation remain vanilla in version 0.1.1.
-- Worldz does not currently provide an in-game config screen or reload command.
+- Worldz does not provide an in-game reload command; existing worlds remain
+  independent of both the YAML file and later Customize choices.
 - Shrinking a border does not delete chunks that were previously generated; it
   makes the area outside the new border inaccessible.
 

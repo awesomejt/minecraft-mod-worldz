@@ -45,6 +45,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final Optional<Holder<Biome>> starterBiome;
     private final int starterRadiusBlocks;
     private final WorldLimitPlan worldLimits;
+    private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
 
     private LimitedBiomeSource(
@@ -52,11 +53,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
         WorldLimitPlan worldLimits,
+        boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
         this.starterBiome = starterBiome;
         this.starterRadiusBlocks = starterRadiusBlocks;
         this.worldLimits = worldLimits;
+        this.configDefaults = configDefaults;
         // World presets are decoded before dynamic-registry tags are bound in
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
         // asks this biome source for its possible biomes or an actual biome.
@@ -87,7 +90,34 @@ public final class LimitedBiomeSource extends BiomeSource {
             ? encodedWorldLimits.orElseGet(WorldLimitPlan::disabled)
             : encodedWorldLimits.orElseGet(() -> WorldLimitPlan.fromConfig(config));
 
-        return new LimitedBiomeSource(allowed, starter, radius, limits, biomeGetter);
+        return new LimitedBiomeSource(allowed, starter, radius, limits, encodedStarterRadius.isEmpty(), biomeGetter);
+    }
+
+    /**
+     * Creates a source from values selected in the world-creation screen.
+     *
+     * @param allowedBiomes resolved direct allowed-biome holders
+     * @param starterBiome optional resolved starter biome
+     * @param starterRadiusBlocks starter-zone radius
+     * @param worldLimits persisted border plan
+     * @param biomeGetter biome registry lookup used for vanilla climate parameters
+     * @return a fully explicit source independent of later YAML changes
+     */
+    public static LimitedBiomeSource customized(
+        HolderSet<Biome> allowedBiomes,
+        Optional<Holder<Biome>> starterBiome,
+        int starterRadiusBlocks,
+        WorldLimitPlan worldLimits,
+        HolderGetter<Biome> biomeGetter
+    ) {
+        return new LimitedBiomeSource(
+            () -> allowedBiomes,
+            starterBiome,
+            starterRadiusBlocks,
+            worldLimits,
+            false,
+            biomeGetter
+        );
     }
 
     private static Resolution resolveAllowedBiomes(
@@ -205,6 +235,15 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public WorldLimitPlan worldLimits() {
         return this.worldLimits;
+    }
+
+    /**
+     * Returns whether this fieldless preset instance still represents YAML defaults.
+     *
+     * @return true before the player applies explicit Customize values
+     */
+    public boolean usesConfigDefaults() {
+        return this.configDefaults;
     }
 
     /**

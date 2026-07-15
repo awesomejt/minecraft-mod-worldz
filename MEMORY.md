@@ -55,6 +55,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
 - 2026-07-14 — Release 0.1.1 uses the version already selected in the user's
   working tree. A project-metadata test deliberately pins the release version,
   so every future bump must update that contract in the same iteration.
+- 2026-07-14 — The Worldz Customize screen uses YAML only as its initial state;
+  Done creates an explicit `LimitedBiomeSource` without writing global config.
+  This keeps dedicated servers config-driven while letting every singleplayer
+  world choose any biome/tag and all existing starter/border options. Reopening
+  Customize reads the explicit source so already-applied choices are retained.
+- 2026-07-14 — Register the preset editor with NeoForge's client-only
+  `RegisterPresetEditorsEvent`. Fabric 26.2 has no equivalent event, so its
+  client-only mixin intercepts `WorldCreationUiState.getPresetEditor()` only for
+  the `jlt_worldz:worldz` key; no server class references the GUI.
 
 ## Reference Log
 
@@ -92,6 +101,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   https://github.com/FabricMC/fabric-api/blob/26.1.2/CONTRIBUTING.md
 - Limited worlds: NeoForge game-event bus guidance —
   https://docs.neoforged.net/docs/concepts/events/
+- Customize UI: NeoForge 26.2 preset-editor registration event —
+  https://github.com/neoforged/NeoForge/blob/26.2.x/src/client/java/net/neoforged/neoforge/client/event/RegisterPresetEditorsEvent.java
+- Customize UI: Fabric client-only mixin registration —
+  https://wiki.fabricmc.net/tutorial:mixin_registration
 
 ## Verification Log
 
@@ -138,6 +151,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
   still expected 0.1.0. After aligning the metadata contract and documentation,
   `./gradlew clean build` passed all 50 tests and produced versioned Fabric and
   NeoForge artifacts.
+- 2026-07-14 / Customize UI — `./gradlew clean build` passed across common,
+  Fabric, and NeoForge with 57 JUnit tests. New tests cover config snapshots,
+  editable list parsing, canonicalization, invalid starter/numeric/range input,
+  immutable border-plan conversion, localized resource presence, and both
+  loader registration contracts. Review fixed every new Javadoc warning;
+  `git diff --check` passed, and no dedicated lint plugin is configured. Jar
+  inspection confirmed the shared screens/editor and Fabric client mixin in the
+  Fabric artifact, plus the shared screens/editor and client event registration
+  in the NeoForge artifact. Live testing remains assigned to Jason.
 
 ## API Deviations
 

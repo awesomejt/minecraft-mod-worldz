@@ -12,6 +12,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorldPresetResourcesTest {
     @Test
@@ -55,11 +56,16 @@ class WorldPresetResourcesTest {
     }
 
     @Test
-    void languageFileUsesVerifiedWorldPresetKey() throws IOException {
+    void languageFileCoversPresetAndCustomizationScreens() throws IOException {
         JsonObject language = resource("/assets/jlt_worldz/lang/en_us.json");
 
-        assertEquals(1, language.size());
         assertEquals("Worldz", language.get("generator.jlt_worldz.worldz").getAsString());
+        assertEquals("Customize Worldz", language.get("jlt_worldz.customize.title").getAsString());
+        assertTrue(language.has("jlt_worldz.customize.allowed_biomes"));
+        assertTrue(language.has("jlt_worldz.customize.overworld_border.title"));
+        assertTrue(language.has("jlt_worldz.customize.nether_border.title"));
+        assertTrue(language.has("jlt_worldz.customize.ensure_end_portal"));
+        assertTrue(language.has("jlt_worldz.customize.ensure_blaze_access"));
     }
 
     private static JsonObject resource(String path) throws IOException {

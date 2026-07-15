@@ -164,6 +164,21 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       aligned, and both loader artifacts rebuilt. **Commit** ("Release Worldz
       0.1.1").
 
+## Phase 8 — World-creation customization
+
+- [x] 8.1 Add an immutable, pure-Java customization snapshot seeded from the
+      YAML config. Validate/canonicalize biome IDs and tags, starter settings,
+      and every Overworld/Nether border value with focused JUnit coverage.
+- [x] 8.2 Add the Worldz Customize screen and dimension sub-screens. Applying
+      settings resolves the active biome registry, preserves vanilla noise and
+      the preset's Nether/End, and bakes an explicit biome source into the new
+      world. Register with NeoForge's preset-editor event and a client-only
+      Fabric lookup mixin.
+- [x] 8.3 Complete resource/metadata contracts, documentation, clean loader
+      build, artifact inspection, quality review, and **commit** ("Add Worldz
+      world-creation customization"). Final clean build passed 57 JUnit tests;
+      Javadocs and whitespace lint are clean. No live test was requested.
+
 ---
 
 ## Deviation log

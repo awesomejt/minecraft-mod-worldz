@@ -24,7 +24,9 @@ exactly. Execution checklist: `TODO.md` in this repo.
 
 1. Player edits `config/jlt_worldz.yaml` (or accepts defaults), then creates a
    new world and picks the **"Worldz"** world type in the world-creation
-   screen (or sets `level-type=jlt_worldz:worldz` in `server.properties`).
+   screen. The preset's **Customize** screen starts from those defaults and can
+   override every setting for that new world without rewriting YAML. Dedicated
+   servers use `level-type=jlt_worldz:worldz` and the YAML values directly.
 2. The overworld generates with normal terrain shape (rivers, mountains,
    caves) but only the configured biomes — multi-noise snaps every position to
    the nearest allowed biome, so a short list still yields natural-looking
@@ -185,7 +187,6 @@ zone → move spawn to the origin column at the
 - Nether/End biome limiting.
 - `FixedBiomeSource` mode to allow non-overworld biomes (single-biome mushroom
   island world, crimson-forest overworld, …).
-- World-creation-screen customization UI (radius/biome pickers in-game).
 - Per-dimension config; multiple starter zones; square zone shape option.
 - `/jlt_worldz reload` command (config only matters at world creation, so low
   value).
@@ -219,4 +220,24 @@ an enclosed nether-brick room containing a real blaze spawner. Exact fallback
 coordinates are logged. The compact sites remain inside the smallest supported
 border and are safe to place repeatedly, though a saved-data marker normally
 ensures placement occurs only once.
+
+## 13. World-creation customization
+
+When Worldz is selected on the singleplayer world-creation screen, vanilla's
+**Customize** button opens a Worldz editor. It exposes the allowed biome/tag
+list, optional starter biome and radius, and both dimensions' enabled state,
+initial/final border radii, resize days, and progression guarantee. The YAML
+configuration seeds the first editor state but does not restrict the registered
+biome IDs or tags a player may enter.
+
+Selecting **Done** resolves IDs and tags against the active world-generation
+registries, creates an explicit `LimitedBiomeSource`, and replaces only the
+selected overworld noise generator. Nether and End generators remain those of
+the Worldz preset. The explicit source serializes all selections into the new
+world, so later config edits and later worlds are independent. Reopening the
+editor before creation shows the already applied per-world selections.
+
+NeoForge registers the editor through `RegisterPresetEditorsEvent`. Fabric 26.2
+has no corresponding preset-editor event, so a client-only mixin supplies the
+editor from `WorldCreationUiState.getPresetEditor()`.
 - CurseForge/Modrinth publishing (same open flag as the other four mods).
