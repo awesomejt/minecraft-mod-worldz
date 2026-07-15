@@ -76,16 +76,19 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 3 — World preset data
 
-- [ ] 3.1 `data/jlt_worldz/worldgen/world_preset/worldz.json` per DESIGN §8
+- [x] 3.1 `data/jlt_worldz/worldgen/world_preset/worldz.json` per DESIGN §8
       (overworld stem with bare `jlt_worldz:limited` source; vanilla nether +
       end stems copied for 26.2).
-- [ ] 3.2 `data/minecraft/tags/worldgen/world_preset/normal.json` tag entry.
-- [ ] 3.3 `assets/jlt_worldz/lang/en_us.json` with the preset display name
+- [x] 3.2 `data/minecraft/tags/worldgen/world_preset/normal.json` tag entry.
+- [x] 3.3 `assets/jlt_worldz/lang/en_us.json` with the preset display name
       (verify the 26.2 world-preset lang key format against vanilla).
 - [ ] 3.4 `./gradlew :fabric:runClient` — verify at minimum that the game
       reaches the title screen and the create-world screen lists "Worldz"
       under World Type without datapack-validation errors. **Commit**
       ("Worldz world preset").
+      Automated status: Fabric reached title-screen resource reload; Fabric and
+      NeoForge dedicated servers both created and saved fresh
+      `level-type=jlt_worldz:worldz` worlds. Visual dropdown confirmation remains.
 
 ## Phase 4 — Smoke test [Jason]
 
@@ -137,3 +140,8 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
   the fallback delegate's vanilla overworld biomes (plus any starter), rather
   than an empty configured set. This keeps feature/structure logic consistent
   with the biomes the fail-safe actually returns.
+- The codec does not retrieve the multi-noise parameter-list registry getter in
+  26.2. World presets and that registry load in parallel, so its overworld holder
+  is still unbound during preset decode. Instead it constructs the public vanilla
+  `Preset.OVERWORLD` parameter list with the retrieved biome getter; this uses the
+  identical vanilla provider and is safe during parallel registry loading.

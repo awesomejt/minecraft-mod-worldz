@@ -21,7 +21,6 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList;
-import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,8 +35,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(source -> Optional.of(source.allowedBiomes)),
         Biome.CODEC.optionalFieldOf("starter_biome").forGetter(source -> source.starterBiome),
         Codec.INT.optionalFieldOf("starter_radius").forGetter(source -> Optional.of(source.starterRadiusBlocks)),
-        RegistryOps.retrieveGetter(Registries.BIOME),
-        RegistryOps.retrieveGetter(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+        RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
     private final HolderSet<Biome> allowedBiomes;
@@ -72,8 +70,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<HolderSet<Biome>> encodedBiomes,
         Optional<Holder<Biome>> encodedStarterBiome,
         Optional<Integer> encodedStarterRadius,
-        HolderGetter<Biome> biomeGetter,
-        HolderGetter<MultiNoiseBiomeSourceParameterList> parameterListGetter
+        HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
         HolderSet<Biome> allowed = encodedBiomes.orElseGet(() -> resolveConfiguredBiomes(config, biomeGetter));
@@ -85,10 +82,10 @@ public final class LimitedBiomeSource extends BiomeSource {
             : encodedStarterBiome.or(() -> resolveConfiguredStarter(config, biomeGetter));
         int radius = encodedStarterRadius.orElse(config.starterRadiusBlocks);
 
-        Climate.ParameterList<Holder<Biome>> overworld = parameterListGetter
-            .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD)
-            .value()
-            .parameters();
+        Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
+            MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD,
+            biomeGetter
+        ).parameters();
         Set<Holder<Biome>> allowedSet = new LinkedHashSet<>(allowed.stream().toList());
         Set<Holder<Biome>> matched = new LinkedHashSet<>();
         List<Pair<Climate.ParameterPoint, Holder<Biome>>> filtered = overworld.values().stream()
