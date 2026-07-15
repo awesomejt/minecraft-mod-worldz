@@ -35,9 +35,35 @@ class BorderScheduleTest {
     }
 
     @Test
+    void rateDerivesContinuousDurationAndOverridesTotalDays() {
+        BorderSchedule schedule = new BorderSchedule(512, 1512, 999, 100, 2);
+
+        assertEquals(480_000L, schedule.durationTicks());
+        assertEquals(1012.0, schedule.radiusAtTick(240_000));
+    }
+
+    @Test
+    void rateUsesAProportionalFinalPartialInterval() {
+        BorderSchedule schedule = new BorderSchedule(512, 762, 0, 100, 2);
+
+        assertEquals(120_000L, schedule.durationTicks());
+        assertEquals(762.0, schedule.radiusAtTick(120_000));
+    }
+
+    @Test
+    void staticRateScheduleNeedsNoTransition() {
+        BorderSchedule schedule = new BorderSchedule(512, 512, 100, 50, 2);
+
+        assertEquals(0L, schedule.durationTicks());
+        assertEquals(512.0, schedule.radiusAtTick(0));
+    }
+
+    @Test
     void invalidSchedulesAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(0, 512, 1));
         assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(512, -1, 1));
         assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(512, 512, -1));
+        assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(512, 1024, 1, 10, 0));
+        assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(512, 1024, 1, -1, 1));
     }
 }

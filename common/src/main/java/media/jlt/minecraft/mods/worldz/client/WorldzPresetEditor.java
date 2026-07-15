@@ -72,6 +72,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             starter,
             customization.starterRadiusBlocks(),
             customization.worldLimitPlan(),
+            customization.exteriorPlan(),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
@@ -87,12 +88,15 @@ public final class WorldzPresetEditor implements PresetEditor {
         List<String> allowed = source.allowedBiomes().stream().map(WorldzPresetEditor::registeredName).toList();
         String starter = source.starterBiome().map(WorldzPresetEditor::registeredName).orElse("");
         WorldLimitPlan plan = source.worldLimits();
+        var exterior = source.exteriorPlan();
         return new WorldzCustomization(
             allowed,
             starter,
             source.starterRadiusBlocks(),
             fromPlan(plan.overworld()),
-            fromPlan(plan.nether())
+            fromPlan(plan.nether()),
+            fromPlan(exterior.overworld()),
+            fromPlan(exterior.nether())
         );
     }
 
@@ -134,7 +138,19 @@ public final class WorldzPresetEditor implements PresetEditor {
             limit.initialRadiusBlocks(),
             limit.finalRadiusBlocks(),
             limit.resizeDays(),
+            limit.resizeRateBlocks(),
+            limit.resizeRateDays(),
             limit.ensureObjective()
+        );
+    }
+
+    private static WorldzCustomization.ExteriorSettings fromPlan(
+        media.jlt.minecraft.mods.worldz.logic.ExteriorPlan.DimensionEnvelope envelope
+    ) {
+        return new WorldzCustomization.ExteriorSettings(
+            envelope.mode(),
+            envelope.boundaryRadiusBlocks(),
+            envelope.oceanTransitionWidthBlocks()
         );
     }
 }

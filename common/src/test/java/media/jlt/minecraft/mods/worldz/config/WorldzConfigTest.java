@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -34,6 +35,8 @@ class WorldzConfigTest {
         assertFalse(config.overworldBorder.enabled);
         assertTrue(config.overworldBorder.ensureObjective);
         assertFalse(config.netherBorder.enabled);
+        assertEquals(ExteriorMode.NORMAL, config.overworldExterior.mode);
+        assertEquals(ExteriorMode.NORMAL, config.netherExterior.mode);
         Path generated = temporaryDirectory.resolve("jlt_worldz.yaml");
         assertTrue(Files.isRegularFile(generated));
         Object example = YAML.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
@@ -107,6 +110,8 @@ class WorldzConfigTest {
               initialRadiusBlocks: 32
               finalRadiusBlocks: 2000
               resizeDays: 100
+              resizeRateBlocks: 128
+              resizeRateDays: 5
               ensureEndPortal: false
             netherBorder:
               enabled: true
@@ -120,12 +125,60 @@ class WorldzConfigTest {
         assertEquals(64, config.overworldBorder.initialRadiusBlocks);
         assertEquals(2000, config.overworldBorder.finalRadiusBlocks);
         assertEquals(100, config.overworldBorder.resizeDays);
+        assertEquals(128, config.overworldBorder.resizeRateBlocks);
+        assertEquals(5, config.overworldBorder.resizeRateDays);
         assertFalse(config.overworldBorder.ensureObjective);
         assertTrue(config.netherBorder.enabled);
         assertEquals(256, config.netherBorder.initialRadiusBlocks);
         assertEquals(128, config.netherBorder.finalRadiusBlocks);
         assertEquals(25, config.netherBorder.resizeDays);
         assertTrue(config.netherBorder.ensureObjective);
+    }
+
+    @Test
+    void incompleteBorderRateFallsBackToTotalDuration() {
+        WorldzConfig config = WorldzConfig.parse("""
+            overworldBorder:
+              resizeDays: 25
+              resizeRateBlocks: 128
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(25, config.overworldBorder.resizeDays);
+        assertEquals(0, config.overworldBorder.resizeRateBlocks);
+        assertEquals(0, config.overworldBorder.resizeRateDays);
+    }
+
+    @Test
+    void exteriorModesResolveAutoBoundariesAndSanitizeUnsupportedCombinations() {
+        WorldzConfig config = WorldzConfig.parse("""
+            overworldBorder:
+              enabled: true
+              initialRadiusBlocks: 512
+              finalRadiusBlocks: 2048
+            overworldExterior:
+              mode: ocean
+              boundaryRadiusBlocks: 0
+              oceanTransitionWidthBlocks: 256
+            netherExterior:
+              mode: ocean
+              boundaryRadiusBlocks: 512
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(ExteriorMode.OCEAN, config.overworldExterior.mode);
+        assertEquals(0, config.overworldExterior.boundaryRadiusBlocks);
+        assertEquals(256, config.overworldExterior.oceanTransitionWidthBlocks);
+        assertEquals(ExteriorMode.NORMAL, config.netherExterior.mode);
+    }
+
+    @Test
+    void automaticExteriorWithoutBorderSafelyFallsBackToNormal() {
+        WorldzConfig config = WorldzConfig.parse("""
+            overworldExterior:
+              mode: void
+              boundaryRadiusBlocks: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(ExteriorMode.NORMAL, config.overworldExterior.mode);
     }
 
     @Test
@@ -223,7 +276,8 @@ class WorldzConfigTest {
 
         assertEquals(
             "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
-                + ", overworldBorder=<disabled>, netherBorder=<disabled>",
+                + ", overworldBorder=<disabled>, netherBorder=<disabled>"
+                + ", overworldExterior=<normal>, netherExterior=<normal>",
             config.summary()
         );
     }

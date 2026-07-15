@@ -10,6 +10,8 @@ final class WorldLimitCodecs {
         Codec.INT.fieldOf("initial_radius").forGetter(WorldLimitPlan.DimensionLimit::initialRadiusBlocks),
         Codec.INT.fieldOf("final_radius").forGetter(WorldLimitPlan.DimensionLimit::finalRadiusBlocks),
         Codec.INT.fieldOf("resize_days").forGetter(WorldLimitPlan.DimensionLimit::resizeDays),
+        Codec.INT.optionalFieldOf("resize_rate_blocks", 0).forGetter(WorldLimitPlan.DimensionLimit::resizeRateBlocks),
+        Codec.INT.optionalFieldOf("resize_rate_days", 0).forGetter(WorldLimitPlan.DimensionLimit::resizeRateDays),
         Codec.BOOL.fieldOf("ensure_objective").forGetter(WorldLimitPlan.DimensionLimit::ensureObjective)
     ).apply(instance, WorldLimitPlan.DimensionLimit::new));
 

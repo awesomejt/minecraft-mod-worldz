@@ -74,6 +74,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Minecraft days. A complete positive rate pair takes precedence over legacy
   total `resizeDays` and is converted to one vanilla linear transition, keeping
   restart persistence and old encoded schedules without adding a tick manager.
+- 2026-07-15 — Exterior and rate values use optional codec/YAML fields with
+  compatibility defaults. A persisted older biome source resolves to normal
+  exterior terrain; a fieldless new-world preset snapshots sanitized YAML.
+  Rate timing rounds a partial final interval up to a whole game tick and uses
+  overflow-checked long arithmetic.
 
 ## Reference Log
 
@@ -177,6 +182,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   inspection confirmed the shared screens/editor and Fabric client mixin in the
   Fabric artifact, plus the shared screens/editor and client event registration
   in the NeoForge artifact. Live testing remains assigned to Jason.
+- 2026-07-15 / Exterior configuration — `./gradlew build` passed across common,
+  Fabric, and NeoForge with 71 JUnit tests. Coverage includes envelope
+  classification/resolution, YAML sanitation and compatibility, codec defaults,
+  customization validation, rate precedence, growth/shrink interpolation, and
+  partial-interval rounding. Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 

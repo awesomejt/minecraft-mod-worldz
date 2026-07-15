@@ -10,6 +10,10 @@ public final class BorderConfig {
     public int finalRadiusBlocks = 512;
     /** In-game days used for the linear transition from initial to final radius. */
     public int resizeDays;
+    /** Radius blocks traversed per rate interval, or zero to use {@link #resizeDays}. */
+    public int resizeRateBlocks;
+    /** In-game days per rate interval, or zero to use {@link #resizeDays}. */
+    public int resizeRateDays;
     /** Whether the dimension's progression objective must be reachable inside the final border. */
     public boolean ensureObjective = true;
 

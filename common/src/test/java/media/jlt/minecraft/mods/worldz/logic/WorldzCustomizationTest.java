@@ -19,6 +19,10 @@ class WorldzCustomizationTest {
         config.starterBiome = "desert";
         config.overworldBorder.enabled = true;
         config.overworldBorder.finalRadiusBlocks = 1024;
+        config.overworldBorder.resizeRateBlocks = 64;
+        config.overworldBorder.resizeRateDays = 2;
+        config.overworldExterior.mode = ExteriorMode.OCEAN;
+        config.overworldExterior.oceanTransitionWidthBlocks = 128;
 
         WorldzCustomization customization = WorldzCustomization.fromConfig(config);
         config.allowedBiomes.clear();
@@ -27,6 +31,9 @@ class WorldzCustomizationTest {
         assertEquals("minecraft:desert", customization.starterBiome());
         assertTrue(customization.overworldBorder().enabled());
         assertEquals(1024, customization.overworldBorder().finalRadiusBlocks());
+        assertEquals(64, customization.overworldBorder().resizeRateBlocks());
+        assertEquals(ExteriorMode.OCEAN, customization.overworldExterior().mode());
+        assertEquals(1024, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
         assertThrows(UnsupportedOperationException.class, () -> customization.allowedBiomes().clear());
     }
 
@@ -95,6 +102,37 @@ class WorldzCustomizationTest {
         assertTrue(customization.worldLimitPlan().overworld().enabled());
         assertEquals(2048, customization.worldLimitPlan().overworld().finalRadiusBlocks());
         assertFalse(customization.worldLimitPlan().nether().enabled());
+    }
+
+    @Test
+    void editableRatesAndExteriorValuesAreValidatedAndResolved() {
+        WorldzCustomization.BorderSettings border = WorldzCustomization.BorderSettings.fromText(
+            true, "512", "2048", "100", "128", "5", true
+        );
+        WorldzCustomization.ExteriorSettings exterior = WorldzCustomization.ExteriorSettings.fromText(
+            "ocean", "auto", "256"
+        );
+        WorldzCustomization customization = WorldzCustomization.fromText(
+            "plains", "", "512", border, border(false), exterior, WorldzCustomization.ExteriorSettings.normal()
+        );
+
+        assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
+        assertEquals(2048, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
+        assertEquals(1792, customization.exteriorPlan().overworld().solidRadiusBlocks());
+    }
+
+    @Test
+    void automaticExteriorNeedsAnEnabledBorderAndNetherRejectsOcean() {
+        var automaticVoid = new WorldzCustomization.ExteriorSettings(ExteriorMode.VOID, 0, 0);
+        assertThrows(IllegalArgumentException.class, () -> new WorldzCustomization(
+            List.of("plains"), "", 512, border(false), border(false), automaticVoid,
+            WorldzCustomization.ExteriorSettings.normal()
+        ));
+        assertThrows(IllegalArgumentException.class, () -> new WorldzCustomization(
+            List.of("plains"), "", 512, border(false), border(false),
+            WorldzCustomization.ExteriorSettings.normal(),
+            new WorldzCustomization.ExteriorSettings(ExteriorMode.OCEAN, 512, 128)
+        ));
     }
 
     private static WorldzCustomization.BorderSettings border(boolean enabled) {

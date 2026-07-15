@@ -49,6 +49,8 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
      * @param initialRadiusBlocks initial center-to-side distance
      * @param finalRadiusBlocks final center-to-side distance
      * @param resizeDays linear transition duration
+     * @param resizeRateBlocks radius blocks per rate interval
+     * @param resizeRateDays Minecraft days per rate interval
      * @param ensureObjective whether the progression objective is guaranteed
      */
     public record DimensionLimit(
@@ -56,13 +58,36 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
         int initialRadiusBlocks,
         int finalRadiusBlocks,
         int resizeDays,
+        int resizeRateBlocks,
+        int resizeRateDays,
         boolean ensureObjective
     ) {
         /** Validates persisted values before they reach vanilla's border API. */
         public DimensionLimit {
-            if (initialRadiusBlocks <= 0 || finalRadiusBlocks <= 0 || resizeDays < 0) {
+            if (initialRadiusBlocks <= 0 || finalRadiusBlocks <= 0 || resizeDays < 0
+                || resizeRateBlocks < 0 || resizeRateDays < 0
+                || ((resizeRateBlocks == 0) != (resizeRateDays == 0))) {
                 throw new IllegalArgumentException("invalid persisted world-limit values");
             }
+        }
+
+        /**
+         * Creates a legacy total-duration limit without rate fields.
+         *
+         * @param enabled whether the border is managed
+         * @param initialRadiusBlocks initial center-to-side distance
+         * @param finalRadiusBlocks final center-to-side distance
+         * @param resizeDays total transition duration in Minecraft days
+         * @param ensureObjective whether the progression objective is guaranteed
+         */
+        public DimensionLimit(
+            boolean enabled,
+            int initialRadiusBlocks,
+            int finalRadiusBlocks,
+            int resizeDays,
+            boolean ensureObjective
+        ) {
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, ensureObjective);
         }
 
         /**
@@ -71,7 +96,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
          * @return disabled dimension plan
          */
         public static DimensionLimit disabled() {
-            return new DimensionLimit(false, 512, 512, 0, false);
+            return new DimensionLimit(false, 512, 512, 0, 0, 0, false);
         }
 
         private static DimensionLimit fromConfig(BorderConfig config) {
@@ -80,6 +105,8 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
                 config.initialRadiusBlocks,
                 config.finalRadiusBlocks,
                 config.resizeDays,
+                config.resizeRateBlocks,
+                config.resizeRateDays,
                 config.ensureObjective
             );
         }
@@ -90,7 +117,13 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
          * @return border schedule
          */
         public BorderSchedule schedule() {
-            return new BorderSchedule(initialRadiusBlocks, finalRadiusBlocks, resizeDays);
+            return new BorderSchedule(
+                initialRadiusBlocks,
+                finalRadiusBlocks,
+                resizeDays,
+                resizeRateBlocks,
+                resizeRateDays
+            );
         }
     }
 }

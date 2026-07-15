@@ -66,8 +66,14 @@ public final class WorldLimitManager {
             );
         }
         WorldzCommon.LOGGER.info(
-            "Applied {} border: initial radius {}, final radius {}, resize days {}.",
-            dimensionName, limit.initialRadiusBlocks(), limit.finalRadiusBlocks(), limit.resizeDays()
+            "Applied {} border: initial radius {}, final radius {}, duration {} ticks{}.",
+            dimensionName,
+            limit.initialRadiusBlocks(),
+            limit.finalRadiusBlocks(),
+            schedule.durationTicks(),
+            schedule.usesRate()
+                ? " (" + limit.resizeRateBlocks() + " blocks per " + limit.resizeRateDays() + " days)"
+                : ""
         );
     }
 }

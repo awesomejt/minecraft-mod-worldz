@@ -186,9 +186,11 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       square boundaries, an accessible ocean transition, persistence,
       structure guarantees, and continuous X-blocks-per-Y-days border rates.
       **Commit** ("Design exterior terrain envelopes").
-- [ ] 9.2 Extend YAML, codecs, immutable customization values, and pure logic
+- [x] 9.2 Extend YAML, codecs, immutable customization values, and pure logic
       for exterior plans and rate-derived border durations. Preserve old config
-      and saved-world decoding. Add focused JUnit tests and **commit**.
+      and saved-world decoding. Added focused JUnit tests; full build passes 71
+      tests with clean Javadocs and whitespace lint. **Commit** ("Add exterior
+      and rate configuration").
 - [ ] 9.3 Register and implement the delegating `jlt_worldz:enveloped` chunk
       generator for both loaders. Wrap Overworld and Nether in the preset,
       generate block-level void/ocean exteriors, suppress exterior decoration

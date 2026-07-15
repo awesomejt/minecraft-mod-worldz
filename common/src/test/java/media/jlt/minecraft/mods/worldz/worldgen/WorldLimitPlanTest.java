@@ -15,6 +15,8 @@ class WorldLimitPlanTest {
         config.overworldBorder.initialRadiusBlocks = 512;
         config.overworldBorder.finalRadiusBlocks = 2048;
         config.overworldBorder.resizeDays = 100;
+        config.overworldBorder.resizeRateBlocks = 128;
+        config.overworldBorder.resizeRateDays = 4;
         config.netherBorder.enabled = true;
         config.netherBorder.finalRadiusBlocks = 256;
         WorldLimitPlan plan = WorldLimitPlan.fromConfig(config);
@@ -22,7 +24,8 @@ class WorldLimitPlanTest {
 
         assertTrue(plan.enabled());
         assertEquals(2048, plan.overworld().finalRadiusBlocks());
-        assertEquals(2_400_000L, plan.overworld().schedule().durationTicks());
+        assertEquals(1_152_000L, plan.overworld().schedule().durationTicks());
+        assertTrue(plan.overworld().schedule().usesRate());
         assertEquals(256, plan.nether().finalRadiusBlocks());
     }
 

@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
+import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
@@ -31,6 +32,8 @@ public final class WorldzConfig {
     public static final int MAX_BORDER_RADIUS_BLOCKS = 14_999_992;
     /** Longest supported border transition in in-game days. */
     public static final int MAX_BORDER_RESIZE_DAYS = 1_000_000;
+    /** Largest supported rate distance. */
+    public static final int MAX_BORDER_RATE_BLOCKS = MAX_BORDER_RADIUS_BLOCKS;
 
     private static final String YAML_EXTENSION = ".yaml";
     private static final String LEGACY_JSON_EXTENSION = ".json";
@@ -45,6 +48,10 @@ public final class WorldzConfig {
     public BorderConfig overworldBorder = new BorderConfig();
     /** Optional Nether border and blaze-access settings. */
     public BorderConfig netherBorder = new BorderConfig();
+    /** Optional Overworld terrain outside a central square. */
+    public ExteriorConfig overworldExterior = new ExteriorConfig();
+    /** Optional Nether terrain outside a central square. */
+    public ExteriorConfig netherExterior = new ExteriorConfig();
     /** Human-readable inline documentation persisted with the config. */
     public Map<String, String> _docs = defaultDocs();
 
@@ -139,6 +146,12 @@ public final class WorldzConfig {
         if (object.containsKey("netherBorder")) {
             config.netherBorder = readBorderConfig(object.get("netherBorder"), "netherBorder", "ensureBlazeAccess");
         }
+        if (object.containsKey("overworldExterior")) {
+            config.overworldExterior = readExteriorConfig(object.get("overworldExterior"), "overworldExterior");
+        }
+        if (object.containsKey("netherExterior")) {
+            config.netherExterior = readExteriorConfig(object.get("netherExterior"), "netherExterior");
+        }
         if (object.containsKey("_docs")) {
             config._docs = readDocs(object.get("_docs"), logger);
         }
@@ -171,6 +184,8 @@ public final class WorldzConfig {
 
         overworldBorder = sanitizeBorder(overworldBorder, "overworldBorder", logger);
         netherBorder = sanitizeBorder(netherBorder, "netherBorder", logger);
+        overworldExterior = sanitizeExterior(overworldExterior, overworldBorder, true, "overworldExterior", logger);
+        netherExterior = sanitizeExterior(netherExterior, netherBorder, false, "netherExterior", logger);
 
         _docs = _docs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(_docs);
         defaultDocs().forEach(_docs::putIfAbsent);
@@ -187,7 +202,9 @@ public final class WorldzConfig {
             + ", starterBiome=" + (starterBiome.isEmpty() ? "<none>" : starterBiome)
             + ", starterRadiusBlocks=" + starterRadiusBlocks
             + ", overworldBorder=" + borderSummary(overworldBorder, "endPortal")
-            + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess");
+            + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess")
+            + ", overworldExterior=" + exteriorSummary(overworldExterior)
+            + ", netherExterior=" + exteriorSummary(netherExterior);
     }
 
     String toYaml() {
@@ -197,6 +214,8 @@ public final class WorldzConfig {
         values.put("starterRadiusBlocks", starterRadiusBlocks);
         values.put("overworldBorder", borderMap(overworldBorder, "ensureEndPortal"));
         values.put("netherBorder", borderMap(netherBorder, "ensureBlazeAccess"));
+        values.put("overworldExterior", exteriorMap(overworldExterior));
+        values.put("netherExterior", exteriorMap(netherExterior));
         values.put("_docs", _docs);
         return createYaml().dump(values);
     }
@@ -262,8 +281,33 @@ public final class WorldzConfig {
         if (map.containsKey("resizeDays")) {
             config.resizeDays = readInt(map.get("resizeDays"), name + ".resizeDays");
         }
+        if (map.containsKey("resizeRateBlocks")) {
+            config.resizeRateBlocks = readInt(map.get("resizeRateBlocks"), name + ".resizeRateBlocks");
+        }
+        if (map.containsKey("resizeRateDays")) {
+            config.resizeRateDays = readInt(map.get("resizeRateDays"), name + ".resizeRateDays");
+        }
         if (map.containsKey(objectiveKey)) {
             config.ensureObjective = readBoolean(map.get(objectiveKey), name + "." + objectiveKey);
+        }
+        return config;
+    }
+
+    private static ExteriorConfig readExteriorConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        ExteriorConfig config = new ExteriorConfig();
+        if (map.containsKey("mode")) {
+            config.mode = ExteriorMode.parse(readString(map.get("mode"), name + ".mode"));
+        }
+        if (map.containsKey("boundaryRadiusBlocks")) {
+            config.boundaryRadiusBlocks = readInt(map.get("boundaryRadiusBlocks"), name + ".boundaryRadiusBlocks");
+        }
+        if (map.containsKey("oceanTransitionWidthBlocks")) {
+            config.oceanTransitionWidthBlocks = readInt(
+                map.get("oceanTransitionWidthBlocks"), name + ".oceanTransitionWidthBlocks"
+            );
         }
         return config;
     }
@@ -309,6 +353,8 @@ public final class WorldzConfig {
         docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 512. Range: 64..4096.");
         docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance. End portal is reachable by the final size when enabled.");
         docs.put("netherBorder", "Optional independent Nether border. Blaze access is reachable by the final size when enabled.");
+        docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");
+        docs.put("netherExterior", "Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.");
         return docs;
     }
 
@@ -325,6 +371,52 @@ public final class WorldzConfig {
         sanitized.resizeDays = clampWithWarning(
             sanitized.resizeDays, 0, MAX_BORDER_RESIZE_DAYS, name + ".resizeDays", logger
         );
+        sanitized.resizeRateBlocks = clampWithWarning(
+            sanitized.resizeRateBlocks, 0, MAX_BORDER_RATE_BLOCKS, name + ".resizeRateBlocks", logger
+        );
+        sanitized.resizeRateDays = clampWithWarning(
+            sanitized.resizeRateDays, 0, MAX_BORDER_RESIZE_DAYS, name + ".resizeRateDays", logger
+        );
+        if ((sanitized.resizeRateBlocks == 0) != (sanitized.resizeRateDays == 0)) {
+            logger.warn("Ignoring incomplete {} resize rate; both resizeRateBlocks and resizeRateDays must be positive.", name);
+            sanitized.resizeRateBlocks = 0;
+            sanitized.resizeRateDays = 0;
+        }
+        return sanitized;
+    }
+
+    private static ExteriorConfig sanitizeExterior(
+        ExteriorConfig config,
+        BorderConfig border,
+        boolean oceanAllowed,
+        String name,
+        Logger logger
+    ) {
+        ExteriorConfig sanitized = config == null ? new ExteriorConfig() : config;
+        sanitized.mode = sanitized.mode == null ? ExteriorMode.NORMAL : sanitized.mode;
+        if (!oceanAllowed && sanitized.mode == ExteriorMode.OCEAN) {
+            logger.warn("Ignoring unsupported ocean mode for {}; using normal terrain.", name);
+            sanitized.mode = ExteriorMode.NORMAL;
+        }
+        sanitized.boundaryRadiusBlocks = clampWithWarning(
+            sanitized.boundaryRadiusBlocks, 0, MAX_BORDER_RADIUS_BLOCKS, name + ".boundaryRadiusBlocks", logger
+        );
+        sanitized.oceanTransitionWidthBlocks = clampWithWarning(
+            sanitized.oceanTransitionWidthBlocks, 0, MAX_BORDER_RADIUS_BLOCKS,
+            name + ".oceanTransitionWidthBlocks", logger
+        );
+        if (sanitized.mode != ExteriorMode.NORMAL && sanitized.boundaryRadiusBlocks == 0 && !border.enabled) {
+            logger.warn("{} requires an explicit boundary or an enabled border; using normal terrain.", name);
+            sanitized.mode = ExteriorMode.NORMAL;
+        }
+        int resolvedBoundary = sanitized.boundaryRadiusBlocks == 0
+            ? Math.max(border.initialRadiusBlocks, border.finalRadiusBlocks)
+            : sanitized.boundaryRadiusBlocks;
+        if (sanitized.mode == ExteriorMode.OCEAN && sanitized.oceanTransitionWidthBlocks > resolvedBoundary) {
+            logger.warn("Clamped {}.oceanTransitionWidthBlocks from {} to {}.",
+                name, sanitized.oceanTransitionWidthBlocks, resolvedBoundary);
+            sanitized.oceanTransitionWidthBlocks = resolvedBoundary;
+        }
         return sanitized;
     }
 
@@ -342,7 +434,17 @@ public final class WorldzConfig {
         values.put("initialRadiusBlocks", config.initialRadiusBlocks);
         values.put("finalRadiusBlocks", config.finalRadiusBlocks);
         values.put("resizeDays", config.resizeDays);
+        values.put("resizeRateBlocks", config.resizeRateBlocks);
+        values.put("resizeRateDays", config.resizeRateDays);
         values.put(objectiveKey, config.ensureObjective);
+        return values;
+    }
+
+    private static Map<String, Object> exteriorMap(ExteriorConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("mode", config.mode.serializedName());
+        values.put("boundaryRadiusBlocks", config.boundaryRadiusBlocks);
+        values.put("oceanTransitionWidthBlocks", config.oceanTransitionWidthBlocks);
         return values;
     }
 
@@ -353,7 +455,19 @@ public final class WorldzConfig {
         return "initial=" + config.initialRadiusBlocks
             + ", final=" + config.finalRadiusBlocks
             + ", days=" + config.resizeDays
+            + ", rate=" + (config.resizeRateBlocks == 0
+                ? "<total-days>"
+                : config.resizeRateBlocks + " blocks/" + config.resizeRateDays + " days")
             + ", " + objectiveName + "=" + config.ensureObjective;
+    }
+
+    private static String exteriorSummary(ExteriorConfig config) {
+        if (config.mode == ExteriorMode.NORMAL) {
+            return "<normal>";
+        }
+        return config.mode.serializedName() + ", boundary="
+            + (config.boundaryRadiusBlocks == 0 ? "auto" : config.boundaryRadiusBlocks)
+            + (config.mode == ExteriorMode.OCEAN ? ", transition=" + config.oceanTransitionWidthBlocks : "");
     }
 
     private static Yaml createYaml() {

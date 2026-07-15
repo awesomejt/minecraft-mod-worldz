@@ -9,6 +9,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.AllowedEntryFilter;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
+import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
@@ -39,12 +40,14 @@ public final class LimitedBiomeSource extends BiomeSource {
         Biome.CODEC.optionalFieldOf("starter_biome").forGetter(source -> source.starterBiome),
         Codec.INT.optionalFieldOf("starter_radius").forGetter(source -> Optional.of(source.starterRadiusBlocks)),
         WorldLimitCodecs.PLAN_CODEC.optionalFieldOf("world_limits").forGetter(source -> Optional.of(source.worldLimits)),
+        ExteriorCodecs.PLAN_CODEC.optionalFieldOf("exterior_plan").forGetter(source -> Optional.of(source.exteriorPlan)),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
     private final Optional<Holder<Biome>> starterBiome;
     private final int starterRadiusBlocks;
     private final WorldLimitPlan worldLimits;
+    private final ExteriorPlan exteriorPlan;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
 
@@ -53,12 +56,14 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
         WorldLimitPlan worldLimits,
+        ExteriorPlan exteriorPlan,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
         this.starterBiome = starterBiome;
         this.starterRadiusBlocks = starterRadiusBlocks;
         this.worldLimits = worldLimits;
+        this.exteriorPlan = exteriorPlan;
         this.configDefaults = configDefaults;
         // World presets are decoded before dynamic-registry tags are bound in
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
@@ -73,6 +78,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> encodedStarterBiome,
         Optional<Integer> encodedStarterRadius,
         Optional<WorldLimitPlan> encodedWorldLimits,
+        Optional<ExteriorPlan> encodedExteriorPlan,
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
@@ -89,8 +95,11 @@ public final class LimitedBiomeSource extends BiomeSource {
         WorldLimitPlan limits = encodedStarterRadius.isPresent()
             ? encodedWorldLimits.orElseGet(WorldLimitPlan::disabled)
             : encodedWorldLimits.orElseGet(() -> WorldLimitPlan.fromConfig(config));
+        ExteriorPlan exterior = encodedStarterRadius.isPresent()
+            ? encodedExteriorPlan.orElseGet(ExteriorPlan::normal)
+            : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
 
-        return new LimitedBiomeSource(allowed, starter, radius, limits, encodedStarterRadius.isEmpty(), biomeGetter);
+        return new LimitedBiomeSource(allowed, starter, radius, limits, exterior, encodedStarterRadius.isEmpty(), biomeGetter);
     }
 
     /**
@@ -100,6 +109,7 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @param starterBiome optional resolved starter biome
      * @param starterRadiusBlocks starter-zone radius
      * @param worldLimits persisted border plan
+     * @param exteriorPlan persisted exterior-terrain plan
      * @param biomeGetter biome registry lookup used for vanilla climate parameters
      * @return a fully explicit source independent of later YAML changes
      */
@@ -108,6 +118,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> starterBiome,
         int starterRadiusBlocks,
         WorldLimitPlan worldLimits,
+        ExteriorPlan exteriorPlan,
         HolderGetter<Biome> biomeGetter
     ) {
         return new LimitedBiomeSource(
@@ -115,6 +126,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             starterBiome,
             starterRadiusBlocks,
             worldLimits,
+            exteriorPlan,
             false,
             biomeGetter
         );
@@ -235,6 +247,15 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public WorldLimitPlan worldLimits() {
         return this.worldLimits;
+    }
+
+    /**
+     * Returns the exterior terrain plan baked into this source.
+     *
+     * @return resolved dimension envelopes
+     */
+    public ExteriorPlan exteriorPlan() {
+        return this.exteriorPlan;
     }
 
     /**
