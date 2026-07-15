@@ -90,6 +90,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   cycling intentionally offers only normal/void. Objective searches and compact
   fallbacks use the minimum final-border and solid-terrain radius; therefore an
   explicit exterior without a border still honors the default guarantee flag.
+- 2026-07-15 — Border resize delay is expressed as `resizeDelayDays` and uses
+  24,000 server game ticks per day. The initial radius remains static until a
+  persisted per-dimension start tick is due; offline real time does not count.
+  Delay `0` preserves existing behavior, while a zero-duration resize with a
+  positive delay jumps to its final radius only after the wait.
 
 ## Reference Log
 
@@ -138,6 +143,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   https://docs.fabricmc.net/develop/serialization/codecs
 - Exterior generator: NeoForge asynchronous chunk-generation migration notes —
   https://docs.neoforged.net/primer/docs/1.21/
+- Delayed borders: Fabric end-server-tick event source —
+  https://github.com/FabricMC/fabric/blob/26.2/fabric-lifecycle-events-v1/src/main/java/net/fabricmc/fabric/api/event/lifecycle/v1/ServerTickEvents.java
+- Delayed borders: NeoForge pre/post server-tick event source —
+  https://github.com/neoforged/NeoForge/blob/26.2.x/src/main/java/net/neoforged/neoforge/event/tick/ServerTickEvent.java
+- Delayed borders: authoritative Minecraft 26.2 `WorldBorder` and saved-data
+  sources — `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`
 
 ## Verification Log
 

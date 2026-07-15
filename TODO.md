@@ -211,6 +211,20 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       lint are clean. No live test required; Jason will perform acceptance
       testing. **Commit** ("Document exterior world generation").
 
+## Phase 10 — Delayed border resizing
+
+- [x] 10.1 Define a backward-compatible `resizeDelayDays` contract using
+      Minecraft game time, persisted per-dimension pending start ticks, and
+      loader server-tick hooks. Record API references and **commit** ("Design
+      delayed border resizing").
+- [ ] 10.2 Extend YAML, codecs, scheduling/customization values, saved data, and
+      JUnit coverage while preserving older configs and saves. **Commit**.
+- [ ] 10.3 Register both loader tick hooks, implement delayed start/resume,
+      expose the value in Customize, and add component/resource tests.
+- [ ] 10.4 Update user/technical docs, run the clean multiloader build, inspect
+      artifacts, review quality, update Memory/TODO, and final **commit**. No
+      live testing required.
+
 ---
 
 ## Deviation log

@@ -292,3 +292,24 @@ eventual accessible border and the terrain boundary. Ocean is traversable, but
 normal structures and decoration are suppressed in wholly exterior chunks;
 fallback End portals remain in the solid starter region rather than on the
 seabed.
+
+## 15. Delayed border resizing
+
+Each dimension's border schedule may set `resizeDelayDays`, default `0`. The
+border is applied at its initial radius when the world is first initialized and
+remains static there for that many Minecraft days before growth or collapse
+begins. Delay time uses the same 24,000-game-tick day as resize timing, advances
+only while the server is ticking, and therefore does not elapse while a world is
+closed. A delayed zero-duration resize jumps to the final radius when the delay
+expires.
+
+Worldz persists a pending start game tick for each dimension in its existing
+overworld saved-data record. Loader-specific end-server-tick events ask the
+shared manager to start due transitions. Once started, vanilla's border state
+persists and advances the interpolation as before. Missing delay fields decode
+to zero, and older saved-data records without pending ticks remain completed;
+neither older configs nor existing Worldz schedules are restarted.
+
+Progression guarantees are created during initial world setup, not after the
+delay. Their locations still use the final reachable/supportive radius, while
+the changing border determines when players can reach them.
