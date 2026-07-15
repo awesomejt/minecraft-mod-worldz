@@ -1,7 +1,11 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
+import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
+import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
@@ -38,6 +42,12 @@ public final class WorldzConfig {
     public static final int MAX_BORDER_RESIZE_DAYS = 1_000_000;
     /** Largest supported rate distance. */
     public static final int MAX_BORDER_RATE_BLOCKS = MAX_BORDER_RADIUS_BLOCKS;
+    /** Smallest supported layout grid-cell edge length. */
+    public static final int MIN_LAYOUT_REGION_SCALE_BLOCKS = 16;
+    /** Largest supported layout grid-cell edge length. */
+    public static final int MAX_LAYOUT_REGION_SCALE_BLOCKS = 8192;
+    /** Largest supported layout coast-blend width. */
+    public static final int MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS = 8192;
 
     private static final String YAML_EXTENSION = ".yaml";
     private static final String LEGACY_JSON_EXTENSION = ".json";
@@ -62,6 +72,8 @@ public final class WorldzConfig {
     public ExteriorConfig overworldExterior = new ExteriorConfig();
     /** Optional Nether terrain outside a central square. */
     public ExteriorConfig netherExterior = new ExteriorConfig();
+    /** Optional coordinated terrain-layout composition. */
+    public LayoutConfig layout = new LayoutConfig();
     /** Human-readable inline documentation persisted with the config. */
     public Map<String, String> _docs = defaultDocs();
 
@@ -175,6 +187,9 @@ public final class WorldzConfig {
         if (object.containsKey("netherExterior")) {
             config.netherExterior = readExteriorConfig(object.get("netherExterior"), "netherExterior");
         }
+        if (object.containsKey("layout")) {
+            config.layout = readLayoutConfig(object.get("layout"), "layout", logger);
+        }
         if (object.containsKey("_docs")) {
             config._docs = readDocs(object.get("_docs"), logger);
         }
@@ -217,6 +232,7 @@ public final class WorldzConfig {
         netherBorder = sanitizeBorder(netherBorder, "netherBorder", logger);
         overworldExterior = sanitizeExterior(overworldExterior, overworldBorder, true, "overworldExterior", logger);
         netherExterior = sanitizeExterior(netherExterior, netherBorder, false, "netherExterior", logger);
+        layout = sanitizeLayout(layout, logger);
 
         _docs = _docs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(_docs);
         defaultDocs().forEach(_docs::putIfAbsent);
@@ -238,7 +254,8 @@ public final class WorldzConfig {
             + ", overworldBorder=" + borderSummary(overworldBorder, "endPortal")
             + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess")
             + ", overworldExterior=" + exteriorSummary(overworldExterior)
-            + ", netherExterior=" + exteriorSummary(netherExterior);
+            + ", netherExterior=" + exteriorSummary(netherExterior)
+            + ", layout=" + layoutSummary(layout);
     }
 
     String toYaml() {
@@ -253,6 +270,7 @@ public final class WorldzConfig {
         values.put("netherBorder", borderMap(netherBorder, "ensureBlazeAccess"));
         values.put("overworldExterior", exteriorMap(overworldExterior));
         values.put("netherExterior", exteriorMap(netherExterior));
+        values.put("layout", layoutMap(layout));
         values.put("_docs", _docs);
         return createYaml().dump(values);
     }
@@ -352,6 +370,61 @@ public final class WorldzConfig {
         return config;
     }
 
+    private static LayoutConfig readLayoutConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        LayoutConfig config = new LayoutConfig();
+        if (map.containsKey("mode")) {
+            config.mode = LayoutMode.parse(readString(map.get("mode"), name + ".mode"));
+        }
+        if (map.containsKey("biomes")) {
+            config.biomes = readStringList(map.get("biomes"), name + ".biomes", logger);
+        }
+        if (map.containsKey("oceanCoverageFraction")) {
+            config.oceanCoverageFraction = readDouble(map.get("oceanCoverageFraction"), name + ".oceanCoverageFraction");
+        }
+        if (map.containsKey("regionScaleBlocks")) {
+            config.regionScaleBlocks = readInt(map.get("regionScaleBlocks"), name + ".regionScaleBlocks");
+        }
+        if (map.containsKey("coastBlendWidthBlocks")) {
+            config.coastBlendWidthBlocks = readInt(map.get("coastBlendWidthBlocks"), name + ".coastBlendWidthBlocks");
+        }
+        if (map.containsKey("singleBiome")) {
+            config.singleBiome = readString(map.get("singleBiome"), name + ".singleBiome");
+        }
+        if (map.containsKey("roleOverrides")) {
+            config.roleOverrides = readStringMap(map.get("roleOverrides"), name + ".roleOverrides");
+        }
+        return config;
+    }
+
+    private static Map<String, String> readStringMap(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        Map<String, String> values = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (!(entry.getKey() instanceof String key) || !(entry.getValue() instanceof String stringValue)) {
+                throw new IllegalArgumentException(name + " keys and values must be strings");
+            }
+            values.put(key, stringValue);
+        }
+        return values;
+    }
+
+    private static double readDouble(Object value, String name) {
+        return switch (value) {
+            case Integer integer -> integer;
+            case Double doubleValue -> doubleValue;
+            case Float floatValue -> floatValue;
+            case Long longValue -> longValue;
+            case BigInteger bigInteger -> bigInteger.doubleValue();
+            case BigDecimal bigDecimal -> bigDecimal.doubleValue();
+            default -> throw new IllegalArgumentException(name + " must be a number");
+        };
+    }
+
     private static int readInt(Object value, String name) {
         try {
             return switch (value) {
@@ -398,6 +471,7 @@ public final class WorldzConfig {
         docs.put("netherBorder", "Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.");
         docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");
         docs.put("netherExterior", "Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.");
+        docs.put("layout", "Coordinated terrain layout: mode (legacy/land_only/mixed/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), oceanCoverageFraction (mixed only), regionScaleBlocks, coastBlendWidthBlocks, singleBiome. Default: legacy (today's climate-filter-only behavior).");
         return docs;
     }
 
@@ -466,6 +540,89 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static LayoutConfig sanitizeLayout(LayoutConfig config, Logger logger) {
+        LayoutConfig sanitized = config == null ? new LayoutConfig() : config;
+        sanitized.mode = sanitized.mode == null ? LayoutMode.LEGACY : sanitized.mode;
+
+        WeightedBiomeListSpec biomeSpec = WeightedBiomeListSpec.parse(sanitized.biomes);
+        for (String invalid : biomeSpec.invalidEntries()) {
+            logger.warn("Ignoring invalid layout biome '{}'.", invalid);
+        }
+        sanitized.biomes = new ArrayList<>(
+            biomeSpec.entries().stream().map(WeightedBiomeListSpec.Entry::configValue).toList()
+        );
+
+        Map<String, String> validOverrides = new LinkedHashMap<>();
+        if (sanitized.roleOverrides != null) {
+            sanitized.roleOverrides.forEach((rawId, rawRole) -> {
+                BiomeListSpec idSpec = BiomeListSpec.parse(List.of(rawId == null ? "" : rawId));
+                if (idSpec.entries().size() != 1 || idSpec.entries().getFirst().tag()) {
+                    logger.warn("Ignoring layout roleOverrides entry with an invalid biome id '{}'.", rawId);
+                    return;
+                }
+                try {
+                    BiomeRole role = BiomeRole.parse(rawRole);
+                    validOverrides.put(idSpec.entries().getFirst().id(), role.serializedName());
+                } catch (IllegalArgumentException exception) {
+                    logger.warn("Ignoring layout roleOverrides entry for '{}' with an invalid role '{}'.", rawId, rawRole);
+                }
+            });
+        }
+        sanitized.roleOverrides = validOverrides;
+
+        sanitized.regionScaleBlocks = clampWithWarning(
+            sanitized.regionScaleBlocks, MIN_LAYOUT_REGION_SCALE_BLOCKS, MAX_LAYOUT_REGION_SCALE_BLOCKS,
+            "layout.regionScaleBlocks", logger
+        );
+        sanitized.coastBlendWidthBlocks = clampWithWarning(
+            sanitized.coastBlendWidthBlocks, 0, MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS,
+            "layout.coastBlendWidthBlocks", logger
+        );
+        double clampedCoverage = Math.clamp(sanitized.oceanCoverageFraction, 0.0, 1.0);
+        if (clampedCoverage != sanitized.oceanCoverageFraction) {
+            logger.warn("Clamped layout.oceanCoverageFraction from {} to {}.", sanitized.oceanCoverageFraction, clampedCoverage);
+        }
+        sanitized.oceanCoverageFraction = clampedCoverage;
+
+        sanitized.singleBiome = sanitized.singleBiome == null ? "" : sanitized.singleBiome.trim();
+        if (!sanitized.singleBiome.isEmpty()) {
+            BiomeListSpec singleSpec = BiomeListSpec.parse(List.of(sanitized.singleBiome));
+            if (singleSpec.entries().size() != 1 || singleSpec.entries().getFirst().tag()) {
+                logger.warn("Ignoring invalid layout singleBiome '{}'.", sanitized.singleBiome);
+                sanitized.singleBiome = "";
+            } else {
+                sanitized.singleBiome = singleSpec.entries().getFirst().id();
+            }
+        }
+
+        Map<String, BiomeRole> overrides = new LinkedHashMap<>();
+        sanitized.roleOverrides.forEach((id, role) -> overrides.put(id, BiomeRole.parse(role)));
+        boolean hasLand = sanitized.biomes.stream()
+            .anyMatch(entry -> BiomeRoles.resolve(stripWeight(entry), overrides) == BiomeRole.LAND);
+        boolean hasOcean = sanitized.biomes.stream()
+            .anyMatch(entry -> BiomeRoles.resolve(stripWeight(entry), overrides) == BiomeRole.OCEAN);
+        boolean unsupported = switch (sanitized.mode) {
+            case LAND_ONLY -> !hasLand;
+            case OCEAN -> !hasOcean;
+            case MIXED -> !hasLand || !hasOcean;
+            case SINGLE_BIOME -> sanitized.singleBiome.isEmpty();
+            case VOID, LEGACY -> false;
+        };
+        if (unsupported) {
+            logger.warn(
+                "Layout mode '{}' has no usable biomes for its required role(s); using legacy mode instead.",
+                sanitized.mode.serializedName()
+            );
+            sanitized.mode = LayoutMode.LEGACY;
+        }
+        return sanitized;
+    }
+
+    private static String stripWeight(String configValue) {
+        int at = configValue.lastIndexOf('@');
+        return at < 0 ? configValue : configValue.substring(0, at);
+    }
+
     private static int clampWithWarning(int value, int minimum, int maximum, String name, Logger logger) {
         int clamped = Math.clamp(value, minimum, maximum);
         if (clamped != value) {
@@ -495,6 +652,18 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> layoutMap(LayoutConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("mode", config.mode.serializedName());
+        values.put("biomes", config.biomes);
+        values.put("oceanCoverageFraction", config.oceanCoverageFraction);
+        values.put("regionScaleBlocks", config.regionScaleBlocks);
+        values.put("coastBlendWidthBlocks", config.coastBlendWidthBlocks);
+        values.put("singleBiome", config.singleBiome);
+        values.put("roleOverrides", config.roleOverrides);
+        return values;
+    }
+
     private static String borderSummary(BorderConfig config, String objectiveName) {
         if (!config.enabled) {
             return "<disabled>";
@@ -516,6 +685,18 @@ public final class WorldzConfig {
         return config.mode.serializedName() + ", boundary="
             + (config.boundaryRadiusBlocks == 0 ? "auto" : config.boundaryRadiusBlocks)
             + (config.mode == ExteriorMode.OCEAN ? ", transition=" + config.oceanTransitionWidthBlocks : "");
+    }
+
+    private static String layoutSummary(LayoutConfig config) {
+        if (config.mode == LayoutMode.LEGACY) {
+            return "<legacy>";
+        }
+        return config.mode.serializedName()
+            + ", biomes=" + config.biomes
+            + ", oceanCoverageFraction=" + config.oceanCoverageFraction
+            + ", regionScaleBlocks=" + config.regionScaleBlocks
+            + ", coastBlendWidthBlocks=" + config.coastBlendWidthBlocks
+            + (config.singleBiome.isEmpty() ? "" : ", singleBiome=" + config.singleBiome);
     }
 
     private static Yaml createYaml() {

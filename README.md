@@ -70,6 +70,7 @@ migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
 | `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
+| `layout` | `legacy` | Coordinated land/ocean/beach terrain layout. Configurable and persisted, but not yet applied to generated terrain — see [Coordinated world layouts](#coordinated-world-layouts-in-progress). |
 
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:
@@ -234,6 +235,18 @@ On a seed whose nearby vanilla terrain is a large ocean, an allowed land biome
 can therefore be reported over submerged terrain, or a selected ocean biome can
 dominate a mixed list. Guaranteed starter land corrects only its configured
 central radius and transition. It does not rebalance the infinite world.
+
+### Coordinated world layouts (in progress)
+
+A `layout` section (`mode`, weighted `biomes`, `oceanCoverageFraction`,
+`regionScaleBlocks`, `coastBlendWidthBlocks`, `singleBiome`, `roleOverrides`) is
+configurable and validated today, and its resolved plan is persisted into new
+worlds' generator settings. It does **not** yet change generated terrain or
+biome placement — every world still uses the climate-filter behavior described
+above regardless of `layout.mode`. Modes other than the `legacy` default
+(`land_only`, `mixed`, `ocean`, `single_biome`, `void`) require at least one
+usable biome for every role they need; an incomplete configuration logs a
+warning and falls back to `legacy`. See DESIGN §17 for the full plan.
 
 A coordinated layout generator is planned to make biome and broad terrain
 decisions together. Its specified modes are land-only, mixed with configurable

@@ -13,6 +13,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
+import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
@@ -46,6 +47,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         StarterLandCodecs.PLAN_CODEC.optionalFieldOf("starter_land").forGetter(source -> Optional.of(source.starterLandPlan)),
         WorldLimitCodecs.PLAN_CODEC.optionalFieldOf("world_limits").forGetter(source -> Optional.of(source.worldLimits)),
         ExteriorCodecs.PLAN_CODEC.optionalFieldOf("exterior_plan").forGetter(source -> Optional.of(source.exteriorPlan)),
+        LayoutCodecs.PLAN_CODEC.optionalFieldOf("world_layout").forGetter(source -> Optional.of(source.worldLayoutPlan)),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
@@ -54,6 +56,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final StarterLandPlan starterLandPlan;
     private final WorldLimitPlan worldLimits;
     private final ExteriorPlan exteriorPlan;
+    private final WorldLayoutPlan worldLayoutPlan;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
@@ -65,6 +68,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         StarterLandPlan starterLandPlan,
         WorldLimitPlan worldLimits,
         ExteriorPlan exteriorPlan,
+        WorldLayoutPlan worldLayoutPlan,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -73,6 +77,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.starterLandPlan = starterLandPlan;
         this.worldLimits = worldLimits;
         this.exteriorPlan = exteriorPlan;
+        this.worldLayoutPlan = worldLayoutPlan;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -92,6 +97,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<StarterLandPlan> encodedStarterLand,
         Optional<WorldLimitPlan> encodedWorldLimits,
         Optional<ExteriorPlan> encodedExteriorPlan,
+        Optional<WorldLayoutPlan> encodedWorldLayout,
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
@@ -114,9 +120,14 @@ public final class LimitedBiomeSource extends BiomeSource {
         ExteriorPlan exterior = encodedStarterRadius.isPresent()
             ? encodedExteriorPlan.orElseGet(ExteriorPlan::normal)
             : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
+        // Sampling the plan is Phase 15.4's job; only persistence round-trips here.
+        // The fieldless preset's config-derived seed is a placeholder until then.
+        WorldLayoutPlan worldLayout = encodedStarterRadius.isPresent()
+            ? encodedWorldLayout.orElseGet(WorldLayoutPlan::legacy)
+            : encodedWorldLayout.orElseGet(() -> WorldLayoutPlan.fromConfig(config, 0L));
 
         return new LimitedBiomeSource(
-            allowed, starter, radius, starterLand, limits, exterior, encodedStarterRadius.isEmpty(), biomeGetter
+            allowed, starter, radius, starterLand, limits, exterior, worldLayout, encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -129,6 +140,7 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @param starterLandPlan persisted terrain guarantee
      * @param worldLimits persisted border plan
      * @param exteriorPlan persisted exterior-terrain plan
+     * @param worldLayoutPlan persisted coordinated-layout plan
      * @param biomeGetter biome registry lookup used for vanilla climate parameters
      * @return a fully explicit source independent of later YAML changes
      */
@@ -139,6 +151,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         StarterLandPlan starterLandPlan,
         WorldLimitPlan worldLimits,
         ExteriorPlan exteriorPlan,
+        WorldLayoutPlan worldLayoutPlan,
         HolderGetter<Biome> biomeGetter
     ) {
         return new LimitedBiomeSource(
@@ -148,6 +161,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             starterLandPlan,
             worldLimits,
             exteriorPlan,
+            worldLayoutPlan,
             false,
             biomeGetter
         );
@@ -288,6 +302,15 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public ExteriorPlan exteriorPlan() {
         return this.exteriorPlan;
+    }
+
+    /**
+     * Returns the coordinated-layout plan baked into this source.
+     *
+     * @return immutable persisted layout plan
+     */
+    public WorldLayoutPlan worldLayoutPlan() {
+        return this.worldLayoutPlan;
     }
 
     /**

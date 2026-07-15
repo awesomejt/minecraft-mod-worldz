@@ -6,6 +6,7 @@ import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
+import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.PresetEditor;
@@ -78,6 +79,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             customization.starterLandPlan(),
             customization.worldLimitPlan(),
             customization.exteriorPlan(),
+            WorldLayoutPlan.legacy(),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());

@@ -158,6 +158,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   calibration curve. Select a biome within a role by `hash ** (1/weight)`
   argmax (Efraimidis-Spirakis weighted sampling), not `hash * weight` — the
   latter was fixture-tested and found to starve low-weight biomes.
+- 2026-07-15 — Coast blending in `WorldLayoutPlan` picks only the single
+  nearest role-differing cell boundary (checking up to 4 axis-aligned
+  candidates) rather than a fully radial 2D blend. This keeps the formula a
+  pure function of signed distance to one fixed line (genuinely continuous
+  crossing that boundary) instead of needing to reconcile two simultaneously
+  active boundaries near grid corners. Same simplification class as
+  `ExteriorPlan`'s Chebyshev `max(abs(x),abs(z))` square distance; a perfectly
+  radial blend can be revisited during 15.4 playtesting if corners look wrong.
+- 2026-07-15 — `WorldzConfig.sanitizeLayout` falls back the whole `layout.mode`
+  to `legacy` (with a warning) when the sanitized biome list has zero usable
+  entries for a role the mode requires, rather than letting `WorldLayoutPlan`'s
+  constructor throw at world-creation decode time. Mirrors the existing
+  empty-allowed-list fail-safe: a broken layout config must never prevent
+  world creation.
 
 ## Reference Log
 
@@ -394,6 +408,25 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `coastBlendWidthBlocks=128`) and a ±5-point coverage tolerance for 15.3's
   JUnit coverage. No runtime code changed; `./gradlew build` still passes 97
   tests.
+- 2026-07-15 / `WorldLayoutPlan` implementation + release 0.1.6 — Implemented
+  the pure sampler and config exactly as designed in §17: `LayoutMode`,
+  `BiomeRole`, `BiomeRoles` (maintained vanilla ocean/beach mapping, unknown
+  ids default to land), `WeightedBiomeListSpec` (`id`/`id@weight`, no tags —
+  role resolution needs a concrete id), and `WorldLayoutPlan` (SplitMix64-based
+  hash grid, `hash ** (1/weight)` argmax selection, single-nearest-boundary
+  smoothstep coast blend — deliberately not perfectly radial at grid corners,
+  the same simplification `ExteriorPlan`'s Chebyshev-distance square envelope
+  already uses). `LayoutConfig` is wired into `WorldzConfig` with a safety net:
+  if a configured mode's required role ends up with zero usable biomes after
+  sanitization, sanitize logs a warning and falls back to `legacy` rather than
+  letting `WorldLayoutPlan`'s constructor throw at world-creation time.
+  `LayoutCodecs` persists an optional `world_layout` field on
+  `LimitedBiomeSource` (mirroring `starter_land`'s round-trip-only wiring) —
+  `getNoiseBiome` still ignores it until Phase 15.4. Released as 0.1.6
+  (version-only bump, no other behavior change) so the installed jar is easy
+  to tell apart from 0.1.5. `./gradlew clean build` passes all modules and 125
+  JUnit tests (28 new); artifact inspection confirmed 0.1.6 in both loader
+  filenames. Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 

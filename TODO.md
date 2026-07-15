@@ -318,10 +318,24 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       existing starter-zone/starter-land ratios) and a ±5-point coverage
       tolerance for 15.3's JUnit coverage. No runtime code changed.
       **Commit** ("Design the WorldLayoutPlan model").
-- [ ] 15.3 Implement the pure layout sampler and persisted codecs/config with
+- [x] 15.3 Implement the pure layout sampler and persisted codecs/config with
       JUnit coverage for determinism, allowed-only output, positive-weight
       representation, approximate coverage, transition continuity, validation,
       immutable snapshots, and old-save decoding. Update generated YAML docs.
+      Added `logic.LayoutMode`/`BiomeRole`/`BiomeRoles`/`WeightedBiomeListSpec`/
+      `WorldLayoutPlan` (hash-grid sampler, weighted-argmax selection, coast
+      blend), `config.LayoutConfig` wired into `WorldzConfig` (parse/sanitize/
+      YAML/docs/summary, with a safety fallback to `legacy` when a mode's
+      required role has no usable biomes), and `worldgen.LayoutCodecs`
+      persisted as an optional `world_layout` field on `LimitedBiomeSource`
+      (round-trips only; `getNoiseBiome` still uses the legacy delegate until
+      15.4). Regenerated `config/jlt_worldz.example.yaml` and the README config
+      table/subsection to describe the layout config as persisted-but-inert.
+      Released as 0.1.6 (version-only bump so the running mod is easy to tell
+      apart from 0.1.5 for reinstalling). Full clean build passes common,
+      Fabric, and NeoForge with 125 JUnit tests (28 new); Javadocs and
+      `git diff --check` are clean. **Commit** ("Implement the WorldLayoutPlan
+      sampler and persisted config").
 - [ ] 15.4 Make `LimitedBiomeSource` and `EnvelopedChunkGenerator` consume the
       same layout. Preserve vanilla local relief/caves/surfaces, coordinate
       land/ocean height adjustment, make base queries agree, prevent structures

@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -210,6 +212,101 @@ class WorldzConfigTest {
     }
 
     @Test
+    void layoutSettingsLoadWeightedBiomesAndRoleOverrides() {
+        WorldzConfig config = WorldzConfig.parse("""
+            layout:
+              mode: mixed
+              biomes:
+                - "minecraft:plains@3"
+                - "minecraft:desert"
+                - "minecraft:ocean"
+                - "minecraft:swamp"
+              roleOverrides:
+                "minecraft:swamp": "ocean"
+              oceanCoverageFraction: 0.4
+              regionScaleBlocks: 300
+              coastBlendWidthBlocks: 80
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(LayoutMode.MIXED, config.layout.mode);
+        assertEquals(
+            List.of("minecraft:plains@3.0", "minecraft:desert", "minecraft:ocean", "minecraft:swamp"),
+            config.layout.biomes
+        );
+        assertEquals("ocean", config.layout.roleOverrides.get("minecraft:swamp"));
+        assertEquals(0.4, config.layout.oceanCoverageFraction);
+        assertEquals(300, config.layout.regionScaleBlocks);
+        assertEquals(80, config.layout.coastBlendWidthBlocks);
+    }
+
+    @Test
+    void layoutInvalidBiomeEntriesAreDroppedNotRejected() {
+        WorldzConfig config = WorldzConfig.parse("""
+            layout:
+              biomes:
+                - "minecraft:plains"
+                - "#minecraft:is_overworld"
+                - "minecraft:desert@-1"
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:plains"), config.layout.biomes);
+    }
+
+    @Test
+    void layoutFallsBackToLegacyWhenTheModeHasNoUsableBiomes() {
+        WorldzConfig landOnly = WorldzConfig.parse("""
+            layout:
+              mode: land_only
+              biomes:
+                - "minecraft:ocean"
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig singleBiome = WorldzConfig.parse("""
+            layout:
+              mode: single_biome
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(LayoutMode.LEGACY, landOnly.layout.mode);
+        assertEquals(LayoutMode.LEGACY, singleBiome.layout.mode);
+    }
+
+    @Test
+    void layoutRegionScaleAndCoverageAreClamped() {
+        WorldzConfig config = WorldzConfig.parse("""
+            layout:
+              regionScaleBlocks: 1
+              coastBlendWidthBlocks: -5
+              oceanCoverageFraction: 1.5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(16, config.layout.regionScaleBlocks);
+        assertEquals(0, config.layout.coastBlendWidthBlocks);
+        assertEquals(1.0, config.layout.oceanCoverageFraction);
+    }
+
+    @Test
+    void layoutSingleBiomeAcceptsIdsButRejectsTags() {
+        WorldzConfig config = WorldzConfig.parse("""
+            layout:
+              singleBiome: "#minecraft:is_overworld"
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("", config.layout.singleBiome);
+    }
+
+    @Test
+    void layoutRoleOverridesDropInvalidIdsAndRoles() {
+        WorldzConfig config = WorldzConfig.parse("""
+            layout:
+              roleOverrides:
+                "Uppercase:plains": "ocean"
+                "minecraft:desert": "not-a-role"
+                "minecraft:swamp": "beach"
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(Map.of("minecraft:swamp", "beach"), config.layout.roleOverrides);
+    }
+
+    @Test
     void invalidNestedBorderTypeMakesFileInvalidWithoutOverwritingIt() throws IOException {
         Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
         String invalid = "overworldBorder: true";
@@ -309,7 +406,8 @@ class WorldzConfigTest {
             "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
                 + ", starterLand=transition=128, foundation=32"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>"
-                + ", overworldExterior=<normal>, netherExterior=<normal>",
+                + ", overworldExterior=<normal>, netherExterior=<normal>"
+                + ", layout=<legacy>",
             config.summary()
         );
     }
