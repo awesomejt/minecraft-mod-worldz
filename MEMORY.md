@@ -64,6 +64,16 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `RegisterPresetEditorsEvent`. Fabric 26.2 has no equivalent event, so its
   client-only mixin intercepts `WorldCreationUiState.getPresetEditor()` only for
   the `jlt_worldz:worldz` key; no server class references the GUI.
+- 2026-07-15 — Exterior terrain is an independent square envelope, baked into
+  new-world generators. Overworld supports normal/ocean/void, Nether supports
+  normal/void, and normal remains the compatibility default. Boundary `0`
+  derives from the largest scheduled border radius; without an enabled border,
+  a non-normal exterior requires an explicit boundary. Ocean starts inward by
+  a configurable accessible transition width and remains ocean infinitely.
+- 2026-07-15 — Border rate fields express continuous X radius blocks per Y
+  Minecraft days. A complete positive rate pair takes precedence over legacy
+  total `resizeDays` and is converted to one vanilla linear transition, keeping
+  restart persistence and old encoded schedules without adding a tick manager.
 
 ## Reference Log
 
@@ -105,6 +115,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   https://github.com/neoforged/NeoForge/blob/26.2.x/src/client/java/net/neoforged/neoforge/client/event/RegisterPresetEditorsEvent.java
 - Customize UI: Fabric client-only mixin registration —
   https://wiki.fabricmc.net/tutorial:mixin_registration
+- Exterior generator: Minecraft 26.2 `ChunkGenerator`,
+  `NoiseBasedChunkGenerator`, `ChunkAccess`, and chunk-status sources —
+  `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
+- Exterior generator: Fabric codec dispatch/registry guidance —
+  https://docs.fabricmc.net/develop/serialization/codecs
+- Exterior generator: NeoForge asynchronous chunk-generation migration notes —
+  https://docs.neoforged.net/primer/docs/1.21/
 
 ## Verification Log
 

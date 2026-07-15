@@ -179,6 +179,29 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       world-creation customization"). Final clean build passed 57 JUnit tests;
       Javadocs and whitespace lint are clean. No live test was requested.
 
+## Phase 9 — Exterior terrain and rate-based borders
+
+- [x] 9.1 Define the technical contract for independent Overworld
+      normal/ocean/void and Nether normal/void envelopes, automatic or explicit
+      square boundaries, an accessible ocean transition, persistence,
+      structure guarantees, and continuous X-blocks-per-Y-days border rates.
+      **Commit** ("Design exterior terrain envelopes").
+- [ ] 9.2 Extend YAML, codecs, immutable customization values, and pure logic
+      for exterior plans and rate-derived border durations. Preserve old config
+      and saved-world decoding. Add focused JUnit tests and **commit**.
+- [ ] 9.3 Register and implement the delegating `jlt_worldz:enveloped` chunk
+      generator for both loaders. Wrap Overworld and Nether in the preset,
+      generate block-level void/ocean exteriors, suppress exterior decoration
+      and structures, and keep height/column queries consistent. Add component
+      and resource tests and **commit**.
+- [ ] 9.4 Expose exterior modes/boundaries/ocean transition and rate fields in
+      Customize. Apply explicit Overworld and Nether wrappers while retaining
+      YAML-as-default behavior and vanilla End generation.
+- [ ] 9.5 Constrain progression guarantees to supportive terrain, update README
+      and Memory, run all JUnit tests and clean loader builds, inspect artifacts,
+      address review/lint findings, and final **commit**. No live test required;
+      Jason will perform acceptance testing when the feature is nearly done.
+
 ---
 
 ## Deviation log

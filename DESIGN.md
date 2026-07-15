@@ -201,9 +201,14 @@ value as its diameter. Borders are disabled by default.
 Each dimension has an initial radius, final radius, and resize duration in
 Minecraft days. Equal radii make a static border. A larger final radius grows
 linearly; a smaller final radius shrinks linearly. A zero-day transition applies
-the final size immediately. The vanilla border state persists the transition so
-restarts do not reset its progress. Existing worlds are not retroactively
-limited.
+the final size immediately. As an alternative to a total `resizeDays`, players
+may set `resizeRateBlocks` and `resizeRateDays` to express a continuous rate of
+X radius blocks per Y Minecraft days. When both rate values are positive they
+take precedence over `resizeDays`; the exact duration is derived from the total
+distance, including a proportional final partial interval. The vanilla border
+state persists the resulting transition so restarts do not reset its progress.
+Existing worlds are not retroactively limited, and encoded schedules without
+rate fields retain the original total-duration behavior.
 
 Optional progression guarantees keep an End portal and blaze access within the
 final overworld and Nether borders respectively. They need not be reachable on
@@ -240,4 +245,39 @@ editor before creation shows the already applied per-world selections.
 NeoForge registers the editor through `RegisterPresetEditorsEvent`. Fabric 26.2
 has no corresponding preset-editor event, so a client-only mixin supplies the
 editor from `WorldCreationUiState.getPresetEditor()`.
+
+## 14. Exterior terrain envelopes
+
+Worldz can replace terrain outside a square, origin-centered envelope without
+requiring a world border. The top-level `overworldExterior` accepts `normal`,
+`ocean`, or `void`; `netherExterior` accepts `normal` or `void`. Both default to
+`normal` for backward compatibility. Each has `boundaryRadiusBlocks`, where `0`
+means auto-derive the boundary from the largest radius that dimension's border
+will ever expose: `max(initialRadiusBlocks, finalRadiusBlocks)`. Auto with no
+enabled border is invalid and safely falls back to `normal`; an explicit
+positive boundary works with or without a border.
+
+`void` removes all terrain beyond the boundary and continues infinitely. In
+the Overworld, `ocean` creates a stable deep-ocean exterior with water through
+sea level and a solid seabed. `oceanTransitionWidthBlocks` moves the beginning
+of that ocean inward from the outer boundary, leaving that many blocks of ocean
+accessible inside a matching border; the ocean continues infinitely beyond the
+border. For example, an auto boundary of 512 and transition width 128 begins
+ocean at radius 384. The envelope uses block-level square distance
+`max(abs(x), abs(z))` so it aligns exactly with vanilla's square border.
+
+The envelope is baked into each new world's encoded generators. A wrapper
+`ChunkGenerator` delegates vanilla generation inside the solid region, masks
+base terrain/surfaces/carvers/decorations outside it, reports matching base
+heights and columns, and supplies the deep-ocean biome in the ocean exterior.
+The Worldz preset wraps both Overworld and Nether generators; the Customize
+screen replaces both explicit wrappers while leaving the End vanilla. Existing
+unwrapped Worldz saves remain unchanged.
+
+Progression guarantees must fit within terrain that can support them, not only
+inside the final border. Natural strongholds/fortresses outside the solid region
+are rejected, and compact fallback objectives are clamped inside both the
+eventual accessible border and the terrain boundary. Ocean is traversable and
+may contain normal ocean content, but fallback End portals remain in the solid
+starter region rather than on the seabed.
 - CurseForge/Modrinth publishing (same open flag as the other four mods).
