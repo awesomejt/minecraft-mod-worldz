@@ -70,7 +70,7 @@ migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
 | `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
-| `layout` | `legacy` | Coordinated land/ocean/beach terrain layout. Configurable and persisted, but not yet applied to generated terrain — see [Coordinated world layouts](#coordinated-world-layouts-in-progress). |
+| `layout` | `legacy` | Coordinated land/ocean/beach terrain layout; `legacy` keeps today's climate-filter-only behavior. See [Coordinated world layouts](#coordinated-world-layouts). |
 
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:
@@ -228,32 +228,38 @@ starter biome overrides the entire vertical column inside its circular zone.
 For an ocean exterior, Worldz reports the deep-ocean biome outside the solid
 square so spawning and climate behavior match the generated water.
 
-### Current terrain-composition limitation
+### Current terrain-composition limitation (legacy mode only)
 
-Biome limiting does not currently change vanilla continentalness or density.
-On a seed whose nearby vanilla terrain is a large ocean, an allowed land biome
-can therefore be reported over submerged terrain, or a selected ocean biome can
-dominate a mixed list. Guaranteed starter land corrects only its configured
-central radius and transition. It does not rebalance the infinite world.
+With `layout.mode: legacy` (still the default), biome limiting does not change
+vanilla continentalness or density. On a seed whose nearby vanilla terrain is a
+large ocean, an allowed land biome can therefore be reported over submerged
+terrain, or a selected ocean biome can dominate a mixed list. Guaranteed
+starter land corrects only its configured central radius and transition; it
+does not rebalance the infinite world. Selecting any other `layout.mode`
+resolves this by making biome and terrain height decisions together instead
+(see below).
 
-### Coordinated world layouts (in progress)
+### Coordinated world layouts
 
 A `layout` section (`mode`, weighted `biomes`, `oceanCoverageFraction`,
-`regionScaleBlocks`, `coastBlendWidthBlocks`, `singleBiome`, `roleOverrides`) is
-configurable and validated today, and its resolved plan is persisted into new
-worlds' generator settings. It does **not** yet change generated terrain or
-biome placement — every world still uses the climate-filter behavior described
-above regardless of `layout.mode`. Modes other than the `legacy` default
-(`land_only`, `mixed`, `ocean`, `single_biome`, `void`) require at least one
-usable biome for every role they need; an incomplete configuration logs a
-warning and falls back to `legacy`. See DESIGN §17 for the full plan.
+`regionScaleBlocks`, `coastBlendWidthBlocks`, `singleBiome`, `roleOverrides`)
+selects one of five modes: `land_only`, `mixed`, `ocean`, `single_biome`, or
+`void`, plus the `legacy` default described above. Non-legacy modes classify
+every column into a land, ocean, or beach role from a deterministic seeded
+grid, choose a weighted biome within that role, and raise or lower terrain to
+match — so a mixed world's ocean biomes generate real (lowered) ocean rather
+than a land shape mislabeled underwater, and vice versa. `mode` requires at
+least one usable biome for every role it needs; an incomplete configuration
+logs a warning and falls back to `legacy` rather than failing world creation.
 
-A coordinated layout generator is planned to make biome and broad terrain
-decisions together. Its specified modes are land-only, mixed with configurable
-coverage and biome weights, an ocean world with a starter island and beach
-transition, single biome, and a starter island in sky void. Existing saves will
-retain the current generator to avoid seams. Seed-informed spawn placement and
-a richer Java flat-world editor are tracked separately in [`TODO.md`](TODO.md).
+`void` is accepted but currently behaves like `legacy` (no terrain change) —
+its sky-island overlay is still planned. The existing `starterBiome`/
+`starterRadiusBlocks`/guaranteed-starter-land settings still work unchanged
+alongside every layout mode (they take priority over the layout's own choice
+at the origin), but the mode-specific starter overlays DESIGN §17 describes
+(e.g. ocean mode's guaranteed island-to-beach-to-open-water transition) and the
+Customize-screen controls for `layout` itself are still planned. See DESIGN
+§17 for the full model and TODO.md Phase 15 for what remains.
 
 ## Caveats
 

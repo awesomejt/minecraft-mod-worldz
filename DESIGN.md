@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.6`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.7`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -521,6 +521,42 @@ sampling change ships as `REVISION = 2`, applied only to worlds created after
 the update; existing saves keep decoding at whatever revision they were baked
 with. `mode = LEGACY` is the codec default for any plan missing the field
 entirely, matching how `StarterLandPlan`'s absence decodes to `disabled()`.
+
+### Implementation (Phase 15.4)
+
+`LimitedBiomeSource.getNoiseBiome` samples the plan directly for every mode
+except `LEGACY`: the exterior ocean override and the existing starter-zone
+override still take precedence (in that order), then a layout sample resolves
+to one of the plan's own biomes, falling back to the climate-filter delegate
+only if that biome id fails to resolve in the active registry.
+`collectPossibleBiomes()` adds every resolved layout biome for non-legacy
+modes so structure and feature logic can see them.
+
+Terrain height coordination does not replace generated terrain outright. A new
+pure `logic.LayoutTerrainProfile` blends a raised land floor
+(`seaLevel + 2`) and a capped ocean ceiling (`seaLevel - 3`) by the sampled
+`landFactor`, producing one target floor height per column. `EnvelopedChunkGenerator`
+applies the difference between that target and the delegate's natural
+ocean-floor height as a uniform vertical adjustment: raised columns get stone
+filled up from a foundation depth exactly like starter land (using a smaller
+default foundation depth when no starter guarantee is active in that column),
+lowered columns get solid ground cleared down to water (below sea level) or
+air (at/above it). Every `Heightmap.Types` query in `getBaseHeight` shifts by
+this same delta so all heightmap types keep agreeing with each other and with
+`getBaseColumn`, and structures — which read these methods for placement —
+observe the coordinated (already submerged, where applicable) terrain rather
+than the pre-adjustment natural shape. The starter-land guarantee is applied
+as a second, independent pass on top and always wins in its own zone, since it
+only ever raises and treats existing water/air (including newly lowered
+layout columns) as replaceable foundation. `VOID` mode is excluded from this
+adjustment entirely until its sky-island overlay lands in Phase 15.5 — its
+placeholder sample would otherwise raise the whole world instead of leaving it
+void. The sampling seed for a fieldless-preset world is chosen at random when
+the world is first created (not yet tied to the player's entered Minecraft
+seed string, since no decode-time hook available to a `BiomeSource` codec
+currently exposes it); once resolved, the codec persists that value so reloads
+stay stable. Tying it to the real world seed is deferred alongside Phase 16's
+related finalized-seed-timing investigation.
 
 ## 18. Seed-informed spawn and layout origin
 

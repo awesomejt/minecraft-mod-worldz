@@ -172,6 +172,32 @@ Durable decisions, verified API notes, and rationale that should survive across 
   constructor throw at world-creation decode time. Mirrors the existing
   empty-allowed-list fail-safe: a broken layout config must never prevent
   world creation.
+- 2026-07-15 — `EnvelopedChunkGenerator` coordinates layout terrain by a
+  uniform vertical shift (raise/lower delta applied identically to every
+  `Heightmap.Types` query and to the actual placed blocks) rather than
+  replacing terrain outright. This preserves vanilla local relief shape (hills
+  keep looking like hills, just moved) and automatically keeps `getBaseHeight`
+  agreeing with `getBaseColumn` and the real chunk, since both derive the same
+  delta from the same ocean-floor baseline. Layout and starter-land raises are
+  applied as fully independent sequential passes (not merged into one
+  max-of-both calculation) because starter land's raise already treats
+  water/air as replaceable foundation — so starter land correctly wins in its
+  own zone even against a layout that lowered it first, without either pass
+  needing to know about the other's target.
+- 2026-07-15 — `VOID` layout mode is excluded from `EnvelopedChunkGenerator`'s
+  terrain adjustment entirely (`resolveLayout` treats it like `LEGACY`).
+  `WorldLayoutPlan.sampleAt` returns a hardcoded `landFactor=1.0` placeholder
+  for `VOID` (its real sky-island overlay is Phase 15.5), and applying that
+  literally would raise the whole world into land instead of leaving it void.
+- 2026-07-15 — The fieldless preset's `WorldLayoutPlan` sampling seed is
+  chosen with `new Random().nextLong()` once per newly created world rather
+  than a fixed constant. `BiomeSource` codecs decode from `RegistryOps`, which
+  has no seed-aware hook, so the actual Minecraft world seed isn't available
+  at decode time; a random-per-world seed at least gives distinct worlds
+  distinct layouts (matching player expectations) even though entering the
+  same seed string twice won't yet reproduce the same layout. Revisit once
+  Phase 16's finalized-seed-timing spike identifies where the real seed
+  becomes available.
 
 ## Reference Log
 
@@ -427,6 +453,38 @@ Durable decisions, verified API notes, and rationale that should survive across 
   to tell apart from 0.1.5. `./gradlew clean build` passes all modules and 125
   JUnit tests (28 new); artifact inspection confirmed 0.1.6 in both loader
   filenames. Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Default config update — Jason hand-edited
+  `config/jlt_worldz.example.yaml` to a desert/beach/river/badlands/cave biome
+  mix with a `minecraft:plains` starter (radius 256, foundation depth 48).
+  `WorldzConfig.java`'s actual field defaults were updated to match (per
+  Jason's choice when asked how to reconcile), plus the doc strings, README
+  table, and DESIGN §6 table. This is the mod's first change to its shipped
+  default `allowedBiomes`/`starterBiome` since Phase 1.
+- 2026-07-15 / Layout generation integration + release 0.1.7 —
+  `LimitedBiomeSource.getNoiseBiome` samples `WorldLayoutPlan` for every
+  non-legacy mode now (exterior ocean and starter-zone overrides still take
+  precedence), and `collectPossibleBiomes()` includes resolved layout biomes.
+  New pure `logic.LayoutTerrainProfile` blends a raised land floor
+  (`seaLevel+2`) and capped ocean ceiling (`seaLevel-3`) by `landFactor`;
+  `EnvelopedChunkGenerator` applies the delta uniformly so every
+  `Heightmap.Types` query, `getBaseColumn`, and the actual placed blocks agree
+  — raises fill stone from a foundation depth like starter land already does,
+  lowers clear to water/air. Starter land runs as an independent second pass
+  and always wins in its zone since water/air count as replaceable foundation.
+  `VOID` mode is excluded from adjustment (its sky-island overlay is Phase
+  15.5's job — its placeholder sample would otherwise raise the whole world
+  instead of leaving it void). The fieldless preset's sampling seed is now
+  chosen randomly per newly created world rather than a fixed placeholder, so
+  distinct worlds get distinct layouts; tying it to the player's actual
+  Minecraft seed string is deferred (no verified decode-time hook exposes it
+  to a `BiomeSource` codec) alongside Phase 16's related seed-timing spike.
+  Added source-scanning component tests for both files (matching this
+  project's established pattern for generator-level coverage where true
+  MC-bootstrapped unit tests aren't practical) plus full `LayoutTerrainProfile`
+  JUnit coverage. `./gradlew clean build` passes all modules and 134 JUnit
+  tests (9 new); artifact inspection confirmed 0.1.7 in both loader filenames.
+  Javadocs and `git diff --check` are clean. No live test was run; Jason will
+  perform acceptance testing for actual generated terrain shape.
 
 ## API Deviations
 

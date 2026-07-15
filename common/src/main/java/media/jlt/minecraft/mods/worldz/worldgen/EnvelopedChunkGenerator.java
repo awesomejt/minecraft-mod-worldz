@@ -8,8 +8,11 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
+import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -50,6 +53,12 @@ import java.util.concurrent.CompletableFuture;
 /** Delegates vanilla generation, then replaces columns outside a persisted square envelope. */
 public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static final int PRESERVED_SURFACE_SHELL_BLOCKS = 5;
+    /**
+     * Foundation repair depth used for a pure-layout raise with no starter-land
+     * guarantee active. Starter-land raises keep using their own configured
+     * {@code foundationDepthBlocks} instead.
+     */
+    private static final int DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS = 8;
     /** Codec registered as {@code jlt_worldz:enveloped}. */
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
@@ -61,6 +70,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private final Dimension dimension;
     private final ExteriorPlan.DimensionEnvelope envelope;
     private final Optional<StarterLandContext> starterLand;
+    private final Optional<LayoutContext> layout;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -72,6 +82,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.dimension = dimension;
         this.envelope = envelope;
         this.starterLand = resolveStarterLand(delegate, dimension);
+        this.layout = resolveLayout(delegate, dimension);
     }
 
     /**
@@ -159,6 +170,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkAccess chunk
     ) {
         this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
+        applyLayoutAdjustment(chunk, randomState, true);
         applyStarterLand(chunk, randomState, true);
         applyEnvelope(chunk);
     }
@@ -212,6 +224,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
+                applyLayoutAdjustment(chunk, randomState, false);
                 applyStarterLand(chunk, randomState, false);
                 applyEnvelope(chunk);
                 return chunk;
@@ -249,7 +262,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ExteriorMode mode = this.envelope.modeAt(x, z);
         if (mode == ExteriorMode.NORMAL) {
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
-            return Math.max(naturalHeight, starterLandTargetHeight(x, z, heightAccessor, randomState));
+            int layoutHeight = layoutAdjustedHeight(x, z, naturalHeight, heightAccessor, randomState);
+            return Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState));
         }
         return ExteriorTerrainProfile.baseHeight(
             mode,
@@ -271,18 +285,37 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor);
-            if (targetHeight <= naturalFloor) {
-                return naturalColumn;
+            BlockState[] states = null;
+
+            if (this.layout.isPresent()) {
+                double landFactor = this.layout.get().plan().sampleAt(x, z).landFactor();
+                int layoutFloor = LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, getSeaLevel());
+                if (layoutFloor > naturalFloor) {
+                    states = copyColumn(naturalColumn, heightAccessor);
+                    int minY = StarterLandProfile.foundationMinY(
+                        naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, heightAccessor.getMinY()
+                    );
+                    fillStarterColumn(states, heightAccessor.getMinY(), minY, layoutFloor - 1, naturalFloor);
+                } else if (layoutFloor < naturalFloor) {
+                    states = copyColumn(naturalColumn, heightAccessor);
+                    lowerColumn(states, heightAccessor.getMinY(), layoutFloor, naturalFloor - 1, getSeaLevel());
+                }
             }
-            BlockState[] states = copyColumn(naturalColumn, heightAccessor);
-            int minY = StarterLandProfile.foundationMinY(
-                naturalFloor,
-                this.starterLand.orElseThrow().plan().foundationDepthBlocks(),
-                heightAccessor.getMinY()
-            );
-            fillStarterColumn(states, heightAccessor.getMinY(), minY, targetHeight - 1, naturalFloor);
-            return new NoiseColumn(heightAccessor.getMinY(), states);
+
+            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor);
+            if (targetHeight > naturalFloor) {
+                if (states == null) {
+                    states = copyColumn(naturalColumn, heightAccessor);
+                }
+                int minY = StarterLandProfile.foundationMinY(
+                    naturalFloor,
+                    this.starterLand.orElseThrow().plan().foundationDepthBlocks(),
+                    heightAccessor.getMinY()
+                );
+                fillStarterColumn(states, heightAccessor.getMinY(), minY, targetHeight - 1, naturalFloor);
+            }
+
+            return states == null ? naturalColumn : new NoiseColumn(heightAccessor.getMinY(), states);
         }
         BlockState[] states = new BlockState[heightAccessor.getHeight()];
         int minY = heightAccessor.getMinY();
@@ -300,6 +333,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             "Worldz starter land: radius=" + context.radiusBlocks()
                 + ", transition=" + context.plan().transitionWidthBlocks()
         ));
+        this.layout.ifPresent(context -> result.add("Worldz layout: mode=" + context.plan().mode().serializedName()));
     }
 
     @Override
@@ -355,6 +389,56 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 }
             }
         }
+    }
+
+    private void applyLayoutAdjustment(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
+        if (this.layout.isEmpty()) {
+            return;
+        }
+        WorldLayoutPlan plan = this.layout.get().plan();
+        ChunkPos chunkPos = chunk.getPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int seaLevel = getSeaLevel();
+        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
+            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                if (this.envelope.modeAt(x, z) != ExteriorMode.NORMAL) {
+                    continue;
+                }
+                int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
+                double landFactor = plan.sampleAt(x, z).landFactor();
+                int layoutFloor = LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, seaLevel);
+                if (layoutFloor > naturalFloor) {
+                    int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
+                    int maxY = repairOnly ? layoutFloor - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : layoutFloor - 1;
+                    fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
+                } else if (layoutFloor < naturalFloor && !repairOnly) {
+                    // Lowering only clears solid ground down to open water/air; there is nothing
+                    // for a carver-stage repair pass to restore, unlike a starter-land raise.
+                    lowerColumn(chunk, pos, x, z, layoutFloor, naturalFloor - 1, seaLevel);
+                }
+            }
+        }
+    }
+
+    /**
+     * Shifts an arbitrary heightmap query by the same delta the layout applies
+     * to the ocean-floor baseline, so every {@link Heightmap.Types} agrees with
+     * the actual raised or lowered column without special-casing each type.
+     */
+    private int layoutAdjustedHeight(
+        int x,
+        int z,
+        int naturalHeight,
+        LevelHeightAccessor heightAccessor,
+        RandomState randomState
+    ) {
+        if (this.layout.isEmpty()) {
+            return naturalHeight;
+        }
+        int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
+        double landFactor = this.layout.get().plan().sampleAt(x, z).landFactor();
+        int layoutFloor = LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, getSeaLevel());
+        return naturalHeight + (layoutFloor - naturalFloor);
     }
 
     private void applyStarterLand(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
@@ -471,6 +555,45 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         }
     }
 
+    private static void lowerColumn(
+        ChunkAccess chunk,
+        BlockPos.MutableBlockPos pos,
+        int x,
+        int z,
+        int minY,
+        int maxY,
+        int seaLevel
+    ) {
+        for (int y = minY; y <= maxY; y++) {
+            pos.set(x, y, z);
+            BlockState newState = y < seaLevel ? Blocks.WATER.defaultBlockState() : Blocks.AIR.defaultBlockState();
+            BlockState oldState = chunk.getBlockState(pos);
+            if (oldState != newState) {
+                if (oldState.hasBlockEntity()) {
+                    chunk.removeBlockEntity(pos);
+                }
+                chunk.setBlockState(pos, newState, 0);
+            }
+        }
+    }
+
+    private static void lowerColumn(
+        BlockState[] states,
+        int columnMinY,
+        int minY,
+        int maxY,
+        int seaLevel
+    ) {
+        BlockState water = Blocks.WATER.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int y = minY; y <= maxY; y++) {
+            int index = y - columnMinY;
+            if (index >= 0 && index < states.length) {
+                states[index] = y < seaLevel ? water : air;
+            }
+        }
+    }
+
     private static BlockState[] copyColumn(NoiseColumn column, LevelHeightAccessor heightAccessor) {
         BlockState[] states = new BlockState[heightAccessor.getHeight()];
         int minY = heightAccessor.getMinY();
@@ -493,6 +616,20 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return Optional.empty();
         }
         return Optional.of(new StarterLandContext(source.starterRadiusBlocks(), plan));
+    }
+
+    private static Optional<LayoutContext> resolveLayout(ChunkGenerator delegate, Dimension dimension) {
+        if (dimension != Dimension.OVERWORLD || !(delegate.getBiomeSource() instanceof LimitedBiomeSource source)) {
+            return Optional.empty();
+        }
+        WorldLayoutPlan plan = source.worldLayoutPlan();
+        // VOID's sky-island overlay is Phase 15.5 work; its placeholder sample
+        // always reports full land factor, which would wrongly raise the whole
+        // world instead of leaving it void. Skip terrain adjustment until then.
+        if (plan.mode() == LayoutMode.LEGACY || plan.mode() == LayoutMode.VOID) {
+            return Optional.empty();
+        }
+        return Optional.of(new LayoutContext(plan));
     }
 
     private BlockState exteriorState(ExteriorMode mode, int y, LevelHeightAccessor heightAccessor) {
@@ -548,5 +685,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     private record StarterLandContext(int radiusBlocks, StarterLandPlan plan) {
+    }
+
+    private record LayoutContext(WorldLayoutPlan plan) {
     }
 }

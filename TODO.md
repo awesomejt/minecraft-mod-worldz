@@ -336,11 +336,35 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       Fabric, and NeoForge with 125 JUnit tests (28 new); Javadocs and
       `git diff --check` are clean. **Commit** ("Implement the WorldLayoutPlan
       sampler and persisted config").
-- [ ] 15.4 Make `LimitedBiomeSource` and `EnvelopedChunkGenerator` consume the
+- [x] 15.4 Make `LimitedBiomeSource` and `EnvelopedChunkGenerator` consume the
       same layout. Preserve vanilla local relief/caves/surfaces, coordinate
       land/ocean height adjustment, make base queries agree, prevent structures
       from observing submerged planned land, and retain legacy mode unchanged.
       Add component tests, lint, review, document, and commit.
+      `LimitedBiomeSource.getNoiseBiome` now samples the plan for every
+      non-legacy mode (exterior ocean override and the existing starter-zone
+      override still take precedence), and `collectPossibleBiomes()` includes
+      every resolved layout biome. A new pure `logic.LayoutTerrainProfile`
+      blends a raised land floor and a capped ocean ceiling by the sampled
+      `landFactor`; `EnvelopedChunkGenerator` applies that as a uniform
+      vertical delta so every `Heightmap.Types` query, `getBaseColumn`, and the
+      actual generated blocks agree, preserving vanilla local relief instead of
+      replacing terrain outright. The existing starter-land guarantee runs as
+      an independent second pass and always wins in its own zone. `VOID` mode
+      is explicitly excluded from terrain adjustment (its sky-island overlay is
+      Phase 15.5); its layout sampling and Customize wiring are otherwise
+      unaffected. The fieldless preset's sampling seed is chosen randomly per
+      newly created world (not yet tied to the player's actual seed string —
+      no verified decode-time hook exposes it; noted as a deviation and paired
+      with Phase 16's related investigation). Added component tests reading
+      `EnvelopedChunkGenerator.java`/`LimitedBiomeSource.java` source (matching
+      this project's established pattern for generator-level component
+      coverage) plus full `LayoutTerrainProfile` JUnit coverage. Released as
+      0.1.7. Full clean build passes common, Fabric, and NeoForge with 134
+      JUnit tests (9 new); Javadocs and `git diff --check` are clean. No live
+      test was run; Jason will perform acceptance testing for actual generated
+      terrain shape. **Commit** ("Make LimitedBiomeSource and
+      EnvelopedChunkGenerator consume the layout").
 - [ ] 15.5 Expose layout mode, ocean coverage, scale, biome roles, and weights
       in Customize without removing the simple allowed-biome list. Integrate
       starter overlays: land-only rivers, mixed coasts, ocean starter island

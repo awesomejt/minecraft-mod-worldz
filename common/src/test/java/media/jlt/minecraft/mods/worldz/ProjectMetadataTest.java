@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.6", properties.getProperty("version"));
+        assertEquals("0.1.7", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -174,8 +174,42 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("StarterLandProfile.targetHeight"));
         assertTrue(generator.contains("Heightmap.Types.OCEAN_FLOOR_WG"));
         assertTrue(generator.contains("Noises.SURFACE_SECONDARY"));
-        assertTrue(generator.contains("Math.max(naturalHeight, starterLandTargetHeight"));
+        assertTrue(generator.contains("Math.max(layoutHeight, starterLandTargetHeight"));
         assertTrue(generator.contains("super.createStructures("));
+    }
+
+    @Test
+    void layoutAdjustmentRunsAtConsistentChunkStagesAndSkipsVoid() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("applyLayoutAdjustment(chunk, randomState, false)"));
+        assertTrue(generator.contains("applyLayoutAdjustment(chunk, randomState, true)"));
+        assertTrue(generator.contains("LayoutTerrainProfile.targetHeight"));
+        assertTrue(generator.contains("plan.mode() == LayoutMode.LEGACY || plan.mode() == LayoutMode.VOID"));
+        assertTrue(generator.contains("layoutAdjustedHeight(x, z, naturalHeight, heightAccessor, randomState)"));
+        // fillFromNoise raises before buildSurface runs, and applyCarvers only repairs
+        // (never lowers) so a carved-through raise still preserves the surface shell.
+        int fillFromNoiseIndex = generator.indexOf("public CompletableFuture<ChunkAccess> fillFromNoise(");
+        int applyCarversIndex = generator.indexOf("public void applyCarvers(");
+        int layoutInFillFromNoise = generator.indexOf("applyLayoutAdjustment(chunk, randomState, false)");
+        int layoutInApplyCarvers = generator.indexOf("applyLayoutAdjustment(chunk, randomState, true)");
+        assertTrue(fillFromNoiseIndex >= 0 && applyCarversIndex >= 0);
+        assertTrue(layoutInApplyCarvers > applyCarversIndex && layoutInApplyCarvers < fillFromNoiseIndex);
+        assertTrue(layoutInFillFromNoise > fillFromNoiseIndex);
+    }
+
+    @Test
+    void limitedBiomeSourceConsumesTheLayoutPlanForNonLegacyModes() throws IOException {
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains("this.worldLayoutPlan.mode() != LayoutMode.LEGACY"));
+        assertTrue(source.contains("this.worldLayoutPlan.sampleAt(blockX, blockZ).biomeId()"));
+        assertTrue(source.contains("resolveLayoutBiomes(worldLayoutPlan, biomeGetter)"));
+        assertTrue(source.contains("possible.addAll(layoutBiomes.values())"));
     }
 
     private static Properties projectProperties() throws IOException {

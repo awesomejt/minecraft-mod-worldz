@@ -13,6 +13,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
+import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
@@ -30,9 +31,12 @@ import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList;
 
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -86,7 +90,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
         // asks this biome source for its possible biomes or an actual biome.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
-            allowedBiomes.get(), starterBiome, this.oceanBiome, biomeGetter
+            allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan, biomeGetter
         ));
     }
 
@@ -120,11 +124,16 @@ public final class LimitedBiomeSource extends BiomeSource {
         ExteriorPlan exterior = encodedStarterRadius.isPresent()
             ? encodedExteriorPlan.orElseGet(ExteriorPlan::normal)
             : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
-        // Sampling the plan is Phase 15.4's job; only persistence round-trips here.
-        // The fieldless preset's config-derived seed is a placeholder until then.
+        // A fresh random sampling seed is picked once per newly created fieldless-preset
+        // world and then persisted, giving distinct worlds distinct layouts even though
+        // it is not yet tied to the player's chosen Minecraft world seed string: no
+        // decode-time hook here exposes that seed (BiomeSource codecs decode from
+        // RegistryOps, not a seed-aware context). Ideally would use the actual world
+        // seed; verifying where to obtain it is deferred alongside Phase 16's related
+        // finalized-seed-timing investigation.
         WorldLayoutPlan worldLayout = encodedStarterRadius.isPresent()
             ? encodedWorldLayout.orElseGet(WorldLayoutPlan::legacy)
-            : encodedWorldLayout.orElseGet(() -> WorldLayoutPlan.fromConfig(config, 0L));
+            : encodedWorldLayout.orElseGet(() -> WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, encodedStarterRadius.isEmpty(), biomeGetter
@@ -171,6 +180,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         HolderSet<Biome> allowed,
         Optional<Holder<Biome>> starterBiome,
         Optional<Holder<Biome>> oceanBiome,
+        WorldLayoutPlan worldLayoutPlan,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -209,7 +219,41 @@ public final class LimitedBiomeSource extends BiomeSource {
         }
         starterBiome.ifPresent(possible::add);
         oceanBiome.ifPresent(possible::add);
-        return new Resolution(HolderSet.direct(List.copyOf(allowedSet)), delegate, Set.copyOf(possible));
+
+        Map<String, Holder<Biome>> layoutBiomes = resolveLayoutBiomes(worldLayoutPlan, biomeGetter);
+        if (worldLayoutPlan.mode() != LayoutMode.LEGACY) {
+            possible.addAll(layoutBiomes.values());
+        }
+        return new Resolution(HolderSet.direct(List.copyOf(allowedSet)), delegate, Set.copyOf(possible), layoutBiomes);
+    }
+
+    private static Map<String, Holder<Biome>> resolveLayoutBiomes(WorldLayoutPlan plan, HolderGetter<Biome> biomeGetter) {
+        if (plan.mode() == LayoutMode.LEGACY) {
+            return Map.of();
+        }
+        Set<String> ids = new LinkedHashSet<>();
+        plan.landBiomes().forEach(weight -> ids.add(weight.biomeId()));
+        plan.oceanBiomes().forEach(weight -> ids.add(weight.biomeId()));
+        plan.beachBiomes().forEach(weight -> ids.add(weight.biomeId()));
+        plan.singleBiome().ifPresent(ids::add);
+
+        Map<String, Holder<Biome>> resolved = new LinkedHashMap<>();
+        for (String id : ids) {
+            ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(id));
+            Optional<Holder.Reference<Biome>> holder = biomeGetter.get(key);
+            if (holder.isEmpty()) {
+                WorldzCommon.LOGGER.warn("Unknown layout biome '{}'; it will never be selected.", id);
+            } else {
+                resolved.put(id, holder.get());
+            }
+        }
+        if (resolved.isEmpty()) {
+            WorldzCommon.LOGGER.warn(
+                "Layout mode '{}' has no resolved biomes; falling back to climate-filter biomes at every column.",
+                plan.mode().serializedName()
+            );
+        }
+        return resolved;
     }
 
     private static HolderSet<Biome> resolveConfiguredBiomes(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
@@ -345,12 +389,20 @@ public final class LimitedBiomeSource extends BiomeSource {
 
     @Override
     public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
-        if (this.exteriorPlan.overworld().modeAt(QuartPos.toBlock(quartX), QuartPos.toBlock(quartZ))
-            == ExteriorMode.OCEAN) {
+        int blockX = QuartPos.toBlock(quartX);
+        int blockZ = QuartPos.toBlock(quartZ);
+        if (this.exteriorPlan.overworld().modeAt(blockX, blockZ) == ExteriorMode.OCEAN) {
             return this.oceanBiome.orElseThrow(() -> new IllegalStateException("Deep ocean biome is unavailable."));
         }
         if (isInStarterZone(quartX, quartZ)) {
             return this.starterBiome.orElseThrow();
+        }
+        if (this.worldLayoutPlan.mode() != LayoutMode.LEGACY) {
+            Optional<Holder<Biome>> sampled = this.worldLayoutPlan.sampleAt(blockX, blockZ).biomeId()
+                .map(this.resolution.get().layoutBiomes()::get);
+            if (sampled.isPresent()) {
+                return sampled.get();
+            }
         }
         return this.resolution.get().delegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
     }
@@ -358,7 +410,8 @@ public final class LimitedBiomeSource extends BiomeSource {
     private record Resolution(
         HolderSet<Biome> allowedBiomes,
         MultiNoiseBiomeSource delegate,
-        Set<Holder<Biome>> possibleBiomes
+        Set<Holder<Biome>> possibleBiomes,
+        Map<String, Holder<Biome>> layoutBiomes
     ) {
     }
 }
