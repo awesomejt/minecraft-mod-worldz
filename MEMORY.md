@@ -21,6 +21,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   preserves vanilla entry order, separately tracks distinct matched biomes,
   and makes the core filtering behavior directly testable without booting
   Minecraft registries.
+- 2026-07-14 — Use MIT as specified by DESIGN.md and loader metadata. The
+  reseed template unexpectedly supplied CC0; the completion audit replaced it
+  with the SPDX MIT text attributed to Jason Taylor and added metadata tests.
+- 2026-07-14 — For non-fallback generation, expose only climate-matched allowed
+  holders through `possibleBiomes()`. Unsupported configured biomes are warned
+  and ignored, so advertising them to feature/structure logic would contradict
+  what the delegate can generate.
 
 ## Reference Log
 
@@ -44,6 +51,8 @@ Durable decisions, verified API notes, and rationale that should survive across 
   https://docs.junit.org/5.13.1/user-guide/index.html
 - Test hardening: Java 25 unmodifiable collection snapshots —
   https://docs.oracle.com/en/java/javase/25/core/java-core-libraries-developer-guide.pdf
+- Completion audit: canonical MIT license identifier and text —
+  https://spdx.org/licenses/MIT.html
 
 ## Verification Log
 
@@ -67,6 +76,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   field types, empty allowed lists, docs sanitation, summaries, null parser
   inputs, immutable parser results, exact diagonal/zero-radius zone boundaries,
   and exact preset/tag/lang resource membership.
+- 2026-07-14 / Completion audit — Found and corrected a real license mismatch:
+  root `LICENSE` was CC0 while the design and loader manifests declared MIT.
+  Two project-metadata tests now lock the license, root project name, package
+  group, mod identity, version, Java level, and Minecraft version. The suite
+  now contains 33 tests.
 
 ## API Deviations
 
@@ -75,4 +89,8 @@ Durable decisions, verified API notes, and rationale that should survive across 
 - The codec retrieves only the biome registry getter; it constructs the public vanilla overworld preset parameter list directly to avoid 26.2's parallel-load unbound holder.
 - Configured tag holder sets are expanded only after tag binding, then persisted
   as a resolved direct holder list.
+- Minecraft 26.2 stores codec-encoded dimension settings in
+  `data/minecraft/world_gen_settings.dat`, not directly in `level.dat`.
+- Loader jars use the reseed naming convention rather than a single root
+  `mod-worldz` archive because Fabric and NeoForge require distinct artifacts.
 - See the starter-radius resolved marker and fail-safe possible-biome decisions above.

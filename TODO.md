@@ -93,8 +93,9 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 4 — Smoke test [Jason]
 
-Automated coverage before manual testing: 31 passing JUnit tests cover config
-load/sanitation, biome/tag parsing, climate-entry filtering, starter-zone math,
+Automated coverage before manual testing: 33 passing JUnit tests cover project
+identity/license metadata, config load/sanitation, biome/tag parsing,
+climate-entry filtering, starter-zone math,
 and preset/tag/lang resources. Dedicated-server creation also passed on both
 loaders; the items below remain the requested visual/gameplay acceptance pass.
 
@@ -159,3 +160,16 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
   rather than during codec decode. Minecraft 26.2 decodes world presets before
   dynamic-registry tags are bound; eager expansion crashes datapack loading.
   The resolved direct holder list is still what gets persisted into the world.
+- Minecraft 26.2 persists dimension-generator settings in
+  `data/minecraft/world_gen_settings.dat`, rather than directly inside
+  `level.dat` as described in DESIGN §§2–3. The biome-source codec remains the
+  persistence mechanism and the baked-settings behavior is unchanged.
+- Unsupported configured holders are omitted from `collectPossibleBiomes()`
+  when at least one allowed biome matched the overworld climate map. Reporting
+  only values the delegate can actually return avoids exposing ignored Nether,
+  End, or special biomes to overworld feature and structure logic.
+- The reseed template's root `LICENSE` was CC0, conflicting with DESIGN §1 and
+  both loader manifests. Worldz replaces it with the canonical MIT license.
+- The root project is named `mod-worldz`, but the loader artifacts retain the
+  reseed multiloader naming scheme (`jlt_worldz-<loader>-26.2-<version>`) so
+  Fabric and NeoForge outputs are unambiguous; there is no root artifact.
