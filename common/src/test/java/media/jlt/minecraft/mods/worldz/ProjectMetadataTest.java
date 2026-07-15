@@ -106,6 +106,24 @@ class ProjectMetadataTest {
     }
 
     @Test
+    void delayedBordersUseBothLoaderTickHooks() throws IOException {
+        String fabric = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/WorldzFabric.java")
+        );
+        String neoForge = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForge.java")
+        );
+        String manager = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/WorldLimitManager.java"
+        ));
+
+        assertTrue(fabric.contains("ServerTickEvents.END_SERVER_TICK.register(WorldLimitManager::onServerTick)"));
+        assertTrue(neoForge.contains("onServerTick(ServerTickEvent.Post event)"));
+        assertTrue(manager.contains("state.pendingStartTick(overworld)"));
+        assertTrue(manager.contains("state.clearPendingStart(overworld)"));
+    }
+
+    @Test
     void customizationScreensExposeExteriorAndRateFields() throws IOException {
         String customize = Files.readString(ROOT.resolve(
             "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzCustomizeScreen.java"
@@ -122,6 +140,7 @@ class ProjectMetadataTest {
         assertTrue(customize.contains("this.netherExterior"));
         assertTrue(border.contains("resizeRateBlocks.getValue()"));
         assertTrue(border.contains("resizeRateDays.getValue()"));
+        assertTrue(border.contains("resizeDelayDays.getValue()"));
         assertTrue(exterior.contains("ExteriorSettings.fromText"));
         assertTrue(exterior.contains("case NORMAL -> this.overworld ? ExteriorMode.OCEAN : ExteriorMode.VOID"));
     }

@@ -15,6 +15,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /** NeoForge loader entrypoint. */
 @Mod(WorldzCommon.MOD_ID)
@@ -39,9 +40,14 @@ public final class WorldzNeoForge {
             WorldzNeoForgeClient.register(modBus);
         }
         NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onServerStarted);
+        NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onServerTick);
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
         WorldLimitManager.onServerStarted(event.getServer());
+    }
+
+    private static void onServerTick(ServerTickEvent.Post event) {
+        WorldLimitManager.onServerTick(event.getServer());
     }
 }

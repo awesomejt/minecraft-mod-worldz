@@ -221,8 +221,10 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       JUnit coverage while preserving older configs and saves. Full build passes
       85 tests with clean Javadocs and whitespace lint. **Commit** ("Add delayed
       border schedule state").
-- [ ] 10.3 Register both loader tick hooks, implement delayed start/resume,
-      expose the value in Customize, and add component/resource tests.
+- [x] 10.3 Register both loader tick hooks, implement delayed start/resume,
+      expose the value in Customize, and add component/resource tests. Full
+      build passes 86 tests with clean Javadocs and whitespace lint. **Commit**
+      ("Start border resizing after a delay").
 - [ ] 10.4 Update user/technical docs, run the clean multiloader build, inspect
       artifacts, review quality, update Memory/TODO, and final **commit**. No
       live testing required.

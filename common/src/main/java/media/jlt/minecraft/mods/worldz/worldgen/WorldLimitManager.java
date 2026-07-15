@@ -10,6 +10,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.border.WorldBorder;
 
+import java.util.OptionalLong;
+
 /** Applies the border plan baked into a new Worldz world's biome source. */
 public final class WorldLimitManager {
     private WorldLimitManager() {
@@ -42,28 +44,96 @@ public final class WorldLimitManager {
             return;
         }
 
-        apply(overworld, plan.overworld(), "overworld");
+        long overworldStartTick = initializeBorder(overworld, plan.overworld(), "Overworld");
         ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld(), exterior.overworld());
         ServerLevel nether = server.getLevel(Level.NETHER);
+        long netherStartTick = -1L;
         if (nether != null) {
-            apply(nether, plan.nether(), "Nether");
+            netherStartTick = initializeBorder(nether, plan.nether(), "Nether");
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether());
         }
-        overworld.getDataStorage().set(WorldLimitState.TYPE, new WorldLimitState(true));
+        overworld.getDataStorage().set(
+            WorldLimitState.TYPE,
+            new WorldLimitState(true, overworldStartTick, netherStartTick)
+        );
     }
 
-    private static void apply(ServerLevel level, WorldLimitPlan.DimensionLimit limit, String dimensionName) {
-        if (!limit.enabled()) {
+    /**
+     * Starts delayed transitions whose persisted game-time deadline is due.
+     *
+     * @param server ticking logical server
+     */
+    public static void onServerTick(MinecraftServer server) {
+        ServerLevel overworld = server.overworld();
+        WorldLimitState state = overworld.getDataStorage().get(WorldLimitState.TYPE);
+        if (state == null || !state.initialized() || !state.hasPendingStarts()) {
             return;
+        }
+        BiomeSource source = overworld.getChunkSource().getGenerator().getBiomeSource();
+        if (!(source instanceof LimitedBiomeSource limitedSource)) {
+            return;
+        }
+
+        WorldLimitPlan plan = limitedSource.worldLimits();
+        startIfDue(state, true, overworld, plan.overworld(), "Overworld");
+        ServerLevel nether = server.getLevel(Level.NETHER);
+        if (nether != null) {
+            startIfDue(state, false, nether, plan.nether(), "Nether");
+        }
+    }
+
+    private static long initializeBorder(
+        ServerLevel level,
+        WorldLimitPlan.DimensionLimit limit,
+        String dimensionName
+    ) {
+        if (!limit.enabled()) {
+            return -1L;
         }
 
         BorderSchedule schedule = limit.schedule();
         WorldBorder border = level.getWorldBorder();
         border.setCenter(0.0, 0.0);
+        if (schedule.initialRadiusBlocks() == schedule.finalRadiusBlocks()) {
+            border.setSize(schedule.finalDiameterBlocks());
+            logSchedule(dimensionName, limit, schedule, "static");
+            return -1L;
+        }
+        if (schedule.delayTicks() > 0L) {
+            border.setSize(schedule.initialDiameterBlocks());
+            long startTick = Math.addExact(level.getGameTime(), schedule.delayTicks());
+            logSchedule(dimensionName, limit, schedule, "waiting until game tick " + startTick);
+            return startTick;
+        }
+        startTransition(level, limit, dimensionName);
+        return -1L;
+    }
+
+    private static void startIfDue(
+        WorldLimitState state,
+        boolean overworld,
+        ServerLevel level,
+        WorldLimitPlan.DimensionLimit limit,
+        String dimensionName
+    ) {
+        OptionalLong pending = state.pendingStartTick(overworld);
+        if (pending.isEmpty() || level.getGameTime() < pending.getAsLong()) {
+            return;
+        }
+        startTransition(level, limit, dimensionName);
+        state.clearPendingStart(overworld);
+    }
+
+    private static void startTransition(
+        ServerLevel level,
+        WorldLimitPlan.DimensionLimit limit,
+        String dimensionName
+    ) {
+        BorderSchedule schedule = limit.schedule();
+        WorldBorder border = level.getWorldBorder();
         if (schedule.durationTicks() == 0L) {
             border.setSize(schedule.finalDiameterBlocks());
         } else {
-            border.setSize(schedule.initialDiameterBlocks());
             border.lerpSizeBetween(
                 schedule.initialDiameterBlocks(),
                 schedule.finalDiameterBlocks(),
@@ -71,11 +141,22 @@ public final class WorldLimitManager {
                 level.getGameTime()
             );
         }
+        logSchedule(dimensionName, limit, schedule, "started");
+    }
+
+    private static void logSchedule(
+        String dimensionName,
+        WorldLimitPlan.DimensionLimit limit,
+        BorderSchedule schedule,
+        String status
+    ) {
         WorldzCommon.LOGGER.info(
-            "Applied {} border: initial radius {}, final radius {}, duration {} ticks{}.",
+            "Worldz {} border {}: initial radius {}, final radius {}, delay {} ticks, duration {} ticks{}.",
             dimensionName,
+            status,
             limit.initialRadiusBlocks(),
             limit.finalRadiusBlocks(),
+            schedule.delayTicks(),
             schedule.durationTicks(),
             schedule.usesRate()
                 ? " (" + limit.resizeRateBlocks() + " blocks per " + limit.resizeRateDays() + " days)"

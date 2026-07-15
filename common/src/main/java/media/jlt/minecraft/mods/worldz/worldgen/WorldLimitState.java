@@ -77,6 +77,15 @@ public final class WorldLimitState extends SavedData {
     }
 
     /**
+     * Returns whether either dimension is still waiting to resize.
+     *
+     * @return whether a server-tick check is needed
+     */
+    public boolean hasPendingStarts() {
+        return this.overworldStartTick != NO_PENDING_START || this.netherStartTick != NO_PENDING_START;
+    }
+
+    /**
      * Clears a pending start after its transition begins.
      *
      * @param overworld whether to clear the Overworld rather than Nether

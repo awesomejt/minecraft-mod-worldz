@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -30,5 +31,6 @@ public final class WorldzFabric implements ModInitializer {
             EnvelopedChunkGenerator.CODEC
         );
         ServerLifecycleEvents.SERVER_STARTED.register(WorldLimitManager::onServerStarted);
+        ServerTickEvents.END_SERVER_TICK.register(WorldLimitManager::onServerTick);
     }
 }

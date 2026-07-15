@@ -26,6 +26,7 @@ final class WorldzBorderScreen extends Screen {
     private EditBox initialRadius;
     private EditBox finalRadius;
     private EditBox resizeDays;
+    private EditBox resizeDelayDays;
     private EditBox resizeRateBlocks;
     private EditBox resizeRateDays;
     private MultiLineTextWidget errorMessage;
@@ -76,13 +77,25 @@ final class WorldzBorderScreen extends Screen {
         this.resizeDays = numberField(
             Component.translatable("jlt_worldz.customize.border.resize_days"),
             this.initial.resizeDays(),
-            FORM_WIDTH
+            150
         );
-        form.addChild(CommonLayouts.labeledElement(
+        this.resizeDelayDays = numberField(
+            Component.translatable("jlt_worldz.customize.border.resize_delay_days"),
+            this.initial.resizeDelayDays(),
+            150
+        );
+        LinearLayout timingFields = LinearLayout.horizontal().spacing(10);
+        timingFields.addChild(CommonLayouts.labeledElement(
             this.font,
             this.resizeDays,
             Component.translatable("jlt_worldz.customize.border.resize_days")
         ));
+        timingFields.addChild(CommonLayouts.labeledElement(
+            this.font,
+            this.resizeDelayDays,
+            Component.translatable("jlt_worldz.customize.border.resize_delay_days")
+        ));
+        form.addChild(timingFields);
 
         this.resizeRateBlocks = numberField(
             Component.translatable("jlt_worldz.customize.border.resize_rate_blocks"),
@@ -142,6 +155,7 @@ final class WorldzBorderScreen extends Screen {
                 this.initialRadius.getValue(),
                 this.finalRadius.getValue(),
                 this.resizeDays.getValue(),
+                this.resizeDelayDays.getValue(),
                 this.resizeRateBlocks.getValue(),
                 this.resizeRateDays.getValue(),
                 this.ensureObjective

@@ -15,6 +15,7 @@
   "jlt_worldz.customize.border.initial_radius": "Initial radius in blocks",
   "jlt_worldz.customize.border.final_radius": "Final radius in blocks",
   "jlt_worldz.customize.border.resize_days": "Total days (used when rate is 0)",
+  "jlt_worldz.customize.border.resize_delay_days": "Delay before resize (days)",
   "jlt_worldz.customize.border.resize_rate_blocks": "Rate blocks (0 disables)",
   "jlt_worldz.customize.border.resize_rate_days": "Rate days (0 disables)",
   "jlt_worldz.customize.ensure_end_portal": "Ensure an End portal is reachable",

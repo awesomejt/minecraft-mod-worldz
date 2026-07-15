@@ -233,6 +233,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   immutable plan snapshots. Optional codec and saved-data fields default to zero
   or no pending start, preserving old configs and initialized worlds. Javadocs
   and `git diff --check` are clean.
+- 2026-07-15 / Delayed runtime — `./gradlew build` passed all modules and 86
+  JUnit tests. Fabric uses `END_SERVER_TICK`; NeoForge uses
+  `ServerTickEvent.Post`. Initialization installs the initial diameter and saves
+  each due game tick. The shared tick manager starts the vanilla transition,
+  clears that pending tick, and stops doing plan lookups once neither dimension
+  is waiting. Customize displays total duration and delay side by side. Loader
+  wiring/localization component tests, Javadocs, and whitespace lint are clean.
 
 ## API Deviations
 
