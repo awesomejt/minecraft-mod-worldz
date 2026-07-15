@@ -122,6 +122,34 @@ Durable decisions, verified API notes, and rationale that should survive across 
   uses a smooth circular transition back to untouched natural heights. The same
   pure profile drives base height/column queries. Encoded older sources missing
   the plan decode disabled; fieldless new presets use YAML defaults.
+- 2026-07-15 — Worldz5 and Worldz6 establish that filtering vanilla multi-noise
+  biome entries is not a terrain-composition system. Vanilla continentalness
+  can remain ocean for thousands of blocks while Worldz reports allowed land,
+  beach, or ocean biomes over it; structures may then create isolated adapted
+  platforms. The fix is a versioned, seed-aware layout sampled by both the
+  biome source and terrain wrapper, not a larger starter disc or a different
+  order of the current independent operations.
+- 2026-07-15 — Planned layout modes are land-only (rivers/small water allowed),
+  mixed (recommended coverage plus configurable biome weights), ocean (starter
+  island and beach transition into multiple possible ocean biomes), single
+  biome, and sky void (starter island). Existing encoded worlds remain on an
+  explicit legacy vanilla-terrain mode. Beach and ocean selections have terrain
+  roles; the starter plan overlays and blends into the shared base layout.
+- 2026-07-15 — Treat spawn preference, forced starter biome, and layout origin
+  as separate concepts. A future preferred-natural-biome strategy may search
+  the finalized seed's unmodified climate view, but it may become a Worldz
+  layout origin only if resolved before chunk generation and persisted. Moving
+  spawn alone while leaving starter, border, exterior, and progression math at
+  `(0,0)` is rejected.
+- 2026-07-15 — Defer a customizable flat mode until coordinated noise layouts
+  stabilize. Verified 26.2 `FlatLevelGeneratorSettings` already supports an
+  arbitrary fixed biome, ordered block layers, feature/lake flags, and optional
+  structure-set overrides. The default settings select villages + strongholds;
+  the Overworld preset adds mineshafts, outposts, and ruined portals, while
+  trial chambers are absent. Worldz should expose these clearly, add a preset
+  whose spawn surface is at Y 40 or higher to avoid the ordinary slime-chunk
+  rule, and test structure placement rather than assuming `FlatLevelSource`
+  cannot support it. Biome-specific surface slime spawning remains separate.
 
 ## Reference Log
 
@@ -186,6 +214,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
 - Starter-land relief correction: Fabric API upstream repository and worldgen
   integration source survey — https://github.com/FabricMC/fabric-api
+- Coordinated layouts: Minecraft's description of terrain shapes no longer
+  requiring biome-specific variants —
+  https://feedback.minecraft.net/hc/en-us/articles/4409293520269-Minecraft-Java-Edition-Snapshot-21w37a
+- Layout/flat/spawn planning: authoritative Minecraft 26.2
+  `MultiNoiseBiomeSource`, `BiomeSource`, `RandomState`, `MinecraftServer`,
+  `FlatLevelSource`, `FlatLevelGeneratorSettings`, flat preset resources, and
+  structure-set and slime spawn-rule sources —
+  `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
 
 ## Verification Log
 
@@ -330,6 +366,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
   behavior/persistence remains available. Artifact inspection confirmed 0.1.5
   metadata and all relief/profile classes in both loader jars. Javadocs and
   `git diff --check` are clean; no live test was run.
+- 2026-07-15 / Coordinated-layout design — DESIGN, README, TODO, and Memory now
+  distinguish current climate filtering from planned terrain composition and
+  capture five layout modes, weighted mixed biomes, biome roles, starter
+  overlays, seed-informed spawn constraints, and deferred flat-world controls.
+  Minecraft 26.2 source review corrected the flat assumptions: arbitrary fixed
+  biomes/layers and structure overrides already exist, the Overworld preset
+  includes ruined portals, trial chambers are absent, and ordinary slime-chunk
+  spawning requires Y below 40. `./gradlew clean build` passed all modules and
+  97 JUnit tests; `git diff --check` is clean. No runtime behavior changed.
 
 ## API Deviations
 

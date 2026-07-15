@@ -1,8 +1,9 @@
 # jlt_worldz — Design
 
-World-generation control mod: limit a new world to one or a few chosen biomes,
-with an optional forced "starter biome" zone around world spawn. Fabric +
-NeoForge multiloader, same toolchain as the sibling mods (MC 26.2, loader
+World-generation control mod: compose a new world from one or more chosen
+biomes, with a terrain layout that keeps land, coast, ocean, and void shapes
+consistent with those choices and an optional starter zone around world spawn.
+Fabric + NeoForge multiloader, same toolchain as the sibling mods (MC 26.2, loader
 0.19.3, fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta, Java 25, Gradle
 9.5.1, Loom 1.17-SNAPSHOT). **Template repo: `../reseed`** — it is the
 smallest working multiloader sibling; mirror its structure and build wiring
@@ -27,10 +28,11 @@ exactly. Execution checklist: `TODO.md` in this repo.
    screen. The preset's **Customize** screen starts from those defaults and can
    override every setting for that new world without rewriting YAML. Dedicated
    servers use `level-type=jlt_worldz:worldz` and the YAML values directly.
-2. The overworld generates with normal terrain shape (rivers, mountains,
-   caves) but only the configured biomes — multi-noise snaps every position to
-   the nearest allowed biome, so a short list still yields natural-looking
-   regions. A single-entry list gives a whole-world single biome.
+2. Legacy worlds generate vanilla terrain and restrict its biome labels to the
+   configured set. New coordinated-layout worlds use one persisted layout to
+   choose both broad terrain class and biome, preventing land biomes and their
+   structures from being placed over ocean-shaped terrain. See §17. A
+   single-entry list remains a supported whole-world single-biome case.
 3. If a starter biome is configured, everything within `starterRadiusBlocks`
    of the origin (where world spawn lands) is that biome, regardless of the
    allowed list.
@@ -355,3 +357,128 @@ starter-land field decodes with the guarantee disabled. A plan lacking only the
 profile revision retains the original flat-floor profile; newly created worlds
 use the current relief profile. Installing a newer version therefore cannot
 change the algorithm in unexplored chunks of an established save.
+
+## 17. Coordinated world layouts
+
+The current climate-filter implementation limits biome identity but delegates
+continentalness and density entirely to vanilla. Testing Worldz5 and Worldz6
+showed why that is insufficient: a seed with a large vanilla ocean can report
+desert, badlands, or beach over submerged terrain, allow biome-compatible
+structures to construct isolated platforms, or let one selected ocean biome
+dominate a mixed list. A starter-land overlay improves only its finite center;
+reordering biome and starter generation does not make the unrestricted terrain
+and biome decisions agree.
+
+New worlds shall offer a persisted `layoutMode` with these player-facing
+semantics:
+
+1. **Land only** — selected land biomes form coherent regions. Rivers and small
+   inland water remain permitted, but the layout creates no large ocean basins.
+2. **Mixed** — coherent land and ocean regions use recommended default coverage
+   and equal within-role biome weights. The player may exclude biomes, prefer
+   individual biomes with weights, and change ocean coverage and region scale.
+3. **Ocean world** — a starter island blends through a beach/coast transition
+   into infinite ocean. One or more selected ocean biomes form coherent ocean
+   regions outside the island.
+4. **Single biome** — one selected biome fills the generated world, with a
+   terrain class appropriate to that biome unless explicitly overridden.
+5. **Void** — a supported starter island floats in an otherwise infinite sky
+   void. This remains distinct from a finite square void exterior so players
+   can choose an island world without enabling a border.
+6. **Vanilla terrain (legacy)** — retain the existing climate-filter behavior
+   for old saves and as an explicit compatibility choice.
+
+A deterministic, seed-aware `WorldLayoutPlan` is the shared source of truth at
+every horizontal coordinate. It classifies land, coast, ocean, or void; chooses
+an allowed biome within that role; and supplies a smooth terrain adjustment.
+The biome source and generator wrapper must sample the same plan. The wrapper
+may retain vanilla relief, caves, aquifers, surfaces, and decorations, but it
+raises planned land above sea level, lowers planned ocean where necessary, and
+blends the change across coasts. `getBaseHeight` and `getBaseColumn` must report
+the identical planned terrain so spawn and structures cannot observe a
+different surface from generated chunks.
+
+Biome roles are meaningful. Ocean biomes participate in ocean regions; beach
+biomes primarily occupy coast transitions rather than arbitrary submerged
+areas; ordinary biomes occupy land; rivers may cross land without becoming
+large oceans. Vanilla biome roles should be supplied by maintained mappings or
+tags. Unknown modded biomes default to land with a warning and allow an
+advanced role override. Within a role, balanced selection gives every
+positive-weight biome coherent representation; a climate-affinity option may
+prefer vanilla-like temperature and humidity without silently excluding a
+positive-weight selection.
+
+The starter plan is an overlay on the base layout, not a competing generator.
+It forces the configured starter biome and appropriate supporting terrain in
+its core, then blends into the selected base layout. Ocean mode uses the same
+mechanism for its guaranteed starter island and beach transition; void mode
+uses it for the sky island. Border schedules, exterior terrain, and progression
+guarantees remain later constraints and must use the layout's supportive
+terrain bounds.
+
+The plan, weights, coverage, region scale, role overrides, layout origin, and
+algorithm revision are encoded into each new world's generator settings.
+Existing encoded worlds default to the legacy mode, and an algorithm revision
+must never change unexplored chunks in an established save. Pure JUnit coverage
+shall verify seed determinism, allowed-biome exclusivity, positive-weight
+representation, coverage tolerances, coast continuity, starter blending,
+terrain/height-query agreement, and codec compatibility.
+
+## 18. Seed-informed spawn and layout origin
+
+World creation should separate three concepts currently conflated at `(0,0)`:
+the preferred spawn biome, the optional forced starter biome, and the coordinate
+used as the center of layout/border/exterior systems. Planned spawn strategies
+are:
+
+- **Starter at origin** — current behavior: force the starter biome and land
+  around the layout origin, then choose a safe surface spawn there.
+- **Preferred natural biome** — use the finalized seed and an unmodified
+  vanilla biome/climate view to find a nearby preferred biome, then consider
+  that location for the world spawn without relabeling the search area first.
+- **Vanilla spawn** — keep Minecraft's ordinary seed-derived spawn selection.
+
+The preferred-natural strategy requires an implementation spike before it is
+promised as a creation-screen option. Minecraft finalizes a random seed after
+some client customization state exists, and currently begins spawn selection
+from the random state's climate sampler. If the located point becomes the
+Worldz layout origin, its coordinates must be resolved before affected chunks
+generate, persisted, and consistently applied to starter zones, square border
+centers, exterior envelopes, progression sites, and distance math. Merely
+moving the player spawn after generation would leave those systems centered on
+the wrong point and is not acceptable. Search radius, fallback behavior, and
+the interaction with a user-entered fixed seed must also be explicit.
+
+## 19. Deferred customizable flat worlds
+
+A future Worldz flat mode should provide a friendly editor over Java's existing
+`FlatLevelGeneratorSettings`, inspired by Bedrock's layer customization but
+persisted through Java world-generator codecs. It is not part of the first
+coordinated-layout implementation.
+
+Requirements to retain for that phase:
+
+- Edit an ordered bottom-to-top list of block layers and thicknesses, validate
+  total build height, and offer useful templates plus import/export text.
+- Select any registered fixed biome rather than presenting plains as the
+  effective default-only experience.
+- Independently control biome decorations, lakes, and structure sets.
+- Offer a surface-height or padding control whose spawn surface is at Y 40 or
+  higher, avoiding the ordinary below-Y-40 slime-chunk rule while retaining an
+  explicit classic shallow preset. This does not suppress biome-specific
+  surface slime spawning.
+- Expose villages, strongholds, mineshafts, pillager outposts, ruined portals,
+  and other compatible structure sets individually. Trial chambers are not in
+  Minecraft 26.2's Overworld flat preset and require feasibility/placement
+  testing before Worldz enables them.
+- Integrate Worldz borders, progression guarantees, spawn strategies, and
+  optional void/ocean exteriors without routing flat worlds through noise-based
+  terrain adjustment.
+
+Verified Minecraft 26.2 behavior: flat generator settings already encode one
+fixed biome, arbitrary layers, lake and feature flags, and an optional
+structure-set holder list. Vanilla's programmatic default includes only
+villages and strongholds. Its `overworld` flat preset additionally lists
+mineshafts, pillager outposts, ruined portals, and strongholds, but not trial
+chambers. Therefore the structure difference is preset configuration rather
+than an inherent limitation of `FlatLevelSource`.

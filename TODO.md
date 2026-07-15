@@ -293,6 +293,71 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       update Memory/TODO, and **commit** ("Preserve starter terrain relief").
       Clean build passes 97 tests; filenames and embedded metadata are 0.1.5.
 
+## Phase 15 — Coordinated world-layout design
+
+- [x] 15.1 Diagnose Worldz5/Worldz6 mixed-biome results, verify that filtered
+      biome climate entries do not alter vanilla continental terrain, and
+      define the coordinated land/mixed/ocean/single/void layout requirements.
+      Capture seed-informed spawn and deferred customizable-flat requirements
+      in DESIGN, README, TODO, and Memory. Review Minecraft 26.2 flat settings,
+      presets, structures, and spawn APIs. No runtime behavior changes in this
+      documentation iteration. **Commit** ("Design coordinated world layouts").
+- [ ] 15.2 Design the pure, versioned `WorldLayoutPlan` model: layout modes,
+      biome roles and role overrides, weights, mixed ocean coverage, region
+      scale, deterministic seed sampling, coast blending, compatibility
+      defaults, and YAML/customization snapshots. Define recommended defaults
+      from deterministic fixture maps before implementation.
+- [ ] 15.3 Implement the pure layout sampler and persisted codecs/config with
+      JUnit coverage for determinism, allowed-only output, positive-weight
+      representation, approximate coverage, transition continuity, validation,
+      immutable snapshots, and old-save decoding. Update generated YAML docs.
+- [ ] 15.4 Make `LimitedBiomeSource` and `EnvelopedChunkGenerator` consume the
+      same layout. Preserve vanilla local relief/caves/surfaces, coordinate
+      land/ocean height adjustment, make base queries agree, prevent structures
+      from observing submerged planned land, and retain legacy mode unchanged.
+      Add component tests, lint, review, document, and commit.
+- [ ] 15.5 Expose layout mode, ocean coverage, scale, biome roles, and weights
+      in Customize without removing the simple allowed-biome list. Integrate
+      starter overlays: land-only rivers, mixed coasts, ocean starter island
+      and beaches, single-biome terrain, and sky-void island. Add localization,
+      UI/resource tests, documentation, and commit.
+- [ ] 15.6 Integrate borders, exteriors, spawn, progression objectives, and
+      structure eligibility with supportive layout terrain. Run the clean
+      multiloader build and artifact review; defer live acceptance to Jason.
+
+## Phase 16 — Seed-informed spawn strategy
+
+- [ ] 16.1 Feasibility spike: identify the earliest common/Fabric/NeoForge hook
+      at which the finalized seed and vanilla climate sampler are available but
+      affected spawn chunks are not generated. Determine whether a preferred
+      biome can safely become a persisted layout origin.
+- [ ] 16.2 Specify and test `starter at origin`, `preferred natural biome`, and
+      `vanilla spawn` strategies, including bounded search, deterministic
+      fallback, fixed/random seeds, safe-height checks, and migration behavior.
+      If the layout origin moves, recenter border, envelope, progression, and
+      all distance calculations consistently; do not merely teleport spawn.
+- [ ] 16.3 Implement only after 16.1 proves safe initialization ordering. Add
+      world-creation controls, persistence, JUnit/component coverage,
+      documentation, lint/review, and a separate commit.
+
+## Deferred phase — Customizable flat worlds
+
+- [ ] F.1 Design a Worldz flat plan/editor for arbitrary bottom-to-top block
+      layers and thicknesses, total-height validation, templates, and text
+      import/export. Include any registered fixed biome plus independent lake,
+      feature, and structure-set controls.
+- [ ] F.2 Add a configurable surface elevation/padding preset with spawn
+      positions at Y 40 or higher, avoiding ordinary slime-chunk spawning while
+      retaining classic shallow-flat behavior. Do not claim this suppresses
+      biome-specific surface slime spawning.
+- [ ] F.3 Research and test each optional structure set. Minecraft 26.2's
+      Overworld flat preset includes villages, mineshafts, pillager outposts,
+      ruined portals, and strongholds; trial chambers are absent and need a
+      placement-compatibility spike before being offered.
+- [ ] F.4 Integrate flat generation with Worldz spawn, borders, progression,
+      and exterior choices using `FlatLevelSource` semantics rather than the
+      noise-layout terrain shaper. Implement only after Phase 15 stabilizes.
+
 ---
 
 ## Deviation log

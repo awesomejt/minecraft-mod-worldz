@@ -221,10 +221,26 @@ relief. Create a new world to evaluate the newer terrain algorithm.
 
 Worldz filters vanilla's overworld multi-noise climate map to the allowed
 biomes. Minecraft still chooses the closest climate entry at every position,
-which preserves natural-looking regions when several biomes are allowed. The
+which attempts to preserve climate-shaped regions when several biomes are
+allowed but does not coordinate them with broad terrain shape. The
 starter biome overrides the entire vertical column inside its circular zone.
 For an ocean exterior, Worldz reports the deep-ocean biome outside the solid
 square so spawning and climate behavior match the generated water.
+
+### Current terrain-composition limitation
+
+Biome limiting does not currently change vanilla continentalness or density.
+On a seed whose nearby vanilla terrain is a large ocean, an allowed land biome
+can therefore be reported over submerged terrain, or a selected ocean biome can
+dominate a mixed list. Guaranteed starter land corrects only its configured
+central radius and transition. It does not rebalance the infinite world.
+
+A coordinated layout generator is planned to make biome and broad terrain
+decisions together. Its specified modes are land-only, mixed with configurable
+coverage and biome weights, an ocean world with a starter island and beach
+transition, single biome, and a starter island in sky void. Existing saves will
+retain the current generator to avoid seams. Seed-informed spawn placement and
+a richer Java flat-world editor are tracked separately in [`TODO.md`](TODO.md).
 
 ## Caveats
 
