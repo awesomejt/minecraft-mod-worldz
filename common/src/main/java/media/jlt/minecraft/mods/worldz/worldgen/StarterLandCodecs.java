@@ -9,7 +9,9 @@ final class StarterLandCodecs {
     static final Codec<StarterLandPlan> PLAN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
         Codec.BOOL.fieldOf("enabled").forGetter(StarterLandPlan::enabled),
         Codec.INT.fieldOf("transition_width").forGetter(StarterLandPlan::transitionWidthBlocks),
-        Codec.INT.fieldOf("foundation_depth").forGetter(StarterLandPlan::foundationDepthBlocks)
+        Codec.INT.fieldOf("foundation_depth").forGetter(StarterLandPlan::foundationDepthBlocks),
+        Codec.INT.optionalFieldOf("profile_version", StarterLandPlan.LEGACY_PROFILE_VERSION)
+            .forGetter(StarterLandPlan::profileVersion)
     ).apply(instance, StarterLandPlan::new));
 
     private StarterLandCodecs() {

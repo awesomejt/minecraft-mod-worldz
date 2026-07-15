@@ -100,14 +100,18 @@ Quote biome tags in YAML because an unquoted `#` begins a comment.
 A starter biome changes biome selection, but vanilla terrain noise can still
 place that biome over deep ocean, aquifers, or extensive caves. With
 `ensureStarterLand: true`, Worldz keeps natural high ground unchanged and raises
-only insufficient columns to at least two blocks above sea level. Raised land
-starts at the original ocean floor, so it is connected to the terrain below
-instead of becoming a thin floating platform.
+only insufficient columns above a baseline two blocks over sea level. It adds
+rolling elevation derived from the original seabed and broad seed-dependent
+vanilla noise, avoiding a uniformly flat starter shelf. Raised land starts at
+the original ocean floor, so it is connected to the terrain below instead of
+becoming a thin floating platform.
 
 The full guarantee covers `starterRadiusBlocks`. Beyond it,
 `starterLandTransitionBlocks` uses a smooth circular blend back to the original
-terrain height. Vanilla surface rules still add the starter biome's normal
-grass, dirt, sand, or other materials. `starterLandFoundationDepthBlocks`
+terrain height. The blend applies to vertical lift, and tiny lifts round to zero
+near its outer edge instead of producing a one-block ring. Vanilla surface
+rules still add the starter biome's normal grass, dirt, sand, or other
+materials. `starterLandFoundationDepthBlocks`
 repairs deep air or water gaps below the original floor while leaving a surface
 shell available for natural cave openings. Set `ensureStarterLand: false` to
 retain completely vanilla terrain shapes beneath the forced biome.
@@ -209,6 +213,9 @@ existing Worldz world keeps its original biome list, starter biome, starter
 radius and land plan, border schedules (including pending delays), and exterior
 envelopes. Worlds created before starter-land support decode with reinforcement
 disabled, so unexplored chunks in those saves do not change shape.
+Starter-land profile revisions are also baked into the save: worlds made with
+0.1.4 or earlier retain the legacy profile, while fresh 0.1.5 worlds use rolling
+relief. Create a new world to evaluate the newer terrain algorithm.
 
 ## How biome limiting works
 

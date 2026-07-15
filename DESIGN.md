@@ -16,7 +16,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.4`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.5`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -325,11 +325,13 @@ has no effect when no starter biome is selected.
 
 The starter-land profile is circular, matching the starter-biome radius. In
 the core it requires the first air block to be at least two blocks above sea
-level. Natural columns already meeting that height remain unchanged. For lower
-columns, a smoothstep curve across the configured transition ring blends the
-required height back toward the delegate generator's original height. The
-result follows natural relief instead of creating a flat platform or a hard
-cliff at the starter-zone edge.
+level, but that value is a baseline rather than one absolute target. Compressed
+natural ocean-floor relief and broad seed-dependent vanilla surface noise add
+rolling elevation above the baseline. Natural columns already above the shaped
+target remain unchanged. For lower columns, a smoothstep curve across the
+configured transition ring blends only the required vertical lift back toward
+the delegate generator's original height. Rounded sub-block lifts disappear at
+the outer edge instead of leaving a one-block fringe.
 
 During the noise stage, insufficient columns are raised with ordinary stone
 from their original ocean-floor height to the profile height. The configurable
@@ -345,9 +347,11 @@ observe the terrain that chunks receive. Exterior replacement still has final
 authority outside its envelope. Starter-land work is limited to the Overworld
 and never modifies the Nether or End.
 
-The resolved starter-land plan is encoded with `LimitedBiomeSource` alongside
-the starter biome and radius. A fieldless preset snapshots the current YAML
-default, and Customize persists its explicit selection. For backward
-compatibility, an already encoded source lacking the new field decodes with the
-guarantee disabled, so installing this version cannot reshape unexplored chunks
-in an existing Worldz save.
+The resolved starter-land plan and terrain-profile revision are encoded with
+`LimitedBiomeSource` alongside the starter biome and radius. A fieldless preset
+snapshots the current YAML default, and Customize persists its explicit
+selection. For backward compatibility, an already encoded source lacking the
+starter-land field decodes with the guarantee disabled. A plan lacking only the
+profile revision retains the original flat-floor profile; newly created worlds
+use the current relief profile. Installing a newer version therefore cannot
+change the algorithm in unexplored chunks of an established save.

@@ -278,6 +278,21 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       release artifacts, and **commit** ("Release version 0.1.4"). Clean build
       passes 96 tests; filenames and embedded loader metadata are 0.1.4.
 
+## Phase 14 — Relief-preserving starter land
+
+- [x] 14.1 Review the Worldz4 log, screenshots, and saved generator settings;
+      identify the constant-height core and absolute-height interpolation as
+      the causes of shelves, terraces, and structure slabs. Verify Minecraft
+      26.2 seeded-noise and generator-query APIs.
+- [x] 14.2 Replace the flat clamp for new worlds with compressed natural-floor
+      relief plus broad seeded vanilla noise, blend only vertical lift, and
+      remove rounded one-block fringes. Persist profile revision 2 while older
+      encoded plans default to revision 1, preventing chunk seams in existing
+      saves. Add regression/component tests and update documentation.
+- [x] 14.3 Release as 0.1.5, run the clean multiloader build, inspect artifacts,
+      update Memory/TODO, and **commit** ("Preserve starter terrain relief").
+      Clean build passes 97 tests; filenames and embedded metadata are 0.1.5.
+
 ---
 
 ## Deviation log

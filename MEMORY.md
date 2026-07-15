@@ -100,6 +100,18 @@ Durable decisions, verified API notes, and rationale that should survive across 
   and persisted initial resize delays completed after 0.1.1.
 - 2026-07-15 — Version 0.1.3 identifies the guaranteed starter-land feature;
   0.1.2 had already been built and documented before this terrain work began.
+- 2026-07-15 — Worldz4 screenshots and saved settings confirmed a design
+  defect rather than a codec/config failure. With radius 128 and transition
+  128, the original profile forced every submerged core column toward the same
+  first-free height and interpolated that absolute height outward, visibly
+  producing a level shelf, underwater terraces, and exaggerated village
+  foundations. Exterior and borders were both disabled.
+- 2026-07-15 — Starter-land profile revision 2 treats sea level + 2 as a
+  baseline, adds up to eight blocks each of compressed natural ocean-floor
+  relief and broad seeded `minecraft:surface_secondary` noise, and blends the
+  required lift with nearest-block rounding. Revision 1 retains its original
+  ceiling behavior. The optional persisted `profile_version` defaults to 1 for
+  old encoded worlds; config and Customize create revision 2 plans.
 - 2026-07-15 — The reported floating starter island was not an active Worldz
   ocean envelope: the saved Worldz3 settings encoded normal Overworld/Nether
   exteriors. A starter biome controls biome selection, but vanilla noise,
@@ -169,6 +181,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   sources — `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
 - Starter land: Fabric codec guidance for persisted world-generation values —
   https://docs.fabricmc.net/develop/serialization/codecs
+- Starter-land relief correction: authoritative Minecraft 26.2 `RandomState`,
+  `Noises`, `NormalNoise`, `SurfaceSystem`, and generator sources —
+  `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
+- Starter-land relief correction: Fabric API upstream repository and worldgen
+  integration source survey — https://github.com/FabricMC/fabric-api
 
 ## Verification Log
 
@@ -306,6 +323,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   acceptance. `./gradlew clean build` passed all modules and 96 JUnit tests;
   artifact inspection confirmed 0.1.4 filenames and embedded Fabric/NeoForge
   metadata. No gameplay behavior changed from 0.1.3.
+- 2026-07-15 / Release 0.1.5 — `./gradlew clean build` passed common, Fabric,
+  and NeoForge with 97 JUnit tests. Regression coverage proves different low
+  natural floors no longer collapse to one height, seeded relief changes the
+  shaped target, the outer transition rounds tiny lifts away, and legacy plan
+  behavior/persistence remains available. Artifact inspection confirmed 0.1.5
+  metadata and all relief/profile classes in both loader jars. Javadocs and
+  `git diff --check` are clean; no live test was run.
 
 ## API Deviations
 

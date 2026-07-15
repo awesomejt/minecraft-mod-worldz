@@ -4,6 +4,12 @@ package media.jlt.minecraft.mods.worldz.logic;
 public final class StarterLandProfile {
     /** Required first-free block height relative to sea level. */
     public static final int BLOCKS_ABOVE_SEA_LEVEL = 2;
+    /** Coordinate scale applied to seeded vanilla surface noise for broad relief. */
+    public static final double RELIEF_NOISE_SCALE = 1.0 / 64.0;
+    private static final int NATURAL_RELIEF_REFERENCE_DEPTH = 32;
+    private static final int NATURAL_RELIEF_DIVISOR = 4;
+    private static final int MAX_NATURAL_RELIEF_BLOCKS = 8;
+    private static final int MAX_NOISE_RELIEF_BLOCKS = 8;
 
     private StarterLandProfile() {
     }
@@ -17,6 +23,8 @@ public final class StarterLandProfile {
      * @param transitionWidthBlocks width beyond the radius blended to natural terrain
      * @param naturalHeight delegate generator's first-free height
      * @param seaLevel generator sea level
+     * @param profileVersion persisted terrain-shaping revision
+     * @param reliefNoise seeded broad noise sample, normally in the range -1 through 1
      * @return natural or smoothly raised first-free height
      */
     public static int targetHeight(
@@ -25,14 +33,35 @@ public final class StarterLandProfile {
         int starterRadiusBlocks,
         int transitionWidthBlocks,
         int naturalHeight,
-        int seaLevel
+        int seaLevel,
+        int profileVersion,
+        double reliefNoise
     ) {
         int minimumHeight = seaLevel + BLOCKS_ABOVE_SEA_LEVEL;
-        if (naturalHeight >= minimumHeight) {
+        int shapedMinimum = profileVersion <= StarterLandPlan.LEGACY_PROFILE_VERSION
+            ? minimumHeight
+            : reliefMinimumHeight(naturalHeight, seaLevel, reliefNoise);
+        if (naturalHeight >= shapedMinimum) {
             return naturalHeight;
         }
         double strength = strengthAt(x, z, starterRadiusBlocks, transitionWidthBlocks);
-        return naturalHeight + (int) Math.ceil((minimumHeight - naturalHeight) * strength);
+        double lift = (shapedMinimum - naturalHeight) * strength;
+        int roundedLift = profileVersion <= StarterLandPlan.LEGACY_PROFILE_VERSION
+            ? (int) Math.ceil(lift)
+            : (int) Math.round(lift);
+        return naturalHeight + roundedLift;
+    }
+
+    private static int reliefMinimumHeight(int naturalHeight, int seaLevel, double reliefNoise) {
+        int referenceHeight = seaLevel - NATURAL_RELIEF_REFERENCE_DEPTH;
+        int naturalRelief = Math.clamp(
+            Math.floorDiv(naturalHeight - referenceHeight, NATURAL_RELIEF_DIVISOR),
+            0,
+            MAX_NATURAL_RELIEF_BLOCKS
+        );
+        double normalizedNoise = Math.clamp((reliefNoise + 1.0) * 0.5, 0.0, 1.0);
+        int noiseRelief = (int) Math.round(normalizedNoise * MAX_NOISE_RELIEF_BLOCKS);
+        return seaLevel + BLOCKS_ABOVE_SEA_LEVEL + naturalRelief + noiseRelief;
     }
 
     /**

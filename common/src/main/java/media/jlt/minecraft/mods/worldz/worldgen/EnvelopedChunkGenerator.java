@@ -35,6 +35,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -270,7 +271,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, naturalFloor);
+            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor);
             if (targetHeight <= naturalFloor) {
                 return naturalColumn;
             }
@@ -366,7 +367,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
                 int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
-                int targetHeight = starterLandTargetHeight(x, z, chunk, naturalFloor);
+                int targetHeight = starterLandTargetHeight(x, z, chunk, randomState, naturalFloor);
                 if (targetHeight <= naturalFloor) {
                     continue;
                 }
@@ -389,26 +390,36 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return heightAccessor.getMinY();
         }
         int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-        return starterLandTargetHeight(x, z, heightAccessor, naturalFloor);
+        return starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor);
     }
 
     private int starterLandTargetHeight(
         int x,
         int z,
         LevelHeightAccessor heightAccessor,
+        RandomState randomState,
         int naturalFloor
     ) {
         if (this.starterLand.isEmpty()) {
             return heightAccessor.getMinY();
         }
         StarterLandContext context = this.starterLand.get();
+        double reliefNoise = context.plan().profileVersion() <= StarterLandPlan.LEGACY_PROFILE_VERSION
+            ? 0.0
+            : randomState.getOrCreateNoise(Noises.SURFACE_SECONDARY).getValue(
+                x * StarterLandProfile.RELIEF_NOISE_SCALE,
+                0.0,
+                z * StarterLandProfile.RELIEF_NOISE_SCALE
+            );
         int target = StarterLandProfile.targetHeight(
             x,
             z,
             context.radiusBlocks(),
             context.plan().transitionWidthBlocks(),
             naturalFloor,
-            getSeaLevel()
+            getSeaLevel(),
+            context.plan().profileVersion(),
+            reliefNoise
         );
         return Math.min(target, heightAccessor.getMaxY() + 1);
     }

@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.4", properties.getProperty("version"));
+        assertEquals("0.1.5", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -160,6 +160,7 @@ class ProjectMetadataTest {
         assertTrue(source.contains("encodedStarterLand.orElseGet(StarterLandPlan::disabled)"));
         assertTrue(codecs.contains("fieldOf(\"transition_width\")"));
         assertTrue(codecs.contains("fieldOf(\"foundation_depth\")"));
+        assertTrue(codecs.contains("optionalFieldOf(\"profile_version\", StarterLandPlan.LEGACY_PROFILE_VERSION)"));
     }
 
     @Test
@@ -172,6 +173,7 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("applyStarterLand(chunk, randomState, true)"));
         assertTrue(generator.contains("StarterLandProfile.targetHeight"));
         assertTrue(generator.contains("Heightmap.Types.OCEAN_FLOOR_WG"));
+        assertTrue(generator.contains("Noises.SURFACE_SECONDARY"));
         assertTrue(generator.contains("Math.max(naturalHeight, starterLandTargetHeight"));
         assertTrue(generator.contains("super.createStructures("));
     }
