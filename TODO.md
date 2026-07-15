@@ -49,15 +49,15 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 1 — Config
 
-- [ ] 1.1 `config/WorldzConfig`: fields, defaults, clamps per DESIGN §6;
+- [x] 1.1 `config/WorldzConfig`: fields, defaults, clamps per DESIGN §6;
       loader entrypoints pass the config dir `Path` (mirror trees' wiring).
-- [ ] 1.2 Unit tests: defaults on missing/malformed file, unknown-key
+- [x] 1.2 Unit tests: defaults on missing/malformed file, unknown-key
       tolerance, list-entry filtering, radius clamp.
-- [ ] 1.3 `logic/BiomeListSpec` (+ starter-zone math helper): pure parsing /
+- [x] 1.3 `logic/BiomeListSpec` (+ starter-zone math helper): pure parsing /
       validation / quart-distance per DESIGN §5, with unit tests including
       boundary cases (`r*r` inclusive, block→quart conversion).
-- [ ] 1.4 `config/jlt_worldz.example.json` checked into the repo.
-- [ ] 1.5 Build green. **Commit** ("Config + pure biome-list logic").
+- [x] 1.4 `config/jlt_worldz.example.json` checked into the repo.
+- [x] 1.5 Build green. **Commit** ("Config + pure biome-list logic").
 
 ## Phase 2 — LimitedBiomeSource
 
