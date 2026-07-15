@@ -30,4 +30,11 @@ class StarterLandPlanTest {
         assertThrows(IllegalArgumentException.class, () -> new StarterLandPlan(true, -1, 32));
         assertThrows(IllegalArgumentException.class, () -> new StarterLandPlan(true, 128, 385));
     }
+
+    @Test
+    void editableValuesRequireWholeNumbersInRange() {
+        assertEquals(new StarterLandPlan(true, 256, 64), StarterLandPlan.fromText(true, " 256 ", "64"));
+        assertThrows(IllegalArgumentException.class, () -> StarterLandPlan.fromText(true, "wide", "32"));
+        assertThrows(IllegalArgumentException.class, () -> StarterLandPlan.fromText(true, "128", "999"));
+    }
 }

@@ -283,6 +283,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   same profile, structures run through the wrapper, and exterior replacement
   remains the final authority. Nether/End and disabled or older plans are
   untouched. Javadocs and `git diff --check` are clean.
+- 2026-07-15 / Starter-land Customize — A dedicated editor exposes enabled,
+  transition-width, and foundation-depth values without further crowding the
+  dimension editors. YAML seeds new fieldless presets; Done persists the plan
+  with the explicit source, and reopening Customize reads that plan back.
+  Enabling it without a starter biome is allowed but has no effect, which lets
+  players edit fields in either order. Spawn/progression use the wrapper's
+  corrected queries or finished chunk heightmaps. `./gradlew build` passes 96
+  tests; Javadocs and `git diff --check` are clean.
 
 ## API Deviations
 

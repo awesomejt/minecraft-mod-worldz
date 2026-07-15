@@ -137,6 +137,7 @@ class ProjectMetadataTest {
         ));
 
         assertTrue(customize.contains("WorldzExteriorScreen"));
+        assertTrue(customize.contains("WorldzStarterLandScreen"));
         assertTrue(customize.contains("this.overworldExterior"));
         assertTrue(customize.contains("this.netherExterior"));
         assertTrue(border.contains("resizeRateBlocks.getValue()"));

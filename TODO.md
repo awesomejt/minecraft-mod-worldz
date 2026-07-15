@@ -256,9 +256,13 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       whitespace lint are clean. Review confirmed surface-shell preservation,
       exterior precedence, ocean-floor-based columns, and wrapper-aware
       structure heights. **Commit** ("Generate guaranteed starter land").
-- [ ] 12.4 Expose starter-land choices during world creation, keep YAML as the
+- [x] 12.4 Expose starter-land choices during world creation, keep YAML as the
       default, update progression/spawn integration and resource tests, lint,
-      review, and **commit** ("Add starter land controls").
+      review, and **commit**. A dedicated editor controls enablement,
+      transition, and foundation depth; explicit worlds retain their plan.
+      Existing spawn/progression paths consume corrected height queries or
+      generated heightmaps. Full build passes 96 tests with clean Javadocs and
+      whitespace lint. **Commit** ("Add starter land controls").
 - [ ] 12.5 Update README/config/technical docs and Memory, run the clean
       multiloader build, inspect artifacts, address findings, update TODO, and
       final **commit**. No live test is required; Jason will manually test near

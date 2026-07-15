@@ -82,6 +82,11 @@ final class WorldzCustomizeScreen extends Screen {
             Component.translatable("jlt_worldz.customize.starter_radius")
         ));
 
+        form.addChild(Button.builder(
+            starterLandButtonLabel(this.starterLandPlan.enabled()),
+            button -> this.minecraft.gui.setScreen(new WorldzStarterLandScreen(this, this.starterLandPlan))
+        ).width(FORM_WIDTH).build());
+
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
         borderButtons.addChild(Button.builder(
             borderButtonLabel("overworld", this.overworldBorder.enabled()),
@@ -152,6 +157,10 @@ final class WorldzCustomizeScreen extends Screen {
         }
     }
 
+    void setStarterLand(StarterLandPlan plan) {
+        this.starterLandPlan = plan;
+    }
+
     void setExterior(boolean overworld, WorldzCustomization.ExteriorSettings settings) {
         if (overworld) {
             this.overworldExterior = settings;
@@ -173,6 +182,13 @@ final class WorldzCustomizeScreen extends Screen {
     private static Component borderButtonLabel(String dimension, boolean enabled) {
         return Component.translatable(
             "jlt_worldz.customize." + dimension + "_border",
+            Component.translatable(enabled ? "options.on" : "options.off")
+        );
+    }
+
+    private static Component starterLandButtonLabel(boolean enabled) {
+        return Component.translatable(
+            "jlt_worldz.customize.starter_land",
             Component.translatable(enabled ? "options.on" : "options.off")
         );
     }

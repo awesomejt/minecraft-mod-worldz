@@ -42,4 +42,32 @@ public record StarterLandPlan(boolean enabled, int transitionWidthBlocks, int fo
             config.starterLandFoundationDepthBlocks
         );
     }
+
+    /**
+     * Parses editable starter-land numeric fields.
+     *
+     * @param enabled whether terrain reinforcement is active
+     * @param transitionWidthBlocks decimal outward blend width
+     * @param foundationDepthBlocks decimal foundation repair depth
+     * @return validated immutable plan
+     */
+    public static StarterLandPlan fromText(
+        boolean enabled,
+        String transitionWidthBlocks,
+        String foundationDepthBlocks
+    ) {
+        return new StarterLandPlan(
+            enabled,
+            parseInteger(transitionWidthBlocks, "Starter-land transition"),
+            parseInteger(foundationDepthBlocks, "Starter-land foundation depth")
+        );
+    }
+
+    private static int parseInteger(String value, String name) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NullPointerException | NumberFormatException exception) {
+            throw new IllegalArgumentException(name + " must be a whole number.", exception);
+        }
+    }
 }
