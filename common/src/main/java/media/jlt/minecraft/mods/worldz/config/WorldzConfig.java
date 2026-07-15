@@ -281,6 +281,9 @@ public final class WorldzConfig {
         if (map.containsKey("resizeDays")) {
             config.resizeDays = readInt(map.get("resizeDays"), name + ".resizeDays");
         }
+        if (map.containsKey("resizeDelayDays")) {
+            config.resizeDelayDays = readInt(map.get("resizeDelayDays"), name + ".resizeDelayDays");
+        }
         if (map.containsKey("resizeRateBlocks")) {
             config.resizeRateBlocks = readInt(map.get("resizeRateBlocks"), name + ".resizeRateBlocks");
         }
@@ -371,6 +374,9 @@ public final class WorldzConfig {
         sanitized.resizeDays = clampWithWarning(
             sanitized.resizeDays, 0, MAX_BORDER_RESIZE_DAYS, name + ".resizeDays", logger
         );
+        sanitized.resizeDelayDays = clampWithWarning(
+            sanitized.resizeDelayDays, 0, MAX_BORDER_RESIZE_DAYS, name + ".resizeDelayDays", logger
+        );
         sanitized.resizeRateBlocks = clampWithWarning(
             sanitized.resizeRateBlocks, 0, MAX_BORDER_RATE_BLOCKS, name + ".resizeRateBlocks", logger
         );
@@ -434,6 +440,7 @@ public final class WorldzConfig {
         values.put("initialRadiusBlocks", config.initialRadiusBlocks);
         values.put("finalRadiusBlocks", config.finalRadiusBlocks);
         values.put("resizeDays", config.resizeDays);
+        values.put("resizeDelayDays", config.resizeDelayDays);
         values.put("resizeRateBlocks", config.resizeRateBlocks);
         values.put("resizeRateDays", config.resizeRateDays);
         values.put(objectiveKey, config.ensureObjective);
@@ -455,6 +462,7 @@ public final class WorldzConfig {
         return "initial=" + config.initialRadiusBlocks
             + ", final=" + config.finalRadiusBlocks
             + ", days=" + config.resizeDays
+            + ", delayDays=" + config.resizeDelayDays
             + ", rate=" + (config.resizeRateBlocks == 0
                 ? "<total-days>"
                 : config.resizeRateBlocks + " blocks/" + config.resizeRateDays + " days")

@@ -10,6 +10,8 @@ public final class BorderConfig {
     public int finalRadiusBlocks = 512;
     /** In-game days used for the linear transition from initial to final radius. */
     public int resizeDays;
+    /** In-game days to hold the initial radius before resizing. */
+    public int resizeDelayDays;
     /** Radius blocks traversed per rate interval, or zero to use {@link #resizeDays}. */
     public int resizeRateBlocks;
     /** In-game days per rate interval, or zero to use {@link #resizeDays}. */

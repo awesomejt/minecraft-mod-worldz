@@ -217,8 +217,10 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       Minecraft game time, persisted per-dimension pending start ticks, and
       loader server-tick hooks. Record API references and **commit** ("Design
       delayed border resizing").
-- [ ] 10.2 Extend YAML, codecs, scheduling/customization values, saved data, and
-      JUnit coverage while preserving older configs and saves. **Commit**.
+- [x] 10.2 Extend YAML, codecs, scheduling/customization values, saved data, and
+      JUnit coverage while preserving older configs and saves. Full build passes
+      85 tests with clean Javadocs and whitespace lint. **Commit** ("Add delayed
+      border schedule state").
 - [ ] 10.3 Register both loader tick hooks, implement delayed start/resume,
       expose the value in Customize, and add component/resource tests.
 - [ ] 10.4 Update user/technical docs, run the clean multiloader build, inspect

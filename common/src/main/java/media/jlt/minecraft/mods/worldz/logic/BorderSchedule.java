@@ -6,6 +6,7 @@ package media.jlt.minecraft.mods.worldz.logic;
  * @param initialRadiusBlocks center-to-side distance at creation
  * @param finalRadiusBlocks center-to-side distance at the end of the schedule
  * @param resizeDays transition duration in normal Minecraft days
+ * @param resizeDelayDays wait at the initial radius before resizing
  * @param resizeRateBlocks radius distance traversed per rate interval
  * @param resizeRateDays normal Minecraft days per rate interval
  */
@@ -13,6 +14,7 @@ public record BorderSchedule(
     int initialRadiusBlocks,
     int finalRadiusBlocks,
     int resizeDays,
+    int resizeDelayDays,
     int resizeRateBlocks,
     int resizeRateDays
 ) {
@@ -24,7 +26,7 @@ public record BorderSchedule(
         if (initialRadiusBlocks <= 0 || finalRadiusBlocks <= 0) {
             throw new IllegalArgumentException("border radii must be positive");
         }
-        if (resizeDays < 0 || resizeRateBlocks < 0 || resizeRateDays < 0) {
+        if (resizeDays < 0 || resizeDelayDays < 0 || resizeRateBlocks < 0 || resizeRateDays < 0) {
             throw new IllegalArgumentException("border timing values must not be negative");
         }
         if ((resizeRateBlocks == 0) != (resizeRateDays == 0)) {
@@ -40,7 +42,26 @@ public record BorderSchedule(
      * @param resizeDays total transition duration in Minecraft days
      */
     public BorderSchedule(int initialRadiusBlocks, int finalRadiusBlocks, int resizeDays) {
-        this(initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0);
+        this(initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0);
+    }
+
+    /**
+     * Creates a rate schedule without an initial delay.
+     *
+     * @param initialRadiusBlocks center-to-side distance at creation
+     * @param finalRadiusBlocks center-to-side distance at completion
+     * @param resizeDays legacy total transition duration
+     * @param resizeRateBlocks radius blocks traversed per interval
+     * @param resizeRateDays Minecraft days per interval
+     */
+    public BorderSchedule(
+        int initialRadiusBlocks,
+        int finalRadiusBlocks,
+        int resizeDays,
+        int resizeRateBlocks,
+        int resizeRateDays
+    ) {
+        this(initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays);
     }
 
     /**
@@ -83,6 +104,24 @@ public record BorderSchedule(
     }
 
     /**
+     * Returns how long the initial radius remains static.
+     *
+     * @return delay in game ticks
+     */
+    public long delayTicks() {
+        return Math.multiplyExact((long)resizeDelayDays, TICKS_PER_DAY);
+    }
+
+    /**
+     * Returns delay plus transition duration.
+     *
+     * @return complete schedule duration in game ticks
+     */
+    public long totalDurationTicks() {
+        return Math.addExact(delayTicks(), durationTicks());
+    }
+
+    /**
      * Returns whether the schedule uses X-blocks-per-Y-days timing.
      *
      * @return whether rate timing overrides the total-duration field
@@ -99,14 +138,19 @@ public record BorderSchedule(
      * @return interpolated radius in blocks
      */
     public double radiusAtTick(long elapsedTicks) {
-        long duration = durationTicks();
-        if (duration == 0L || elapsedTicks >= duration) {
-            return finalRadiusBlocks;
-        }
-        if (elapsedTicks <= 0L) {
+        long delay = delayTicks();
+        if (elapsedTicks < delay) {
             return initialRadiusBlocks;
         }
-        double progress = (double)elapsedTicks / duration;
+        long duration = durationTicks();
+        long transitionTicks = elapsedTicks - delay;
+        if (duration == 0L) {
+            return finalRadiusBlocks;
+        }
+        if (transitionTicks >= duration) {
+            return finalRadiusBlocks;
+        }
+        double progress = (double)transitionTicks / duration;
         return initialRadiusBlocks + (finalRadiusBlocks - initialRadiusBlocks) * progress;
     }
 

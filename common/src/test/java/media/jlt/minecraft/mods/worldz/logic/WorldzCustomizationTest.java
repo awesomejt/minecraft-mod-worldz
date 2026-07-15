@@ -19,6 +19,7 @@ class WorldzCustomizationTest {
         config.starterBiome = "desert";
         config.overworldBorder.enabled = true;
         config.overworldBorder.finalRadiusBlocks = 1024;
+        config.overworldBorder.resizeDelayDays = 8;
         config.overworldBorder.resizeRateBlocks = 64;
         config.overworldBorder.resizeRateDays = 2;
         config.overworldExterior.mode = ExteriorMode.OCEAN;
@@ -32,6 +33,7 @@ class WorldzCustomizationTest {
         assertTrue(customization.overworldBorder().enabled());
         assertEquals(1024, customization.overworldBorder().finalRadiusBlocks());
         assertEquals(64, customization.overworldBorder().resizeRateBlocks());
+        assertEquals(8, customization.overworldBorder().resizeDelayDays());
         assertEquals(ExteriorMode.OCEAN, customization.overworldExterior().mode());
         assertEquals(1024, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
         assertThrows(UnsupportedOperationException.class, () -> customization.allowedBiomes().clear());
@@ -119,6 +121,21 @@ class WorldzCustomizationTest {
         assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
         assertEquals(2048, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
         assertEquals(1792, customization.exteriorPlan().overworld().solidRadiusBlocks());
+    }
+
+    @Test
+    void editableDelayIsPersistedIndependentlyFromDurationAndRate() {
+        WorldzCustomization.BorderSettings border = WorldzCustomization.BorderSettings.fromText(
+            true, "512", "2048", "100", "12", "128", "5", true
+        );
+        WorldzCustomization customization = new WorldzCustomization(
+            List.of("plains"), "", 512, border, border(false)
+        );
+
+        assertEquals(12, border.resizeDelayDays());
+        assertEquals(12, customization.worldLimitPlan().overworld().resizeDelayDays());
+        assertEquals(100, customization.worldLimitPlan().overworld().resizeDays());
+        assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
     }
 
     @Test

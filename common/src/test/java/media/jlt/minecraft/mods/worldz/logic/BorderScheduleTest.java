@@ -66,4 +66,36 @@ class BorderScheduleTest {
         assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(512, 1024, 1, 10, 0));
         assertThrows(IllegalArgumentException.class, () -> new BorderSchedule(512, 1024, 1, -1, 1));
     }
+
+    @Test
+    void delayHoldsInitialRadiusBeforeGrowthBegins() {
+        BorderSchedule schedule = new BorderSchedule(512, 1512, 10, 5, 0, 0);
+
+        assertEquals(120_000L, schedule.delayTicks());
+        assertEquals(360_000L, schedule.totalDurationTicks());
+        assertEquals(512.0, schedule.radiusAtTick(119_999L));
+        assertEquals(512.0, schedule.radiusAtTick(120_000L));
+        assertEquals(1012.0, schedule.radiusAtTick(240_000L));
+        assertEquals(1512.0, schedule.radiusAtTick(360_000L));
+    }
+
+    @Test
+    void delayAlsoAppliesToCollapseAndDeferredImmediateResize() {
+        BorderSchedule collapse = new BorderSchedule(1024, 512, 4, 2, 0, 0);
+        BorderSchedule jump = new BorderSchedule(1024, 512, 0, 2, 0, 0);
+
+        assertEquals(1024.0, collapse.radiusAtTick(47_999L));
+        assertEquals(768.0, collapse.radiusAtTick(96_000L));
+        assertEquals(1024.0, jump.radiusAtTick(47_999L));
+        assertEquals(512.0, jump.radiusAtTick(48_000L));
+    }
+
+    @Test
+    void delayDoesNotChangeRateDerivedTransitionDuration() {
+        BorderSchedule schedule = new BorderSchedule(512, 762, 999, 7, 100, 2);
+
+        assertEquals(120_000L, schedule.durationTicks());
+        assertEquals(168_000L, schedule.delayTicks());
+        assertEquals(288_000L, schedule.totalDurationTicks());
+    }
 }

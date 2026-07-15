@@ -110,6 +110,7 @@ class WorldzConfigTest {
               initialRadiusBlocks: 32
               finalRadiusBlocks: 2000
               resizeDays: 100
+              resizeDelayDays: 12
               resizeRateBlocks: 128
               resizeRateDays: 5
               ensureEndPortal: false
@@ -125,6 +126,7 @@ class WorldzConfigTest {
         assertEquals(64, config.overworldBorder.initialRadiusBlocks);
         assertEquals(2000, config.overworldBorder.finalRadiusBlocks);
         assertEquals(100, config.overworldBorder.resizeDays);
+        assertEquals(12, config.overworldBorder.resizeDelayDays);
         assertEquals(128, config.overworldBorder.resizeRateBlocks);
         assertEquals(5, config.overworldBorder.resizeRateDays);
         assertFalse(config.overworldBorder.ensureObjective);
@@ -146,6 +148,16 @@ class WorldzConfigTest {
         assertEquals(25, config.overworldBorder.resizeDays);
         assertEquals(0, config.overworldBorder.resizeRateBlocks);
         assertEquals(0, config.overworldBorder.resizeRateDays);
+    }
+
+    @Test
+    void negativeResizeDelayIsClampedToZero() {
+        WorldzConfig config = WorldzConfig.parse("""
+            overworldBorder:
+              resizeDelayDays: -5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.overworldBorder.resizeDelayDays);
     }
 
     @Test

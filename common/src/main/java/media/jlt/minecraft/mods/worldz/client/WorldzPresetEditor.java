@@ -163,6 +163,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             limit.initialRadiusBlocks(),
             limit.finalRadiusBlocks(),
             limit.resizeDays(),
+            limit.resizeDelayDays(),
             limit.resizeRateBlocks(),
             limit.resizeRateDays(),
             limit.ensureObjective()

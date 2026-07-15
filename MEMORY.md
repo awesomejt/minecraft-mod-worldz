@@ -227,6 +227,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   bounds, and the vanilla End. Fabric Loom still prints its known warning that
   dependency version `2.6` is not valid semver; bundling succeeds. Per the user,
   no live test was run and manual acceptance is deferred until handoff.
+- 2026-07-15 / Delay model — `./gradlew build` passed all modules and 85 JUnit
+  tests. Delay coverage includes growth, collapse, deferred immediate resize,
+  rate-duration independence, YAML sanitation, customization persistence, and
+  immutable plan snapshots. Optional codec and saved-data fields default to zero
+  or no pending start, preserving old configs and initialized worlds. Javadocs
+  and `git diff --check` are clean.
 
 ## API Deviations
 

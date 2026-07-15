@@ -206,6 +206,7 @@ public record WorldzCustomization(
      * @param initialRadiusBlocks border half-width at creation
      * @param finalRadiusBlocks border half-width after resizing
      * @param resizeDays transition duration in Minecraft days
+     * @param resizeDelayDays wait before resizing begins
      * @param resizeRateBlocks radius blocks traversed per rate interval
      * @param resizeRateDays days per rate interval
      * @param ensureObjective whether progression access is guaranteed
@@ -215,6 +216,7 @@ public record WorldzCustomization(
         int initialRadiusBlocks,
         int finalRadiusBlocks,
         int resizeDays,
+        int resizeDelayDays,
         int resizeRateBlocks,
         int resizeRateDays,
         boolean ensureObjective
@@ -234,6 +236,7 @@ public record WorldzCustomization(
                 "Final border radius"
             );
             requireRange(resizeDays, 0, WorldzConfig.MAX_BORDER_RESIZE_DAYS, "Resize days");
+            requireRange(resizeDelayDays, 0, WorldzConfig.MAX_BORDER_RESIZE_DAYS, "Resize delay days");
             requireRange(resizeRateBlocks, 0, WorldzConfig.MAX_BORDER_RATE_BLOCKS, "Resize rate blocks");
             requireRange(resizeRateDays, 0, WorldzConfig.MAX_BORDER_RESIZE_DAYS, "Resize rate days");
             if ((resizeRateBlocks == 0) != (resizeRateDays == 0)) {
@@ -257,7 +260,30 @@ public record WorldzCustomization(
             int resizeDays,
             boolean ensureObjective
         ) {
-            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, ensureObjective);
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0, ensureObjective);
+        }
+
+        /**
+         * Creates rate-based values without an initial delay.
+         *
+         * @param enabled whether this dimension is limited
+         * @param initialRadiusBlocks border half-width at creation
+         * @param finalRadiusBlocks border half-width after resizing
+         * @param resizeDays legacy total transition duration
+         * @param resizeRateBlocks radius blocks per interval
+         * @param resizeRateDays Minecraft days per interval
+         * @param ensureObjective whether progression access is guaranteed
+         */
+        public BorderSettings(
+            boolean enabled,
+            int initialRadiusBlocks,
+            int finalRadiusBlocks,
+            int resizeDays,
+            int resizeRateBlocks,
+            int resizeRateDays,
+            boolean ensureObjective
+        ) {
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays, ensureObjective);
         }
 
         /**
@@ -272,6 +298,7 @@ public record WorldzCustomization(
                 config.initialRadiusBlocks,
                 config.finalRadiusBlocks,
                 config.resizeDays,
+                config.resizeDelayDays,
                 config.resizeRateBlocks,
                 config.resizeRateDays,
                 config.ensureObjective
@@ -302,6 +329,7 @@ public record WorldzCustomization(
                 resizeDays,
                 "0",
                 "0",
+                "0",
                 ensureObjective
             );
         }
@@ -327,11 +355,47 @@ public record WorldzCustomization(
             String resizeRateDays,
             boolean ensureObjective
         ) {
+            return fromText(
+                enabled,
+                initialRadiusBlocks,
+                finalRadiusBlocks,
+                resizeDays,
+                "0",
+                resizeRateBlocks,
+                resizeRateDays,
+                ensureObjective
+            );
+        }
+
+        /**
+         * Parses total-duration, initial delay, and optional rate fields.
+         *
+         * @param enabled whether this dimension is limited
+         * @param initialRadiusBlocks decimal initial radius
+         * @param finalRadiusBlocks decimal final radius
+         * @param resizeDays decimal total transition duration
+         * @param resizeDelayDays decimal wait before resizing
+         * @param resizeRateBlocks decimal radius blocks per interval
+         * @param resizeRateDays decimal Minecraft days per interval
+         * @param ensureObjective whether progression access is guaranteed
+         * @return validated immutable border values
+         */
+        public static BorderSettings fromText(
+            boolean enabled,
+            String initialRadiusBlocks,
+            String finalRadiusBlocks,
+            String resizeDays,
+            String resizeDelayDays,
+            String resizeRateBlocks,
+            String resizeRateDays,
+            boolean ensureObjective
+        ) {
             return new BorderSettings(
                 enabled,
                 parseInteger(initialRadiusBlocks, "Initial border radius"),
                 parseInteger(finalRadiusBlocks, "Final border radius"),
                 parseInteger(resizeDays, "Resize days"),
+                parseInteger(resizeDelayDays, "Resize delay days"),
                 parseInteger(resizeRateBlocks, "Resize rate blocks"),
                 parseInteger(resizeRateDays, "Resize rate days"),
                 ensureObjective
@@ -344,6 +408,7 @@ public record WorldzCustomization(
                 initialRadiusBlocks,
                 finalRadiusBlocks,
                 resizeDays,
+                resizeDelayDays,
                 resizeRateBlocks,
                 resizeRateDays,
                 ensureObjective

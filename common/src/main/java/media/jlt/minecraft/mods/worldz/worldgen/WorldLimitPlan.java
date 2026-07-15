@@ -49,6 +49,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
      * @param initialRadiusBlocks initial center-to-side distance
      * @param finalRadiusBlocks final center-to-side distance
      * @param resizeDays linear transition duration
+     * @param resizeDelayDays wait at the initial radius before resizing
      * @param resizeRateBlocks radius blocks per rate interval
      * @param resizeRateDays Minecraft days per rate interval
      * @param ensureObjective whether the progression objective is guaranteed
@@ -58,13 +59,14 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
         int initialRadiusBlocks,
         int finalRadiusBlocks,
         int resizeDays,
+        int resizeDelayDays,
         int resizeRateBlocks,
         int resizeRateDays,
         boolean ensureObjective
     ) {
         /** Validates persisted values before they reach vanilla's border API. */
         public DimensionLimit {
-            if (initialRadiusBlocks <= 0 || finalRadiusBlocks <= 0 || resizeDays < 0
+            if (initialRadiusBlocks <= 0 || finalRadiusBlocks <= 0 || resizeDays < 0 || resizeDelayDays < 0
                 || resizeRateBlocks < 0 || resizeRateDays < 0
                 || ((resizeRateBlocks == 0) != (resizeRateDays == 0))) {
                 throw new IllegalArgumentException("invalid persisted world-limit values");
@@ -87,7 +89,30 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
             int resizeDays,
             boolean ensureObjective
         ) {
-            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, ensureObjective);
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0, ensureObjective);
+        }
+
+        /**
+         * Creates rate-based values without an initial delay.
+         *
+         * @param enabled whether the border is managed
+         * @param initialRadiusBlocks initial center-to-side distance
+         * @param finalRadiusBlocks final center-to-side distance
+         * @param resizeDays legacy total transition duration
+         * @param resizeRateBlocks radius blocks per rate interval
+         * @param resizeRateDays Minecraft days per rate interval
+         * @param ensureObjective whether the progression objective is guaranteed
+         */
+        public DimensionLimit(
+            boolean enabled,
+            int initialRadiusBlocks,
+            int finalRadiusBlocks,
+            int resizeDays,
+            int resizeRateBlocks,
+            int resizeRateDays,
+            boolean ensureObjective
+        ) {
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays, ensureObjective);
         }
 
         /**
@@ -96,7 +121,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
          * @return disabled dimension plan
          */
         public static DimensionLimit disabled() {
-            return new DimensionLimit(false, 512, 512, 0, 0, 0, false);
+            return new DimensionLimit(false, 512, 512, 0, 0, 0, 0, false);
         }
 
         private static DimensionLimit fromConfig(BorderConfig config) {
@@ -105,6 +130,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
                 config.initialRadiusBlocks,
                 config.finalRadiusBlocks,
                 config.resizeDays,
+                config.resizeDelayDays,
                 config.resizeRateBlocks,
                 config.resizeRateDays,
                 config.ensureObjective
@@ -121,6 +147,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether) {
                 initialRadiusBlocks,
                 finalRadiusBlocks,
                 resizeDays,
+                resizeDelayDays,
                 resizeRateBlocks,
                 resizeRateDays
             );

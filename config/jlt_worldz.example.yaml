@@ -7,6 +7,7 @@ overworldBorder:
   initialRadiusBlocks: 512
   finalRadiusBlocks: 512
   resizeDays: 0
+  resizeDelayDays: 0
   resizeRateBlocks: 0
   resizeRateDays: 0
   ensureEndPortal: true
@@ -15,6 +16,7 @@ netherBorder:
   initialRadiusBlocks: 512
   finalRadiusBlocks: 512
   resizeDays: 0
+  resizeDelayDays: 0
   resizeRateBlocks: 0
   resizeRateDays: 0
   ensureBlazeAccess: true
