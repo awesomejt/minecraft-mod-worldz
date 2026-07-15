@@ -302,6 +302,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   and `git diff --check` are clean. The known Fabric Loom warning about
   SnakeYAML's non-semver `2.6` coordinate remains harmless. Per the user, no
   live test was run; manual acceptance is deferred to Jason.
+- 2026-07-15 / Release 0.1.4 — Version-only follow-up requested for manual
+  acceptance. `./gradlew clean build` passed all modules and 96 JUnit tests;
+  artifact inspection confirmed 0.1.4 filenames and embedded Fabric/NeoForge
+  metadata. No gameplay behavior changed from 0.1.3.
 
 ## API Deviations
 

@@ -271,6 +271,13 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       whitespace lint are clean. No live test was required; Jason will perform
       manual acceptance. **Commit** ("Release guaranteed starter land").
 
+## Phase 13 — Release 0.1.4
+
+- [x] 13.1 Bump project and metadata-test versions to 0.1.4, update technical
+      documentation and Memory, run the clean multiloader build, inspect both
+      release artifacts, and **commit** ("Release version 0.1.4"). Clean build
+      passes 96 tests; filenames and embedded loader metadata are 0.1.4.
+
 ---
 
 ## Deviation log
