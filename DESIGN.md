@@ -424,6 +424,104 @@ shall verify seed determinism, allowed-biome exclusivity, positive-weight
 representation, coverage tolerances, coast continuity, starter blending,
 terrain/height-query agreement, and codec compatibility.
 
+### `WorldLayoutPlan` — pure model
+
+A new `logic.WorldLayoutPlan` record is the persisted, versioned source of
+truth, built and queried without any Minecraft class (mirrors `ExteriorPlan`
+and `StarterLandPlan`). Its resolved fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `mode` | `LayoutMode` enum | `LAND_ONLY`, `MIXED`, `OCEAN`, `SINGLE_BIOME`, `VOID`, `LEGACY` |
+| `seed` | `long` | the world seed; the sole source of randomness (§ sampling below) |
+| `regionScaleBlocks` | `int` | grid-cell edge length in blocks; clamped, see defaults table |
+| `oceanCoverageFraction` | `double` | `MIXED` only; target fraction of grid cells classified ocean, `0.0..1.0` |
+| `coastBlendWidthBlocks` | `int` | smoothing distance either side of a role boundary |
+| `landBiomes`, `oceanBiomes`, `beachBiomes` | `List<BiomeWeight>` | `BiomeWeight(String biomeId, double weight)`; empty lists fall back per mode (e.g. `MIXED` with no ocean biomes behaves like `LAND_ONLY`) |
+| `singleBiome` | `Optional<String>` | `SINGLE_BIOME` only |
+| `roleOverrides` | `Map<String, BiomeRole>` | forces a biome's role (`LAND`/`OCEAN`/`BEACH`), overriding the maintained vanilla mapping |
+| `layoutOriginBlockX`, `layoutOriginBlockZ` | `int` | grid and starter-overlay center; `0,0` until Phase 16 (§18) lands a mover |
+| `algorithmRevision` | `int` | see versioning below |
+
+The compact constructor validates ranges (mirroring `ExteriorPlan.DimensionEnvelope`
+and `StarterLandPlan`): `regionScaleBlocks` and `coastBlendWidthBlocks` must be
+positive, `oceanCoverageFraction` must fall in `[0,1]`, `SINGLE_BIOME` requires
+`singleBiome` present and land/ocean/beach lists empty, and every mode other than
+`LEGACY`/`SINGLE_BIOME` requires at least one positive-weight biome for every
+role it actually uses. `BiomeListSpec` still validates individual ids/tags
+before they reach this record, exactly as it does for `allowedBiomes` today.
+
+### Deterministic region sampling
+
+The world is partitioned into a square grid of `regionScaleBlocks`-wide cells,
+indexed by `(cellX, cellZ) = floorDiv(blockX, regionScaleBlocks)`. Every value
+the sampler needs is a pure function of `(seed, salt, cellX, cellZ, ...)` — a
+64-bit hash (SplitMix64-style avalanche over the concatenated longs) mapped to
+`[0,1)`. No gradient/Perlin noise and no Minecraft `DensityFunction` are
+involved, so the sampler is exercisable from plain JUnit exactly like
+`BiomeListSpec`.
+
+1. **Role classification** (`MIXED` only — `LAND_ONLY`/`OCEAN`/`SINGLE_BIOME`
+   fix every cell's role outright, `VOID` has no base role). Each cell draws
+   one hash with salt `"role"`; the cell is `OCEAN` when the hash is below
+   `oceanCoverageFraction`, else `LAND`. Because each cell's draw is
+   independent and uniform, the *measured* ocean fraction over a sample of `N`
+   cells per axis converges to the target with no calibration curve needed.
+2. **Biome selection within a role**: naively scoring each candidate biome as
+   `hash * weight` and taking the max was tried first and rejected — it
+   systematically starves low-weight biomes (a 3:2:1 weight split measured as
+   roughly 64:31:5 over many trials, not 50:33:17). The corrected, exact
+   method is the standard weighted-argmax transform: score biome `i` as
+   `hash_i ** (1 / weight_i)` (equivalently, an exponential-race / Efraimidis–
+   Spirakis draw) and take the argmax. This reproduced target ratios to within
+   ~1% over 30-seed trials at a 64×64 cell sample, always excludes zero-weight
+   biomes, and splits equal weights evenly. `roleOverrides` simply move a
+   biome into a different role's candidate list (or forces it exclusive via
+   `SINGLE_BIOME`-style single-candidate scoring) before this step runs.
+3. Both draws are re-derived per query, not cached in the plan, so the plan
+   itself stays a small immutable record; a thin per-world lookup cache is an
+   implementation detail for 15.3/15.4, not part of the persisted model.
+
+### Coast blending
+
+Within `coastBlendWidthBlocks` of a cell boundary whose neighbor resolved to a
+different role, the sampler reports a continuous `landFactor` (`0` fully
+ocean-shaped, `1` fully land-shaped) via a smoothstep across that distance,
+the same shape `StarterLandPlan`'s transition ring already uses. The chunk
+generator wrapper (15.4) raises/lowers terrain by this blended factor rather
+than switching abruptly at the cell edge; biome selection at those columns
+prefers a `BEACH`-role biome when one is configured for that boundary, else
+falls back to the bordering land role's normal selection. Cells with no
+opposite-role neighbor within the blend width behave as pure land or ocean.
+
+### Recommended defaults (fixture-verified)
+
+Defaults below came from a throwaway fixture harness (hash-based grid,
+64×64–128×128 cell samples, 8–30 seeds per case; not part of the shipped
+code) exercising the two algorithms above before committing to them:
+
+| Field | Default | Fixture finding |
+|---|---|---|
+| `regionScaleBlocks` | `512` | matches the existing `starterRadiusBlocks` default, so one grid cell reads as "about one starter zone wide"; mean same-role run length measured ~2.2–2.7 cells (~1100–1400 blocks), occasional runs past 19 cells, giving continent/ocean-scale coherence without a second scale concept to explain |
+| `oceanCoverageFraction` | `0.35` | measured within ±1.5 percentage points of target at a 64×64 sample and ±0.3 points at 128×128; recommend a JUnit tolerance of ±5 percentage points at ≥64×64 cells to stay comfortably outside sampling noise |
+| `coastBlendWidthBlocks` | `128` | same 512:128 (25%) ratio as `starterLandTransitionBlocks`/`starterRadiusBlocks`, for one consistent "quarter-radius blend" rule of thumb across the mod |
+
+`MIXED`'s recommended starting biome lists mirror the existing default allowed
+list philosophy: unweighted (implicit weight `1`) unless the player raises one,
+so a fresh `MIXED` world with no edits behaves like an even split of whatever
+biomes are allowed, plus one ocean biome once the player adds it.
+
+### Compatibility and versioning
+
+`algorithmRevision` follows the `StarterLandPlan.*_PROFILE_VERSION` pattern:
+`LEGACY_MODE_REVISION = 0` (no layout sampling — today's climate-filter-only
+behavior; the only value an already-encoded pre-Phase-15 world can decode to)
+and `CURRENT_REVISION = 1` for newly created layout-mode worlds. A future
+sampling change ships as `REVISION = 2`, applied only to worlds created after
+the update; existing saves keep decoding at whatever revision they were baked
+with. `mode = LEGACY` is the codec default for any plan missing the field
+entirely, matching how `StarterLandPlan`'s absence decodes to `disabled()`.
+
 ## 18. Seed-informed spawn and layout origin
 
 World creation should separate three concepts currently conflated at `(0,0)`:

@@ -150,6 +150,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   whose spawn surface is at Y 40 or higher to avoid the ordinary slime-chunk
   rule, and test structure placement rather than assuming `FlatLevelSource`
   cannot support it. Biome-specific surface slime spawning remains separate.
+- 2026-07-15 — Sample `WorldLayoutPlan` with an independent 64-bit hash per
+  `(seed, salt, cellX, cellZ, ...)` rather than gradient/Perlin noise or a
+  Minecraft `DensityFunction`. This keeps the sampler pure and JUnit-testable
+  like `BiomeListSpec`/`ExteriorPlan`, and per-cell independence means
+  measured ocean coverage converges to the target fraction with no
+  calibration curve. Select a biome within a role by `hash ** (1/weight)`
+  argmax (Efraimidis-Spirakis weighted sampling), not `hash * weight` — the
+  latter was fixture-tested and found to starve low-weight biomes.
 
 ## Reference Log
 
@@ -375,6 +383,17 @@ Durable decisions, verified API notes, and rationale that should survive across 
   includes ruined portals, trial chambers are absent, and ordinary slime-chunk
   spawning requires Y below 40. `./gradlew clean build` passed all modules and
   97 JUnit tests; `git diff --check` is clean. No runtime behavior changed.
+- 2026-07-15 / `WorldLayoutPlan` model design — DESIGN §17 now specifies the
+  record's fields, a pure hash-grid sampler, and a weighted-argmax biome
+  selection transform. An uncommitted throwaway fixture harness (Python,
+  hash-based grid, 8-30 seeds, 64x64-128x128 cell samples) drove the choice:
+  it showed naive `hash * weight` scoring starves low-weight biomes (a 3:2:1
+  split measured ~64:31:5) while `hash ** (1/weight)` argmax reproduces target
+  ratios to ~1%. It also calibrated recommended defaults
+  (`regionScaleBlocks=512`, `oceanCoverageFraction=0.35`,
+  `coastBlendWidthBlocks=128`) and a ±5-point coverage tolerance for 15.3's
+  JUnit coverage. No runtime code changed; `./gradlew build` still passes 97
+  tests.
 
 ## API Deviations
 

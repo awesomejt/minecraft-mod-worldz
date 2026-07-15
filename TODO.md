@@ -302,11 +302,22 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       in DESIGN, README, TODO, and Memory. Review Minecraft 26.2 flat settings,
       presets, structures, and spawn APIs. No runtime behavior changes in this
       documentation iteration. **Commit** ("Design coordinated world layouts").
-- [ ] 15.2 Design the pure, versioned `WorldLayoutPlan` model: layout modes,
+- [x] 15.2 Design the pure, versioned `WorldLayoutPlan` model: layout modes,
       biome roles and role overrides, weights, mixed ocean coverage, region
       scale, deterministic seed sampling, coast blending, compatibility
       defaults, and YAML/customization snapshots. Define recommended defaults
       from deterministic fixture maps before implementation.
+      DESIGN §17 now specifies the record's fields, a hash-grid sampler (no
+      Perlin/`DensityFunction` dependency, so it stays pure like
+      `BiomeListSpec`), and the weighted-argmax biome-selection transform. A
+      throwaway (uncommitted) fixture harness caught that the obvious
+      `hash * weight` scoring starves low-weight biomes and confirmed the
+      `hash ** (1/weight)` correction reproduces target ratios to ~1%; it also
+      calibrated recommended defaults `regionScaleBlocks=512`,
+      `oceanCoverageFraction=0.35`, `coastBlendWidthBlocks=128` (all reusing
+      existing starter-zone/starter-land ratios) and a ±5-point coverage
+      tolerance for 15.3's JUnit coverage. No runtime code changed.
+      **Commit** ("Design the WorldLayoutPlan model").
 - [ ] 15.3 Implement the pure layout sampler and persisted codecs/config with
       JUnit coverage for determinism, allowed-only output, positive-weight
       representation, approximate coverage, transition continuity, validation,
