@@ -37,9 +37,11 @@ public final class WorldLimitManager {
         }
 
         apply(overworld, plan.overworld(), "overworld");
+        ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld());
         ServerLevel nether = server.getLevel(Level.NETHER);
         if (nether != null) {
             apply(nether, plan.nether(), "Nether");
+            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether());
         }
         overworld.getDataStorage().set(WorldLimitState.TYPE, new WorldLimitState(true));
     }

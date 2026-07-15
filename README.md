@@ -49,6 +49,8 @@ migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 | `allowedBiomes` | `["minecraft:plains"]` | Biome ids and/or `#` biome-tag ids. A single biome produces a single-biome overworld. |
 | `starterBiome` | `""` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
 | `starterRadiusBlocks` | `512` | Inclusive circular radius, clamped to `64..4096` blocks. |
+| `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
+| `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
 
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:
@@ -71,6 +73,42 @@ starterRadiusBlocks: 512
 
 Quote biome tags in YAML because an unquoted `#` begins a comment.
 
+### Limited-world borders
+
+Borders use Minecraft's visible square world border centered at `(0, 0)`.
+Radius values are the distance from the center to each side, so a radius of
+`512` creates a `1024 × 1024` playable square. Borders affect only newly
+created Worldz worlds.
+
+```yaml
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 512
+  finalRadiusBlocks: 2048
+  resizeDays: 100
+  ensureEndPortal: true
+netherBorder:
+  enabled: true
+  initialRadiusBlocks: 256
+  finalRadiusBlocks: 512
+  resizeDays: 100
+  ensureBlazeAccess: true
+```
+
+Equal initial and final radii make a static border. A larger final radius grows
+linearly; a smaller one shrinks. `resizeDays: 0` applies the final radius
+immediately. The transition uses elapsed Minecraft game time and resumes rather
+than restarting when the save is reopened.
+
+When a progression guarantee is enabled, Worldz uses a natural stronghold or
+Nether fortress if one fits safely inside the final border. Otherwise it creates
+a compact fallback near `(32, 0)`: a visible surface End-portal frame in the
+overworld, or an enclosed nether-brick blaze-spawner room at approximately
+`(32, 64, 0)` in the Nether. The fallback portal contains no eyes. Exact
+coordinates are written to the game log. Fallback sites are placed within the
+smallest supported border, so they may become reachable before a growing border
+finishes its schedule.
+
 Syntax errors use safe defaults and leave the broken file untouched. Invalid
 list entries are logged and removed; unknown biome or tag ids are logged when a
 new Worldz world is created. If none of the configured biomes can be used, the
@@ -79,7 +117,8 @@ succeeds.
 
 Configuration is baked into a Worldz world's saved biome source when that world
 is created. Later config edits affect only newly created worlds; reopening an
-existing Worldz world keeps its original biome list, starter biome, and radius.
+existing Worldz world keeps its original biome list, starter biome, starter
+radius, and border schedules.
 
 ## How biome limiting works
 
@@ -100,6 +139,8 @@ starter biome overrides the entire vertical column inside its circular zone.
   already created with Worldz.
 - Nether and End generation remain vanilla in version 0.1.0.
 - Worldz does not currently provide an in-game config screen or reload command.
+- Shrinking a border does not delete chunks that were previously generated; it
+  makes the area outside the new border inaccessible.
 
 ## Building and testing
 

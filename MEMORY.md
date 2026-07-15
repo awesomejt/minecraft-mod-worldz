@@ -45,6 +45,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   already-present `starter_radius` resolved marker and decode to disabled
   limits. A separate saved-data marker records that native border interpolation
   has been started so reopening a world never resets its schedule.
+- 2026-07-14 — Progression guarantees prefer vanilla structures with a
+  128-block safety margin inside the final border. If they do not fit, place a
+  deterministic compact site near `(32,0)`: a zero-eye surface End portal or an
+  enclosed Nether blaze-spawner room. This preserves strict small borders and
+  avoids global structure-set changes or brittle worldgen mixins. Eyes of Ender
+  do not target the fallback, so it is deliberately visible near the origin and
+  its exact coordinate is logged.
 
 ## Reference Log
 
@@ -118,6 +125,11 @@ Durable decisions, verified API notes, and rationale that should survive across 
   clean `./gradlew clean build` and the final `./gradlew build` passed with 37
   JUnit tests; jar inspection confirmed SnakeYAML and license resources in both
   loader artifacts.
+- 2026-07-14 / Limited worlds — `./gradlew clean build` passed across common,
+  Fabric, and NeoForge with 50 JUnit tests. New tests cover YAML border schema
+  and validation, schedule growth/shrink/static interpolation, immutable plan
+  snapshots, extreme coordinate bounds, and fallback placement. Javadoc was
+  reviewed cleanly; live acceptance remains explicitly assigned to Jason.
 
 ## API Deviations
 

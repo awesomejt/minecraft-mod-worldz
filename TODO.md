@@ -98,7 +98,7 @@ fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
 
 ## Phase 4 — Smoke test [Jason]
 
-Automated coverage before manual testing: 37 passing JUnit tests cover project
+Automated coverage before manual testing: 50 passing JUnit tests cover project
 identity/license metadata, config load/sanitation, biome/tag parsing,
 climate-entry filtering, starter-zone math,
 and preset/tag/lang resources. Dedicated-server creation also passed on both
@@ -150,12 +150,16 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       codec and a saved-data marker prevents restarts from resetting native
       border interpolation. Older Worldz saves decode with limits disabled.
       **Commit** ("Apply persistent Worldz border schedules").
-- [ ] 7.3 Guarantee an End portal inside the final overworld border while
-      preserving Eye of Ender discoverability.
-- [ ] 7.4 Guarantee either a blaze spawner or sufficient natural fortress area
-      inside the final Nether border.
-- [ ] 7.5 JUnit hardening, full loader builds, documentation, review, and
+- [x] 7.3 Guarantee a natural stronghold when it safely fits; otherwise create
+      a visible compact End-portal site near the origin. Eyes still locate a
+      natural stronghold, while fallback coordinates are deterministic and
+      logged. The fallback begins with zero eyes.
+- [x] 7.4 Guarantee a natural fortress when sufficient area safely fits;
+      otherwise create an enclosed nether-brick room with a real blaze spawner.
+      **Commit** ("Guarantee limited-world progression objectives").
+- [x] 7.5 JUnit hardening, full loader builds, documentation, review, and
       commits. No live test required; Jason will perform acceptance testing.
+      Final clean build passed with 50 tests.
 
 ---
 
@@ -205,3 +209,7 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
   Minecraft's vanilla square border is used, configuration names its
   center-to-side half-width a radius, and progression objectives only need to
   become reachable by the end of a growth schedule rather than on day zero.
+- Strict small borders do not relocate vanilla structure starts. When natural
+  structures cannot safely fit, Worldz builds only the progression-critical
+  fallback requested by the user. Fallback End portals are not Eye-of-Ender
+  locate targets, so they are placed visibly near the origin and logged.

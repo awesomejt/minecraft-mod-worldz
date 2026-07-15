@@ -210,4 +210,13 @@ day zero, but must be reachable when the configured resize period ends (100
 days is the reference gameplay target). For strict small borders, guaranteeing
 the functional portal or blaze-spawning area takes priority over fitting an
 entire stronghold or Nether fortress inside the border.
+
+At first server start, Worldz locates the nearest natural objective. A natural
+structure is accepted only when its reference point plus a 128-block safety
+margin fits inside the final border. Otherwise Worldz creates a deterministic
+compact fallback near positive X: a surface End-portal frame with no eyes, or
+an enclosed nether-brick room containing a real blaze spawner. Exact fallback
+coordinates are logged. The compact sites remain inside the smallest supported
+border and are safe to place repeatedly, though a saved-data marker normally
+ensures placement occurs only once.
 - CurseForge/Modrinth publishing (same open flag as the other four mods).
