@@ -1,0 +1,30 @@
+# Natural-looking terrain WITH real oceans preserved (unlike 08, which
+# removes big oceans by design). layout.mode: mixed classifies every column
+# into a land, ocean, or beach role from a seeded grid and raises/lowers
+# terrain to match, so ocean biomes generate genuine lowered ocean and land
+# biomes generate genuine raised land -- the biome label and the terrain
+# height always agree, which is exactly what legacy mode (see 01's result)
+# does not guarantee. `river` defaults to the LAND role (it's ordinary dry
+# land that a river crosses, per BiomeRoles), so it contributes visual
+# variety within land regions rather than being forced into the ocean role.
+starterBiome: 'minecraft:plains'
+starterRadiusBlocks: 256
+allowedBiomes:
+  - 'minecraft:plains'
+  - 'minecraft:forest'
+  - 'minecraft:river'
+  - 'minecraft:beach'
+  - 'minecraft:ocean'
+  - 'minecraft:deep_ocean'
+layout:
+  mode: mixed
+  biomes:
+    - 'minecraft:plains@3'
+    - 'minecraft:forest@2'
+    - 'minecraft:river'
+    - 'minecraft:beach'
+    - 'minecraft:ocean@2'
+    - 'minecraft:deep_ocean'
+  oceanCoverageFraction: 0.35
+spawn:
+  strategy: starter_at_origin
