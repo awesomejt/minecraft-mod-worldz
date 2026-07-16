@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.DumperOptions;
@@ -85,6 +86,8 @@ public final class WorldzConfig {
     public ExteriorConfig netherExterior = new ExteriorConfig();
     /** Optional coordinated terrain-layout composition. */
     public LayoutConfig layout = new LayoutConfig();
+    /** Layout-origin and initial-spawn strategy. */
+    public SpawnConfig spawn = new SpawnConfig();
     /** Human-readable inline documentation persisted with the config. */
     public Map<String, String> _docs = defaultDocs();
 
@@ -201,6 +204,9 @@ public final class WorldzConfig {
         if (object.containsKey("layout")) {
             config.layout = readLayoutConfig(object.get("layout"), "layout", logger);
         }
+        if (object.containsKey("spawn")) {
+            config.spawn = readSpawnConfig(object.get("spawn"), "spawn");
+        }
         if (object.containsKey("_docs")) {
             config._docs = readDocs(object.get("_docs"), logger);
         }
@@ -244,6 +250,10 @@ public final class WorldzConfig {
         overworldExterior = sanitizeExterior(overworldExterior, overworldBorder, true, "overworldExterior", logger);
         netherExterior = sanitizeExterior(netherExterior, netherBorder, false, "netherExterior", logger);
         layout = sanitizeLayout(layout, logger);
+        spawn = spawn == null ? new SpawnConfig() : spawn;
+        if (spawn.strategy == null) {
+            spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
+        }
 
         _docs = _docs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(_docs);
         defaultDocs().forEach(_docs::putIfAbsent);
@@ -266,7 +276,8 @@ public final class WorldzConfig {
             + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess")
             + ", overworldExterior=" + exteriorSummary(overworldExterior)
             + ", netherExterior=" + exteriorSummary(netherExterior)
-            + ", layout=" + layoutSummary(layout);
+            + ", layout=" + layoutSummary(layout)
+            + ", spawn=" + spawn.strategy.serializedName();
     }
 
     String toYaml() {
@@ -282,6 +293,7 @@ public final class WorldzConfig {
         values.put("overworldExterior", exteriorMap(overworldExterior));
         values.put("netherExterior", exteriorMap(netherExterior));
         values.put("layout", layoutMap(layout));
+        values.put("spawn", spawnMap(spawn));
         values.put("_docs", _docs);
         return createYaml().dump(values);
     }
@@ -410,6 +422,17 @@ public final class WorldzConfig {
         return config;
     }
 
+    private static SpawnConfig readSpawnConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        SpawnConfig config = new SpawnConfig();
+        if (map.containsKey("strategy")) {
+            config.strategy = SpawnStrategy.parse(readString(map.get("strategy"), name + ".strategy"));
+        }
+        return config;
+    }
+
     private static Map<String, String> readStringMap(Object value, String name) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
@@ -483,6 +506,7 @@ public final class WorldzConfig {
         docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");
         docs.put("netherExterior", "Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.");
         docs.put("layout", "Coordinated terrain layout: mode (legacy/land_only/mixed/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), oceanCoverageFraction (mixed only), regionScaleBlocks, coastBlendWidthBlocks, singleBiome. Default: legacy (today's climate-filter-only behavior).");
+        docs.put("spawn", "How the layout origin and initial spawn are chosen: strategy is starter_at_origin (default, today's behavior), preferred_natural_biome (search near the origin for starterBiome using the real seed, moving the layout origin there; falls back to starter_at_origin if not found or starterBiome is empty), or vanilla_spawn (unmodified vanilla spawn selection).");
         return docs;
     }
 
@@ -672,6 +696,12 @@ public final class WorldzConfig {
         values.put("coastBlendWidthBlocks", config.coastBlendWidthBlocks);
         values.put("singleBiome", config.singleBiome);
         values.put("roleOverrides", config.roleOverrides);
+        return values;
+    }
+
+    private static Map<String, Object> spawnMap(SpawnConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("strategy", config.strategy.serializedName());
         return values;
     }
 

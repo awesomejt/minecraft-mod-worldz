@@ -274,6 +274,34 @@ Durable decisions, verified API notes, and rationale that should survive across 
   vanilla bound rather than inventing a new one. The actual biome test at each
   offset is deliberately left to the (impure, MC-dependent) caller in Phase
   16.3; this class only generates the deterministic candidate order.
+- 2026-07-15 — `LimitedBiomeSource`'s layout origin is a mutable, non-codec
+  `volatile int` pair (`setOrigin`), not a `WorldLayoutPlan` record field.
+  The origin is resolved after codec decode (needs the real seed and a live
+  `ServerLevel`), so it can't be a persisted record component the way every
+  other Phase-15/16 setting is; `SpawnOriginState` (a `SavedData`) is the
+  actual persistence, re-applied to this mutable field on every load.
+- 2026-07-15 — `SpawnOriginManager` exposes two separate entry points
+  (`reapplyPersistedOrigin`, `resolveFreshOrigin`) rather than one method that
+  branches on `initialized()`. A single conflated method was drafted first and
+  caught as a bug during design, not testing: registering it at both
+  `LevelEvent.Load` and `LevelEvent.CreateSpawnPosition` for the same fresh
+  world would let the earlier `Load` call perform the search and mark it
+  resolved, so the later `CreateSpawnPosition` call -- the one that actually
+  needs the found position to override vanilla's spawn -- would see
+  `initialized() == true` and silently no-op. Keeping the two responsibilities
+  in clearly separate methods makes that failure mode structurally impossible
+  rather than relying on call-order discipline.
+- 2026-07-15 — Recentering uses a coordinate-shift-at-integration-boundary
+  pattern: `StarterZone`, `ExteriorPlan.DimensionEnvelope`, `WorldLayoutPlan`,
+  and `ObjectiveSite` stay origin-agnostic (always relative to an implicit
+  `(0,0)`); only `LimitedBiomeSource`, `EnvelopedChunkGenerator`,
+  `WorldLimitManager`, and `ProgressionGuarantees` subtract the resolved
+  origin from query coordinates before calling into that pure logic. This
+  avoids threading an origin parameter through every pure-logic method
+  signature and keeps those classes' existing unit tests origin-agnostic.
+  Nether intentionally stays centered at `(0,0)` -- DESIGN §18's strategies
+  are Overworld-only in scope, so the Nether border/progression objective are
+  unaffected by any Overworld origin move.
 
 ## Reference Log
 
@@ -604,6 +632,22 @@ Durable decisions, verified API notes, and rationale that should survive across 
   inspection confirmed 0.1.9 and the new classes in both loader jars. Javadocs
   and `git diff --check` are clean. No live test was run; Jason will perform
   final acceptance testing across all of Phase 15.
+- 2026-07-15 / Seed-informed spawn implementation + release 0.1.11 — Built
+  `PREFERRED_NATURAL_BIOME`'s search and full origin recentering (see the new
+  Decisions entries above for the mutable-origin and two-entry-point design).
+  `./gradlew clean build` passes common, Fabric, and NeoForge, including
+  Loom's mixin validation for the new `MinecraftServerMixin`; 179 JUnit/
+  component tests total (13 new) covering `spawn` config parsing/sanitizing,
+  `WorldzCustomization.spawnStrategy` round-trips, and source-scan checks for
+  every new class and wiring point (`LimitedBiomeSource` codec/origin fields,
+  `EnvelopedChunkGenerator` recentering, `SpawnOriginManager`/
+  `SpawnOriginState`, both loaders' event/mixin registration, the Customize
+  spawn button). The dummy-RandomState risk flagged in 16.1 remains unresolved
+  and unrelated to this work (the search deliberately builds its own real
+  `RandomState` rather than depending on the level's ambient one). No live
+  test was run; Jason will perform in-game acceptance testing of all three
+  spawn strategies, especially `PREFERRED_NATURAL_BIOME`'s search and the
+  recentered border/exterior/progression placement.
 
 ## API Deviations
 

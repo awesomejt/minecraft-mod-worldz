@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.client;
 
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
+import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
@@ -28,6 +29,8 @@ final class WorldzCustomizeScreen extends Screen {
     private WorldzCustomization.ExteriorSettings netherExterior;
     private StarterLandPlan starterLandPlan;
     private WorldzCustomization.LayoutSettings worldLayout;
+    private SpawnStrategy spawnStrategy;
+    private Button spawnStrategyButton;
     private MultiLineEditBox allowedBiomes;
     private EditBox starterBiome;
     private EditBox starterRadius;
@@ -45,6 +48,7 @@ final class WorldzCustomizeScreen extends Screen {
         this.netherExterior = initial.netherExterior();
         this.starterLandPlan = initial.starterLandPlan();
         this.worldLayout = initial.worldLayout();
+        this.spawnStrategy = initial.spawnStrategy();
         this.allowedBiomesText = initial.allowedBiomesText();
         this.starterBiomeText = initial.starterBiome();
         this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
@@ -116,6 +120,11 @@ final class WorldzCustomizeScreen extends Screen {
             button -> this.minecraft.gui.setScreen(new WorldzLayoutScreen(this, this.worldLayout))
         ).width(FORM_WIDTH).build());
 
+        this.spawnStrategyButton = Button.builder(spawnStrategyLabel(this.spawnStrategy), button -> cycleSpawnStrategy())
+            .width(FORM_WIDTH)
+            .build();
+        form.addChild(this.spawnStrategyButton);
+
         this.errorMessage = new MultiLineTextWidget(CommonComponents.EMPTY, this.font).setMaxWidth(FORM_WIDTH).setMaxRows(2).setCentered(true);
         form.addChild(this.errorMessage);
 
@@ -125,6 +134,12 @@ final class WorldzCustomizeScreen extends Screen {
 
         this.layout.visitWidgets(this::addRenderableWidget);
         this.repositionElements();
+    }
+
+    private void cycleSpawnStrategy() {
+        SpawnStrategy[] values = SpawnStrategy.values();
+        this.spawnStrategy = values[(this.spawnStrategy.ordinal() + 1) % values.length];
+        this.spawnStrategyButton.setMessage(spawnStrategyLabel(this.spawnStrategy));
     }
 
     private EditBox textField(Component narration, String value, int maximumLength) {
@@ -145,7 +160,8 @@ final class WorldzCustomizeScreen extends Screen {
                 this.netherBorder,
                 this.overworldExterior,
                 this.netherExterior,
-                this.worldLayout
+                this.worldLayout,
+                this.spawnStrategy
             );
             this.parent.getUiState().updateDimensions(
                 (registries, dimensions) -> WorldzPresetEditor.apply(registries, dimensions, customization)
@@ -219,6 +235,13 @@ final class WorldzCustomizeScreen extends Screen {
         return Component.translatable(
             "jlt_worldz.customize.layout",
             Component.translatable("jlt_worldz.customize.layout.mode." + worldLayout.mode().serializedName())
+        );
+    }
+
+    private static Component spawnStrategyLabel(SpawnStrategy strategy) {
+        return Component.translatable(
+            "jlt_worldz.customize.spawn_strategy",
+            Component.translatable("jlt_worldz.customize.spawn_strategy." + strategy.serializedName())
         );
     }
 }

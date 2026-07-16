@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.10`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.11`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -793,6 +793,43 @@ relative to them). The Phase 16.3 implementation must additionally recenter:
 distance-from-origin assumptions. All must move together or a border, an
 exterior boundary, and a progression fallback site could each disagree about
 where "center" is.
+
+### Implementation (Phase 16.3)
+
+Origin recentering follows a coordinate-shift-at-integration-boundary
+pattern: pure logic classes (`StarterZone`, `ExteriorPlan.DimensionEnvelope`,
+`WorldLayoutPlan`, `ObjectiveSite`) stay origin-agnostic, always computing
+relative to an implicit `(0,0)`; only the MC-integration classes
+(`LimitedBiomeSource`, `EnvelopedChunkGenerator`, `WorldLimitManager`,
+`ProgressionGuarantees`) subtract a runtime-resolved origin from query
+coordinates before calling into that pure logic. `LimitedBiomeSource` carries
+the origin as a mutable, non-codec `volatile int originBlockX`/`originBlockZ`
+pair (via `setOrigin(int, int)`) since it is resolved after codec decode;
+`EnvelopedChunkGenerator` reads the same values through the Overworld's
+`LimitedBiomeSource` instance rather than duplicating them. Nether stays
+centered at `(0, 0)` — recentering is Overworld-only, matching the strategies'
+own scope.
+
+`SpawnOriginManager` resolves and persists the origin, with two entry points
+matching the 16.1 spike's two-hook design: `reapplyPersistedOrigin` runs on
+every level load (NeoForge's `LevelEvent.Load`, Fabric's
+`ServerLevelEvents.LOAD`) and only re-applies an already-resolved origin;
+`resolveFreshOrigin` runs only where vanilla is about to pick the initial
+spawn for a brand-new world (NeoForge's cancellable
+`LevelEvent.CreateSpawnPosition`; a Fabric mixin into
+`MinecraftServer.setInitialSpawn`, since Fabric API has no equivalent event)
+and performs the one-time search. The origin-resolved flag and coordinates
+are persisted via `SpawnOriginState`, a `SavedData` mirroring
+`WorldLimitState`'s `initialized()` idiom. The search itself builds an
+independent `RandomState`/`Climate.Sampler` from the delegate's real
+`NoiseGeneratorSettings` (per the flagged risk above, not the level's ambient
+`RandomState`) and a full unfiltered vanilla `MultiNoiseBiomeSource` view, so
+it reflects genuine climate regardless of Worldz's own biome restrictions.
+
+The Customize screen exposes a spawn-strategy cycle button alongside the
+other Phase 15/16 controls; `spawn.strategy` is a documented top-level YAML
+key (`WorldzConfig`/`SpawnConfig`) with the same default-and-sanitize pattern
+as every other setting.
 
 ## 19. Deferred customizable flat worlds
 

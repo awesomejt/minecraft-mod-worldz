@@ -49,5 +49,9 @@
   "jlt_worldz.customize.layout.coast_blend": "Coast blend width in blocks",
   "jlt_worldz.customize.layout.single_biome": "Single biome (single_biome mode only)",
   "jlt_worldz.customize.layout.role_overrides": "Role overrides (one per line)",
-  "jlt_worldz.customize.layout.role_overrides.hint": "minecraft:swamp=ocean"
+  "jlt_worldz.customize.layout.role_overrides.hint": "minecraft:swamp=ocean",
+  "jlt_worldz.customize.spawn_strategy": "Spawn: %s",
+  "jlt_worldz.customize.spawn_strategy.starter_at_origin": "Starter At Origin",
+  "jlt_worldz.customize.spawn_strategy.preferred_natural_biome": "Preferred Natural Biome (uses Starter Biome)",
+  "jlt_worldz.customize.spawn_strategy.vanilla_spawn": "Vanilla Spawn"
 }

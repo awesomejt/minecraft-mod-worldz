@@ -44,12 +44,18 @@ public final class WorldLimitManager {
             return;
         }
 
-        long overworldStartTick = initializeBorder(overworld, plan.overworld(), "Overworld");
-        ProgressionGuarantees.ensureEndPortal(overworld, plan.overworld(), exterior.overworld(), limitedSource.worldLayoutPlan());
+        int originX = limitedSource.originBlockX();
+        int originZ = limitedSource.originBlockZ();
+        long overworldStartTick = initializeBorder(overworld, plan.overworld(), "Overworld", originX, originZ);
+        ProgressionGuarantees.ensureEndPortal(
+            overworld, plan.overworld(), exterior.overworld(), limitedSource.worldLayoutPlan(), originX, originZ
+        );
         ServerLevel nether = server.getLevel(Level.NETHER);
         long netherStartTick = -1L;
         if (nether != null) {
-            netherStartTick = initializeBorder(nether, plan.nether(), "Nether");
+            // Layout origins are Overworld-only (DESIGN §18); the Nether's border and
+            // progression objective remain centered at the world origin (0, 0).
+            netherStartTick = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether());
         }
         overworld.getDataStorage().set(
@@ -85,7 +91,9 @@ public final class WorldLimitManager {
     private static long initializeBorder(
         ServerLevel level,
         WorldLimitPlan.DimensionLimit limit,
-        String dimensionName
+        String dimensionName,
+        int originX,
+        int originZ
     ) {
         if (!limit.enabled()) {
             return -1L;
@@ -93,7 +101,7 @@ public final class WorldLimitManager {
 
         BorderSchedule schedule = limit.schedule();
         WorldBorder border = level.getWorldBorder();
-        border.setCenter(0.0, 0.0);
+        border.setCenter(originX, originZ);
         if (schedule.initialRadiusBlocks() == schedule.finalRadiusBlocks()) {
             border.setSize(schedule.finalDiameterBlocks());
             logSchedule(dimensionName, limit, schedule, "static");

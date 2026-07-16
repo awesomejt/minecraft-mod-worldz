@@ -36,7 +36,9 @@ final class ProgressionGuarantees {
         ServerLevel overworld,
         WorldLimitPlan.DimensionLimit limit,
         ExteriorPlan.DimensionEnvelope envelope,
-        WorldLayoutPlan layoutPlan
+        WorldLayoutPlan layoutPlan,
+        int originX,
+        int originZ
     ) {
         if (!limit.ensureObjective()) {
             return;
@@ -50,17 +52,19 @@ final class ProgressionGuarantees {
         int radius = supportiveRadius.getAsInt();
 
         BlockPos natural = overworld.findNearestMapStructure(
-            StructureTags.EYE_OF_ENDER_LOCATED, BlockPos.ZERO, 100, false
+            StructureTags.EYE_OF_ENDER_LOCATED, new BlockPos(originX, 0, originZ), 100, false
         );
         if (natural != null
-            && ObjectiveSite.fitsInside(natural.getX(), natural.getZ(), radius, NATURAL_STRUCTURE_MARGIN)
-            && ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX(), natural.getZ())) {
+            && ObjectiveSite.fitsInside(natural.getX() - originX, natural.getZ() - originZ, radius, NATURAL_STRUCTURE_MARGIN)
+            && ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX() - originX, natural.getZ() - originZ)) {
             WorldzCommon.LOGGER.info("Natural stronghold at {} fits inside the Worldz supportive radius {}.", natural, radius);
             return;
         }
 
-        int x = ObjectiveSite.fallbackX(radius);
-        int z = ObjectiveSite.supportiveFallbackZ(layoutPlan, x, radius, NATURAL_STRUCTURE_MARGIN);
+        int relativeX = ObjectiveSite.fallbackX(radius);
+        int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, NATURAL_STRUCTURE_MARGIN);
+        int x = originX + relativeX;
+        int z = originZ + relativeZ;
         int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos center = new BlockPos(x, surfaceY, z);
         buildEndPortalSite(overworld, center);

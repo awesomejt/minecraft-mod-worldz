@@ -3,6 +3,9 @@
   "minVersion": "0.8",
   "package": "media.jlt.minecraft.mods.worldz.mixin",
   "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "MinecraftServerMixin"
+  ],
   "client": [
     "client.WorldCreationUiStateMixin"
   ],

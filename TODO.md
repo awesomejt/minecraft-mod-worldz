@@ -466,9 +466,42 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       fields. Released as 0.1.10. `./gradlew build` passes all modules and 166
       JUnit tests (9 new); no MC integration yet — that is 16.3's job.
       **Commit** ("Specify spawn strategies and their search plan").
-- [ ] 16.3 Implement only after 16.1 proves safe initialization ordering. Add
+- [x] 16.3 Implement only after 16.1 proves safe initialization ordering. Add
       world-creation controls, persistence, JUnit/component coverage,
       documentation, lint/review, and a separate commit.
+      Added `config.SpawnConfig`/`WorldzConfig.spawn` (documented YAML key,
+      default `starter_at_origin`), `LimitedBiomeSource.spawnStrategy` (codec
+      field) plus a mutable, non-codec `originBlockX`/`originBlockZ` pair
+      (`setOrigin`) resolved after decode, `WorldzCustomization.spawnStrategy`,
+      and a Customize-screen cycle button. Recentered every system DESIGN §18
+      called out: `LimitedBiomeSource`'s starter-zone/transition-ring/layout
+      sampling, `EnvelopedChunkGenerator`'s exterior/layout/starter-land height
+      math (new `originX()`/`originZ()` reading the Overworld's
+      `LimitedBiomeSource`), `WorldLimitManager`'s `border.setCenter(...)`, and
+      `ProgressionGuarantees`' natural-structure search and fallback site — all
+      via the coordinate-shift-at-integration-boundary pattern (pure logic
+      stays origin-agnostic; only MC-integration call sites subtract the
+      origin). Nether intentionally stays centered at `(0,0)` (recentering is
+      Overworld-only). Added `worldgen.SpawnOriginState` (`SavedData`,
+      mirrors `WorldLimitState`'s `initialized()` idiom) and
+      `worldgen.SpawnOriginManager` with two entry points matching 16.1's
+      two-hook design: `reapplyPersistedOrigin` (every load) and
+      `resolveFreshOrigin` (fresh-world spawn choice only, avoiding a
+      conflated-method bug caught during design where a single method would
+      let the Load hook consume the one-time search before
+      CreateSpawnPosition could use its result). The search builds an
+      independent `RandomState`/`Climate.Sampler` from the delegate's real
+      `NoiseGeneratorSettings` and a full unfiltered vanilla
+      `MultiNoiseBiomeSource` (per the flagged risk in 16.1, not the level's
+      ambient `RandomState`). Wired NeoForge's `LevelEvent.Load`/
+      `LevelEvent.CreateSpawnPosition` and a new Fabric
+      `MinecraftServerMixin` into `MinecraftServer.setInitialSpawn` (Fabric API
+      has no equivalent cancellable event) plus `ServerLevelEvents.LOAD`.
+      DESIGN §18 gained an "Implementation (Phase 16.3)" subsection. Released
+      as 0.1.11. `./gradlew build` passes all modules and 179 JUnit/component
+      tests (13 new, covering config parsing, `WorldzCustomization` round-trips,
+      and source-scan checks for every new class/wiring point). **Commit**
+      ("Implement seed-informed spawn strategy and origin recentering").
 
 ## Deferred phase — Customizable flat worlds
 

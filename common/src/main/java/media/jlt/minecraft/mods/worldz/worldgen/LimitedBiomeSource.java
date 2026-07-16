@@ -15,6 +15,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
@@ -53,6 +54,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         WorldLimitCodecs.PLAN_CODEC.optionalFieldOf("world_limits").forGetter(source -> Optional.of(source.worldLimits)),
         ExteriorCodecs.PLAN_CODEC.optionalFieldOf("exterior_plan").forGetter(source -> Optional.of(source.exteriorPlan)),
         LayoutCodecs.PLAN_CODEC.optionalFieldOf("world_layout").forGetter(source -> Optional.of(source.worldLayoutPlan)),
+        Codec.STRING.optionalFieldOf("spawn_strategy")
+            .forGetter(source -> Optional.of(source.spawnStrategy.serializedName())),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
@@ -62,9 +65,12 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final WorldLimitPlan worldLimits;
     private final ExteriorPlan exteriorPlan;
     private final WorldLayoutPlan worldLayoutPlan;
+    private final SpawnStrategy spawnStrategy;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
+    private volatile int originBlockX;
+    private volatile int originBlockZ;
 
     private LimitedBiomeSource(
         Supplier<HolderSet<Biome>> allowedBiomes,
@@ -74,6 +80,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         WorldLimitPlan worldLimits,
         ExteriorPlan exteriorPlan,
         WorldLayoutPlan worldLayoutPlan,
+        SpawnStrategy spawnStrategy,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -83,6 +90,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.worldLimits = worldLimits;
         this.exteriorPlan = exteriorPlan;
         this.worldLayoutPlan = worldLayoutPlan;
+        this.spawnStrategy = spawnStrategy;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -103,6 +111,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<WorldLimitPlan> encodedWorldLimits,
         Optional<ExteriorPlan> encodedExteriorPlan,
         Optional<WorldLayoutPlan> encodedWorldLayout,
+        Optional<String> encodedSpawnStrategy,
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
@@ -135,9 +144,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         WorldLayoutPlan worldLayout = encodedStarterRadius.isPresent()
             ? encodedWorldLayout.orElseGet(WorldLayoutPlan::legacy)
             : encodedWorldLayout.orElseGet(() -> WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
+        SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()
+            ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)
+            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> config.spawn.strategy);
 
         return new LimitedBiomeSource(
-            allowed, starter, radius, starterLand, limits, exterior, worldLayout, encodedStarterRadius.isEmpty(), biomeGetter
+            allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
+            encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -151,6 +164,7 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @param worldLimits persisted border plan
      * @param exteriorPlan persisted exterior-terrain plan
      * @param worldLayoutPlan persisted coordinated-layout plan
+     * @param spawnStrategy persisted layout-origin and spawn strategy
      * @param biomeGetter biome registry lookup used for vanilla climate parameters
      * @return a fully explicit source independent of later YAML changes
      */
@@ -162,6 +176,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         WorldLimitPlan worldLimits,
         ExteriorPlan exteriorPlan,
         WorldLayoutPlan worldLayoutPlan,
+        SpawnStrategy spawnStrategy,
         HolderGetter<Biome> biomeGetter
     ) {
         return new LimitedBiomeSource(
@@ -172,6 +187,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             worldLimits,
             exteriorPlan,
             worldLayoutPlan,
+            spawnStrategy,
             false,
             biomeGetter
         );
@@ -359,6 +375,51 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
+     * Returns the layout-origin and spawn strategy baked into this world.
+     *
+     * @return persisted spawn strategy
+     */
+    public SpawnStrategy spawnStrategy() {
+        return this.spawnStrategy;
+    }
+
+    /**
+     * Returns the current layout origin's X coordinate. Always {@code 0} unless
+     * {@link #setOrigin(int, int)} has been called (see {@code SpawnOriginManager}).
+     *
+     * @return origin block X
+     */
+    public int originBlockX() {
+        return this.originBlockX;
+    }
+
+    /**
+     * Returns the current layout origin's Z coordinate. Always {@code 0} unless
+     * {@link #setOrigin(int, int)} has been called (see {@code SpawnOriginManager}).
+     *
+     * @return origin block Z
+     */
+    public int originBlockZ() {
+        return this.originBlockZ;
+    }
+
+    /**
+     * Applies a resolved layout origin at runtime. Not part of the codec: the
+     * origin is computed after world creation (it needs the real seed and a
+     * live level) and is re-applied from persisted {@code SavedData} on every
+     * load instead, mirroring how {@code WorldLimitState} re-applies border
+     * schedules. Every other Worldz system reads this same instance's origin
+     * so border, exterior, layout sampling, and progression placement agree.
+     *
+     * @param blockX resolved origin X
+     * @param blockZ resolved origin Z
+     */
+    public void setOrigin(int blockX, int blockZ) {
+        this.originBlockX = blockX;
+        this.originBlockZ = blockZ;
+    }
+
+    /**
      * Returns whether this fieldless preset instance still represents YAML defaults.
      *
      * @return true before the player applies explicit Customize values
@@ -375,7 +436,9 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @return whether the source has a starter biome and the position is in its zone
      */
     public boolean isInStarterZone(int quartX, int quartZ) {
-        return this.starterBiome.isPresent() && StarterZone.containsQuart(quartX, quartZ, this.starterRadiusBlocks);
+        return this.starterBiome.isPresent() && StarterZone.containsQuart(
+            quartX - originQuartX(), quartZ - originQuartZ(), this.starterRadiusBlocks
+        );
     }
 
     /**
@@ -388,8 +451,17 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public boolean isInStarterTransitionRing(int quartX, int quartZ) {
         return this.starterBiome.isPresent() && StarterZone.inRingQuart(
-            quartX, quartZ, this.starterRadiusBlocks, this.starterRadiusBlocks + this.starterLandPlan.transitionWidthBlocks()
+            quartX - originQuartX(), quartZ - originQuartZ(),
+            this.starterRadiusBlocks, this.starterRadiusBlocks + this.starterLandPlan.transitionWidthBlocks()
         );
+    }
+
+    private int originQuartX() {
+        return QuartPos.fromBlock(this.originBlockX);
+    }
+
+    private int originQuartZ() {
+        return QuartPos.fromBlock(this.originBlockZ);
     }
 
     @Override
@@ -406,7 +478,9 @@ public final class LimitedBiomeSource extends BiomeSource {
     public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
         int blockX = QuartPos.toBlock(quartX);
         int blockZ = QuartPos.toBlock(quartZ);
-        if (this.exteriorPlan.overworld().modeAt(blockX, blockZ) == ExteriorMode.OCEAN) {
+        int originX = this.originBlockX;
+        int originZ = this.originBlockZ;
+        if (this.exteriorPlan.overworld().modeAt(blockX - originX, blockZ - originZ) == ExteriorMode.OCEAN) {
             return this.oceanBiome.orElseThrow(() -> new IllegalStateException("Deep ocean biome is unavailable."));
         }
         if (isInStarterZone(quartX, quartZ)) {
@@ -414,13 +488,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         }
         if (this.worldLayoutPlan.mode() != LayoutMode.LEGACY) {
             if (isInStarterTransitionRing(quartX, quartZ)) {
-                Optional<Holder<Biome>> beach = this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX, blockZ)
+                Optional<Holder<Biome>> beach = this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX - originX, blockZ - originZ)
                     .map(this.resolution.get().layoutBiomes()::get);
                 if (beach.isPresent()) {
                     return beach.get();
                 }
             }
-            Optional<Holder<Biome>> sampled = this.worldLayoutPlan.sampleAt(blockX, blockZ).biomeId()
+            Optional<Holder<Biome>> sampled = this.worldLayoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()
                 .map(this.resolution.get().layoutBiomes()::get);
             if (sampled.isPresent()) {
                 return sampled.get();

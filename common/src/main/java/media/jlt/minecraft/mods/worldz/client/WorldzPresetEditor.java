@@ -82,6 +82,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             customization.worldLimitPlan(),
             customization.exteriorPlan(),
             customization.worldLayoutPlan(new Random().nextLong()),
+            customization.spawnStrategy(),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
@@ -124,7 +125,8 @@ public final class WorldzPresetEditor implements PresetEditor {
             fromPlan(plan.nether()),
             fromPlan(exterior.overworld()),
             fromPlan(exterior.nether()),
-            fromPlan(source.worldLayoutPlan())
+            fromPlan(source.worldLayoutPlan()),
+            source.spawnStrategy()
         );
     }
 

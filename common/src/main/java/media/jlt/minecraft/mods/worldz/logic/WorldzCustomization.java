@@ -24,6 +24,7 @@ import java.util.Map;
  * @param overworldExterior Overworld exterior-terrain selection
  * @param netherExterior Nether exterior-terrain selection
  * @param worldLayout coordinated world-layout selection
+ * @param spawnStrategy layout-origin and initial-spawn strategy
  */
 public record WorldzCustomization(
     List<String> allowedBiomes,
@@ -34,7 +35,8 @@ public record WorldzCustomization(
     BorderSettings netherBorder,
     ExteriorSettings overworldExterior,
     ExteriorSettings netherExterior,
-    LayoutSettings worldLayout
+    LayoutSettings worldLayout,
+    SpawnStrategy spawnStrategy
 ) {
     /** Validates and snapshots customization values. */
     public WorldzCustomization {
@@ -60,8 +62,8 @@ public record WorldzCustomization(
             "Starter radius"
         );
         if (starterLandPlan == null || overworldBorder == null || netherBorder == null
-            || overworldExterior == null || netherExterior == null || worldLayout == null) {
-            throw new IllegalArgumentException("Starter-land, border, exterior, and layout settings are required.");
+            || overworldExterior == null || netherExterior == null || worldLayout == null || spawnStrategy == null) {
+            throw new IllegalArgumentException("Starter-land, border, exterior, layout, and spawn settings are required.");
         }
         if (netherExterior.mode() == ExteriorMode.OCEAN) {
             throw new IllegalArgumentException("Ocean exterior is only supported in the Overworld.");
@@ -95,7 +97,8 @@ public record WorldzCustomization(
             netherBorder,
             ExteriorSettings.normal(),
             ExteriorSettings.normal(),
-            LayoutSettings.legacy()
+            LayoutSettings.legacy(),
+            SpawnStrategy.STARTER_AT_ORIGIN
         );
     }
 
@@ -128,7 +131,8 @@ public record WorldzCustomization(
             netherBorder,
             overworldExterior,
             netherExterior,
-            LayoutSettings.legacy()
+            LayoutSettings.legacy(),
+            SpawnStrategy.STARTER_AT_ORIGIN
         );
     }
     /**
@@ -147,7 +151,8 @@ public record WorldzCustomization(
             BorderSettings.fromConfig(config.netherBorder),
             ExteriorSettings.fromConfig(config.overworldExterior),
             ExteriorSettings.fromConfig(config.netherExterior),
-            LayoutSettings.fromConfig(config)
+            LayoutSettings.fromConfig(config),
+            config.spawn.strategy
         );
     }
 
@@ -213,7 +218,8 @@ public record WorldzCustomization(
             netherBorder,
             overworldExterior,
             netherExterior,
-            LayoutSettings.legacy()
+            LayoutSettings.legacy(),
+            SpawnStrategy.STARTER_AT_ORIGIN
         );
     }
 
@@ -253,7 +259,8 @@ public record WorldzCustomization(
             netherBorder,
             overworldExterior,
             netherExterior,
-            LayoutSettings.legacy()
+            LayoutSettings.legacy(),
+            SpawnStrategy.STARTER_AT_ORIGIN
         );
     }
 
@@ -295,7 +302,53 @@ public record WorldzCustomization(
             netherBorder,
             overworldExterior,
             netherExterior,
-            worldLayout
+            worldLayout,
+            SpawnStrategy.STARTER_AT_ORIGIN
+        );
+    }
+
+    /**
+     * Parses editable biome fields while preserving explicit starter-land, layout, and spawn settings.
+     *
+     * @param allowedBiomes newline- or comma-separated biome ids and tags
+     * @param starterBiome optional direct biome id
+     * @param starterRadiusBlocks decimal starter radius
+     * @param starterLandPlan validated starter-land values
+     * @param overworldBorder validated overworld border values
+     * @param netherBorder validated Nether border values
+     * @param overworldExterior validated Overworld exterior values
+     * @param netherExterior validated Nether exterior values
+     * @param worldLayout validated layout values
+     * @param spawnStrategy layout-origin and spawn strategy
+     * @return canonical immutable customization values
+     */
+    public static WorldzCustomization fromText(
+        String allowedBiomes,
+        String starterBiome,
+        String starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        BorderSettings overworldBorder,
+        BorderSettings netherBorder,
+        ExteriorSettings overworldExterior,
+        ExteriorSettings netherExterior,
+        LayoutSettings worldLayout,
+        SpawnStrategy spawnStrategy
+    ) {
+        List<String> allowed = Arrays.stream(allowedBiomes.split("[,\\r\\n]+"))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .toList();
+        return new WorldzCustomization(
+            allowed,
+            starterBiome,
+            parseInteger(starterRadiusBlocks, "Starter radius"),
+            starterLandPlan,
+            overworldBorder,
+            netherBorder,
+            overworldExterior,
+            netherExterior,
+            worldLayout,
+            spawnStrategy
         );
     }
 

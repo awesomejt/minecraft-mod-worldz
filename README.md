@@ -72,6 +72,7 @@ migrates it automatically and retains the original as `jlt_worldz.json.bak`.
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
 | `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
 | `layout` | `legacy` | Coordinated land/ocean/beach terrain layout; `legacy` keeps today's climate-filter-only behavior. See [Coordinated world layouts](#coordinated-world-layouts). |
+| `spawn` | `strategy: starter_at_origin` | How the layout origin and initial spawn are chosen: `starter_at_origin` (today's behavior), `preferred_natural_biome` (search near the origin for `starterBiome` using the real seed and move the layout origin there), or `vanilla_spawn` (unmodified vanilla spawn selection). See [Seed-informed spawn](#seed-informed-spawn). |
 
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:
@@ -272,7 +273,31 @@ a solid island; without one, whatever vanilla terrain naturally exists in that
 fallback radius is what floats. `single_biome` fills the world with one biome
 and raises or caps its terrain to match that biome's role. See DESIGN §17 for
 the full model and TODO.md Phase 15 for what remains (a fully radial coast
-blend at grid corners, and seed-informed spawn placement).
+blend at grid corners).
+
+### Seed-informed spawn
+
+The `spawn.strategy` setting (also exposed as a cycle button in Customize)
+chooses how the layout origin and initial spawn point are picked for a
+newly created world:
+
+- `starter_at_origin` (default) — the layout origin stays `(0, 0)`; the
+  starter biome and starter land, if configured, are forced there and
+  vanilla's own surface-height spawn search runs inside that guaranteed area.
+- `preferred_natural_biome` — searches outward from `(0, 0)` using the real
+  world seed for a natural, unmodified occurrence of `starterBiome`, in
+  concentric rings up to 2048 blocks out. If found, that location becomes the
+  new layout origin: the starter zone, guaranteed land, world border,
+  exterior terrain, and progression objectives (End portal / blaze access)
+  all move there together, not just the player's spawn point. If nothing
+  matches within range, or `starterBiome` is empty, the world falls back to
+  `starter_at_origin` automatically.
+- `vanilla_spawn` — the layout origin stays `(0, 0)`, and Worldz leaves
+  Minecraft's ordinary spawn selection untouched.
+
+The search and recentering only run once, when a world is first created; the
+resolved origin is then saved and re-applied on every later load, so it
+survives server restarts.
 
 ## Caveats
 

@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -54,6 +55,7 @@ class WorldzConfigTest {
         assertFalse(config.netherBorder.enabled);
         assertEquals(ExteriorMode.NORMAL, config.overworldExterior.mode);
         assertEquals(ExteriorMode.NORMAL, config.netherExterior.mode);
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
         Path generated = temporaryDirectory.resolve("jlt_worldz.yaml");
         assertTrue(Files.isRegularFile(generated));
         Object example = YAML.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
@@ -319,6 +321,50 @@ class WorldzConfigTest {
     }
 
     @Test
+    void spawnStrategyDefaultsToStarterAtOrigin() {
+        WorldzConfig config = WorldzConfig.parse("starterBiome: minecraft:plains", LOGGER).sanitize(LOGGER);
+
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
+    }
+
+    @Test
+    void spawnStrategyLoadsRecognizedValue() {
+        WorldzConfig config = WorldzConfig.parse("""
+            spawn:
+              strategy: preferred_natural_biome
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, config.spawn.strategy);
+    }
+
+    @Test
+    void invalidSpawnStrategyMakesTheFileInvalidWithoutOverwritingIt() throws IOException {
+        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        String invalid = """
+            spawn:
+              strategy: not-a-strategy
+            """;
+        Files.writeString(configFile, invalid);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
+        assertEquals(invalid, Files.readString(configFile));
+    }
+
+    @Test
+    void invalidNestedSpawnTypeMakesFileInvalidWithoutOverwritingIt() throws IOException {
+        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        String invalid = "spawn: true";
+        Files.writeString(configFile, invalid);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
+        assertEquals(invalid, Files.readString(configFile));
+    }
+
+    @Test
     void invalidNestedBorderTypeMakesFileInvalidWithoutOverwritingIt() throws IOException {
         Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
         String invalid = "overworldBorder: true";
@@ -419,7 +465,8 @@ class WorldzConfigTest {
                 + ", starterLand=transition=128, foundation=48"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
-                + ", layout=<legacy>",
+                + ", layout=<legacy>"
+                + ", spawn=starter_at_origin",
             config.summary()
         );
     }

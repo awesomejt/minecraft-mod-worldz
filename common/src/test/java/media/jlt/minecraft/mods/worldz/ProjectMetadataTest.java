@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.10", properties.getProperty("version"));
+        assertEquals("0.1.11", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -207,7 +207,7 @@ class ProjectMetadataTest {
         ));
 
         assertTrue(source.contains("this.worldLayoutPlan.mode() != LayoutMode.LEGACY"));
-        assertTrue(source.contains("this.worldLayoutPlan.sampleAt(blockX, blockZ).biomeId()"));
+        assertTrue(source.contains("this.worldLayoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()"));
         assertTrue(source.contains("resolveLayoutBiomes(worldLayoutPlan, biomeGetter)"));
         assertTrue(source.contains("possible.addAll(layoutBiomes.values())"));
     }
@@ -219,7 +219,7 @@ class ProjectMetadataTest {
         ));
 
         assertTrue(source.contains("isInStarterTransitionRing(quartX, quartZ)"));
-        assertTrue(source.contains("this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX, blockZ)"));
+        assertTrue(source.contains("this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX - originX, blockZ - originZ)"));
         assertTrue(source.contains("StarterZone.inRingQuart("));
     }
 
@@ -232,9 +232,14 @@ class ProjectMetadataTest {
             "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/WorldLimitManager.java"
         ));
 
-        assertTrue(guarantees.contains("ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX(), natural.getZ())"));
-        assertTrue(guarantees.contains("ObjectiveSite.supportiveFallbackZ(layoutPlan, x, radius, NATURAL_STRUCTURE_MARGIN)"));
+        assertTrue(guarantees.contains(
+            "ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX() - originX, natural.getZ() - originZ)"
+        ));
+        assertTrue(guarantees.contains(
+            "ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, NATURAL_STRUCTURE_MARGIN)"
+        ));
         assertTrue(manager.contains("limitedSource.worldLayoutPlan()"));
+        assertTrue(manager.contains("limitedSource.originBlockX()"));
     }
 
     @Test
@@ -266,7 +271,7 @@ class ProjectMetadataTest {
 
         assertTrue(generator.contains(
             "int blendBaseline = this.layout.isPresent()\n"
-                + "            ? layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel())\n"
+                + "            ? layoutFloorFor(this.layout.get().plan(), x - originX, z - originZ, naturalFloor, getSeaLevel())\n"
                 + "            : naturalFloor;"
         ));
     }
@@ -289,6 +294,102 @@ class ProjectMetadataTest {
         assertTrue(layoutScreen.contains("this.parent.setLayout(settings)"));
         assertTrue(presetEditor.contains("customization.worldLayoutPlan(new Random().nextLong())"));
         assertTrue(presetEditor.contains("fromPlan(source.worldLayoutPlan())"));
+    }
+
+    @Test
+    void limitedBiomeSourcePersistsSpawnStrategyAndMutableOrigin() throws IOException {
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains("Codec.STRING.optionalFieldOf(\"spawn_strategy\")"));
+        assertTrue(source.contains("private volatile int originBlockX;"));
+        assertTrue(source.contains("private volatile int originBlockZ;"));
+        assertTrue(source.contains("public void setOrigin(int blockX, int blockZ) {"));
+        assertTrue(source.contains(
+            "SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()\n"
+                + "            ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)\n"
+                + "            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> config.spawn.strategy);"
+        ));
+    }
+
+    @Test
+    void envelopedChunkGeneratorRecentersOnTheOverworldOriginSourceOnly() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("private final Optional<LimitedBiomeSource> originSource;"));
+        assertTrue(generator.contains(
+            "this.originSource = dimension == Dimension.OVERWORLD && delegate.getBiomeSource() instanceof LimitedBiomeSource source"
+        ));
+        assertTrue(generator.contains("this.originSource.map(LimitedBiomeSource::originBlockX).orElse(0);"));
+        assertTrue(generator.contains("this.originSource.map(LimitedBiomeSource::originBlockZ).orElse(0);"));
+    }
+
+    @Test
+    void spawnOriginManagerHasSeparateReapplyAndFreshResolutionEntryPoints() throws IOException {
+        String manager = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/SpawnOriginManager.java"
+        ));
+        String state = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/SpawnOriginState.java"
+        ));
+
+        assertTrue(manager.contains("public static void reapplyPersistedOrigin(ServerLevel overworld) {"));
+        assertTrue(manager.contains("public static Optional<BlockPos> resolveFreshOrigin(ServerLevel overworld) {"));
+        assertTrue(manager.contains("limitedSource.spawnStrategy() != SpawnStrategy.PREFERRED_NATURAL_BIOME"));
+        assertTrue(manager.contains("RandomState.create("));
+        assertTrue(manager.contains("MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD"));
+        assertTrue(manager.contains("SpawnSearchPlan.defaults().offsetsInSearchOrder()"));
+        assertTrue(state.contains("Identifier.fromNamespaceAndPath(WorldzCommon.MOD_ID, \"spawn_origin\")"));
+    }
+
+    @Test
+    void neoForgeWiresLevelLoadAndCreateSpawnPositionHooks() throws IOException {
+        String neoForge = Files.readString(ROOT.resolve(
+            "neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForge.java"
+        ));
+
+        assertTrue(neoForge.contains("NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onLevelLoad);"));
+        assertTrue(neoForge.contains("NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onCreateSpawnPosition);"));
+        assertTrue(neoForge.contains("SpawnOriginManager.reapplyPersistedOrigin(level);"));
+        assertTrue(neoForge.contains("SpawnOriginManager.resolveFreshOrigin(level).ifPresent(pos -> {"));
+        assertTrue(neoForge.contains("event.setCanceled(true);"));
+    }
+
+    @Test
+    void fabricWiresServerLevelLoadAndTheInitialSpawnMixin() throws IOException {
+        String fabric = Files.readString(ROOT.resolve(
+            "fabric/src/main/java/media/jlt/minecraft/mods/worldz/WorldzFabric.java"
+        ));
+        String mixinConfig = Files.readString(ROOT.resolve(
+            "fabric/src/main/resources/jlt_worldz.mixins.json"
+        ));
+        String mixin = Files.readString(ROOT.resolve(
+            "fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/MinecraftServerMixin.java"
+        ));
+
+        assertTrue(fabric.contains("ServerLevelEvents.LOAD.register((server, level) -> {"));
+        assertTrue(fabric.contains("SpawnOriginManager.reapplyPersistedOrigin(level);"));
+        assertTrue(mixinConfig.contains("\"MinecraftServerMixin\""));
+        assertTrue(mixin.contains("@Inject(method = \"setInitialSpawn\", at = @At(\"HEAD\"), cancellable = true)"));
+        assertTrue(mixin.contains("SpawnOriginManager.resolveFreshOrigin(level)"));
+        assertTrue(mixin.contains("callback.cancel();"));
+    }
+
+    @Test
+    void customizeScreenExposesASpawnStrategyCycleButton() throws IOException {
+        String customize = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzCustomizeScreen.java"
+        ));
+
+        assertTrue(customize.contains("private SpawnStrategy spawnStrategy;"));
+        assertTrue(customize.contains("private Button spawnStrategyButton;"));
+        assertTrue(customize.contains("private void cycleSpawnStrategy() {"));
+        assertTrue(customize.contains(
+            "this.spawnStrategy = values[(this.spawnStrategy.ordinal() + 1) % values.length];"
+        ));
     }
 
     private static Properties projectProperties() throws IOException {

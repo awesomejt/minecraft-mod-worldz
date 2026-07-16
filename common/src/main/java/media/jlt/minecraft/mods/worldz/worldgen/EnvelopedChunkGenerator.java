@@ -73,6 +73,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private final ExteriorPlan.DimensionEnvelope envelope;
     private final Optional<StarterLandContext> starterLand;
     private final Optional<LayoutContext> layout;
+    private final Optional<LimitedBiomeSource> originSource;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -85,6 +86,29 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.envelope = resolveEnvelope(delegate, dimension, envelope);
         this.starterLand = resolveStarterLand(delegate, dimension);
         this.layout = resolveLayout(delegate, dimension);
+        this.originSource = dimension == Dimension.OVERWORLD && delegate.getBiomeSource() instanceof LimitedBiomeSource source
+            ? Optional.of(source)
+            : Optional.empty();
+    }
+
+    /**
+     * Returns the current layout origin's X coordinate (see {@code SpawnOriginManager}).
+     *
+     * @return origin block X, {@code 0} unless a {@code PREFERRED_NATURAL_BIOME}
+     *     search has resolved one for this Overworld
+     */
+    private int originX() {
+        return this.originSource.map(LimitedBiomeSource::originBlockX).orElse(0);
+    }
+
+    /**
+     * Returns the current layout origin's Z coordinate (see {@code SpawnOriginManager}).
+     *
+     * @return origin block Z, {@code 0} unless a {@code PREFERRED_NATURAL_BIOME}
+     *     search has resolved one for this Overworld
+     */
+    private int originZ() {
+        return this.originSource.map(LimitedBiomeSource::originBlockZ).orElse(0);
     }
 
     /**
@@ -261,7 +285,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         LevelHeightAccessor heightAccessor,
         RandomState randomState
     ) {
-        ExteriorMode mode = this.envelope.modeAt(x, z);
+        ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int layoutHeight = layoutAdjustedHeight(x, z, naturalHeight, heightAccessor, randomState);
@@ -283,14 +307,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         LevelHeightAccessor heightAccessor,
         RandomState randomState
     ) {
-        ExteriorMode mode = this.envelope.modeAt(x, z);
+        ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
             BlockState[] states = null;
 
             if (this.layout.isPresent()) {
-                int layoutFloor = layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel());
+                int layoutFloor = layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel());
                 if (layoutFloor > naturalFloor) {
                     states = copyColumn(naturalColumn, heightAccessor);
                     int minY = StarterLandProfile.foundationMinY(
@@ -374,7 +398,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         int maxY = chunk.getMaxY();
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
-                ExteriorMode mode = this.envelope.modeAt(x, z);
+                ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
                 if (mode != ExteriorMode.NORMAL) {
                     for (int y = minY; y <= maxY; y++) {
                         pos.set(x, y, z);
@@ -400,13 +424,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkPos chunkPos = chunk.getPos();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         int seaLevel = getSeaLevel();
+        int originX = originX();
+        int originZ = originZ();
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
-                if (this.envelope.modeAt(x, z) != ExteriorMode.NORMAL) {
+                if (this.envelope.modeAt(x - originX, z - originZ) != ExteriorMode.NORMAL) {
                     continue;
                 }
                 int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
-                int layoutFloor = layoutFloorFor(plan, x, z, naturalFloor, seaLevel);
+                int layoutFloor = layoutFloorFor(plan, x - originX, z - originZ, naturalFloor, seaLevel);
                 if (layoutFloor > naturalFloor) {
                     int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
                     int maxY = repairOnly ? layoutFloor - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : layoutFloor - 1;
@@ -436,7 +462,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return naturalHeight;
         }
         int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-        int layoutFloor = layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel());
+        int layoutFloor = layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel());
         return naturalHeight + (layoutFloor - naturalFloor);
     }
 
@@ -507,15 +533,17 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 0.0,
                 z * StarterLandProfile.RELIEF_NOISE_SCALE
             );
+        int originX = originX();
+        int originZ = originZ();
         // Blend back toward the layout-adjusted floor (not raw vanilla terrain) so the
         // starter island's transition connects to what generation will actually leave
         // beyond it (e.g. an ocean-mode cap), rather than jumping to unrelated natural shape.
         int blendBaseline = this.layout.isPresent()
-            ? layoutFloorFor(this.layout.get().plan(), x, z, naturalFloor, getSeaLevel())
+            ? layoutFloorFor(this.layout.get().plan(), x - originX, z - originZ, naturalFloor, getSeaLevel())
             : naturalFloor;
         int target = StarterLandProfile.targetHeight(
-            x,
-            z,
+            x - originX,
+            z - originZ,
             context.radiusBlocks(),
             context.plan().transitionWidthBlocks(),
             blendBaseline,
@@ -695,10 +723,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     private boolean isEntirelyExterior(ChunkPos chunkPos) {
-        int minX = chunkPos.getMinBlockX();
-        int maxX = chunkPos.getMaxBlockX();
-        int minZ = chunkPos.getMinBlockZ();
-        int maxZ = chunkPos.getMaxBlockZ();
+        int originX = originX();
+        int originZ = originZ();
+        int minX = chunkPos.getMinBlockX() - originX;
+        int maxX = chunkPos.getMaxBlockX() - originX;
+        int minZ = chunkPos.getMinBlockZ() - originZ;
+        int maxZ = chunkPos.getMaxBlockZ() - originZ;
         return this.envelope.modeAt(minX, minZ) != ExteriorMode.NORMAL
             && this.envelope.modeAt(minX, maxZ) != ExteriorMode.NORMAL
             && this.envelope.modeAt(maxX, minZ) != ExteriorMode.NORMAL

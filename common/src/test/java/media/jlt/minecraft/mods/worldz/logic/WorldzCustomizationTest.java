@@ -38,7 +38,38 @@ class WorldzCustomizationTest {
         assertEquals(8, customization.overworldBorder().resizeDelayDays());
         assertEquals(ExteriorMode.OCEAN, customization.overworldExterior().mode());
         assertEquals(1024, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, customization.spawnStrategy());
         assertThrows(UnsupportedOperationException.class, () -> customization.allowedBiomes().clear());
+    }
+
+    @Test
+    void configSpawnStrategyIsCopiedIntoTheSnapshot() {
+        WorldzConfig config = new WorldzConfig();
+        config.spawn.strategy = SpawnStrategy.PREFERRED_NATURAL_BIOME;
+
+        WorldzCustomization customization = WorldzCustomization.fromConfig(config);
+
+        assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, customization.spawnStrategy());
+    }
+
+    @Test
+    void fromTextWithExplicitSpawnStrategyRoundTrips() {
+        WorldzCustomization customization = WorldzCustomization.fromText(
+            "plains", "", "512", StarterLandPlan.disabled(), border(false), border(false),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(),
+            WorldzCustomization.LayoutSettings.legacy(), SpawnStrategy.VANILLA_SPAWN
+        );
+
+        assertEquals(SpawnStrategy.VANILLA_SPAWN, customization.spawnStrategy());
+    }
+
+    @Test
+    void spawnStrategyIsRequired() {
+        assertThrows(IllegalArgumentException.class, () -> new WorldzCustomization(
+            List.of("plains"), "", 512, StarterLandPlan.disabled(), border(false), border(false),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(),
+            WorldzCustomization.LayoutSettings.legacy(), null
+        ));
     }
 
     @Test
@@ -223,7 +254,8 @@ class WorldzCustomizationTest {
         );
         WorldzCustomization customization = new WorldzCustomization(
             List.of("plains"), "", 512, StarterLandPlan.disabled(), border(false), border(false),
-            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(), settings
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(), settings,
+            SpawnStrategy.STARTER_AT_ORIGIN
         );
 
         WorldLayoutPlan plan = customization.worldLayoutPlan(42L);
