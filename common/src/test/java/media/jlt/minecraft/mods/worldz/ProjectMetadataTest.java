@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.12", properties.getProperty("version"));
+        assertEquals("0.1.13", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -268,6 +268,24 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("resolveEnvelope(delegate, dimension, envelope)"));
         assertTrue(generator.contains("source.worldLayoutPlan().mode() != LayoutMode.VOID"));
         assertTrue(generator.contains("new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, Math.max(islandRadius, 1), 0)"));
+    }
+
+    @Test
+    void structuresAreSuppressedNearAMixedLayoutRoleBoundary() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+        String layoutPlan = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/logic/WorldLayoutPlan.java"
+        ));
+
+        assertTrue(generator.contains(
+            "if (!isEntirelyExterior(centerChunk.getPos()) && !isNearLayoutRoleBoundary(centerChunk.getPos())) {"
+        ));
+        assertTrue(generator.contains("plan.isNearRoleBoundary(minX, minZ)"));
+        assertTrue(generator.contains("plan.isNearRoleBoundary(maxX, maxZ)"));
+        assertTrue(layoutPlan.contains("public boolean isNearRoleBoundary(int blockX, int blockZ) {"));
+        assertTrue(layoutPlan.contains("if (mode != LayoutMode.MIXED) {"));
     }
 
     @Test

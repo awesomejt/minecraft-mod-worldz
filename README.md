@@ -271,9 +271,15 @@ fallback with no starter biome configured) so a guaranteed island floats in an
 otherwise infinite void — configure a starter biome and enable starter land for
 a solid island; without one, whatever vanilla terrain naturally exists in that
 fallback radius is what floats. `single_biome` fills the world with one biome
-and raises or caps its terrain to match that biome's role. See DESIGN §17 for
-the full model and TODO.md Phase 15 for what remains (a fully radial coast
-blend at grid corners).
+and raises or caps its terrain to match that biome's role. In `mixed` mode,
+structures are suppressed near a land/ocean region boundary — the terrain
+height swings too sharply there for a multi-piece structure (anchored once,
+not re-adapted per piece) to sit on safely; structures elsewhere are
+unaffected. See DESIGN §17 for the full model and its "coast-blend
+transition" notes, and TODO.md Phase 15 for what remains: `mixed`/`ocean`
+coastlines are currently exactly straight along each region-grid cell edge
+(only the height/biome blends smoothly, not the shape), not a fully organic
+coastline.
 
 ### Seed-informed spawn
 

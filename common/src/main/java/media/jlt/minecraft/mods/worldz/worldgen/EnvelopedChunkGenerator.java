@@ -236,7 +236,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureTemplateManager structureTemplateManager,
         ResourceKey<Level> level
     ) {
-        if (!isEntirelyExterior(centerChunk.getPos())) {
+        if (!isEntirelyExterior(centerChunk.getPos()) && !isNearLayoutRoleBoundary(centerChunk.getPos())) {
             super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
         }
     }
@@ -733,6 +733,36 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             && this.envelope.modeAt(minX, maxZ) != ExteriorMode.NORMAL
             && this.envelope.modeAt(maxX, minZ) != ExteriorMode.NORMAL
             && this.envelope.modeAt(maxX, maxZ) != ExteriorMode.NORMAL;
+    }
+
+    /**
+     * Refuses structure starts anywhere near a {@code MIXED}-layout coast-blend
+     * transition. A multi-piece structure like a village is placed relative to
+     * a single anchor height sampled once (vanilla's own
+     * {@code JigsawPlacement}, via {@link #getBaseHeight}); it never re-samples
+     * terrain per piece. Within a stable region that anchor tracks natural
+     * terrain just like vanilla always has, but inside the blend transition
+     * between a raised land region and a lowered ocean region, terrain height
+     * can swing by far more than a structure's footprint can tolerate,
+     * stranding it floating or buried. See DESIGN's "Known caveats" for this
+     * finding; skipping the whole chunk's structure starts here is coarser
+     * than necessary but keeps every structure grounded in stable terrain.
+     */
+    private boolean isNearLayoutRoleBoundary(ChunkPos chunkPos) {
+        if (this.layout.isEmpty()) {
+            return false;
+        }
+        WorldLayoutPlan plan = this.layout.get().plan();
+        int originX = originX();
+        int originZ = originZ();
+        int minX = chunkPos.getMinBlockX() - originX;
+        int maxX = chunkPos.getMaxBlockX() - originX;
+        int minZ = chunkPos.getMinBlockZ() - originZ;
+        int maxZ = chunkPos.getMaxBlockZ() - originZ;
+        return plan.isNearRoleBoundary(minX, minZ)
+            || plan.isNearRoleBoundary(minX, maxZ)
+            || plan.isNearRoleBoundary(maxX, minZ)
+            || plan.isNearRoleBoundary(maxX, maxZ);
     }
 
     private enum Dimension {

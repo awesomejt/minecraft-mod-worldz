@@ -40,6 +40,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   any claim about generated terrain shape/quality, and before Jason's first
   real in-game look at a Worldz world.
 
+- 2026-07-16 / **`MIXED`/`OCEAN`/`LAND_ONLY` coastlines are exactly straight,
+  not just imperfect at grid corners** — Confirmed in-game (Worldz13,
+  `config/tests/09-mixed-natural-oceans-and-rivers.yaml`), via screenshots
+  showing ruler-straight land/ocean boundaries at multiple locations, plus
+  a sharp right-angle "crack" right at spawn (the layout origin default of
+  `(0,0)` coincides exactly with a region-grid corner). `WorldLayoutPlan`
+  classifies land/ocean/beach per uniform `regionScaleBlocks` grid cell with
+  no jitter or noise perturbation of the cell boundary itself — only the
+  *height/biome blend* across `coastBlendWidthBlocks` is smoothed, never the
+  boundary's shape. This is a bigger deviation from "natural terrain" than
+  the already-logged "minor kink very close to a grid corner" (DESIGN §17,
+  README) suggested: the entire edge between two cells is straight, not just
+  the corner joint where two edges meet. **Status: logged at Jason's
+  direction (2026-07-16), not fixed.** A real fix needs an algorithm change
+  (perturb the effective cell boundary with its own noise field) — a design
+  pass, not a mid-testing patch. Revisit before promising "natural-looking"
+  coastlines for `mixed`/`ocean` layouts.
+
 ## Decisions
 
 - 2026-07-14 — Use `../reseed` as an exact structural/build template, while keeping Worldz gameplay code loader-neutral in `common`. This matches DESIGN.md and minimizes divergence among the sibling mods.
@@ -302,6 +320,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Nether intentionally stays centered at `(0,0)` -- DESIGN §18's strategies
   are Overworld-only in scope, so the Nether border/progression objective are
   unaffected by any Overworld origin move.
+- 2026-07-16 — Fixed the floating-village bug (see Known Risks/TODO Q.2) by
+  suppressing structure starts near a `MIXED` layout's coast-blend
+  transition, rather than trying to make vanilla's `JigsawPlacement`
+  re-adapt each piece to varying terrain (not realistically patchable from
+  a `ChunkGenerator` subclass; it samples one anchor height and never
+  re-queries per piece). `WorldLayoutPlan.isNearRoleBoundary` deliberately
+  reuses `nearestDifferingBoundary` -- the exact same function that drives
+  the actual height blend -- rather than an independent distance check, so
+  the suppression boundary can never disagree with where the height cliff
+  actually is. Suppressing the whole chunk's structure starts (checked at
+  all 4 corners, mirroring `isEntirelyExterior`) is coarser than only
+  suppressing the exact structure that would've been unstable, but doing
+  better would need knowing a structure's footprint before it's placed --
+  not available at the `createStructures` suppression point.
 
 ## Reference Log
 
@@ -374,6 +406,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `FlatLevelSource`, `FlatLevelGeneratorSettings`, flat preset resources, and
   structure-set and slime spawn-rule sources —
   `common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`.
+- Floating-village root cause: authoritative Minecraft 26.2 `JigsawStructure`,
+  `JigsawPlacement`, `ChunkGenerator` (`getFirstFreeHeight`/`getBaseHeight`)
+  sources — `/tmp/mc-26.2-sources` (decompiled from
+  `mergeWithSources_...jar`); confirmed a jigsaw structure's pieces are all
+  placed relative to one anchor height sampled once, never re-queried per
+  piece.
 
 ## Verification Log
 
@@ -648,6 +686,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
   test was run; Jason will perform in-game acceptance testing of all three
   spawn strategies, especially `PREFERRED_NATURAL_BIOME`'s search and the
   recentered border/exterior/progression placement.
+- 2026-07-16 / Structure-suppression fix + release 0.1.13 — Jason's first
+  real in-game session (world "Worldz13", config `09`, `mixed` layout) found
+  villages floating/buried at nearly every distant location and confirmed
+  ruler-straight coastlines; see the two new Known Risks/Decisions entries
+  above for root cause and fix. `./gradlew clean build` passes all modules
+  and 183 JUnit/component tests (3 new). The straight-coastline finding was
+  deliberately logged rather than fixed, at Jason's direction. The dummy-
+  RandomState risk from 16.1 remains separately unresolved. Jason will
+  continue manual testing with the remaining `config/tests/` files.
 
 ## API Deviations
 

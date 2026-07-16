@@ -527,6 +527,31 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       JUnit/component tests (1 new, verifying the scroll wiring and both
       tooltip keys exist). **Commit** ("Add Fabric test configs and fix
       Customize screen scrolling").
+- [x] Q.2 Config `09` (`mixed` layout) manual test (world "Worldz13") found
+      villages stranded floating or buried at nearly every distant location
+      visited, plus perfectly straight coastlines. Traced the floating-
+      structure bug to vanilla's `JigsawPlacement`: a multi-piece structure
+      samples one anchor height once (via our layout-aware `getBaseHeight`)
+      and places every other piece at a fixed relative offset, never
+      re-sampling terrain — fine within one region, but `MIXED`'s land/ocean
+      cells can differ in height by far more than a structure's footprint
+      can tolerate across a coast-blend transition. Fixed by adding
+      `WorldLayoutPlan.isNearRoleBoundary` (reuses the exact same boundary
+      logic that drives the height blend, so it can never disagree with it)
+      and checking all four chunk corners against it in
+      `EnvelopedChunkGenerator.createStructures`, alongside the existing
+      `isEntirelyExterior` suppression. Only `MIXED` is affected;
+      `LAND_ONLY`/`OCEAN`/`SINGLE_BIOME` have no cell-to-cell height cliff.
+      The straight-coastline finding was logged, not fixed (see DESIGN §17
+      and `MEMORY.md`): it's a bigger deviation from the currently-scoped
+      "minor kink at grid corners" than previously understood — the entire
+      boundary is a straight, unjittered grid line, not just the corner
+      joint — and needs an actual algorithm change (noise-perturbed
+      boundaries), not a mid-testing patch. Released as 0.1.13. `./gradlew
+      clean build` passes all modules and 183 JUnit/component tests (3 new:
+      two for `isNearRoleBoundary`'s pure logic, one component test for the
+      generator wiring). **Commit** ("Suppress structures near mixed-layout
+      coast-blend transitions").
 
 ## Deferred phase — Customizable flat worlds
 

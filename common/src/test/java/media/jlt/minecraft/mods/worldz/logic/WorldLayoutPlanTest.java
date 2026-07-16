@@ -200,6 +200,44 @@ class WorldLayoutPlanTest {
     }
 
     @Test
+    void isNearRoleBoundaryIsAlwaysFalseOutsideMixedMode() {
+        WorldLayoutPlan landOnly = new WorldLayoutPlan(
+            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, List.of(), List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+        WorldLayoutPlan legacy = WorldLayoutPlan.legacy();
+
+        for (int x = -2000; x <= 2000; x += 137) {
+            assertTrue(!landOnly.isNearRoleBoundary(x, -x));
+            assertTrue(!legacy.isNearRoleBoundary(x, -x));
+        }
+    }
+
+    @Test
+    void isNearRoleBoundaryMatchesWhetherLandFactorIsAPureRoleValue() {
+        int scale = 64;
+        int blendWidth = 16;
+        // Fix z at mid-cell so only the x-axis boundary is ever within the blend width;
+        // z=0 would sit exactly on a z-axis boundary for every sampled x.
+        int z = scale / 2;
+        WorldLayoutPlan plan = mixedPlan(3L, 0.5, scale, blendWidth, List.of());
+
+        boolean anyNearBoundary = false;
+        for (int x = -2000; x <= 2000; x++) {
+            double landFactor = plan.sampleAt(x, z).landFactor();
+            boolean near = plan.isNearRoleBoundary(x, z);
+            if (!near) {
+                assertTrue(
+                    landFactor == 0.0 || landFactor == 1.0,
+                    "landFactor " + landFactor + " at x=" + x + " should be a pure role value when not near a boundary"
+                );
+            }
+            anyNearBoundary |= near;
+        }
+        assertTrue(anyNearBoundary, "expected at least one sampled column to be near a role boundary");
+    }
+
+    @Test
     void constructorRejectsInvalidRanges() {
         assertThrows(IllegalArgumentException.class, () -> mixedPlan(1L, 0.35, 0, 128, List.of()));
         assertThrows(IllegalArgumentException.class, () -> mixedPlan(1L, 0.35, 512, -1, List.of()));

@@ -240,6 +240,32 @@ public record WorldLayoutPlan(
         return weightedPick(rolePool(role), cellX, cellZ, biomeSalt(role));
     }
 
+    /**
+     * Returns whether a column falls inside the {@code MIXED}-mode coast-blend
+     * transition between two differently classified regions -- i.e. its
+     * land/ocean height is actively blending toward a neighbor, rather than
+     * sitting uniformly within one region. Every other mode always reports
+     * {@code false}: only {@code MIXED} partitions neighboring regions into
+     * different roles with a real height difference between them, and only
+     * that difference can strand a multi-piece structure (placed relative to
+     * a single anchor height) between wildly different terrain heights.
+     *
+     * @param blockX block X
+     * @param blockZ block Z
+     * @return true only for a {@code MIXED} column inside a blend transition
+     */
+    public boolean isNearRoleBoundary(int blockX, int blockZ) {
+        if (mode != LayoutMode.MIXED) {
+            return false;
+        }
+        long rx = (long) blockX - layoutOriginBlockX;
+        long rz = (long) blockZ - layoutOriginBlockZ;
+        long cellX = Math.floorDiv(rx, regionScaleBlocks);
+        long cellZ = Math.floorDiv(rz, regionScaleBlocks);
+        BiomeRole baseRole = mixedCellRole(cellX, cellZ);
+        return nearestDifferingBoundary(rx, rz, cellX, cellZ, baseRole) != null;
+    }
+
     private LayoutSample sampleUniform(BiomeRole role, List<BiomeWeight> candidates, int blockX, int blockZ, String salt) {
         long cellX = Math.floorDiv((long) blockX - layoutOriginBlockX, regionScaleBlocks);
         long cellZ = Math.floorDiv((long) blockZ - layoutOriginBlockZ, regionScaleBlocks);

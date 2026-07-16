@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.12`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.13`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -493,6 +493,53 @@ than switching abruptly at the cell edge; biome selection at those columns
 prefers a `BEACH`-role biome when one is configured for that boundary, else
 falls back to the bordering land role's normal selection. Cells with no
 opposite-role neighbor within the blend width behave as pure land or ocean.
+
+### Structures near a coast-blend transition (found 2026-07-16, fixed)
+
+Manual Fabric testing (`MANUAL_TESTING.md`, config `09`) found villages
+generating stranded — floating in the air or fully buried underwater — at
+nearly every distant location visited. Root cause traced into vanilla's own
+`JigsawStructure`/`JigsawPlacement`: a multi-piece structure samples a single
+anchor height once, via `chunkGenerator.getFirstFreeHeight` (which reaches
+our overridden `getBaseHeight`, already layout-aware), then places every
+other piece at a fixed offset relative to that one anchor — it never
+re-samples terrain per piece. Within a single region this tracks natural
+terrain fine, same as vanilla always has. But inside a `MIXED` coast-blend
+transition, height can swing from full land to full ocean depth over as
+little as `2 * coastBlendWidthBlocks`, far more than vanilla's own terrain
+ever varies across one structure's footprint — enough to strand a structure
+regardless of which side its anchor landed on.
+
+Fixed by adding `WorldLayoutPlan.isNearRoleBoundary(blockX, blockZ)` (`true`
+only for `MIXED` columns where `nearestDifferingBoundary` would apply a
+blend — reuses that exact logic, so it can never disagree with the actual
+height blend) and checking all four corners of a chunk against it in
+`EnvelopedChunkGenerator.createStructures`, alongside the existing
+`isEntirelyExterior` check. Coarser than strictly necessary (a structure
+anchored safely inside a stable region could still theoretically reach into
+a neighboring blend zone at its edge), but keeps every structure grounded in
+stable terrain, matching the existing suppression precedent for void/ocean
+exterior chunks. Only `MIXED` mode is affected — `LAND_ONLY`'s target height
+is a smooth per-column function of natural floor with no cell-boundary
+cliff, and `OCEAN`/`SINGLE_BIOME` never classify neighboring cells
+differently at all.
+
+### Straight-line coastlines (found 2026-07-16, logged, not fixed)
+
+The same testing session also confirmed the region grid produces perfectly
+straight coastlines, not just an imperfect blend "very close to a grid
+corner" as previously scoped above. Cell centers are a plain uniform grid
+with no jitter or noise perturbation, so the boundary between any two
+differently-classified cells is, by construction, an exactly straight
+axis-aligned line — `coastBlendWidthBlocks` only smooths the height/biome
+transition across that line, never its shape. Worse, `layoutOriginBlockX/Z`
+default to `(0,0)`, exactly where the starter zone is centered, so this
+straight-line artifact is essentially guaranteed to appear right at spawn
+for the common case (`STARTER_AT_ORIGIN` with a non-legacy layout). Fixing
+this needs an actual algorithm change (perturbing the effective cell
+boundary with its own noise field, not just blending height across a fixed
+line) — a bigger design pass than a mid-testing patch, deliberately not
+attempted now; logged here and in `MEMORY.md`.
 
 ### Recommended defaults (fixture-verified)
 
