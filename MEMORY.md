@@ -58,6 +58,25 @@ Durable decisions, verified API notes, and rationale that should survive across 
   pass, not a mid-testing patch. Revisit before promising "natural-looking"
   coastlines for `mixed`/`ocean` layouts.
 
+- 2026-07-16 / **`layout.biomes` picks one biome per whole region cell, so
+  linear vanilla biomes like `river` render as a huge flat area, not a
+  channel** — Confirmed in-game (Worldz14, config `09` before its fix): an
+  isolated `MIXED` land cell surrounded by ocean generated as an ordinary
+  round island (correct terrain) but labeled "River" over the whole thing,
+  no channel visible. Not a bug — `mixed`/`land_only`/`ocean` all pick a
+  single weighted biome per `regionScaleBlocks` cell (up to 512x512 blocks),
+  which is the right grain for broad biomes but meaningless for one vanilla
+  only ever generates as a narrow, noise-carved channel. Natural rivers/
+  ponds already appear inside land cells unaided (`LayoutTerrainProfile.
+  targetHeight` only raises columns that are too low, never flattens a
+  natural dip), so adding `river` to `layout.biomes` has no upside. **Status:
+  documented (DESIGN §17, README, `config/tests/09`'s header), not a code
+  change** — proportional/linear-feature support in coordinated layouts
+  would be a real feature addition, not attempted. If a future config or
+  Customize-screen input includes `river` (or another inherently linear/thin
+  biome) in `layout.biomes` again, this is why it looks wrong, not a
+  regression.
+
 ## Decisions
 
 - 2026-07-14 — Use `../reseed` as an exact structural/build template, while keeping Worldz gameplay code loader-neutral in `common`. This matches DESIGN.md and minimizes divergence among the sibling mods.
@@ -695,6 +714,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   deliberately logged rather than fixed, at Jason's direction. The dummy-
   RandomState risk from 16.1 remains separately unresolved. Jason will
   continue manual testing with the remaining `config/tests/` files.
+- 2026-07-16 / `layout.biomes` linear-biome caveat, no release — World
+  "Worldz14" (config `09`) confirmed the whole-region-cell `river` labeling
+  described above via screenshot. Documentation-only fix (DESIGN §17,
+  README, `config/tests/09` header/`config/tests/README.md`); no main-code
+  change, so no version bump. `./gradlew clean build` still passes all
+  modules and 183 JUnit/component tests (unchanged count — no test code
+  touched this round, only the test fixture YAML and docs).
 
 ## API Deviations
 

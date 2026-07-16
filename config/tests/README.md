@@ -42,7 +42,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `06-preferred-natural-biome-recentering.yaml` | Combines a found preferred biome with an enabled border, an ocean exterior, and a `mixed` layout — confirms border/exterior/layout all recenter on the *found* origin together, not just the spawn point. |
 | `07-legacy-regression-baseline.yaml` | Everything at documented defaults except an explicit `legacy` layout mode and a plain starter zone — a control run to compare every other file against. |
 | `08-land-only.yaml` | `layout.mode: land_only` — guarantees land almost everywhere (only clearly-deep ocean gets raised), natural rivers/ponds left alone. Fixes the "ocean mapped as river" mismatch from testing `01` under legacy mode. |
-| `09-mixed-natural-oceans-and-rivers.yaml` | `layout.mode: mixed` — real, coherent land *and* ocean *and* rivers together: biome label and terrain height always agree, unlike legacy mode. |
+| `09-mixed-natural-oceans-and-rivers.yaml` | `layout.mode: mixed` — real, coherent land *and* ocean together: biome label and terrain height always agree, unlike legacy mode. Natural rivers/ponds still show up inside land cells on their own (vanilla's own terrain noise); the file deliberately does **not** put `river` in `layout.biomes` — see the comment at its top for why (an earlier version did, and it produced a whole region cell labeled "River" with no channel in sight — confirmed on world "Worldz14"). |
 
 ### Why `01` showed ocean labeled as river
 

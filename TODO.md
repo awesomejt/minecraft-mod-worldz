@@ -552,6 +552,22 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       two for `isNearRoleBoundary`'s pure logic, one component test for the
       generator wiring). **Commit** ("Suppress structures near mixed-layout
       coast-blend transitions").
+- [x] Q.3 Same testing session (world "Worldz14", config `09`) found an
+      isolated `mixed` land cell surrounded by ocean rendering as an
+      ordinary round island but labeled "River" with no channel anywhere —
+      screenshot-confirmed. Not a code bug: `mixed`/`land_only`/`ocean` pick
+      **one** biome per whole region cell (up to 512x512 blocks), which
+      works for broad biomes but not one vanilla only ever generates as a
+      narrow noise-carved channel. Natural rivers/ponds already show up
+      inside land cells unaided (the height adjustment only raises columns
+      that are too low, never flattens a natural dip), so `river` in
+      `layout.biomes` added no benefit, only this failure mode. Removed
+      `river` from `config/tests/09`'s `layout.biomes` (documented why in
+      its header comment) and added the same caveat to DESIGN §17 and
+      README's coordinated-layouts section: don't add linear/thin vanilla
+      biomes to `layout.biomes`. No main-code change and no version bump —
+      test-config and documentation only. **Commit** ("Document that
+      layout.biomes can't represent linear biomes like river").
 
 ## Deferred phase — Customizable flat worlds
 

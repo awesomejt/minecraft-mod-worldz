@@ -281,6 +281,17 @@ coastlines are currently exactly straight along each region-grid cell edge
 (only the height/biome blends smoothly, not the shape), not a fully organic
 coastline.
 
+Non-legacy `layout.biomes` picks **one** biome for an entire region cell (up
+to `regionScaleBlocks` — 512 blocks by default — on a side), which suits
+broad biomes like `plains`/`forest`/`ocean` but not a biome vanilla only ever
+generates as a narrow, winding, noise-carved channel, like `river`: expect an
+entire flat/hilly land-height area labeled and colored "River" with no
+channel in sight, not a proportionally thin feature. Don't add `river` (or
+similarly linear/thin biomes) to `layout.biomes`. Natural-looking rivers and
+ponds already appear inside land cells on their own — the height adjustment
+only raises columns that are too low, it never flattens a natural dip — so
+nothing is lost by leaving it out.
+
 ### Seed-informed spawn
 
 The `spawn.strategy` setting (also exposed as a cycle button in Customize)

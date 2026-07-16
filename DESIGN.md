@@ -541,6 +541,27 @@ boundary with its own noise field, not just blending height across a fixed
 line) — a bigger design pass than a mid-testing patch, deliberately not
 attempted now; logged here and in `MEMORY.md`.
 
+### `layout.biomes` should not include linear/thin vanilla biomes (found 2026-07-16)
+
+Confirmed in-game (world "Worldz14", `config/tests/09`): an isolated `MIXED`
+land cell surrounded by ocean rendered as an ordinary round island — correct
+terrain — but with HUD biome "River" over the whole thing, no channel in
+sight. Root cause is by design, not a bug: `mixed`/`land_only`/`ocean` assign
+**one** weighted-picked biome per whole `regionScaleBlocks` cell (up to
+512×512 blocks by default), which works fine for biomes that are naturally
+broad (plains, forest, desert, ocean) but produces nonsense for a biome like
+`river` that vanilla only ever generates as a narrow, winding, noise-carved
+channel — coordinated layouts have no equivalent concept of a linear
+feature. Natural-looking rivers and ponds already appear inside land cells
+without any help: `LayoutTerrainProfile.targetHeight` only raises a column
+that's below the land floor, it never flattens a natural dip, so vanilla's
+own terrain noise still shows through. Including `river` (or any other
+inherently linear/thin vanilla biome) in `layout.biomes` therefore adds no
+benefit and risks exactly this failure mode. Not a code fix — corrected the
+test config and documented the caveat; true proportional/linear-feature
+support in coordinated layouts would be a real feature addition, not
+attempted now.
+
 ### Recommended defaults (fixture-verified)
 
 Defaults below came from a throwaway fixture harness (hash-based grid,
