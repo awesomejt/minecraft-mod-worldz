@@ -266,6 +266,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   "near positive X" fallback): enough to usually dodge one bad grid cell
   without turning objective placement into an open-ended search that could
   behave unpredictably near a small border.
+- 2026-07-15 — `SpawnSearchPlan`'s search order is concentric rings (origin,
+  then every `stepBlocks` out to `maxRadiusBlocks`, `pointsPerRing` points per
+  ring by even angle) rather than a spiral or random-offset walk, and defaults
+  to `2048`/`32`/`8` specifically to mirror vanilla's own `Climate.SpawnFinder`
+  radius (confirmed during the 16.1 spike) — reusing a known-reasonable
+  vanilla bound rather than inventing a new one. The actual biome test at each
+  offset is deliberately left to the (impure, MC-dependent) caller in Phase
+  16.3; this class only generates the deterministic candidate order.
 
 ## Reference Log
 

@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.9`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.10`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -737,6 +737,62 @@ sensitive change to `EnvelopedChunkGenerator` and deserves its own dedicated
 investigation/phase, not a fold-in here. At Jason's explicit direction, Phase
 16 work continues without acting on this now; it is logged in `MEMORY.md` as
 an open, high-priority, unverified risk.
+
+### Strategy specification (Phase 16.2)
+
+A persisted `SpawnStrategy` (`logic.SpawnStrategy`: `STARTER_AT_ORIGIN`,
+`PREFERRED_NATURAL_BIOME`, `VANILLA_SPAWN`) selects between the three
+behaviors. `STARTER_AT_ORIGIN` is the codec default for any plan missing the
+field, matching how every other Phase-15 plan decodes old saves to today's
+behavior — existing worlds are unaffected regardless of which strategy a
+YAML/Customize default later changes to.
+
+**`STARTER_AT_ORIGIN`** — unchanged: the layout origin stays `(0, 0)`; the
+existing starter-zone/starter-land guarantee and vanilla's own surface-height
+spawn search (already layout-aware since Phase 15.4) apply exactly as today.
+
+**`VANILLA_SPAWN`** — the layout origin stays `(0, 0)` (so border/exterior/
+progression/layout math is unaffected), and Worldz does not touch spawn
+selection at all: whatever vanilla's own `findSpawnPosition()` chooses is
+final. Distinct from `STARTER_AT_ORIGIN` only when no starter biome is
+configured, or when the player wants unmodified vanilla spawn behavior even
+though a starter biome exists elsewhere in the world.
+
+**`PREFERRED_NATURAL_BIOME`** — searches near `(0, 0)` for a configured
+preferred biome using a fresh `RandomState`/`Climate.Sampler` built from the
+delegate's own real `NoiseGeneratorSettings` (not the level's ambient one; see
+the flagged risk above) and a `logic.SpawnSearchPlan` (pure, already
+implemented and tested): ring `0` is the origin itself, then rings every
+`stepBlocks` out to `maxRadiusBlocks` (defaults `2048`/`32`, matching vanilla's
+own `Climate.SpawnFinder` radius), `pointsPerRing` candidates per ring
+(default `8`), searched in that deterministic order, stopping at the first
+column whose sampled biome matches. A safe-height check (solid ground, not
+lava/void, mirroring vanilla's own `PlayerSpawnFinder` refinement) applies to
+whichever candidate is chosen. **Deterministic fallback**: if no ring produces
+a match within `maxRadiusBlocks`, the strategy falls back to `(0, 0)` and
+proceeds exactly as `STARTER_AT_ORIGIN` — never fails world creation, and
+never silently expands the search past its configured bound.
+
+**Fixed vs. random seeds** need no special-casing: by the time
+`LevelEvent.CreateSpawnPosition` fires, the seed is already a concrete `long`
+regardless of whether the player typed one or left the field blank (§ above)
+— the search is identical either way, and is itself deterministic given that
+seed, so re-creating a world with the same explicit seed reproduces the same
+found origin.
+
+**Recentering.** If the found point becomes the layout origin, every system
+currently assuming a fixed `(0, 0)` needs that coordinate threaded through
+instead, applied consistently — not just teleporting the player. `WorldLayoutPlan`
+already carries `layoutOriginBlockX`/`layoutOriginBlockZ` fields for exactly
+this (currently always `0`; its `sampleAt` already computes cell coordinates
+relative to them). The Phase 16.3 implementation must additionally recenter:
+`StarterZone.containsQuart`/`inRingQuart` (currently always relative to
+`(0,0)`), `ExteriorPlan.DimensionEnvelope.modeAt`'s square-distance check,
+`WorldLimitManager`'s `border.setCenter(0.0, 0.0)` call, and
+`ObjectiveSite.fitsInside`/`fallbackX`/`supportiveFallbackZ`'s
+distance-from-origin assumptions. All must move together or a border, an
+exterior boundary, and a progression fallback site could each disagree about
+where "center" is.
 
 ## 19. Deferred customizable flat worlds
 

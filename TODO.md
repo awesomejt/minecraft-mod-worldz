@@ -446,11 +446,26 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       `MEMORY.md` (Known Risks); not investigated further or acted on this
       session. No runtime code changed this item. **Commit** ("Research
       seed-informed spawn feasibility").
-- [ ] 16.2 Specify and test `starter at origin`, `preferred natural biome`, and
+- [x] 16.2 Specify and test `starter at origin`, `preferred natural biome`, and
       `vanilla spawn` strategies, including bounded search, deterministic
       fallback, fixed/random seeds, safe-height checks, and migration behavior.
       If the layout origin moves, recenter border, envelope, progression, and
       all distance calculations consistently; do not merely teleport spawn.
+      Added `logic.SpawnStrategy` (the three-way enum, decodes to
+      `STARTER_AT_ORIGIN` for old saves) and `logic.SpawnSearchPlan` (pure,
+      deterministic ring-search offset generator: origin first, then rings
+      every `stepBlocks` to `maxRadiusBlocks`, `pointsPerRing` candidates each,
+      defaults `2048`/`32`/`8` matching vanilla's own `Climate.SpawnFinder`
+      radius). DESIGN §18 specifies each strategy's exact semantics,
+      deterministic fallback to `(0,0)`/`STARTER_AT_ORIGIN` if
+      `PREFERRED_NATURAL_BIOME` finds nothing within its radius, why fixed vs.
+      random seeds need no special-casing (the seed is already concrete by
+      hook time), and enumerates every class Phase 16.3 must recenter
+      (`StarterZone`, `ExteriorPlan.DimensionEnvelope`, `WorldLimitManager`,
+      `ObjectiveSite`) alongside `WorldLayoutPlan`'s already-present origin
+      fields. Released as 0.1.10. `./gradlew build` passes all modules and 166
+      JUnit tests (9 new); no MC integration yet — that is 16.3's job.
+      **Commit** ("Specify spawn strategies and their search plan").
 - [ ] 16.3 Implement only after 16.1 proves safe initialization ordering. Add
       world-creation controls, persistence, JUnit/component coverage,
       documentation, lint/review, and a separate commit.
