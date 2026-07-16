@@ -1,0 +1,9 @@
+# Preferred-natural-biome search that should actually succeed: plains is
+# common enough to usually exist within 2048 blocks of (0,0).
+# Expect: spawn lands in a natural (unmodified) plains biome away from
+# (0,0); note the coordinates, then confirm the starter zone/land guarantee
+# is centered THERE, not at (0,0).
+starterBiome: 'minecraft:plains'
+starterRadiusBlocks: 256
+spawn:
+  strategy: preferred_natural_biome

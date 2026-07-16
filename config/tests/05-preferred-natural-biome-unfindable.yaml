@@ -1,0 +1,10 @@
+# preferred_natural_biome searching for a biome unlikely to exist within
+# the fixed 2048-block search radius (mushroom fields are rare and never
+# border ordinary land, so a match this close to (0,0) is unlikely for most
+# seeds -- if your seed happens to have one nearby, pick a rarer biome id
+# and re-test).
+# Expect: a "search found no biome within N blocks" WARN in latest.log,
+# then the same starter_at_origin fallback as file 04: spawn at (0,0).
+starterBiome: 'minecraft:mushroom_fields'
+spawn:
+  strategy: preferred_natural_biome

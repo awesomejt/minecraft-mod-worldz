@@ -503,6 +503,31 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       and source-scan checks for every new class/wiring point). **Commit**
       ("Implement seed-informed spawn strategy and origin recentering").
 
+## Manual QA follow-ups
+
+- [x] Q.1 Fabric manual-testing pass on Phase 16.3 surfaced two Customize
+      screen problems and a request for reusable test configs. Added
+      `config/tests/` (7 YAML files covering every spawn-strategy case in
+      `MANUAL_TESTING.md`'s scenario table, plus a legacy regression
+      baseline, verified to parse/sanitize cleanly) with a `README.md`
+      explaining how to cycle one into a dev run's `config/jlt_worldz.yaml`.
+      Fixed `WorldzCustomizeScreen` having no scroll container at all (a
+      plain `LinearLayout` in `HeaderAndFooterLayout`, so a validation
+      error/warning growing the form could push content below the visible
+      area with no way back to the top): wrapped the form in vanilla's own
+      `ScrollableLayout`, mirroring `ExperimentsScreen`'s exact pattern
+      (`repositionElements()` now resizes the scroll area to the available
+      height on both layout and error-message changes). Clarified border-vs-
+      exterior independence (already true in the config/codec — a border
+      restricts access while `exterior.mode: normal` keeps ordinary infinite
+      generation regardless — the Customize screen just didn't say so) with
+      hover tooltips on the border and exterior buttons rather than adding
+      visible text, since the screen was already reported as too busy.
+      Released as 0.1.12. `./gradlew clean build` passes all modules and 180
+      JUnit/component tests (1 new, verifying the scroll wiring and both
+      tooltip keys exist). **Commit** ("Add Fabric test configs and fix
+      Customize screen scrolling").
+
 ## Deferred phase — Customizable flat worlds
 
 - [ ] F.1 Design a Worldz flat plan/editor for arbitrary bottom-to-top block

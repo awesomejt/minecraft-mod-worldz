@@ -1,0 +1,10 @@
+# Control run: explicit legacy layout, starter_at_origin spawn, no border/
+# exterior -- i.e. what every world looked like before Phase 15/16. Compare
+# every other file in this set against this one; nothing here should ever
+# regress just because spawn-strategy code exists now.
+starterBiome: 'minecraft:plains'
+starterRadiusBlocks: 256
+layout:
+  mode: legacy
+spawn:
+  strategy: starter_at_origin

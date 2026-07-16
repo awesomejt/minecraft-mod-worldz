@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.11", properties.getProperty("version"));
+        assertEquals("0.1.12", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -145,6 +145,23 @@ class ProjectMetadataTest {
         assertTrue(border.contains("resizeDelayDays.getValue()"));
         assertTrue(exterior.contains("ExteriorSettings.fromText"));
         assertTrue(exterior.contains("case NORMAL -> this.overworld ? ExteriorMode.OCEAN : ExteriorMode.VOID"));
+    }
+
+    @Test
+    void customizeScreenScrollsAndClarifiesBorderVersusExteriorIndependence() throws IOException {
+        String customize = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/WorldzCustomizeScreen.java"
+        ));
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+
+        assertTrue(customize.contains("new ScrollableLayout(this.minecraft, form, SCROLL_AREA_MIN_HEIGHT)"));
+        assertTrue(customize.contains("this.scrollArea.setMaxHeight(this.scrollArea.getHeight() + availableExtraHeight)"));
+        assertTrue(customize.contains(".tooltip(borderTooltip)"));
+        assertTrue(customize.contains(".tooltip(exteriorTooltip)"));
+        assertTrue(lang.has("jlt_worldz.customize.border.tooltip"));
+        assertTrue(lang.has("jlt_worldz.customize.exterior.tooltip"));
     }
 
     @Test

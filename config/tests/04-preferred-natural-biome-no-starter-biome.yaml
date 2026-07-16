@@ -1,0 +1,8 @@
+# preferred_natural_biome with no starter biome configured -- there's
+# nothing to search for.
+# Expect: a "needs a starter biome" WARN in latest.log, then behavior falls
+# back to starter_at_origin: spawn at (0,0), no starter zone forced (since
+# starterBiome is empty).
+starterBiome: ''
+spawn:
+  strategy: preferred_natural_biome

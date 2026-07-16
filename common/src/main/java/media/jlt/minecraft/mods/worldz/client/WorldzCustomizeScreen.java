@@ -8,6 +8,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
+import net.minecraft.client.gui.components.ScrollableLayout;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.CommonLayouts;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
@@ -20,6 +22,7 @@ import net.minecraft.network.chat.Component;
 final class WorldzCustomizeScreen extends Screen {
     private static final Component TITLE = Component.translatable("jlt_worldz.customize.title");
     private static final int FORM_WIDTH = 310;
+    private static final int SCROLL_AREA_MIN_HEIGHT = 100;
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
     private final CreateWorldScreen parent;
@@ -35,6 +38,7 @@ final class WorldzCustomizeScreen extends Screen {
     private EditBox starterBiome;
     private EditBox starterRadius;
     private MultiLineTextWidget errorMessage;
+    private ScrollableLayout scrollArea;
     private String allowedBiomesText;
     private String starterBiomeText;
     private String starterRadiusText;
@@ -57,7 +61,8 @@ final class WorldzCustomizeScreen extends Screen {
     @Override
     protected void init() {
         this.layout.addTitleHeader(this.title, this.font);
-        LinearLayout form = this.layout.addToContents(LinearLayout.vertical().spacing(4));
+        LinearLayout content = this.layout.addToContents(LinearLayout.vertical());
+        LinearLayout form = LinearLayout.vertical().spacing(4);
         form.defaultCellSetting().alignHorizontallyCenter();
 
         this.allowedBiomes = MultiLineEditBox.builder()
@@ -93,26 +98,28 @@ final class WorldzCustomizeScreen extends Screen {
             button -> this.minecraft.gui.setScreen(new WorldzStarterLandScreen(this, this.starterLandPlan))
         ).width(FORM_WIDTH).build());
 
+        Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
         borderButtons.addChild(Button.builder(
             borderButtonLabel("overworld", this.overworldBorder.enabled()),
             button -> this.minecraft.gui.setScreen(new WorldzBorderScreen(this, true, this.overworldBorder))
-        ).build());
+        ).tooltip(borderTooltip).build());
         borderButtons.addChild(Button.builder(
             borderButtonLabel("nether", this.netherBorder.enabled()),
             button -> this.minecraft.gui.setScreen(new WorldzBorderScreen(this, false, this.netherBorder))
-        ).build());
+        ).tooltip(borderTooltip).build());
         form.addChild(borderButtons);
 
+        Tooltip exteriorTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.exterior.tooltip"));
         LinearLayout exteriorButtons = LinearLayout.horizontal().spacing(10);
         exteriorButtons.addChild(Button.builder(
             exteriorButtonLabel("overworld", this.overworldExterior),
             button -> this.minecraft.gui.setScreen(new WorldzExteriorScreen(this, true, this.overworldExterior))
-        ).build());
+        ).tooltip(exteriorTooltip).build());
         exteriorButtons.addChild(Button.builder(
             exteriorButtonLabel("nether", this.netherExterior),
             button -> this.minecraft.gui.setScreen(new WorldzExteriorScreen(this, false, this.netherExterior))
-        ).build());
+        ).tooltip(exteriorTooltip).build());
         form.addChild(exteriorButtons);
 
         form.addChild(Button.builder(
@@ -127,6 +134,10 @@ final class WorldzCustomizeScreen extends Screen {
 
         this.errorMessage = new MultiLineTextWidget(CommonComponents.EMPTY, this.font).setMaxWidth(FORM_WIDTH).setMaxRows(2).setCentered(true);
         form.addChild(this.errorMessage);
+
+        this.scrollArea = new ScrollableLayout(this.minecraft, form, SCROLL_AREA_MIN_HEIGHT);
+        this.scrollArea.setMinWidth(FORM_WIDTH);
+        content.addChild(this.scrollArea);
 
         LinearLayout footer = this.layout.addToFooter(LinearLayout.horizontal().spacing(8));
         footer.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.apply()).build());
@@ -199,7 +210,10 @@ final class WorldzCustomizeScreen extends Screen {
 
     @Override
     protected void repositionElements() {
+        this.scrollArea.setMaxHeight(SCROLL_AREA_MIN_HEIGHT);
         this.layout.arrangeElements();
+        int availableExtraHeight = this.height - this.layout.getFooterHeight() - this.scrollArea.getRectangle().bottom();
+        this.scrollArea.setMaxHeight(this.scrollArea.getHeight() + availableExtraHeight);
     }
 
     @Override
