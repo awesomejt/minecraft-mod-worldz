@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.13`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.14`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -523,6 +523,38 @@ exterior chunks. Only `MIXED` mode is affected — `LAND_ONLY`'s target height
 is a smooth per-column function of natural floor with no cell-boundary
 cliff, and `OCEAN`/`SINGLE_BIOME` never classify neighboring cells
 differently at all.
+
+**Follow-up (world "Worldz14"): the anchor-chunk-only check wasn't enough.**
+Villages and an ocean monument still generated stranded on the very next
+test. Root cause: `createStructures` only checked the anchor chunk's own 4
+corners, but a structure's actual pieces can land up to vanilla's own
+`JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE` (128 blocks) away from that
+anchor — well outside a 16-block chunk, and comparable to
+`coastBlendWidthBlocks` itself (128 by default), so an anchor comfortably
+"safe" by the original check could still have pieces reaching into a blend
+zone. Fixed by also checking corners expanded by a
+`STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS` (128) margin in every direction —
+importantly, in *addition to* the original unexpanded corners, not instead
+of them: expanding outward moves the checked points further from a boundary
+that runs close to (or through) the anchor chunk itself, so dropping the
+original corners would have reopened that case. Ocean monuments (a
+different, non-jigsaw `Structure` subclass) hit the exact same failure mode
+via `Structure.onTopOfChunkCenter`, which uses the identical
+single-anchor-height pattern.
+
+### Beach spans the entire coast-blend width, not a narrow shoreline (found 2026-07-16, logged, not fixed)
+
+Also confirmed on "Worldz14": the `BEACH` role in `sampleMixed` applies
+across the *entire* `MIXED` coast-blend transition (the full width where a
+differing-role neighbor is within `coastBlendWidthBlocks`), not a narrow
+strip near the actual shoreline — so beach can extend over 100 blocks into
+both the land and the water at the default `coastBlendWidthBlocks = 128`.
+`coastBlendWidthBlocks` was designed as a *height/biome smoothing* width,
+but is also (accidentally) being used as the beach role's own footprint,
+which is a much larger area than a vanilla beach ever is. A real fix needs a
+separate, narrower width concept for where `BEACH` applies (distinct from
+how far the height blend itself reaches) — a new tunable, not a one-line
+patch; logged here and in `MEMORY.md`, not attempted now.
 
 ### Straight-line coastlines (found 2026-07-16, logged, not fixed)
 

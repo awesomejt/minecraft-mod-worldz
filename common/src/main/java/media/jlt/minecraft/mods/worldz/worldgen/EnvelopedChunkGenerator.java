@@ -61,6 +61,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static final int DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS = 8;
     /** Fallback sky-void island radius when {@code VOID} mode has no configured starter biome. */
     private static final int DEFAULT_VOID_ISLAND_RADIUS_BLOCKS = 256;
+    /**
+     * Safety margin added around a chunk when checking for a nearby layout
+     * role boundary before allowing structure starts (see
+     * {@link #isNearLayoutRoleBoundary}). Matches vanilla's own
+     * {@code JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE}: a structure's anchor
+     * chunk can be this far from where its outermost pieces actually land, so
+     * checking only the anchor chunk's own corners misses anything reaching
+     * into a blend zone from just outside it.
+     */
+    private static final int STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS = 128;
     /** Codec registered as {@code jlt_worldz:enveloped}. */
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
@@ -737,16 +747,30 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
     /**
      * Refuses structure starts anywhere near a {@code MIXED}-layout coast-blend
-     * transition. A multi-piece structure like a village is placed relative to
-     * a single anchor height sampled once (vanilla's own
-     * {@code JigsawPlacement}, via {@link #getBaseHeight}); it never re-samples
-     * terrain per piece. Within a stable region that anchor tracks natural
-     * terrain just like vanilla always has, but inside the blend transition
-     * between a raised land region and a lowered ocean region, terrain height
-     * can swing by far more than a structure's footprint can tolerate,
-     * stranding it floating or buried. See DESIGN's "Known caveats" for this
-     * finding; skipping the whole chunk's structure starts here is coarser
-     * than necessary but keeps every structure grounded in stable terrain.
+     * transition. A multi-piece structure like a village or ocean monument is
+     * placed relative to a single anchor height sampled once (vanilla's own
+     * {@code JigsawPlacement}/{@code Structure.onTopOfChunkCenter}, via
+     * {@link #getBaseHeight}); it never re-samples terrain per piece. Within a
+     * stable region that anchor tracks natural terrain just like vanilla
+     * always has, but inside the blend transition between a raised land
+     * region and a lowered ocean region, terrain height can swing by far more
+     * than a structure's footprint can tolerate, stranding it floating or
+     * buried. See DESIGN's "Known caveats" for this finding; skipping the
+     * whole chunk's structure starts here is coarser than necessary but keeps
+     * every structure grounded in stable terrain.
+     *
+     * <p>Checks both the anchor chunk's own corners AND corners expanded by
+     * {@link #STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS} in every direction —
+     * checking only the expanded corners is not enough on its own, since a
+     * boundary can be close to (or run right through) the anchor chunk itself
+     * while an expanded corner has moved further from it, not closer. A
+     * structure's anchor chunk can also sit outside the blend zone entirely
+     * while its outermost pieces (up to vanilla's own
+     * {@code JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE}, 128 blocks, away from
+     * the anchor) still reach into it — an anchor-only check left that exact
+     * failure mode open, confirmed in-game (world "Worldz14") continuing to
+     * strand villages and an ocean monument even with the anchor-only version
+     * of this check in place.
      */
     private boolean isNearLayoutRoleBoundary(ChunkPos chunkPos) {
         if (this.layout.isEmpty()) {
@@ -755,6 +779,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         WorldLayoutPlan plan = this.layout.get().plan();
         int originX = originX();
         int originZ = originZ();
+        int margin = STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS;
         int minX = chunkPos.getMinBlockX() - originX;
         int maxX = chunkPos.getMaxBlockX() - originX;
         int minZ = chunkPos.getMinBlockZ() - originZ;
@@ -762,7 +787,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return plan.isNearRoleBoundary(minX, minZ)
             || plan.isNearRoleBoundary(minX, maxZ)
             || plan.isNearRoleBoundary(maxX, minZ)
-            || plan.isNearRoleBoundary(maxX, maxZ);
+            || plan.isNearRoleBoundary(maxX, maxZ)
+            || plan.isNearRoleBoundary(minX - margin, minZ - margin)
+            || plan.isNearRoleBoundary(minX - margin, maxZ + margin)
+            || plan.isNearRoleBoundary(maxX + margin, minZ - margin)
+            || plan.isNearRoleBoundary(maxX + margin, maxZ + margin);
     }
 
     private enum Dimension {

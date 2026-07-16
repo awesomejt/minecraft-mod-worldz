@@ -353,6 +353,32 @@ Durable decisions, verified API notes, and rationale that should survive across 
   suppressing the exact structure that would've been unstable, but doing
   better would need knowing a structure's footprint before it's placed --
   not available at the `createStructures` suppression point.
+- 2026-07-16 — The anchor-chunk-only version of the above fix was
+  insufficient: confirmed in-game (Worldz14) still stranding villages and an
+  ocean monument. Before assuming the fix logic was wrong, verified the
+  *installed jar* actually contained the compiled fix (`javap` on the classes
+  inside the mods-folder jar) -- it did, so the gap was in the check's reach,
+  not a deployment issue. Root cause: the check only looked at the anchor
+  chunk's own corners (16 blocks wide), but a structure's actual pieces can
+  land up to vanilla's `JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE` (128
+  blocks) away -- comparable to `coastBlendWidthBlocks` itself. Fixed by also
+  checking corners expanded by a 128-block margin, added to (not replacing)
+  the original corners: expanding outward alone moves the checked points
+  further from a boundary sitting near/inside the anchor chunk itself,
+  reopening exactly the case the original check covered. Ocean monuments use
+  a different, non-jigsaw `Structure` subclass
+  (`Structure.onTopOfChunkCenter`) but hit the identical single-anchor-height
+  pattern, so the same generic per-chunk suppression covers both without
+  structure-type-specific logic.
+- 2026-07-16 — `mixed`'s `BEACH` role spans the entire coast-blend
+  transition width (`nearest != null`, true for the whole
+  `2 * coastBlendWidthBlocks` zone), not a narrow shoreline strip --
+  confirmed via screenshot showing beach extending 100+ blocks into both
+  land and water. `coastBlendWidthBlocks` was designed as a height/biome
+  *smoothing* width, but is also being used, unintentionally, as the beach
+  role's own footprint. Logged, not fixed: a real fix needs a separate,
+  narrower width concept for where `BEACH` applies, which is a new tunable
+  (config field, docs, tests) rather than a one-line patch.
 
 ## Reference Log
 
@@ -721,6 +747,16 @@ Durable decisions, verified API notes, and rationale that should survive across 
   change, so no version bump. `./gradlew clean build` still passes all
   modules and 183 JUnit/component tests (unchanged count — no test code
   touched this round, only the test fixture YAML and docs).
+- 2026-07-16 / Structure-margin fix + release 0.1.14 — Same Worldz14 session
+  also showed the Q.2 fix was insufficient (villages/ocean monument still
+  stranded); widened `EnvelopedChunkGenerator.isNearLayoutRoleBoundary` to
+  check corners expanded by a 128-block safety margin in addition to the
+  original corners. `./gradlew clean build` passes all modules and 183
+  JUnit/component tests (existing structure-suppression component test
+  widened, no new tests added). The beach-width finding (BEACH spans the
+  whole coast-blend transition, not a narrow shoreline) was logged, not
+  fixed. No live test of this specific fix has been run yet; Jason will
+  verify with a further `mixed`-mode test.
 
 ## API Deviations
 

@@ -48,7 +48,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.13", properties.getProperty("version"));
+        assertEquals("0.1.14", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -284,6 +284,9 @@ class ProjectMetadataTest {
         ));
         assertTrue(generator.contains("plan.isNearRoleBoundary(minX, minZ)"));
         assertTrue(generator.contains("plan.isNearRoleBoundary(maxX, maxZ)"));
+        assertTrue(generator.contains("plan.isNearRoleBoundary(minX - margin, minZ - margin)"));
+        assertTrue(generator.contains("plan.isNearRoleBoundary(maxX + margin, maxZ + margin)"));
+        assertTrue(generator.contains("private static final int STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS = 128;"));
         assertTrue(layoutPlan.contains("public boolean isNearRoleBoundary(int blockX, int blockZ) {"));
         assertTrue(layoutPlan.contains("if (mode != LayoutMode.MIXED) {"));
     }

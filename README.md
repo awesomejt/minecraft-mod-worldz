@@ -272,14 +272,20 @@ otherwise infinite void — configure a starter biome and enable starter land fo
 a solid island; without one, whatever vanilla terrain naturally exists in that
 fallback radius is what floats. `single_biome` fills the world with one biome
 and raises or caps its terrain to match that biome's role. In `mixed` mode,
-structures are suppressed near a land/ocean region boundary — the terrain
-height swings too sharply there for a multi-piece structure (anchored once,
-not re-adapted per piece) to sit on safely; structures elsewhere are
+structures (villages, ocean monuments, etc.) are suppressed near a land/ocean
+region boundary, with a safety margin covering how far a structure's own
+pieces can reach beyond where it's anchored — the terrain height swings too
+sharply there for a multi-piece structure (anchored once, not re-adapted per
+piece) to sit on safely; structures well inside a stable region are
 unaffected. See DESIGN §17 for the full model and its "coast-blend
-transition" notes, and TODO.md Phase 15 for what remains: `mixed`/`ocean`
-coastlines are currently exactly straight along each region-grid cell edge
-(only the height/biome blends smoothly, not the shape), not a fully organic
-coastline.
+transition" notes, and TODO.md Phase 15 for what remains:
+
+- `mixed`/`ocean` coastlines are currently exactly straight along each
+  region-grid cell edge (only the height/biome blends smoothly, not the
+  shape), not a fully organic coastline.
+- `mixed`'s beach role currently spans the *entire* coast-blend transition
+  (over 100 blocks into both land and water at the default
+  `coastBlendWidthBlocks`), not a narrow shoreline strip.
 
 Non-legacy `layout.biomes` picks **one** biome for an entire region cell (up
 to `regionScaleBlocks` — 512 blocks by default — on a side), which suits

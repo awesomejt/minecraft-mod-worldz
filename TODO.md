@@ -568,6 +568,36 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       biomes to `layout.biomes`. No main-code change and no version bump —
       test-config and documentation only. **Commit** ("Document that
       layout.biomes can't represent linear biomes like river").
+- [x] Q.4 Worldz14 also showed villages still stranded floating/buried
+      (after Q.2's fix) and an ocean monument on an artificial platform.
+      Confirmed the installed jar already had Q.2's fix compiled in
+      (verified via `javap` on the actual mods-folder jar) — the fix was
+      real but insufficient. Root cause: `createStructures` only checked
+      the anchor chunk's own 4 corners for a nearby role boundary, but a
+      structure's actual pieces can land up to vanilla's own
+      `JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE` (128 blocks) away from
+      that anchor — comparable to `coastBlendWidthBlocks` itself (128
+      default), so an anchor safely outside the checked chunk could still
+      have pieces reaching into a blend zone. Ocean monuments hit the same
+      failure via `Structure.onTopOfChunkCenter` (a different, non-jigsaw
+      structure class using the identical single-anchor-height pattern).
+      Fixed by also checking corners expanded by a new
+      `STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS` (128) — in *addition to*
+      the original corners, not instead of them (expanding outward alone
+      moves checked points further from a boundary running through the
+      anchor chunk itself, reopening that case). Also confirmed (screenshot)
+      that `mixed`'s beach role spans the *entire* coast-blend transition
+      (100+ blocks into both land and water at default
+      `coastBlendWidthBlocks`), not a narrow shoreline — logged as a design
+      gap needing a separate width concept, not fixed (see DESIGN §17,
+      `MEMORY.md`). Some Worldz14 screenshots showing bizarre orange/glitchy
+      terrain and floating chunk fragments are Distant Horizons/Iris
+      rendering artifacts at extreme Y levels, unrelated to Worldz's own
+      generation — noted but not investigated further. Released as 0.1.14.
+      `./gradlew clean build` passes all modules and 183 JUnit/component
+      tests (existing structure-suppression test widened, no new tests).
+      **Commit** ("Widen the mixed-layout structure-suppression margin to
+      cover a structure's full reach").
 
 ## Deferred phase — Customizable flat worlds
 
