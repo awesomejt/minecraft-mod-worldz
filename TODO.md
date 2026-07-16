@@ -590,10 +590,12 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       (100+ blocks into both land and water at default
       `coastBlendWidthBlocks`), not a narrow shoreline — logged as a design
       gap needing a separate width concept, not fixed (see DESIGN §17,
-      `MEMORY.md`). Some Worldz14 screenshots showing bizarre orange/glitchy
-      terrain and floating chunk fragments are Distant Horizons/Iris
-      rendering artifacts at extreme Y levels, unrelated to Worldz's own
-      generation — noted but not investigated further. Released as 0.1.14.
+      `MEMORY.md`). Some Worldz14 screenshots showed bizarre orange/glitchy
+      terrain and floating chunk fragments; initially misattributed to
+      Distant Horizons/Iris without checking — the "26.2" instance only has
+      Fabric API and Jason's own mods (`jlt_info`, `jlt_ores`, `jlt_reseed`,
+      `jlt_worldz`, `mod-trees`) loaded, no rendering mods at all. Cause not
+      yet re-investigated; see MEMORY.md Known Risks. Released as 0.1.14.
       `./gradlew clean build` passes all modules and 183 JUnit/component
       tests (existing structure-suppression test widened, no new tests).
       **Commit** ("Widen the mixed-layout structure-suppression margin to

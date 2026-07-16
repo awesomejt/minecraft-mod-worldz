@@ -39,6 +39,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   investigation, not a silent fold-in to other work. Revisit before relying on
   any claim about generated terrain shape/quality, and before Jason's first
   real in-game look at a Worldz world.
+  **2026-07-16 update:** Jason has now done several real in-game sessions
+  (Worldz8-14), so the "before Jason's first real in-game look" trigger above
+  has passed. Some Worldz14 screenshots (far from spawn, Y dropping from ~150
+  down to -122) showed incoherent orange/black terrain and floating chunk
+  fragments; initially misattributed to Distant Horizons/Iris without
+  checking — that instance has no rendering mods at all (confirmed: only
+  Fabric API + Jason's own `jlt_info`/`jlt_ores`/`jlt_reseed`/`jlt_worldz`/
+  `mod-trees`). Not yet confirmed to be this dummy-RandomState issue
+  specifically (haven't verified whether the player was in the Nether, below
+  bedrock, or elsewhere at the time), but a "zero-density router" + "air
+  surface rule" fallback is a plausible match for incoherent/glitchy terrain,
+  and this is exactly the kind of visual symptom this entry predicted. Worth
+  actually investigating next time this comes up, rather than deferring
+  again.
 
 - 2026-07-16 / **`MIXED`/`OCEAN`/`LAND_ONLY` coastlines are exactly straight,
   not just imperfect at grid corners** — Confirmed in-game (Worldz13,
