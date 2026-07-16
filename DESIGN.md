@@ -658,15 +658,85 @@ are:
 - **Vanilla spawn** — keep Minecraft's ordinary seed-derived spawn selection.
 
 The preferred-natural strategy requires an implementation spike before it is
-promised as a creation-screen option. Minecraft finalizes a random seed after
-some client customization state exists, and currently begins spawn selection
-from the random state's climate sampler. If the located point becomes the
-Worldz layout origin, its coordinates must be resolved before affected chunks
+promised as a creation-screen option. If the located point becomes the Worldz
+layout origin, its coordinates must be resolved before affected chunks
 generate, persisted, and consistently applied to starter zones, square border
 centers, exterior envelopes, progression sites, and distance math. Merely
 moving the player spawn after generation would leave those systems centered on
 the wrong point and is not acceptable. Search radius, fallback behavior, and
 the interaction with a user-entered fixed seed must also be explicit.
+
+### Feasibility spike results (Phase 16.1)
+
+Verified against decompiled Minecraft 26.2 sources (Mojang-mapped, both the
+NeoForge-patched merged jar and the NeoForge API jar).
+
+**Seed timing.** The world seed is a concrete `long` well before any level or
+server exists — entirely client-side UI state. `WorldOptions.withSeed`
+resolves a blank seed field to `randomSeed()` immediately (`WorldOptions.java`),
+and `CreateWorldScreen`/`WorldOpenFlows` bake whatever is currently resolved
+into `WorldGenSettings` at "Create." A dedicated server resolves
+`server.properties`' `level-seed` the same way, at boot. Either way, the real
+seed is available long before any hook this mod could register fires.
+
+**Earliest safe hook.** `MinecraftServer.createLevels()` constructs each
+`ServerLevel` (with the real seed already bound) and fires NeoForge's
+`LevelEvent.Load` immediately afterward — on *every* load, fresh or existing.
+Only for a genuinely new world does it then call `setInitialSpawn(...)`, which
+fires the cancellable `LevelEvent.CreateSpawnPosition` immediately before
+vanilla's own `chunkSource.randomState().sampler().findSpawnPosition()` search
+and before any chunk generation. Both events run identically on integrated and
+dedicated servers, never on the client. This answers 16.1's ordering question:
+yes, a hook exists with the finalized seed available but strictly before
+spawn-chunk generation, and no vanilla mixin is required for the timing itself
+— `LevelEvent.CreateSpawnPosition` is cancellable and hands back the
+`ServerLevelData` to set an explicit spawn.
+
+**What implementation actually requires (not just the hook).** Two real
+engineering gaps, not blockers:
+1. `WorldLayoutPlan`/`LimitedBiomeSource`'s origin fields are immutable record
+   components fixed at codec decode (before any seed-bound object exists).
+   Implementation needs a mutable indirection the biome source and generator
+   read through at query time, populated from a `DimensionDataStorage`
+   (`SavedData`) entry written once (on `LevelEvent.CreateSpawnPosition`, for
+   a fresh world) and re-read on every subsequent `LevelEvent.Load` — the
+   same `initialized()`-flag idiom `WorldLimitState`/`WorldLimitManager`
+   already use for border scheduling.
+2. The level's own `chunkSource.randomState().sampler()` cannot be assumed
+   usable for a genuine vanilla-climate search from our own code (see the
+   flagged risk below) — a "preferred natural biome" search should build its
+   own `RandomState`/`Climate.Sampler` from the wrapped delegate's actual
+   `NoiseGeneratorSettings`, mirroring the shape of vanilla's own
+   `Climate.SpawnFinder` radial search, rather than trusting the level's
+   ambient one.
+
+**⚠ Flagged risk found during this spike (unverified in-game, not yet acted
+on at Jason's request):** `ChunkMap`'s constructor only builds a real,
+delegate-settings-based `RandomState` when the dimension's top-level
+`ChunkGenerator` is an actual `NoiseBasedChunkGenerator` instance
+(`generator instanceof NoiseBasedChunkGenerator`); otherwise it silently
+builds one from `NoiseGeneratorSettings.dummy()` (zero-density router, air
+surface rule). Worldz's own `worldz.json` preset wraps *both* the Overworld
+and Nether generators in `jlt_worldz:enveloped` (`EnvelopedChunkGenerator`)
+unconditionally, and `EnvelopedChunkGenerator extends ChunkGenerator` directly
+(composition over a `NoiseBasedChunkGenerator` delegate, not inheritance) — so
+that `instanceof` check is false for every Worldz world. Source tracing
+(`ChunkStatusTasks` → `level.getChunkSource().randomState()` →
+`NoiseBasedChunkGenerator.fillFromNoise` → `NoiseChunk.forChunk`'s
+`randomState.router()`) shows this same per-level `RandomState` is what real
+chunk generation actually shapes terrain with, not something re-derived from
+the delegate's own stored settings. If this holds up in-game, it would mean
+generated Worldz terrain has been shaped by a dummy zero-density router this
+entire project, independent of anything in Phase 15 — every phase to date has
+deferred visual acceptance testing to Jason, so this may never have been
+visually confirmed either way. The known fix pattern for this general class of
+"wrapper chunk generator" problem is for the wrapper to `extend
+NoiseBasedChunkGenerator` rather than delegate to one by composition, so the
+`instanceof` check succeeds — but that is a foundational, save-compatibility-
+sensitive change to `EnvelopedChunkGenerator` and deserves its own dedicated
+investigation/phase, not a fold-in here. At Jason's explicit direction, Phase
+16 work continues without acting on this now; it is logged in `MEMORY.md` as
+an open, high-priority, unverified risk.
 
 ## 19. Deferred customizable flat worlds
 

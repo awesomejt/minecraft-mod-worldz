@@ -2,6 +2,44 @@
 
 Durable decisions, verified API notes, and rationale that should survive across implementation sessions.
 
+## Known Risks (unresolved)
+
+- 2026-07-15 / **Possible dummy-RandomState terrain bug, unverified in-game** —
+  Found during Phase 16.1's feasibility spike, via decompiled MC 26.2 source
+  tracing (not yet confirmed empirically in a running game). `ChunkMap`'s
+  constructor (`net/minecraft/server/level/ChunkMap.java:182-186`) only builds
+  a real `RandomState` from a dimension's actual noise settings when
+  `generator instanceof NoiseBasedChunkGenerator`; otherwise it silently falls
+  back to `RandomState.create(NoiseGeneratorSettings.dummy(), ...)` — a
+  zero-density router (`NoiseRouterData.none()`) and air surface rule
+  (`SurfaceRuleData.air()`). Worldz's `worldz.json` preset wraps *both* the
+  Overworld and Nether generators in `jlt_worldz:enveloped`
+  (`EnvelopedChunkGenerator`) unconditionally, and `EnvelopedChunkGenerator`
+  (`common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java`)
+  `extends ChunkGenerator` directly — composition over a wrapped
+  `NoiseBasedChunkGenerator` delegate, not inheritance — so that `instanceof`
+  check is false for every Worldz world, every time, since Phase 3.
+  `ChunkStatusTasks.java` confirms real chunk generation calls
+  `fillFromNoise(..., level.getChunkSource().randomState(), ...)` — the exact
+  same per-level `RandomState` — and `NoiseChunk.forChunk`
+  (`NoiseChunk.java:142`, `NoiseRouter router = randomState.router();`) uses
+  it directly for terrain shaping, not something re-derived from the
+  delegate's own stored `NoiseGeneratorSettings`. If this holds up in-game, it
+  would mean generated Worldz terrain has been shaped by a dummy/empty router
+  this entire project — unrelated to anything built in Phase 15 specifically.
+  No phase to date has included a human visually inspecting generated
+  terrain (every phase explicitly deferred acceptance testing to Jason), so
+  this may never have been noticed either way.
+  **Status: at Jason's explicit direction (2026-07-15), not investigated
+  further or acted on yet — Phase 16 continues regardless.** The known fix
+  pattern for this general "wrapper chunk generator" problem class is for the
+  wrapper to `extend NoiseBasedChunkGenerator` instead of delegating to one by
+  composition, so the `instanceof` check succeeds — a foundational,
+  save-compatibility-sensitive change deserving its own dedicated
+  investigation, not a silent fold-in to other work. Revisit before relying on
+  any claim about generated terrain shape/quality, and before Jason's first
+  real in-game look at a Worldz world.
+
 ## Decisions
 
 - 2026-07-14 — Use `../reseed` as an exact structural/build template, while keeping Worldz gameplay code loader-neutral in `common`. This matches DESIGN.md and minimizes divergence among the sibling mods.

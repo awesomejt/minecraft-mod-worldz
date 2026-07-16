@@ -415,10 +415,37 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
 
 ## Phase 16 — Seed-informed spawn strategy
 
-- [ ] 16.1 Feasibility spike: identify the earliest common/Fabric/NeoForge hook
+- [x] 16.1 Feasibility spike: identify the earliest common/Fabric/NeoForge hook
       at which the finalized seed and vanilla climate sampler are available but
       affected spawn chunks are not generated. Determine whether a preferred
       biome can safely become a persisted layout origin.
+      Verified against decompiled MC 26.2 sources: the seed is a concrete
+      `long` well before any level exists (client-side `WorldOptions`/
+      `CreateWorldScreen` UI state, or `server.properties` at boot).
+      NeoForge's `LevelEvent.CreateSpawnPosition` fires with the real seed
+      bound, cancellable, strictly before vanilla's own spawn search and
+      before any chunk generation — the earliest safe hook, on both
+      integrated and dedicated servers, never on the client. `LevelEvent.Load`
+      fires even earlier (right after `ServerLevel` construction, on every
+      load) and is the right place to re-apply a persisted origin on restart.
+      Yes, a preferred biome can safely become the persisted layout origin,
+      but needs two real (not blocking) engineering pieces: (1) a mutable
+      indirection for `WorldLayoutPlan`'s origin, populated from a
+      `DimensionDataStorage` entry using the same `initialized()`-flag idiom
+      `WorldLimitState` already uses, since codec decode has no seed context;
+      (2) building our own `RandomState`/`Climate.Sampler` from the delegate's
+      real `NoiseGeneratorSettings` for the search itself, rather than trusting
+      the level's ambient one (see the flagged risk below). **Found and
+      flagged, not fixed at Jason's direction:** the level's own
+      `chunkSource.randomState()` is very likely a dummy zero-density
+      `RandomState` for every Worldz world regardless of this feature —
+      `ChunkMap` only builds a real one when the top-level generator is
+      literally `instanceof NoiseBasedChunkGenerator`, which
+      `EnvelopedChunkGenerator` (delegates by composition, doesn't extend it)
+      never satisfies. Logged as an unresolved, high-priority risk in
+      `MEMORY.md` (Known Risks); not investigated further or acted on this
+      session. No runtime code changed this item. **Commit** ("Research
+      seed-informed spawn feasibility").
 - [ ] 16.2 Specify and test `starter at origin`, `preferred natural biome`, and
       `vanilla spawn` strategies, including bounded search, deterministic
       fallback, fixed/random seeds, safe-height checks, and migration behavior.
