@@ -17,7 +17,7 @@ exactly. Execution checklist: `TODO.md` in this repo.
 - Package `media.jlt.minecraft.mods.worldz`. Modules `common` / `fabric` /
   `neoforge` + `build-logic`, entrypoints `WorldzCommon`, `WorldzFabric`,
   `WorldzNeoForge` (mirror `ReseedCommon`/`ReseedFabric`/`ReseedNeoForge`).
-- `group media.jlt.minecraft.mods`, `version 0.1.14`, license MIT.
+- `group media.jlt.minecraft.mods`, `version 0.1.15`, license MIT.
 - Description: "Limit new worlds to a chosen set of biomes, with an optional
   starter biome around world spawn."
 
@@ -837,6 +837,30 @@ sensitive change to `EnvelopedChunkGenerator` and deserves its own dedicated
 investigation/phase, not a fold-in here. At Jason's explicit direction, Phase
 16 work continues without acting on this now; it is logged in `MEMORY.md` as
 an open, high-priority, unverified risk.
+
+**Resolved 2026-07-16.** Confirmed exactly as flagged: Jason's first extended
+in-game session (world "Worldz14") found the lower part of the world almost
+entirely lava (vanilla's aquifer fluid picker still applies its normal
+below-Y-54 lava rule, fed by a degenerate density field) and caves mostly
+absent instead of vanilla's usual winding systems — geodes still generated
+normally, since those place via a separate feature/structure system,
+independent of the main density router. The "known fix pattern" noted above
+turned out to be **wrong for 26.2**: `javap` against the actual compiled
+game jar (not the decompiled source used throughout this investigation, which
+misleadingly showed a non-final class) confirms `NoiseBasedChunkGenerator` is
+declared `final`, so `EnvelopedChunkGenerator` cannot extend it — Java
+forbids subclassing a final class outright. An attempted refactor hit this
+compiler error immediately and was reverted. The actual fix is a mixin into
+`ChunkMap`'s constructor (`ChunkMapMixin`, both loaders — NeoForge's own
+mixin support had never been set up in this project before now, added via a
+`[[mixins]]` entry in `neoforge.mods.toml`), injected right before the
+`generator.createState(...)` call: if the generator is `instanceof
+EnvelopedChunkGenerator` wrapping a `NoiseBasedChunkGenerator` delegate, it
+overwrites the already-assigned (dummy) `this.randomState` with a real one
+built from the delegate's actual settings, using `@Shadow @Mutable` to permit
+reassigning an otherwise-`final` vanilla field. Not yet confirmed fixed
+in-game — Jason will verify terrain/caves near the bottom of the world on the
+next test.
 
 ### Strategy specification (Phase 16.2)
 

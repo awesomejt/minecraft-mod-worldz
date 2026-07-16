@@ -600,6 +600,37 @@ loaders; the items below remain the requested visual/gameplay acceptance pass.
       tests (existing structure-suppression test widened, no new tests).
       **Commit** ("Widen the mixed-layout structure-suppression margin to
       cover a structure's full reach").
+- [x] Q.5 Jason described what he saw below the world (spectator, below
+      Y-64): almost entirely lava with no bedrock visible, and caves mostly
+      absent (occasional geode, huge gaps instead of winding paths) instead
+      of vanilla's usual systems. This matched the long-flagged (Phase 16.1),
+      never-investigated dummy-`RandomState` risk exactly: `ChunkMap` only
+      builds a real `RandomState` when the generator is directly
+      `instanceof NoiseBasedChunkGenerator`, silently falling back to
+      `NoiseGeneratorSettings.dummy()` (zero-density router, air surface
+      rule) otherwise; `EnvelopedChunkGenerator` wraps a `NoiseBasedChunkGenerator`
+      delegate by composition, never satisfying that check. Confirmed via
+      decompiled source (`ChunkMap.java:182-186`). The previously-assumed fix
+      ("have `EnvelopedChunkGenerator` extend `NoiseBasedChunkGenerator`
+      instead") turned out to be impossible: `javap` against the actual
+      compiled game jar shows `NoiseBasedChunkGenerator` is `final` in 26.2 —
+      the decompiled source used throughout this investigation misleadingly
+      showed a non-final class. An attempted extends-refactor hit the
+      compiler error immediately and was reverted before any breakage.
+      Fixed instead with a mixin into `ChunkMap`'s constructor
+      (`ChunkMapMixin`, on both loaders — NeoForge's own mixin support had
+      never been set up in this project, added via a `[[mixins]]` entry in
+      `neoforge.mods.toml` plus a new `jlt_worldz.neoforge.mixins.json`):
+      injected right before `generator.createState(...)`, it overwrites the
+      already-assigned dummy `this.randomState` with a real one built from
+      the delegate's actual settings whenever the generator is
+      `EnvelopedChunkGenerator`, using `@Shadow @Mutable` to reassign an
+      otherwise-`final` vanilla field. Released as 0.1.15. `./gradlew clean
+      build` passes all modules and 184 JUnit/component tests (1 new,
+      verifying both loaders' mixin classes and registration). Not yet
+      confirmed fixed in-game; Jason will verify terrain/caves near the
+      bottom of the world on the next test. **Commit** ("Fix ChunkMap's
+      dummy-RandomState fallback with a mixin on both loaders").
 
 ## Deferred phase — Customizable flat worlds
 

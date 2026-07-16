@@ -145,11 +145,12 @@ public final class SpawnOriginManager {
         Holder<Biome> target
     ) {
         HolderGetter<Biome> biomeGetter = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
-        // Independent of the level's own RandomState, which is not meaningful for a
-        // wrapping top-level generator like EnvelopedChunkGenerator (see MEMORY.md's
-        // "Known Risks": ChunkMap only builds a real RandomState for an actual
-        // NoiseBasedChunkGenerator). Built fresh from the delegate's real settings so
-        // this search reflects genuine vanilla climate rather than a dummy router.
+        // Built independently rather than reusing the level's own RandomState, kept
+        // as a belt-and-suspenders safeguard even now that ChunkMapMixin fixes the
+        // level's own RandomState too (it used to silently fall back to a dummy,
+        // zero-density one for any generator that wasn't directly `instanceof
+        // NoiseBasedChunkGenerator`, which EnvelopedChunkGenerator never was -- see
+        // DESIGN's "Known caveats" and MEMORY.md's "Known Risks").
         RandomState realRandomState = RandomState.create(
             noiseGenerator.generatorSettings().value(),
             overworld.registryAccess().lookupOrThrow(Registries.NOISE),

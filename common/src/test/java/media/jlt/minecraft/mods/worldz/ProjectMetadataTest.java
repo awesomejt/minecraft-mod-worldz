@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -48,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.1.14", properties.getProperty("version"));
+        assertEquals("0.1.15", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -414,6 +415,39 @@ class ProjectMetadataTest {
         assertTrue(mixin.contains("@Inject(method = \"setInitialSpawn\", at = @At(\"HEAD\"), cancellable = true)"));
         assertTrue(mixin.contains("SpawnOriginManager.resolveFreshOrigin(level)"));
         assertTrue(mixin.contains("callback.cancel();"));
+    }
+
+    @Test
+    void bothLoadersFixTheChunkMapDummyRandomStateFallback() throws IOException {
+        String fabricMixinConfig = Files.readString(ROOT.resolve(
+            "fabric/src/main/resources/jlt_worldz.mixins.json"
+        ));
+        String fabricMixin = Files.readString(ROOT.resolve(
+            "fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/ChunkMapMixin.java"
+        ));
+        String neoForgeToml = Files.readString(ROOT.resolve(
+            "neoforge/src/main/resources/META-INF/neoforge.mods.toml"
+        ));
+        String neoForgeMixinConfig = Files.readString(ROOT.resolve(
+            "neoforge/src/main/resources/jlt_worldz.neoforge.mixins.json"
+        ));
+        String neoForgeMixin = Files.readString(ROOT.resolve(
+            "neoforge/src/main/java/media/jlt/minecraft/mods/worldz/mixin/ChunkMapMixin.java"
+        ));
+
+        assertTrue(fabricMixinConfig.contains("\"ChunkMapMixin\""));
+        assertTrue(neoForgeToml.contains("config = \"jlt_worldz.neoforge.mixins.json\""));
+        assertTrue(neoForgeMixinConfig.contains("\"ChunkMapMixin\""));
+        for (String mixin : List.of(fabricMixin, neoForgeMixin)) {
+            assertTrue(mixin.contains("@Mixin(ChunkMap.class)"));
+            assertTrue(mixin.contains("private RandomState randomState;"));
+            assertTrue(mixin.contains("method = \"<init>\","));
+            assertTrue(mixin.contains(
+                "if (generator instanceof EnvelopedChunkGenerator enveloped\n"
+                    + "            && enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {"
+            ));
+            assertTrue(mixin.contains("this.randomState = RandomState.create("));
+        }
     }
 
     @Test

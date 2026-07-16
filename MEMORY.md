@@ -4,56 +4,6 @@ Durable decisions, verified API notes, and rationale that should survive across 
 
 ## Known Risks (unresolved)
 
-- 2026-07-15 / **Possible dummy-RandomState terrain bug, unverified in-game** —
-  Found during Phase 16.1's feasibility spike, via decompiled MC 26.2 source
-  tracing (not yet confirmed empirically in a running game). `ChunkMap`'s
-  constructor (`net/minecraft/server/level/ChunkMap.java:182-186`) only builds
-  a real `RandomState` from a dimension's actual noise settings when
-  `generator instanceof NoiseBasedChunkGenerator`; otherwise it silently falls
-  back to `RandomState.create(NoiseGeneratorSettings.dummy(), ...)` — a
-  zero-density router (`NoiseRouterData.none()`) and air surface rule
-  (`SurfaceRuleData.air()`). Worldz's `worldz.json` preset wraps *both* the
-  Overworld and Nether generators in `jlt_worldz:enveloped`
-  (`EnvelopedChunkGenerator`) unconditionally, and `EnvelopedChunkGenerator`
-  (`common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java`)
-  `extends ChunkGenerator` directly — composition over a wrapped
-  `NoiseBasedChunkGenerator` delegate, not inheritance — so that `instanceof`
-  check is false for every Worldz world, every time, since Phase 3.
-  `ChunkStatusTasks.java` confirms real chunk generation calls
-  `fillFromNoise(..., level.getChunkSource().randomState(), ...)` — the exact
-  same per-level `RandomState` — and `NoiseChunk.forChunk`
-  (`NoiseChunk.java:142`, `NoiseRouter router = randomState.router();`) uses
-  it directly for terrain shaping, not something re-derived from the
-  delegate's own stored `NoiseGeneratorSettings`. If this holds up in-game, it
-  would mean generated Worldz terrain has been shaped by a dummy/empty router
-  this entire project — unrelated to anything built in Phase 15 specifically.
-  No phase to date has included a human visually inspecting generated
-  terrain (every phase explicitly deferred acceptance testing to Jason), so
-  this may never have been noticed either way.
-  **Status: at Jason's explicit direction (2026-07-15), not investigated
-  further or acted on yet — Phase 16 continues regardless.** The known fix
-  pattern for this general "wrapper chunk generator" problem class is for the
-  wrapper to `extend NoiseBasedChunkGenerator` instead of delegating to one by
-  composition, so the `instanceof` check succeeds — a foundational,
-  save-compatibility-sensitive change deserving its own dedicated
-  investigation, not a silent fold-in to other work. Revisit before relying on
-  any claim about generated terrain shape/quality, and before Jason's first
-  real in-game look at a Worldz world.
-  **2026-07-16 update:** Jason has now done several real in-game sessions
-  (Worldz8-14), so the "before Jason's first real in-game look" trigger above
-  has passed. Some Worldz14 screenshots (far from spawn, Y dropping from ~150
-  down to -122) showed incoherent orange/black terrain and floating chunk
-  fragments; initially misattributed to Distant Horizons/Iris without
-  checking — that instance has no rendering mods at all (confirmed: only
-  Fabric API + Jason's own `jlt_info`/`jlt_ores`/`jlt_reseed`/`jlt_worldz`/
-  `mod-trees`). Not yet confirmed to be this dummy-RandomState issue
-  specifically (haven't verified whether the player was in the Nether, below
-  bedrock, or elsewhere at the time), but a "zero-density router" + "air
-  surface rule" fallback is a plausible match for incoherent/glitchy terrain,
-  and this is exactly the kind of visual symptom this entry predicted. Worth
-  actually investigating next time this comes up, rather than deferring
-  again.
-
 - 2026-07-16 / **`MIXED`/`OCEAN`/`LAND_ONLY` coastlines are exactly straight,
   not just imperfect at grid corners** — Confirmed in-game (Worldz13,
   `config/tests/09-mixed-natural-oceans-and-rivers.yaml`), via screenshots
@@ -393,6 +343,52 @@ Durable decisions, verified API notes, and rationale that should survive across 
   role's own footprint. Logged, not fixed: a real fix needs a separate,
   narrower width concept for where `BEACH` applies, which is a new tunable
   (config field, docs, tests) rather than a one-line patch.
+- 2026-07-16 — **Resolved the dummy-RandomState terrain risk** (flagged
+  Phase 16.1, 2026-07-15; confirmed via Jason's own spectator-mode
+  observations on world "Worldz14": almost entirely lava below Y-64 with no
+  bedrock, and caves mostly absent -- occasional geode, huge gaps instead of
+  winding paths -- instead of vanilla's usual systems). `ChunkMap`'s
+  constructor only builds a real `RandomState` from a dimension's actual
+  noise settings when `generator instanceof NoiseBasedChunkGenerator`;
+  otherwise it silently falls back to `RandomState.create(NoiseGeneratorSettings.dummy(), ...)`
+  -- a zero-density router and air surface rule. `EnvelopedChunkGenerator`
+  wraps a `NoiseBasedChunkGenerator` delegate by composition, never
+  satisfying that check, since Phase 3.
+  **The "known fix pattern" recorded when this was first flagged (have
+  `EnvelopedChunkGenerator` extend `NoiseBasedChunkGenerator` instead of
+  wrapping one) turned out to be wrong for 26.2 and was never actually
+  viable.** `javap` against the real compiled game jar
+  (`minecraft-merged-deobf-26.2.jar`) shows `NoiseBasedChunkGenerator` is
+  declared `final` -- Java cannot subclass a final class, period. The
+  decompiled source used throughout this whole investigation (from
+  `mergeWithSources_...jar`, this project's usual research source per its own
+  "ground rules") misleadingly showed `public class` with no `final`
+  modifier -- a real discrepancy between that decompiled source and the
+  actual bytecode, not a modding-convention change between MC versions as
+  first assumed. An attempted extends-refactor hit the compiler error
+  immediately (`git checkout` reverted it cleanly before anything else was
+  touched) once this was discovered. **Lesson: for a question as consequential
+  as "can I extend this vanilla class," verify against `javap` on the actual
+  classpath jar, not just decompiled source text** -- decompilers can drop or
+  misrender modifiers that the real bytecode enforces exactly.
+  Fixed instead with a mixin into `ChunkMap`'s constructor (`ChunkMapMixin`,
+  both loaders), injected via `@Inject` right before the
+  `generator.createState(...)` call (by which point vanilla has already
+  assigned `this.randomState` to either the real or dummy value): if the
+  generator is `instanceof EnvelopedChunkGenerator` wrapping a
+  `NoiseBasedChunkGenerator` delegate, overwrites `this.randomState` with one
+  built from the delegate's actual settings. Needed `@Shadow @Mutable` since
+  vanilla declares that field `final`. NeoForge had never had its own mixin
+  support configured in this project before now -- added via a `[[mixins]]`
+  entry in `neoforge.mods.toml` (schema confirmed via FML loader's own
+  `ModFileParser.getMixinConfigs`) plus a new
+  `jlt_worldz.neoforge.mixins.json`, mirroring Fabric's existing config
+  shape exactly (both loaders bundle the same upstream SpongePowered Mixin).
+  The mixin's own Java source is identical on both loaders -- pure
+  Mojang-mapped vanilla code, no loader-specific APIs -- but kept as two
+  separate per-loader files rather than shared via `common`, matching this
+  project's existing per-loader mixin convention (`MinecraftServerMixin` is
+  also Fabric-only). Not yet confirmed fixed in-game.
 
 ## Reference Log
 
@@ -471,6 +467,18 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `mergeWithSources_...jar`); confirmed a jigsaw structure's pieces are all
   placed relative to one anchor height sampled once, never re-queried per
   piece.
+- Dummy-RandomState fix: authoritative Minecraft 26.2 `ChunkMap`,
+  `NoiseBasedChunkGenerator`, `ChunkGenerator` sources —
+  `/tmp/mc-26.2-sources` (decompiled from `mergeWithSources_...jar`) for the
+  constructor logic and method signatures, PLUS `javap -p` directly against
+  `minecraft-merged-deobf-26.2.jar`
+  (`~/.gradle/caches/fabric-loom/minecraftMaven/...`, the actual jar Loom
+  compiles against) to confirm `NoiseBasedChunkGenerator`'s real `final`
+  modifier, since the decompiled source disagreed. NeoForge's own
+  `net.neoforged.fml.loading.moddiscovery.ModFileParser` source (from the
+  `fancymodloader` sources jar) for the `[[mixins]]` `neoforge.mods.toml`
+  schema, since no sibling mod in this workspace had configured NeoForge
+  mixins before.
 
 ## Verification Log
 
@@ -771,6 +779,18 @@ Durable decisions, verified API notes, and rationale that should survive across 
   whole coast-blend transition, not a narrow shoreline) was logged, not
   fixed. No live test of this specific fix has been run yet; Jason will
   verify with a further `mixed`-mode test.
+- 2026-07-16 / Dummy-RandomState mixin fix + release 0.1.15 — Jason's
+  spectator-mode description of Worldz14's bottom-of-world terrain (near-total
+  lava, mostly absent caves) confirmed the Phase 16.1 risk exactly; see the
+  Decisions entry above for the full investigation, including the discovery
+  that the previously-assumed fix was impossible (`NoiseBasedChunkGenerator`
+  is `final`) and the mixin-based fix actually shipped. `./gradlew clean
+  build` passes all modules including a full NeoForge mixin bootstrap
+  (previously unconfigured in this project) and 184 JUnit/component tests (1
+  new, verifying both loaders' `ChunkMapMixin` and registration). Not yet
+  verified in-game; Jason will check terrain/caves near the bottom of the
+  world on the next test, on both loaders if possible since this is the
+  first NeoForge-side mixin this project has shipped.
 
 ## API Deviations
 
