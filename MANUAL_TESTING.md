@@ -88,9 +88,8 @@ confirm the feature is centered on the *new* origin, not `(0,0)`:
 - `overworldBorder.ensureObjective: true` — locate the End portal (`/locate
   structure` is fine for this, it's a placement check not a spoiler) and
   confirm it's reachable relative to the new origin's border, not `(0,0)`'s.
-- A non-`legacy` `layout.mode` (e.g. `mixed`) — confirm land/ocean/beach
-  placement is coherent around the new origin (beach ring around the starter
-  zone at the new origin, not at `(0,0)`).
+- A non-`legacy` `layout.mode` (e.g. `ocean`) — confirm the beach ring around
+  the starter zone is centered on the new origin, not `(0,0)`.
 
 ### Persistence across restarts
 

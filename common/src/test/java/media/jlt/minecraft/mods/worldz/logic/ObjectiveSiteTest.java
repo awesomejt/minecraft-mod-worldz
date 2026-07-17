@@ -65,7 +65,7 @@ class ObjectiveSiteTest {
         assertTrue(ObjectiveSite.isSupportiveColumn(WorldLayoutPlan.legacy(), 12345, -6789));
 
         WorldLayoutPlan voidPlan = new WorldLayoutPlan(
-            LayoutMode.VOID, 1L, 512, 0.0, 128, List.of(), List.of(), List.of(),
+            LayoutMode.VOID, 1L, 512, List.of(), List.of(), List.of(),
             Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         );
         assertTrue(ObjectiveSite.isSupportiveColumn(voidPlan, 12345, -6789));
@@ -74,7 +74,7 @@ class ObjectiveSiteTest {
     @Test
     void oceanModeColumnsAreNeverSupportive() {
         WorldLayoutPlan oceanPlan = new WorldLayoutPlan(
-            LayoutMode.OCEAN, 1L, 512, 0.0, 128, List.of(), List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0)),
+            LayoutMode.OCEAN, 1L, 512, List.of(), List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0)),
             List.of(), Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         );
 
@@ -87,35 +87,9 @@ class ObjectiveSiteTest {
     }
 
     @Test
-    void supportiveFallbackZHonorsItsContractAcrossManySeedsAndOffsets() {
-        List<WorldLayoutPlan.BiomeWeight> land = List.of(new WorldLayoutPlan.BiomeWeight("minecraft:plains", 1.0));
-        List<WorldLayoutPlan.BiomeWeight> ocean = List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0));
-        boolean everFoundABetterCandidate = false;
-
-        for (long seed = 0; seed < 200; seed++) {
-            WorldLayoutPlan plan = new WorldLayoutPlan(
-                LayoutMode.MIXED, seed, 100, 0.5, 20, land, ocean, List.of(),
-                Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
-            );
-            int x = 32;
-            int z = ObjectiveSite.supportiveFallbackZ(plan, x, 512, 128);
-
-            assertTrue(z == 0 || z == 64 || z == -64 || z == 128 || z == -128, "unexpected candidate " + z);
-            if (ObjectiveSite.isSupportiveColumn(plan, x, 0)) {
-                assertEquals(0, z, "z=0 was already supportive but a different candidate was chosen");
-            } else if (z != 0) {
-                assertTrue(ObjectiveSite.isSupportiveColumn(plan, x, z), "chosen candidate was not actually supportive");
-                everFoundABetterCandidate = true;
-            }
-        }
-
-        assertTrue(everFoundABetterCandidate, "no seed in the sample ever needed or found a non-zero fallback candidate");
-    }
-
-    @Test
     void supportiveFallbackZFallsBackToZeroWhenNothingIsSupportive() {
         WorldLayoutPlan oceanPlan = new WorldLayoutPlan(
-            LayoutMode.OCEAN, 1L, 512, 0.0, 128, List.of(), List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0)),
+            LayoutMode.OCEAN, 1L, 512, List.of(), List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0)),
             List.of(), Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         );
 

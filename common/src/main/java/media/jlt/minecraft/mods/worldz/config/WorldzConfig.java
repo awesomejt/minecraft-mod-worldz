@@ -47,8 +47,6 @@ public final class WorldzConfig {
     public static final int MIN_LAYOUT_REGION_SCALE_BLOCKS = 16;
     /** Largest supported layout grid-cell edge length. */
     public static final int MAX_LAYOUT_REGION_SCALE_BLOCKS = 8192;
-    /** Largest supported layout coast-blend width. */
-    public static final int MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS = 8192;
 
     private static final String YAML_EXTENSION = ".yaml";
     private static final String LEGACY_JSON_EXTENSION = ".json";
@@ -404,14 +402,8 @@ public final class WorldzConfig {
         if (map.containsKey("biomes")) {
             config.biomes = readStringList(map.get("biomes"), name + ".biomes", logger);
         }
-        if (map.containsKey("oceanCoverageFraction")) {
-            config.oceanCoverageFraction = readDouble(map.get("oceanCoverageFraction"), name + ".oceanCoverageFraction");
-        }
         if (map.containsKey("regionScaleBlocks")) {
             config.regionScaleBlocks = readInt(map.get("regionScaleBlocks"), name + ".regionScaleBlocks");
-        }
-        if (map.containsKey("coastBlendWidthBlocks")) {
-            config.coastBlendWidthBlocks = readInt(map.get("coastBlendWidthBlocks"), name + ".coastBlendWidthBlocks");
         }
         if (map.containsKey("singleBiome")) {
             config.singleBiome = readString(map.get("singleBiome"), name + ".singleBiome");
@@ -445,18 +437,6 @@ public final class WorldzConfig {
             values.put(key, stringValue);
         }
         return values;
-    }
-
-    private static double readDouble(Object value, String name) {
-        return switch (value) {
-            case Integer integer -> integer;
-            case Double doubleValue -> doubleValue;
-            case Float floatValue -> floatValue;
-            case Long longValue -> longValue;
-            case BigInteger bigInteger -> bigInteger.doubleValue();
-            case BigDecimal bigDecimal -> bigDecimal.doubleValue();
-            default -> throw new IllegalArgumentException(name + " must be a number");
-        };
     }
 
     private static int readInt(Object value, String name) {
@@ -505,7 +485,7 @@ public final class WorldzConfig {
         docs.put("netherBorder", "Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.");
         docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");
         docs.put("netherExterior", "Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.");
-        docs.put("layout", "Coordinated terrain layout: mode (legacy/land_only/mixed/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), oceanCoverageFraction (mixed only), regionScaleBlocks, coastBlendWidthBlocks, singleBiome. Default: legacy (today's climate-filter-only behavior).");
+        docs.put("layout", "Coordinated terrain layout: mode (legacy/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), regionScaleBlocks, singleBiome. Default: legacy (today's climate-filter-only behavior).");
         docs.put("spawn", "How the layout origin and initial spawn are chosen: strategy is starter_at_origin (default, today's behavior), preferred_natural_biome (search near the origin for starterBiome using the real seed, moving the layout origin there; falls back to starter_at_origin if not found or starterBiome is empty), or vanilla_spawn (unmodified vanilla spawn selection).");
         return docs;
     }
@@ -609,15 +589,6 @@ public final class WorldzConfig {
             sanitized.regionScaleBlocks, MIN_LAYOUT_REGION_SCALE_BLOCKS, MAX_LAYOUT_REGION_SCALE_BLOCKS,
             "layout.regionScaleBlocks", logger
         );
-        sanitized.coastBlendWidthBlocks = clampWithWarning(
-            sanitized.coastBlendWidthBlocks, 0, MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS,
-            "layout.coastBlendWidthBlocks", logger
-        );
-        double clampedCoverage = Math.clamp(sanitized.oceanCoverageFraction, 0.0, 1.0);
-        if (clampedCoverage != sanitized.oceanCoverageFraction) {
-            logger.warn("Clamped layout.oceanCoverageFraction from {} to {}.", sanitized.oceanCoverageFraction, clampedCoverage);
-        }
-        sanitized.oceanCoverageFraction = clampedCoverage;
 
         sanitized.singleBiome = sanitized.singleBiome == null ? "" : sanitized.singleBiome.trim();
         if (!sanitized.singleBiome.isEmpty()) {
@@ -632,14 +603,10 @@ public final class WorldzConfig {
 
         Map<String, BiomeRole> overrides = new LinkedHashMap<>();
         sanitized.roleOverrides.forEach((id, role) -> overrides.put(id, BiomeRole.parse(role)));
-        boolean hasLand = sanitized.biomes.stream()
-            .anyMatch(entry -> BiomeRoles.resolve(stripWeight(entry), overrides) == BiomeRole.LAND);
         boolean hasOcean = sanitized.biomes.stream()
             .anyMatch(entry -> BiomeRoles.resolve(stripWeight(entry), overrides) == BiomeRole.OCEAN);
         boolean unsupported = switch (sanitized.mode) {
-            case LAND_ONLY -> !hasLand;
             case OCEAN -> !hasOcean;
-            case MIXED -> !hasLand || !hasOcean;
             case SINGLE_BIOME -> sanitized.singleBiome.isEmpty();
             case VOID, LEGACY -> false;
         };
@@ -691,9 +658,7 @@ public final class WorldzConfig {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("mode", config.mode.serializedName());
         values.put("biomes", config.biomes);
-        values.put("oceanCoverageFraction", config.oceanCoverageFraction);
         values.put("regionScaleBlocks", config.regionScaleBlocks);
-        values.put("coastBlendWidthBlocks", config.coastBlendWidthBlocks);
         values.put("singleBiome", config.singleBiome);
         values.put("roleOverrides", config.roleOverrides);
         return values;
@@ -734,9 +699,7 @@ public final class WorldzConfig {
         }
         return config.mode.serializedName()
             + ", biomes=" + config.biomes
-            + ", oceanCoverageFraction=" + config.oceanCoverageFraction
             + ", regionScaleBlocks=" + config.regionScaleBlocks
-            + ", coastBlendWidthBlocks=" + config.coastBlendWidthBlocks
             + (config.singleBiome.isEmpty() ? "" : ", singleBiome=" + config.singleBiome);
     }
 

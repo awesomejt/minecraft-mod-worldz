@@ -2,7 +2,7 @@
 
 Durable decisions, verified API notes, and rationale that should survive across implementation sessions.
 
-## Known Risks (unresolved)
+## Known Risks (resolved — see 2026-07-16 replan updates below each entry)
 
 - 2026-07-16 / **`MIXED`/`OCEAN`/`LAND_ONLY` coastlines are exactly straight,
   not just imperfect at grid corners** — Confirmed in-game (Worldz13,
@@ -22,10 +22,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
   pass, not a mid-testing patch. Revisit before promising "natural-looking"
   coastlines for `mixed`/`ocean` layouts.
   **Update 2026-07-16 replan:** resolved by removal, not by fixing —
-  `MIXED`/`LAND_ONLY` grid composition is being deleted in 0.2.0 (TODO Phase
-  1.2, DESIGN §20.1); ocean-island shorelines get a proper redesign in the
-  ocean-island core phase (TODO Phase 7.1 as of the 2026-07-16 numbering)
-  instead.
+  `MIXED`/`LAND_ONLY` grid composition was deleted in TODO Phase 1.2 (DESIGN
+  §20.1); ocean-island shorelines get a proper redesign in the ocean-island
+  core phase (TODO Phase 7.1 as of the 2026-07-16 numbering) instead.
+  **Done (Phase 1.2, same session):** `LayoutMode.MIXED`/`LAND_ONLY` and all
+  boundary/coast-blend/structure-suppression code removed from
+  `WorldLayoutPlan`, `EnvelopedChunkGenerator`, config, codecs, Customize UI,
+  lang keys, and tests; `config/tests/08`/`09` deleted;
+  `config/tests/06` switched to `layout.mode: ocean`. `OCEAN`/`SINGLE_BIOME`/
+  `VOID`/`LEGACY` unaffected. 178 tests passing, full multiloader build green.
 
 - 2026-07-16 / **`layout.biomes` picks one biome per whole region cell, so
   linear vanilla biomes like `river` render as a huge flat area, not a
@@ -48,7 +53,9 @@ Durable decisions, verified API notes, and rationale that should survive across 
   **Update 2026-07-16 replan:** moot after Phase 1.2 removes the grid modes;
   natural rivers/oceans in single-biome worlds are instead delivered by
   vanilla pass-through selection (DESIGN §20.5), which needs no biome-cell
-  concept at all.
+  concept at all. **Done (Phase 1.2, same session):** the grid modes that
+  caused this are gone; Phase 3 implements the vanilla pass-through
+  replacement.
 
 ## Decisions
 

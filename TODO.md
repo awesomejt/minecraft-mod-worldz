@@ -46,7 +46,7 @@ and make the test loop fast. No new gameplay features.
       NeoForge mixin this project ships). Also retest whether the Worldz14
       orange/glitchy-terrain screenshots reproduce on 0.1.15 — plausibly the
       same dummy-RandomState root cause, never confirmed (MEMORY Known Risks).
-- [ ] 1.2 Remove the `MIXED` and `LAND_ONLY` grid layout modes and everything
+- [x] 1.2 Remove the `MIXED` and `LAND_ONLY` grid layout modes and everything
       only they used: land/ocean cell composition, coast-blend height
       transition, role-boundary structure suppression
       (`isNearRoleBoundary` + the 128-block margin), beach-role transition

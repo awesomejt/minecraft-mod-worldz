@@ -192,49 +192,42 @@ class WorldzCustomizationTest {
     @Test
     void layoutSettingsCanonicalizeWeightedBiomesAndRoleOverrides() {
         WorldzCustomization.LayoutSettings settings = WorldzCustomization.LayoutSettings.fromText(
-            "mixed",
+            "ocean",
             "plains@3, desert",
-            "0.4",
             "300",
-            "80",
             " plains ",
             "swamp=ocean"
         );
 
-        assertEquals(LayoutMode.MIXED, settings.mode());
+        assertEquals(LayoutMode.OCEAN, settings.mode());
         assertEquals("minecraft:plains", settings.singleBiome());
         assertEquals("ocean", settings.roleOverrides().get("minecraft:swamp"));
-        assertEquals(0.4, settings.oceanCoverageFraction());
         assertEquals(300, settings.regionScaleBlocks());
-        assertEquals(80, settings.coastBlendWidthBlocks());
     }
 
     @Test
     void layoutSettingsRejectsTagsInWeightedBiomesAndOverrides() {
         assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "#is_overworld", "0.35", "512", "128", "", ""
+            "ocean", "#is_overworld", "512", "", ""
         ));
         assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "", "0.35", "512", "128", "#is_overworld", ""
+            "ocean", "", "512", "#is_overworld", ""
         ));
         assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "", "0.35", "512", "128", "", "#is_overworld=ocean"
+            "ocean", "", "512", "", "#is_overworld=ocean"
         ));
     }
 
     @Test
     void layoutSettingsRejectsOutOfRangeAndMalformedFields() {
         assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "", "1.5", "512", "128", "", ""
+            "ocean", "", "1", "", ""
         ));
         assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "", "0.35", "1", "128", "", ""
+            "ocean", "", "not-a-number", "", ""
         ));
         assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "", "not-a-number", "512", "128", "", ""
-        ));
-        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "", "0.35", "512", "128", "", "malformed-no-equals"
+            "ocean", "", "512", "", "malformed-no-equals"
         ));
     }
 
@@ -250,7 +243,7 @@ class WorldzCustomizationTest {
     @Test
     void worldLayoutPlanResolvesRoleOverridesAndUsesTheSuppliedSeed() {
         WorldzCustomization.LayoutSettings settings = WorldzCustomization.LayoutSettings.fromText(
-            "mixed", "plains@3, desert, ocean, swamp", "0.4", "300", "80", "", "swamp=ocean"
+            "ocean", "plains@3, desert, ocean, swamp", "300", "", "swamp=ocean"
         );
         WorldzCustomization customization = new WorldzCustomization(
             List.of("plains"), "", 512, StarterLandPlan.disabled(), border(false), border(false),

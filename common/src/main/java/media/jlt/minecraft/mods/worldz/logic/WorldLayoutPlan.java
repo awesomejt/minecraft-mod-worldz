@@ -24,8 +24,6 @@ import java.util.Set;
  *     world creation; wiring it to the actual Minecraft world seed is a
  *     Phase 15.4 integration concern, not this pure model's
  * @param regionScaleBlocks grid-cell edge length in blocks
- * @param oceanCoverageFraction {@code MIXED} target fraction of cells classified ocean, {@code 0..1}
- * @param coastBlendWidthBlocks smoothing distance either side of a role boundary
  * @param landBiomes weighted candidates for the {@code LAND} role
  * @param oceanBiomes weighted candidates for the {@code OCEAN} role
  * @param beachBiomes weighted candidates for the {@code BEACH} coast-transition role
@@ -39,8 +37,6 @@ public record WorldLayoutPlan(
     LayoutMode mode,
     long seed,
     int regionScaleBlocks,
-    double oceanCoverageFraction,
-    int coastBlendWidthBlocks,
     List<BiomeWeight> landBiomes,
     List<BiomeWeight> oceanBiomes,
     List<BiomeWeight> beachBiomes,
@@ -57,10 +53,6 @@ public record WorldLayoutPlan(
 
     /** Fixture-verified default grid-cell edge length; see DESIGN §17. */
     public static final int DEFAULT_REGION_SCALE_BLOCKS = 512;
-    /** Fixture-verified default {@code MIXED} ocean coverage target. */
-    public static final double DEFAULT_OCEAN_COVERAGE_FRACTION = 0.35;
-    /** Fixture-verified default coast-blend width. */
-    public static final int DEFAULT_COAST_BLEND_WIDTH_BLOCKS = 128;
 
     /** Validates the persisted plan. */
     public WorldLayoutPlan {
@@ -70,12 +62,6 @@ public record WorldLayoutPlan(
         if (regionScaleBlocks < WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS
             || regionScaleBlocks > WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS) {
             throw new IllegalArgumentException("Region scale is outside the supported range.");
-        }
-        if (coastBlendWidthBlocks < 0 || coastBlendWidthBlocks > WorldzConfig.MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS) {
-            throw new IllegalArgumentException("Coast blend width is outside the supported range.");
-        }
-        if (oceanCoverageFraction < 0.0 || oceanCoverageFraction > 1.0) {
-            throw new IllegalArgumentException("Ocean coverage fraction must be between 0 and 1.");
         }
         if (algorithmRevision < LEGACY_MODE_REVISION) {
             throw new IllegalArgumentException("Algorithm revision must not be negative.");
@@ -89,14 +75,8 @@ public record WorldLayoutPlan(
         if (mode == LayoutMode.SINGLE_BIOME && singleBiome.map(String::isBlank).orElse(true)) {
             throw new IllegalArgumentException("Single-biome layouts require a biome id.");
         }
-        if (mode == LayoutMode.LAND_ONLY && landBiomes.isEmpty()) {
-            throw new IllegalArgumentException("Land-only layouts require at least one land biome.");
-        }
         if (mode == LayoutMode.OCEAN && oceanBiomes.isEmpty()) {
             throw new IllegalArgumentException("Ocean layouts require at least one ocean biome.");
-        }
-        if (mode == LayoutMode.MIXED && (landBiomes.isEmpty() || oceanBiomes.isEmpty())) {
-            throw new IllegalArgumentException("Mixed layouts require at least one land biome and one ocean biome.");
         }
     }
 
@@ -118,7 +98,7 @@ public record WorldLayoutPlan(
      */
     public static WorldLayoutPlan legacy() {
         return new WorldLayoutPlan(
-            LayoutMode.LEGACY, 0L, DEFAULT_REGION_SCALE_BLOCKS, 0.0, DEFAULT_COAST_BLEND_WIDTH_BLOCKS,
+            LayoutMode.LEGACY, 0L, DEFAULT_REGION_SCALE_BLOCKS,
             List.of(), List.of(), List.of(), Optional.empty(), Map.of(), 0, 0, LEGACY_MODE_REVISION
         );
     }
@@ -136,9 +116,7 @@ public record WorldLayoutPlan(
             layout.mode,
             layout.biomes,
             layout.roleOverrides,
-            layout.oceanCoverageFraction,
             layout.regionScaleBlocks,
-            layout.coastBlendWidthBlocks,
             layout.singleBiome,
             seed
         );
@@ -153,9 +131,7 @@ public record WorldLayoutPlan(
      * @param mode layout mode
      * @param weightedBiomeEntries raw {@code id}/{@code id@weight} entries, syntax-validated here
      * @param roleOverrideEntries raw biome id to role-name overrides, syntax-validated here
-     * @param oceanCoverageFraction {@code MIXED} target ocean fraction
      * @param regionScaleBlocks grid-cell edge length in blocks
-     * @param coastBlendWidthBlocks coast-blend width
      * @param singleBiome {@code SINGLE_BIOME} biome id, or blank/empty when unused
      * @param seed sampling seed (see {@link #seed()})
      * @return immutable resolved plan
@@ -164,9 +140,7 @@ public record WorldLayoutPlan(
         LayoutMode mode,
         List<String> weightedBiomeEntries,
         Map<String, String> roleOverrideEntries,
-        double oceanCoverageFraction,
         int regionScaleBlocks,
-        int coastBlendWidthBlocks,
         String singleBiome,
         long seed
     ) {
@@ -189,8 +163,6 @@ public record WorldLayoutPlan(
             mode,
             seed,
             regionScaleBlocks,
-            oceanCoverageFraction,
-            coastBlendWidthBlocks,
             land,
             ocean,
             beach,
@@ -212,14 +184,12 @@ public record WorldLayoutPlan(
     public LayoutSample sampleAt(int blockX, int blockZ) {
         return switch (mode) {
             case LEGACY -> new LayoutSample(BiomeRole.LAND, Optional.empty(), 1.0);
-            case LAND_ONLY -> sampleUniform(BiomeRole.LAND, landBiomes, blockX, blockZ, "biome_land");
             case OCEAN -> sampleUniform(BiomeRole.OCEAN, oceanBiomes, blockX, blockZ, "biome_ocean");
             case SINGLE_BIOME -> {
                 BiomeRole role = BiomeRoles.resolve(singleBiome.orElseThrow(), roleOverrides);
                 yield new LayoutSample(role, singleBiome, roleFactor(role));
             }
             case VOID -> new LayoutSample(BiomeRole.LAND, Optional.empty(), 1.0);
-            case MIXED -> sampleMixed(blockX, blockZ);
         };
     }
 
@@ -240,67 +210,10 @@ public record WorldLayoutPlan(
         return weightedPick(rolePool(role), cellX, cellZ, biomeSalt(role));
     }
 
-    /**
-     * Returns whether a column falls inside the {@code MIXED}-mode coast-blend
-     * transition between two differently classified regions -- i.e. its
-     * land/ocean height is actively blending toward a neighbor, rather than
-     * sitting uniformly within one region. Every other mode always reports
-     * {@code false}: only {@code MIXED} partitions neighboring regions into
-     * different roles with a real height difference between them, and only
-     * that difference can strand a multi-piece structure (placed relative to
-     * a single anchor height) between wildly different terrain heights.
-     *
-     * @param blockX block X
-     * @param blockZ block Z
-     * @return true only for a {@code MIXED} column inside a blend transition
-     */
-    public boolean isNearRoleBoundary(int blockX, int blockZ) {
-        if (mode != LayoutMode.MIXED) {
-            return false;
-        }
-        long rx = (long) blockX - layoutOriginBlockX;
-        long rz = (long) blockZ - layoutOriginBlockZ;
-        long cellX = Math.floorDiv(rx, regionScaleBlocks);
-        long cellZ = Math.floorDiv(rz, regionScaleBlocks);
-        BiomeRole baseRole = mixedCellRole(cellX, cellZ);
-        return nearestDifferingBoundary(rx, rz, cellX, cellZ, baseRole) != null;
-    }
-
     private LayoutSample sampleUniform(BiomeRole role, List<BiomeWeight> candidates, int blockX, int blockZ, String salt) {
         long cellX = Math.floorDiv((long) blockX - layoutOriginBlockX, regionScaleBlocks);
         long cellZ = Math.floorDiv((long) blockZ - layoutOriginBlockZ, regionScaleBlocks);
         return new LayoutSample(role, weightedPick(candidates, cellX, cellZ, salt), roleFactor(role));
-    }
-
-    private LayoutSample sampleMixed(int blockX, int blockZ) {
-        long rx = (long) blockX - layoutOriginBlockX;
-        long rz = (long) blockZ - layoutOriginBlockZ;
-        long cellX = Math.floorDiv(rx, regionScaleBlocks);
-        long cellZ = Math.floorDiv(rz, regionScaleBlocks);
-        BiomeRole baseRole = mixedCellRole(cellX, cellZ);
-
-        Boundary nearest = nearestDifferingBoundary(rx, rz, cellX, cellZ, baseRole);
-        if (nearest == null) {
-            return new LayoutSample(baseRole, weightedPick(rolePool(baseRole), cellX, cellZ, biomeSalt(baseRole)), roleFactor(baseRole));
-        }
-
-        double t = clamp((nearest.signedDistance + coastBlendWidthBlocks) / (2.0 * coastBlendWidthBlocks), 0.0, 1.0);
-        double s = smoothstep(t);
-        double landFactor = lerp(roleFactor(nearest.negativeSideRole), roleFactor(nearest.positiveSideRole), s);
-        BiomeRole dominant = s < 0.5 ? nearest.negativeSideRole : nearest.positiveSideRole;
-        // Resolve which side's cell coordinates to sample biomes from.
-        long sampleCellX = cellX;
-        long sampleCellZ = cellZ;
-        if (dominant != baseRole) {
-            sampleCellX = nearest.neighborCellX;
-            sampleCellZ = nearest.neighborCellZ;
-        }
-        if (!beachBiomes.isEmpty() && nearest.negativeSideRole != nearest.positiveSideRole) {
-            long coastKeyA = nearest.axisIsX ? nearest.boundary : cellX;
-            long coastKeyB = nearest.axisIsX ? cellZ : nearest.boundary;
-            return new LayoutSample(BiomeRole.BEACH, weightedPick(beachBiomes, coastKeyA, coastKeyB, "biome_beach"), landFactor);
-        }
-        return new LayoutSample(dominant, weightedPick(rolePool(dominant), sampleCellX, sampleCellZ, biomeSalt(dominant)), landFactor);
     }
 
     private List<BiomeWeight> rolePool(BiomeRole role) {
@@ -319,63 +232,8 @@ public record WorldLayoutPlan(
         };
     }
 
-    private BiomeRole mixedCellRole(long cellX, long cellZ) {
-        double u = hash01(seed, "role", cellX, cellZ, 0);
-        return u < oceanCoverageFraction ? BiomeRole.OCEAN : BiomeRole.LAND;
-    }
-
-    private Boundary nearestDifferingBoundary(long rx, long rz, long cellX, long cellZ, BiomeRole baseRole) {
-        long localX = Math.floorMod(rx, regionScaleBlocks);
-        long localZ = Math.floorMod(rz, regionScaleBlocks);
-
-        Boundary best = null;
-        best = considerBoundary(best, true, cellX * regionScaleBlocks, localX, cellX - 1, cellZ, baseRole, true);
-        best = considerBoundary(best, true, (cellX + 1) * regionScaleBlocks, regionScaleBlocks - localX, cellX + 1, cellZ, baseRole, false);
-        best = considerBoundary(best, false, cellZ * regionScaleBlocks, localZ, cellX, cellZ - 1, baseRole, true);
-        best = considerBoundary(best, false, (cellZ + 1) * regionScaleBlocks, regionScaleBlocks - localZ, cellX, cellZ + 1, baseRole, false);
-        return best;
-    }
-
-    private Boundary considerBoundary(
-        Boundary current,
-        boolean axisIsX,
-        long boundary,
-        long distance,
-        long neighborCellX,
-        long neighborCellZ,
-        BiomeRole baseRole,
-        boolean neighborIsLowSide
-    ) {
-        if (distance >= coastBlendWidthBlocks) {
-            return current;
-        }
-        BiomeRole neighborRole = mixedCellRole(neighborCellX, neighborCellZ);
-        if (neighborRole == baseRole) {
-            return current;
-        }
-        if (current != null && current.distance <= distance) {
-            return current;
-        }
-        BiomeRole negativeSide = neighborIsLowSide ? neighborRole : baseRole;
-        BiomeRole positiveSide = neighborIsLowSide ? baseRole : neighborRole;
-        long signedDistance = neighborIsLowSide ? distance : -distance;
-        return new Boundary(axisIsX, boundary, distance, signedDistance, negativeSide, positiveSide, neighborCellX, neighborCellZ);
-    }
-
     private static double roleFactor(BiomeRole role) {
         return role == BiomeRole.OCEAN ? 0.0 : 1.0;
-    }
-
-    private static double smoothstep(double t) {
-        return t * t * (3.0 - 2.0 * t);
-    }
-
-    private static double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private static double lerp(double a, double b, double t) {
-        return a + (b - a) * t;
     }
 
     private Optional<String> weightedPick(List<BiomeWeight> candidates, long cellX, long cellZ, String salt) {
@@ -438,20 +296,5 @@ public record WorldLayoutPlan(
      * @param landFactor {@code 0} fully ocean-shaped, {@code 1} fully land/beach-shaped
      */
     public record LayoutSample(BiomeRole role, Optional<String> biomeId, double landFactor) {
-    }
-
-    private record Boundary(
-        boolean axisIsX,
-        long boundary,
-        long distance,
-        long signedDistance,
-        BiomeRole negativeSideRole,
-        BiomeRole positiveSideRole,
-        long neighborCellX,
-        long neighborCellZ
-    ) {
-        private int towardNegative() {
-            return negativeSideRole == positiveSideRole ? 0 : 1;
-        }
     }
 }

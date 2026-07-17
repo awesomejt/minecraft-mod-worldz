@@ -25,10 +25,9 @@ class WorldLayoutPlanTest {
         new WorldLayoutPlan.BiomeWeight("minecraft:beach", 1.0)
     );
 
-    private static WorldLayoutPlan mixedPlan(long seed, double oceanCoverage, int regionScale, int coastBlend, List<WorldLayoutPlan.BiomeWeight> beach) {
+    private static WorldLayoutPlan oceanPlan(long seed, int regionScale, List<WorldLayoutPlan.BiomeWeight> beach) {
         return new WorldLayoutPlan(
-            LayoutMode.MIXED, seed, regionScale, oceanCoverage, coastBlend,
-            LAND, OCEAN, beach, Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+            LayoutMode.OCEAN, seed, regionScale, List.of(), OCEAN, beach, Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         );
     }
 
@@ -45,8 +44,59 @@ class WorldLayoutPlanTest {
     }
 
     @Test
+    void voidPlanSamplesLandEverywhereWithNoConfiguredBiome() {
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.VOID, 1L, 512, List.of(), List.of(), List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        WorldLayoutPlan.LayoutSample sample = plan.sampleAt(999, -999);
+        assertEquals(BiomeRole.LAND, sample.role());
+        assertTrue(sample.biomeId().isEmpty());
+        assertEquals(1.0, sample.landFactor());
+    }
+
+    @Test
+    void oceanModeAlwaysSamplesOceanRoleAndOnlyConfiguredOceanBiomes() {
+        WorldLayoutPlan plan = oceanPlan(7L, 256, List.of());
+        Set<String> allowed = Set.of("minecraft:ocean");
+
+        for (int cell = 0; cell < 100; cell++) {
+            WorldLayoutPlan.LayoutSample sample = plan.sampleAt(cell * 256 + 10, -cell * 256 - 10);
+            assertEquals(BiomeRole.OCEAN, sample.role());
+            assertEquals(0.0, sample.landFactor());
+            assertTrue(allowed.contains(sample.biomeId().orElseThrow()));
+        }
+    }
+
+    @Test
+    void singleBiomeModeAlwaysSamplesTheConfiguredBiomeAndItsDefaultRole() {
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.SINGLE_BIOME, 1L, 512, List.of(), List.of(), List.of(),
+            Optional.of("minecraft:plains"), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        WorldLayoutPlan.LayoutSample sample = plan.sampleAt(4096, -4096);
+        assertEquals(BiomeRole.LAND, sample.role());
+        assertEquals("minecraft:plains", sample.biomeId().orElseThrow());
+        assertEquals(1.0, sample.landFactor());
+    }
+
+    @Test
+    void singleBiomeModeHonorsARoleOverride() {
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.SINGLE_BIOME, 1L, 512, List.of(), List.of(), List.of(),
+            Optional.of("minecraft:swamp"), Map.of("minecraft:swamp", BiomeRole.OCEAN), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        WorldLayoutPlan.LayoutSample sample = plan.sampleAt(0, 0);
+        assertEquals(BiomeRole.OCEAN, sample.role());
+        assertEquals(0.0, sample.landFactor());
+    }
+
+    @Test
     void sameCoordinatesAlwaysSampleIdenticallyForOneSeed() {
-        WorldLayoutPlan plan = mixedPlan(42L, 0.35, 512, 128, List.of());
+        WorldLayoutPlan plan = oceanPlan(42L, 512, List.of());
 
         for (int i = 0; i < 20; i++) {
             int x = i * 137 - 900;
@@ -56,84 +106,57 @@ class WorldLayoutPlanTest {
     }
 
     @Test
-    void differentSeedsCanProduceDifferentLayouts() {
-        WorldLayoutPlan planA = mixedPlan(1L, 0.35, 512, 128, List.of());
-        WorldLayoutPlan planB = mixedPlan(2L, 0.35, 512, 128, List.of());
+    void differentSeedsCanProduceDifferentBiomeSelections() {
+        List<WorldLayoutPlan.BiomeWeight> multipleOcean = List.of(
+            new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0),
+            new WorldLayoutPlan.BiomeWeight("minecraft:cold_ocean", 1.0)
+        );
+        WorldLayoutPlan planA = new WorldLayoutPlan(
+            LayoutMode.OCEAN, 1L, 512, List.of(), multipleOcean, List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+        WorldLayoutPlan planB = new WorldLayoutPlan(
+            LayoutMode.OCEAN, 2L, 512, List.of(), multipleOcean, List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
 
         boolean anyDifference = false;
         for (int cell = 0; cell < 200; cell++) {
             int x = cell * 512 + 256;
-            if (!planA.sampleAt(x, 256).role().equals(planB.sampleAt(x, 256).role())) {
+            if (!planA.sampleAt(x, 256).biomeId().equals(planB.sampleAt(x, 256).biomeId())) {
                 anyDifference = true;
                 break;
             }
         }
-        assertTrue(anyDifference, "Two different seeds sampled an identical role at every tested cell.");
-    }
-
-    @Test
-    void landOnlyModeOnlyEverReturnsConfiguredLandBiomes() {
-        WorldLayoutPlan plan = new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, List.of(), List.of(),
-            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
-        );
-        Set<String> allowed = Set.of("minecraft:plains", "minecraft:desert");
-
-        for (int cell = 0; cell < 100; cell++) {
-            WorldLayoutPlan.LayoutSample sample = plan.sampleAt(cell * 256 + 10, -cell * 256 - 10);
-            assertEquals(BiomeRole.LAND, sample.role());
-            assertEquals(1.0, sample.landFactor());
-            assertTrue(allowed.contains(sample.biomeId().orElseThrow()));
-        }
+        assertTrue(anyDifference, "Two different seeds sampled an identical biome at every tested cell.");
     }
 
     @Test
     void sampleRoleReturnsOnlyThatRolesCandidatesRegardlessOfMode() {
         WorldLayoutPlan plan = new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, OCEAN, BEACH,
+            LayoutMode.OCEAN, 7L, 256, LAND, OCEAN, BEACH,
             Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         );
 
         for (int cell = 0; cell < 40; cell++) {
             int x = cell * 256 + 10;
-            assertTrue(Set.of("minecraft:ocean").contains(plan.sampleRole(BiomeRole.OCEAN, x, -x).orElseThrow()));
+            assertTrue(Set.of("minecraft:plains", "minecraft:desert").contains(plan.sampleRole(BiomeRole.LAND, x, -x).orElseThrow()));
             assertTrue(Set.of("minecraft:beach").contains(plan.sampleRole(BiomeRole.BEACH, x, -x).orElseThrow()));
         }
     }
 
     @Test
     void sampleRoleIsEmptyWhenThatRoleHasNoCandidates() {
-        WorldLayoutPlan plan = new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, List.of(), List.of(),
-            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
-        );
+        WorldLayoutPlan plan = oceanPlan(7L, 256, List.of());
 
         assertTrue(plan.sampleRole(BiomeRole.BEACH, 100, 100).isEmpty());
     }
 
     @Test
-    void mixedModeOnlyReturnsAllowedBiomesForTheSampledRole() {
-        WorldLayoutPlan plan = mixedPlan(99L, 0.35, 400, 40, BEACH);
-        Set<String> allowedLand = Set.of("minecraft:plains", "minecraft:desert");
-        Set<String> allowedOcean = Set.of("minecraft:ocean");
-        Set<String> allowedBeach = Set.of("minecraft:beach");
-
-        for (int x = -20_000; x < 20_000; x += 137) {
-            WorldLayoutPlan.LayoutSample sample = plan.sampleAt(x, x / 3);
-            String biome = sample.biomeId().orElseThrow();
-            switch (sample.role()) {
-                case LAND -> assertTrue(allowedLand.contains(biome));
-                case OCEAN -> assertTrue(allowedOcean.contains(biome));
-                case BEACH -> assertTrue(allowedBeach.contains(biome));
-            }
-        }
-    }
-
-    @Test
     void weightedSelectionRepresentsEachPositiveWeightBiomeProportionally() {
         WorldLayoutPlan plan = new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 5L, 64, 0.0, 16, LAND, List.of(), List.of(),
-            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+            LayoutMode.SINGLE_BIOME, 5L, 64, LAND, List.of(), List.of(),
+            Optional.of("minecraft:plains"), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         );
 
         int plainsCount = 0;
@@ -141,7 +164,7 @@ class WorldLayoutPlanTest {
         int total = 0;
         for (int cellX = 0; cellX < 80; cellX++) {
             for (int cellZ = 0; cellZ < 80; cellZ++) {
-                String biome = plan.sampleAt(cellX * 64 + 1, cellZ * 64 + 1).biomeId().orElseThrow();
+                String biome = plan.sampleRole(BiomeRole.LAND, cellX * 64 + 1, cellZ * 64 + 1).orElseThrow();
                 total++;
                 if (biome.equals("minecraft:plains")) {
                     plainsCount++;
@@ -158,93 +181,10 @@ class WorldLayoutPlanTest {
     }
 
     @Test
-    void mixedOceanCoverageIsApproximatelyRepresentedOverALargeSample() {
-        WorldLayoutPlan plan = mixedPlan(11L, 0.35, 100, 10, List.of());
-
-        int oceanCells = 0;
-        int totalCells = 0;
-        for (int cellX = 0; cellX < 128; cellX++) {
-            for (int cellZ = 0; cellZ < 128; cellZ++) {
-                // Sample the cell center, far from any coast-blend boundary influence.
-                int x = cellX * 100 + 50;
-                int z = cellZ * 100 + 50;
-                if (plan.sampleAt(x, z).role() == BiomeRole.OCEAN) {
-                    oceanCells++;
-                }
-                totalCells++;
-            }
-        }
-
-        double measured = (double) oceanCells / totalCells;
-        assertTrue(measured > 0.30 && measured < 0.40, "measured ocean coverage was " + measured + ", target 0.35");
-    }
-
-    @Test
-    void landFactorTransitionsContinuouslyAcrossARoleBoundary() {
-        int scale = 64;
-        int blendWidth = 16;
-        // Fix z at mid-cell so only the x-axis boundary is ever within the blend width;
-        // z=0 would sit exactly on a z-axis boundary for every sampled x.
-        int z = scale / 2;
-        WorldLayoutPlan plan = mixedPlan(3L, 0.5, scale, blendWidth, List.of());
-
-        double previous = plan.sampleAt(-4000, z).landFactor();
-        double maxJump = 0.0;
-        for (int x = -3999; x <= 4000; x++) {
-            double current = plan.sampleAt(x, z).landFactor();
-            maxJump = Math.max(maxJump, Math.abs(current - previous));
-            previous = current;
-        }
-
-        assertTrue(maxJump < 0.1, "landFactor jumped by " + maxJump + " between adjacent blocks");
-    }
-
-    @Test
-    void isNearRoleBoundaryIsAlwaysFalseOutsideMixedMode() {
-        WorldLayoutPlan landOnly = new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 7L, 256, 0.0, 64, LAND, List.of(), List.of(),
-            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
-        );
-        WorldLayoutPlan legacy = WorldLayoutPlan.legacy();
-
-        for (int x = -2000; x <= 2000; x += 137) {
-            assertTrue(!landOnly.isNearRoleBoundary(x, -x));
-            assertTrue(!legacy.isNearRoleBoundary(x, -x));
-        }
-    }
-
-    @Test
-    void isNearRoleBoundaryMatchesWhetherLandFactorIsAPureRoleValue() {
-        int scale = 64;
-        int blendWidth = 16;
-        // Fix z at mid-cell so only the x-axis boundary is ever within the blend width;
-        // z=0 would sit exactly on a z-axis boundary for every sampled x.
-        int z = scale / 2;
-        WorldLayoutPlan plan = mixedPlan(3L, 0.5, scale, blendWidth, List.of());
-
-        boolean anyNearBoundary = false;
-        for (int x = -2000; x <= 2000; x++) {
-            double landFactor = plan.sampleAt(x, z).landFactor();
-            boolean near = plan.isNearRoleBoundary(x, z);
-            if (!near) {
-                assertTrue(
-                    landFactor == 0.0 || landFactor == 1.0,
-                    "landFactor " + landFactor + " at x=" + x + " should be a pure role value when not near a boundary"
-                );
-            }
-            anyNearBoundary |= near;
-        }
-        assertTrue(anyNearBoundary, "expected at least one sampled column to be near a role boundary");
-    }
-
-    @Test
     void constructorRejectsInvalidRanges() {
-        assertThrows(IllegalArgumentException.class, () -> mixedPlan(1L, 0.35, 0, 128, List.of()));
-        assertThrows(IllegalArgumentException.class, () -> mixedPlan(1L, 0.35, 512, -1, List.of()));
-        assertThrows(IllegalArgumentException.class, () -> mixedPlan(1L, -0.1, 512, 128, List.of()));
-        assertThrows(IllegalArgumentException.class, () -> mixedPlan(1L, 1.1, 512, 128, List.of()));
+        assertThrows(IllegalArgumentException.class, () -> oceanPlan(1L, 0, List.of()));
         assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
-            LayoutMode.MIXED, 1L, 512, 0.35, 128, LAND, OCEAN, List.of(),
+            LayoutMode.OCEAN, 1L, 512, List.of(), OCEAN, List.of(),
             Optional.empty(), Map.of(), 0, 0, -1
         ));
     }
@@ -256,7 +196,7 @@ class WorldLayoutPlanTest {
             new WorldLayoutPlan.BiomeWeight("minecraft:plains", 2.0)
         );
         assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 1L, 512, 0.0, 128, duplicated, List.of(), List.of(),
+            LayoutMode.OCEAN, 1L, 512, duplicated, List.of(), List.of(),
             Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         ));
     }
@@ -264,26 +204,18 @@ class WorldLayoutPlanTest {
     @Test
     void constructorEnforcesModeSpecificBiomeRequirements() {
         assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
-            LayoutMode.LAND_ONLY, 1L, 512, 0.0, 128, List.of(), List.of(), List.of(),
+            LayoutMode.OCEAN, 1L, 512, List.of(), List.of(), List.of(),
             Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         ));
         assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
-            LayoutMode.OCEAN, 1L, 512, 0.0, 128, List.of(), List.of(), List.of(),
-            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
-        ));
-        assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
-            LayoutMode.MIXED, 1L, 512, 0.35, 128, LAND, List.of(), List.of(),
-            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
-        ));
-        assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
-            LayoutMode.SINGLE_BIOME, 1L, 512, 0.0, 128, List.of(), List.of(), List.of(),
+            LayoutMode.SINGLE_BIOME, 1L, 512, List.of(), List.of(), List.of(),
             Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         ));
     }
 
     @Test
     void resultCollectionsAreImmutableSnapshots() {
-        WorldLayoutPlan plan = mixedPlan(1L, 0.35, 512, 128, List.of());
+        WorldLayoutPlan plan = oceanPlan(1L, 512, List.of());
 
         assertThrows(UnsupportedOperationException.class, () -> plan.landBiomes().add(new WorldLayoutPlan.BiomeWeight("minecraft:jungle", 1.0)));
         assertThrows(UnsupportedOperationException.class, () -> plan.oceanBiomes().clear());
@@ -294,14 +226,14 @@ class WorldLayoutPlanTest {
     void fromConfigPartitionsWeightedBiomesByMaintainedAndOverriddenRole() {
         WorldzConfig config = new WorldzConfig();
         LayoutConfig layout = new LayoutConfig();
-        layout.mode = LayoutMode.MIXED;
+        layout.mode = LayoutMode.OCEAN;
         layout.biomes = List.of("minecraft:plains@3", "minecraft:desert", "minecraft:ocean", "minecraft:swamp");
         layout.roleOverrides = Map.of("minecraft:swamp", "ocean");
         config.layout = layout;
 
         WorldLayoutPlan plan = WorldLayoutPlan.fromConfig(config, 123L);
 
-        assertEquals(LayoutMode.MIXED, plan.mode());
+        assertEquals(LayoutMode.OCEAN, plan.mode());
         assertEquals(123L, plan.seed());
         assertEquals(
             Set.of("minecraft:plains", "minecraft:desert"),

@@ -18,8 +18,7 @@ import net.minecraft.network.chat.Component;
 final class WorldzLayoutScreen extends Screen {
     private static final int FORM_WIDTH = 310;
     private static final LayoutMode[] MODE_ORDER = {
-        LayoutMode.LEGACY, LayoutMode.LAND_ONLY, LayoutMode.MIXED,
-        LayoutMode.OCEAN, LayoutMode.SINGLE_BIOME, LayoutMode.VOID
+        LayoutMode.LEGACY, LayoutMode.OCEAN, LayoutMode.SINGLE_BIOME, LayoutMode.VOID
     };
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
@@ -28,9 +27,7 @@ final class WorldzLayoutScreen extends Screen {
     private LayoutMode mode;
     private Button modeButton;
     private MultiLineEditBox biomes;
-    private EditBox oceanCoverageFraction;
     private EditBox regionScaleBlocks;
-    private EditBox coastBlendWidthBlocks;
     private EditBox singleBiome;
     private MultiLineEditBox roleOverrides;
     private MultiLineTextWidget errorMessage;
@@ -62,32 +59,9 @@ final class WorldzLayoutScreen extends Screen {
             Component.translatable("jlt_worldz.customize.layout.biomes")
         ));
 
-        this.oceanCoverageFraction = numberField(
-            Component.translatable("jlt_worldz.customize.layout.ocean_coverage"),
-            Double.toString(this.initial.oceanCoverageFraction()),
-            150
-        );
         this.regionScaleBlocks = numberField(
             Component.translatable("jlt_worldz.customize.layout.region_scale"),
             Integer.toString(this.initial.regionScaleBlocks()),
-            150
-        );
-        LinearLayout scaleFields = LinearLayout.horizontal().spacing(10);
-        scaleFields.addChild(CommonLayouts.labeledElement(
-            this.font,
-            this.oceanCoverageFraction,
-            Component.translatable("jlt_worldz.customize.layout.ocean_coverage")
-        ));
-        scaleFields.addChild(CommonLayouts.labeledElement(
-            this.font,
-            this.regionScaleBlocks,
-            Component.translatable("jlt_worldz.customize.layout.region_scale")
-        ));
-        form.addChild(scaleFields);
-
-        this.coastBlendWidthBlocks = numberField(
-            Component.translatable("jlt_worldz.customize.layout.coast_blend"),
-            Integer.toString(this.initial.coastBlendWidthBlocks()),
             150
         );
         this.singleBiome = numberField(
@@ -98,8 +72,8 @@ final class WorldzLayoutScreen extends Screen {
         LinearLayout otherFields = LinearLayout.horizontal().spacing(10);
         otherFields.addChild(CommonLayouts.labeledElement(
             this.font,
-            this.coastBlendWidthBlocks,
-            Component.translatable("jlt_worldz.customize.layout.coast_blend")
+            this.regionScaleBlocks,
+            Component.translatable("jlt_worldz.customize.layout.region_scale")
         ));
         otherFields.addChild(CommonLayouts.labeledElement(
             this.font,
@@ -164,9 +138,7 @@ final class WorldzLayoutScreen extends Screen {
             WorldzCustomization.LayoutSettings settings = WorldzCustomization.LayoutSettings.fromText(
                 this.mode.serializedName(),
                 this.biomes.getValue(),
-                this.oceanCoverageFraction.getValue(),
                 this.regionScaleBlocks.getValue(),
-                this.coastBlendWidthBlocks.getValue(),
                 this.singleBiome.getValue(),
                 this.roleOverrides.getValue()
             );

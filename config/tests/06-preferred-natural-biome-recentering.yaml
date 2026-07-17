@@ -23,12 +23,9 @@ overworldExterior:
   mode: ocean
   oceanTransitionWidthBlocks: 128
 layout:
-  mode: mixed
+  mode: ocean
   biomes:
-    - 'minecraft:plains@3'
-    - 'minecraft:desert'
     - 'minecraft:ocean'
     - 'minecraft:beach'
-  oceanCoverageFraction: 0.35
 spawn:
   strategy: preferred_natural_biome

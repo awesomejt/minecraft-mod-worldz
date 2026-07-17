@@ -199,9 +199,7 @@ public final class WorldzPresetEditor implements PresetEditor {
         return new WorldzCustomization.LayoutSettings(
             plan.mode(),
             biomes,
-            plan.oceanCoverageFraction(),
             plan.regionScaleBlocks(),
-            plan.coastBlendWidthBlocks(),
             plan.singleBiome().orElse(""),
             overrides
         );

@@ -229,7 +229,7 @@ class WorldzConfigTest {
     void layoutSettingsLoadWeightedBiomesAndRoleOverrides() {
         WorldzConfig config = WorldzConfig.parse("""
             layout:
-              mode: mixed
+              mode: ocean
               biomes:
                 - "minecraft:plains@3"
                 - "minecraft:desert"
@@ -237,20 +237,16 @@ class WorldzConfigTest {
                 - "minecraft:swamp"
               roleOverrides:
                 "minecraft:swamp": "ocean"
-              oceanCoverageFraction: 0.4
               regionScaleBlocks: 300
-              coastBlendWidthBlocks: 80
             """, LOGGER).sanitize(LOGGER);
 
-        assertEquals(LayoutMode.MIXED, config.layout.mode);
+        assertEquals(LayoutMode.OCEAN, config.layout.mode);
         assertEquals(
             List.of("minecraft:plains@3.0", "minecraft:desert", "minecraft:ocean", "minecraft:swamp"),
             config.layout.biomes
         );
         assertEquals("ocean", config.layout.roleOverrides.get("minecraft:swamp"));
-        assertEquals(0.4, config.layout.oceanCoverageFraction);
         assertEquals(300, config.layout.regionScaleBlocks);
-        assertEquals(80, config.layout.coastBlendWidthBlocks);
     }
 
     @Test
@@ -268,33 +264,29 @@ class WorldzConfigTest {
 
     @Test
     void layoutFallsBackToLegacyWhenTheModeHasNoUsableBiomes() {
-        WorldzConfig landOnly = WorldzConfig.parse("""
+        WorldzConfig ocean = WorldzConfig.parse("""
             layout:
-              mode: land_only
+              mode: ocean
               biomes:
-                - "minecraft:ocean"
+                - "minecraft:plains"
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig singleBiome = WorldzConfig.parse("""
             layout:
               mode: single_biome
             """, LOGGER).sanitize(LOGGER);
 
-        assertEquals(LayoutMode.LEGACY, landOnly.layout.mode);
+        assertEquals(LayoutMode.LEGACY, ocean.layout.mode);
         assertEquals(LayoutMode.LEGACY, singleBiome.layout.mode);
     }
 
     @Test
-    void layoutRegionScaleAndCoverageAreClamped() {
+    void layoutRegionScaleIsClamped() {
         WorldzConfig config = WorldzConfig.parse("""
             layout:
               regionScaleBlocks: 1
-              coastBlendWidthBlocks: -5
-              oceanCoverageFraction: 1.5
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(16, config.layout.regionScaleBlocks);
-        assertEquals(0, config.layout.coastBlendWidthBlocks);
-        assertEquals(1.0, config.layout.oceanCoverageFraction);
     }
 
     @Test

@@ -686,18 +686,14 @@ public record WorldzCustomization(
      *
      * @param mode layout mode
      * @param biomes weighted {@code id}/{@code id@weight} entries; tags are not accepted
-     * @param oceanCoverageFraction {@code MIXED} target ocean fraction, {@code 0..1}
      * @param regionScaleBlocks grid-cell edge length in blocks
-     * @param coastBlendWidthBlocks coast-blend width
      * @param singleBiome {@code SINGLE_BIOME} biome id, or empty when unused
      * @param roleOverrides biome id to role-name overrides
      */
     public record LayoutSettings(
         LayoutMode mode,
         List<String> biomes,
-        double oceanCoverageFraction,
         int regionScaleBlocks,
-        int coastBlendWidthBlocks,
         String singleBiome,
         Map<String, String> roleOverrides
     ) {
@@ -740,10 +736,6 @@ public record WorldzCustomization(
                 WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS,
                 "Region scale"
             );
-            requireRange(coastBlendWidthBlocks, 0, WorldzConfig.MAX_LAYOUT_COAST_BLEND_WIDTH_BLOCKS, "Coast blend width");
-            if (oceanCoverageFraction < 0.0 || oceanCoverageFraction > 1.0) {
-                throw new IllegalArgumentException("Ocean coverage fraction must be between 0 and 1.");
-            }
         }
 
         /**
@@ -755,9 +747,7 @@ public record WorldzCustomization(
             return new LayoutSettings(
                 LayoutMode.LEGACY,
                 List.of(),
-                WorldLayoutPlan.DEFAULT_OCEAN_COVERAGE_FRACTION,
                 WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS,
-                WorldLayoutPlan.DEFAULT_COAST_BLEND_WIDTH_BLOCKS,
                 "",
                 Map.of()
             );
@@ -774,9 +764,7 @@ public record WorldzCustomization(
             return new LayoutSettings(
                 layout.mode,
                 layout.biomes,
-                layout.oceanCoverageFraction,
                 layout.regionScaleBlocks,
-                layout.coastBlendWidthBlocks,
                 layout.singleBiome,
                 layout.roleOverrides
             );
@@ -787,9 +775,7 @@ public record WorldzCustomization(
          *
          * @param mode serialized layout mode name
          * @param biomesText newline- or comma-separated weighted biome entries
-         * @param oceanCoverageFraction decimal ocean coverage fraction
          * @param regionScaleBlocks decimal region scale
-         * @param coastBlendWidthBlocks decimal coast blend width
          * @param singleBiome single-biome-mode biome id, or empty
          * @param roleOverridesText newline- or comma-separated {@code id=role} entries
          * @return validated immutable layout values
@@ -797,9 +783,7 @@ public record WorldzCustomization(
         public static LayoutSettings fromText(
             String mode,
             String biomesText,
-            String oceanCoverageFraction,
             String regionScaleBlocks,
-            String coastBlendWidthBlocks,
             String singleBiome,
             String roleOverridesText
         ) {
@@ -822,9 +806,7 @@ public record WorldzCustomization(
             return new LayoutSettings(
                 LayoutMode.parse(mode),
                 biomes,
-                parseDouble(oceanCoverageFraction, "Ocean coverage fraction"),
                 parseInteger(regionScaleBlocks, "Region scale"),
-                parseInteger(coastBlendWidthBlocks, "Coast blend width"),
                 singleBiome,
                 overrides
             );
@@ -851,9 +833,7 @@ public record WorldzCustomization(
         }
 
         private WorldLayoutPlan toPlan(long seed) {
-            return WorldLayoutPlan.resolve(
-                mode, biomes, roleOverrides, oceanCoverageFraction, regionScaleBlocks, coastBlendWidthBlocks, singleBiome, seed
-            );
+            return WorldLayoutPlan.resolve(mode, biomes, roleOverrides, regionScaleBlocks, singleBiome, seed);
         }
     }
 
@@ -862,14 +842,6 @@ public record WorldzCustomization(
             return Integer.parseInt(value.trim());
         } catch (NullPointerException | NumberFormatException exception) {
             throw new IllegalArgumentException(name + " must be a whole number.", exception);
-        }
-    }
-
-    private static double parseDouble(String value, String name) {
-        try {
-            return Double.parseDouble(value.trim());
-        } catch (NullPointerException | NumberFormatException exception) {
-            throw new IllegalArgumentException(name + " must be a number.", exception);
         }
     }
 

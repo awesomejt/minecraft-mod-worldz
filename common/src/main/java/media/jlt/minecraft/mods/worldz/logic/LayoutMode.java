@@ -6,10 +6,6 @@ import java.util.Locale;
 public enum LayoutMode {
     /** Pre-Phase-15 climate filtering: vanilla continental shape, restricted biome labels only. */
     LEGACY,
-    /** Selected land biomes form coherent regions; no large ocean basins. */
-    LAND_ONLY,
-    /** Coherent land and ocean regions at configurable coverage and weights. */
-    MIXED,
     /** A starter island in an otherwise infinite ocean of selected ocean biomes. */
     OCEAN,
     /** One selected biome fills the generated world. */

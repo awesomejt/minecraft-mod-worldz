@@ -16,8 +16,9 @@ NeoForge for Minecraft 26.2.
 > **Status (2026-07-16):** the mod is being restructured around challenge-world
 > types (ocean island, sky island, sky chunk, single biome, flat, limited
 > size) per [GOALS.md](GOALS.md) and [TODO.md](TODO.md). The `mixed` and
-> `land_only` coordinated-layout modes described below are being removed in
-> 0.2.0.
+> `land_only` coordinated-layout modes have been removed as part of that
+> restructure (TODO.md Phase 1); see TODO.md for the challenge types
+> replacing them.
 
 ## Supported loaders
 
@@ -249,65 +250,45 @@ square so spawning and climate behavior match the generated water.
 With `layout.mode: legacy` (still the default), biome limiting does not change
 vanilla continentalness or density. On a seed whose nearby vanilla terrain is a
 large ocean, an allowed land biome can therefore be reported over submerged
-terrain, or a selected ocean biome can dominate a mixed list. Guaranteed
-starter land corrects only its configured central radius and transition; it
-does not rebalance the infinite world. Selecting any other `layout.mode`
-resolves this by making biome and terrain height decisions together instead
-(see below).
+terrain. Guaranteed starter land corrects only its configured central radius
+and transition; it does not rebalance the infinite world. Selecting any other
+`layout.mode` resolves this by making biome and terrain height decisions
+together instead (see below).
 
 ### Coordinated world layouts
 
-A `layout` section (`mode`, weighted `biomes`, `oceanCoverageFraction`,
-`regionScaleBlocks`, `coastBlendWidthBlocks`, `singleBiome`, `roleOverrides`)
-selects one of five modes: `land_only`, `mixed`, `ocean`, `single_biome`, or
-`void`, plus the `legacy` default described above. Non-legacy modes classify
-every column into a land, ocean, or beach role from a deterministic seeded
-grid, choose a weighted biome within that role, and raise or lower terrain to
-match — so a mixed world's ocean biomes generate real (lowered) ocean rather
-than a land shape mislabeled underwater, and vice versa. `mode` requires at
-least one usable biome for every role it needs; an incomplete configuration
-logs a warning and falls back to `legacy` rather than failing world creation.
-The **Layout** button in Customize exposes every one of these fields for a
-single new world without editing the YAML file.
+A `layout` section (`mode`, weighted `biomes`, `regionScaleBlocks`,
+`singleBiome`, `roleOverrides`) selects one of three modes: `ocean`,
+`single_biome`, or `void`, plus the `legacy` default described above.
+Non-legacy modes classify every column into a role from a deterministic
+seeded grid, choose a weighted biome within that role, and raise or lower
+terrain to match — so an ocean world's biomes generate real (lowered) ocean
+rather than a land shape mislabeled underwater. `mode` requires at least one
+usable biome for every role it needs; an incomplete configuration logs a
+warning and falls back to `legacy` rather than failing world creation. The
+**Layout** button in Customize exposes every one of these fields for a single
+new world without editing the YAML file.
 
-`land_only` only raises columns that are clearly deep ocean, leaving shallow
-natural depressions like rivers and ponds alone. `mixed`/`ocean` place a beach
-biome in a ring just outside a configured starter zone when one is available,
-so the guaranteed starter island tapers through a beach before reaching open
-water instead of cutting off abruptly; the starter-land transition itself now
-blends toward the layout's own adjusted terrain (e.g. the capped ocean depth)
-rather than unrelated raw vanilla shape. `void` forces a sky-void exterior
-around the starter zone (radius plus its transition width, or a 256-block
-fallback with no starter biome configured) so a guaranteed island floats in an
-otherwise infinite void — configure a starter biome and enable starter land for
-a solid island; without one, whatever vanilla terrain naturally exists in that
-fallback radius is what floats. `single_biome` fills the world with one biome
-and raises or caps its terrain to match that biome's role. In `mixed` mode,
-structures (villages, ocean monuments, etc.) are suppressed near a land/ocean
-region boundary, with a safety margin covering how far a structure's own
-pieces can reach beyond where it's anchored — the terrain height swings too
-sharply there for a multi-piece structure (anchored once, not re-adapted per
-piece) to sit on safely; structures well inside a stable region are
-unaffected. See DESIGN §17 for the full model and its "coast-blend
-transition" notes, and TODO.md Phase 15 for what remains:
-
-- `mixed`/`ocean` coastlines are currently exactly straight along each
-  region-grid cell edge (only the height/biome blends smoothly, not the
-  shape), not a fully organic coastline.
-- `mixed`'s beach role currently spans the *entire* coast-blend transition
-  (over 100 blocks into both land and water at the default
-  `coastBlendWidthBlocks`), not a narrow shoreline strip.
+`ocean` places a beach biome in a ring just outside a configured starter zone
+when one is available, so the guaranteed starter island tapers through a
+beach before reaching open water instead of cutting off abruptly; the
+starter-land transition itself blends toward the layout's own adjusted
+terrain (e.g. the capped ocean depth) rather than unrelated raw vanilla
+shape. `void` forces a sky-void exterior around the starter zone (radius plus
+its transition width, or a 256-block fallback with no starter biome
+configured) so a guaranteed island floats in an otherwise infinite void —
+configure a starter biome and enable starter land for a solid island; without
+one, whatever vanilla terrain naturally exists in that fallback radius is
+what floats. `single_biome` fills the world with one biome and raises or caps
+its terrain to match that biome's role. See TODO.md for the region-composed
+(land+ocean-in-one-world) layouts removed in 0.2.0 and their planned
+ocean-island replacement.
 
 Non-legacy `layout.biomes` picks **one** biome for an entire region cell (up
 to `regionScaleBlocks` — 512 blocks by default — on a side), which suits
 broad biomes like `plains`/`forest`/`ocean` but not a biome vanilla only ever
-generates as a narrow, winding, noise-carved channel, like `river`: expect an
-entire flat/hilly land-height area labeled and colored "River" with no
-channel in sight, not a proportionally thin feature. Don't add `river` (or
-similarly linear/thin biomes) to `layout.biomes`. Natural-looking rivers and
-ponds already appear inside land cells on their own — the height adjustment
-only raises columns that are too low, it never flattens a natural dip — so
-nothing is lost by leaving it out.
+generates as a narrow, winding, noise-carved channel, like `river`. Don't add
+`river` (or similarly linear/thin biomes) to `layout.biomes`.
 
 ### Seed-informed spawn
 

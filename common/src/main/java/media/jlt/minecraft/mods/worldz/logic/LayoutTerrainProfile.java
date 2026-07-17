@@ -33,21 +33,4 @@ public final class LayoutTerrainProfile {
         int capped = Math.min(naturalFloorHeight, oceanCeiling);
         return (int) Math.round(capped + (raised - capped) * clampedFactor);
     }
-
-    /**
-     * Raises only clearly deep-ocean floors, leaving shallow natural depressions
-     * (rivers, ponds) untouched so {@code LAND_ONLY} layouts keep permitting
-     * small inland water instead of flattening every column to the land floor.
-     *
-     * @param naturalFloorHeight the delegate's natural ocean-floor height at this column
-     * @param seaLevel the dimension's sea level
-     * @return {@code naturalFloorHeight} unchanged, or the land floor if it was deep-ocean-shaped
-     */
-    public static int landOnlyTarget(int naturalFloorHeight, int seaLevel) {
-        int oceanCeiling = seaLevel - OCEAN_CEILING_OFFSET_BELOW_SEA_LEVEL;
-        if (naturalFloorHeight >= oceanCeiling) {
-            return naturalFloorHeight;
-        }
-        return seaLevel + LAND_FLOOR_OFFSET_ABOVE_SEA_LEVEL;
-    }
 }

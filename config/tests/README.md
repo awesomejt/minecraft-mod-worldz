@@ -39,10 +39,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `03-preferred-natural-biome-found.yaml` | `preferred_natural_biome` with a common starter biome (`plains`) it should actually find nearby, relocating the origin. |
 | `04-preferred-natural-biome-no-starter-biome.yaml` | Same strategy with `starterBiome: ''` — expect the "needs a starter biome" warning and a fallback to `starter_at_origin` at `(0,0)`. |
 | `05-preferred-natural-biome-unfindable.yaml` | Same strategy with a starter biome unlikely to exist within the search radius (`mushroom_fields`) — expect the "search found no biome" warning and the same fallback. |
-| `06-preferred-natural-biome-recentering.yaml` | Combines a found preferred biome with an enabled border, an ocean exterior, and a `mixed` layout — confirms border/exterior/layout all recenter on the *found* origin together, not just the spawn point. |
+| `06-preferred-natural-biome-recentering.yaml` | Combines a found preferred biome with an enabled border, an ocean exterior, and an `ocean` layout — confirms border/exterior/layout all recenter on the *found* origin together, not just the spawn point. |
 | `07-legacy-regression-baseline.yaml` | Everything at documented defaults except an explicit `legacy` layout mode and a plain starter zone — a control run to compare every other file against. |
-| `08-land-only.yaml` | `layout.mode: land_only` — guarantees land almost everywhere (only clearly-deep ocean gets raised), natural rivers/ponds left alone. Fixes the "ocean mapped as river" mismatch from testing `01` under legacy mode. |
-| `09-mixed-natural-oceans-and-rivers.yaml` | `layout.mode: mixed` — real, coherent land *and* ocean together: biome label and terrain height always agree, unlike legacy mode. Natural rivers/ponds still show up inside land cells on their own (vanilla's own terrain noise); the file deliberately does **not** put `river` in `layout.biomes` — see the comment at its top for why (an earlier version did, and it produced a whole region cell labeled "River" with no channel in sight — confirmed on world "Worldz14"). |
 
 ### Why `01` showed ocean labeled as river
 
@@ -55,8 +53,8 @@ genuinely oceanic, the climate filter substituted the *closest allowed
 biome in climate space* instead — which turned out to be `river`. This is
 documented in the main [README.md](../../README.md#current-terrain-composition-limitation-legacy-mode-only)
 as a known legacy-mode limitation, not a bug specific to this session's
-work — `08` and `09` both resolve it by using a non-`legacy` layout mode,
-which decides biome and height together instead of filtering climate alone.
+work — `06` resolves it by using a non-`legacy` layout mode, which decides
+biome and height together instead of filtering climate alone.
 
 Use a fixed seed (the example files don't set one — the world-creation
 screen's seed field is where you pin it) so repeat runs of the same file are

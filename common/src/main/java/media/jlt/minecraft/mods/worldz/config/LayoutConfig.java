@@ -18,12 +18,8 @@ public final class LayoutConfig {
      * {@code roleOverrides} and the maintained default mapping).
      */
     public List<String> biomes = new ArrayList<>();
-    /** {@code MIXED} only: target fraction of grid cells classified ocean. */
-    public double oceanCoverageFraction = WorldLayoutPlan.DEFAULT_OCEAN_COVERAGE_FRACTION;
     /** Grid-cell edge length in blocks. */
     public int regionScaleBlocks = WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS;
-    /** Smoothing distance either side of a role boundary. */
-    public int coastBlendWidthBlocks = WorldLayoutPlan.DEFAULT_COAST_BLEND_WIDTH_BLOCKS;
     /** {@code SINGLE_BIOME} only: the one biome id filling the world. */
     public String singleBiome = "";
     /** Explicit biome id to role ({@code land}/{@code ocean}/{@code beach}) overrides. */

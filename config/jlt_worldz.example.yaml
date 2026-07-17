@@ -43,9 +43,7 @@ netherExterior:
 layout:
   mode: legacy
   biomes: []
-  oceanCoverageFraction: 0.35
   regionScaleBlocks: 512
-  coastBlendWidthBlocks: 128
   singleBiome: ''
   roleOverrides: {}
 spawn:
@@ -61,5 +59,5 @@ _docs:
   netherBorder: 'Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.'
   overworldExterior: 'Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.'
   netherExterior: 'Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.'
-  layout: 'Coordinated terrain layout: mode (legacy/land_only/mixed/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), oceanCoverageFraction (mixed only), regionScaleBlocks, coastBlendWidthBlocks, singleBiome. Default: legacy (today''s climate-filter-only behavior).'
+  layout: 'Coordinated terrain layout: mode (legacy/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), regionScaleBlocks, singleBiome. Default: legacy (today''s climate-filter-only behavior).'
   spawn: 'How the layout origin and initial spawn are chosen: strategy is starter_at_origin (default, today''s behavior), preferred_natural_biome (search near the origin for starterBiome using the real seed, moving the layout origin there; falls back to starter_at_origin if not found or starterBiome is empty), or vanilla_spawn (unmodified vanilla spawn selection).'

@@ -272,37 +272,6 @@ class ProjectMetadataTest {
     }
 
     @Test
-    void structuresAreSuppressedNearAMixedLayoutRoleBoundary() throws IOException {
-        String generator = Files.readString(ROOT.resolve(
-            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
-        ));
-        String layoutPlan = Files.readString(ROOT.resolve(
-            "common/src/main/java/media/jlt/minecraft/mods/worldz/logic/WorldLayoutPlan.java"
-        ));
-
-        assertTrue(generator.contains(
-            "if (!isEntirelyExterior(centerChunk.getPos()) && !isNearLayoutRoleBoundary(centerChunk.getPos())) {"
-        ));
-        assertTrue(generator.contains("plan.isNearRoleBoundary(minX, minZ)"));
-        assertTrue(generator.contains("plan.isNearRoleBoundary(maxX, maxZ)"));
-        assertTrue(generator.contains("plan.isNearRoleBoundary(minX - margin, minZ - margin)"));
-        assertTrue(generator.contains("plan.isNearRoleBoundary(maxX + margin, maxZ + margin)"));
-        assertTrue(generator.contains("private static final int STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS = 128;"));
-        assertTrue(layoutPlan.contains("public boolean isNearRoleBoundary(int blockX, int blockZ) {"));
-        assertTrue(layoutPlan.contains("if (mode != LayoutMode.MIXED) {"));
-    }
-
-    @Test
-    void landOnlyModeUsesTheGentlerRiverPreservingTarget() throws IOException {
-        String generator = Files.readString(ROOT.resolve(
-            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
-        ));
-
-        assertTrue(generator.contains("plan.mode() == LayoutMode.LAND_ONLY"));
-        assertTrue(generator.contains("LayoutTerrainProfile.landOnlyTarget(naturalFloor, seaLevel)"));
-    }
-
-    @Test
     void starterLandTransitionBlendsTowardTheLayoutAdjustedFloor() throws IOException {
         String generator = Files.readString(ROOT.resolve(
             "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"

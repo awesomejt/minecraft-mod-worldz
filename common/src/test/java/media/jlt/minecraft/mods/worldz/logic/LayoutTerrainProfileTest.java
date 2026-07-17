@@ -58,31 +58,6 @@ class LayoutTerrainProfileTest {
     }
 
     @Test
-    void landOnlyLeavesShallowDepressionsLikeRiversUntouched() {
-        int shallowRiverFloor = SEA_LEVEL - 1;
-
-        assertEquals(shallowRiverFloor, LayoutTerrainProfile.landOnlyTarget(shallowRiverFloor, SEA_LEVEL));
-        assertEquals(SEA_LEVEL, LayoutTerrainProfile.landOnlyTarget(SEA_LEVEL, SEA_LEVEL));
-    }
-
-    @Test
-    void landOnlyLeavesOrdinaryDryLandUntouched() {
-        int naturalHill = SEA_LEVEL + 40;
-
-        assertEquals(naturalHill, LayoutTerrainProfile.landOnlyTarget(naturalHill, SEA_LEVEL));
-    }
-
-    @Test
-    void landOnlyRaisesOnlyDeepOceanBasinsToTheLandFloor() {
-        int deepOceanFloor = SEA_LEVEL - 20;
-
-        assertEquals(
-            SEA_LEVEL + LayoutTerrainProfile.LAND_FLOOR_OFFSET_ABOVE_SEA_LEVEL,
-            LayoutTerrainProfile.landOnlyTarget(deepOceanFloor, SEA_LEVEL)
-        );
-    }
-
-    @Test
     void outOfRangeLandFactorIsClampedRatherThanExtrapolated() {
         int naturalFloor = SEA_LEVEL - 20;
 

@@ -27,8 +27,6 @@ final class LayoutCodecs {
         MODE_CODEC.fieldOf("mode").forGetter(WorldLayoutPlan::mode),
         Codec.LONG.fieldOf("seed").forGetter(WorldLayoutPlan::seed),
         Codec.INT.fieldOf("region_scale").forGetter(WorldLayoutPlan::regionScaleBlocks),
-        Codec.DOUBLE.fieldOf("ocean_coverage").forGetter(WorldLayoutPlan::oceanCoverageFraction),
-        Codec.INT.fieldOf("coast_blend_width").forGetter(WorldLayoutPlan::coastBlendWidthBlocks),
         WEIGHT_LIST_CODEC.optionalFieldOf("land_biomes", List.of()).forGetter(WorldLayoutPlan::landBiomes),
         WEIGHT_LIST_CODEC.optionalFieldOf("ocean_biomes", List.of()).forGetter(WorldLayoutPlan::oceanBiomes),
         WEIGHT_LIST_CODEC.optionalFieldOf("beach_biomes", List.of()).forGetter(WorldLayoutPlan::beachBiomes),
