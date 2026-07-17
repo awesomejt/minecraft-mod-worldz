@@ -23,8 +23,9 @@ Durable decisions, verified API notes, and rationale that should survive across 
   coastlines for `mixed`/`ocean` layouts.
   **Update 2026-07-16 replan:** resolved by removal, not by fixing —
   `MIXED`/`LAND_ONLY` grid composition is being deleted in 0.2.0 (TODO Phase
-  1.2, DESIGN §20.1); ocean-island shorelines get a proper redesign in Phase
-  5.1 instead.
+  1.2, DESIGN §20.1); ocean-island shorelines get a proper redesign in the
+  ocean-island core phase (TODO Phase 7.1 as of the 2026-07-16 numbering)
+  instead.
 
 - 2026-07-16 / **`layout.biomes` picks one biome per whole region cell, so
   linear vanilla biomes like `river` render as a huge flat area, not a
@@ -445,8 +446,23 @@ Durable decisions, verified API notes, and rationale that should survive across 
   §20.9 — built on the same tick+saved-data mechanism as delayed borders,
   composable with any world type and movable earlier as a quick win). Four
   further candidate ideas (dry world, strip world, chaos biomes, End start)
-  are listed in GOALS pending Jason's explicit approval — do not plan them
-  until he approves (TODO 16.3).
+  were listed in GOALS pending Jason's explicit approval.
+- 2026-07-16 — Jason then approved all four candidate ideas with refinements,
+  and added a fifth of his own: dry world (GOALS 31 — water findable in
+  villages/strongholds/natural feature spots by default, configurable
+  difficulty), strip/1D world (32 — End portal must be reachable in the
+  strip; optional Nether strip), chaos biomes (33 — configurable region
+  size), End start (34 — hardcore-beatable with a solid starter chest), and
+  **stacked biome layers** (35 — vertically stacked biome surfaces replacing
+  the deep underground of a limited-size world; deep-ore budget for
+  lapis/gold/diamond needs accounting). 35's vertical interpretation is
+  flagged in GOALS for Jason's confirmation before its design spike. The
+  plan is now 20 phases (chaos = Phase 4 next to the biome-selection work it
+  reuses; strip = Phase 6 next to limits; dry world joins lava ocean in
+  Phase 9 as ocean-fluid variants; End start = Phase 15 sharing Phase 14's
+  non-Overworld-spawn spike; stacked layers = Phase 17 after flat, whose
+  layer concepts it reuses). DESIGN §20.11 holds the technical notes.
+- 2026-07-16 — Jason's GOALS Question 1 answered from the Worldz5/6 evidence:
   ocean-only biome filtering cannot prevent land (biome ≠ terrain), so endless
   ocean needs the terrain cap and distant natural islands (use case 04) come
   from releasing that cap beyond the exclusion zone. Recorded in GOALS.md

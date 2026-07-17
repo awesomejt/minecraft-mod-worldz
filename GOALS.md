@@ -119,12 +119,26 @@ Client only mod loaders:
 29. Rising lava floor — after a configurable delay (in-game days), a world-wide lava level rises from a configurable starting depth at a configurable rate (blocks per days), stopping at a configurable maximum level (sensible default). Design decides exactly which blocks convert (air/water below the level) and how existing and newly loaded chunks are handled without performance problems.
 30. Forever night — either the world starts at permanent night, or night becomes permanent after a configurable number of days. Once active, sleeping cannot skip the night and time stays at night. Consider phantom/insomnia pressure (option to keep or relax vanilla rules).
 
-### Candidate ideas (suggested 2026-07-16 — need Jason's approval before they enter the plan):
+### Dry-World Challenge (approved 2026-07-16):
 
-- **Dry world** — oceans generate as drained, empty basins (sand/gravel floors exposed); water is scarce (no rain barrels aside, limited springs). Water scarcity becomes the challenge; would generalize the ocean-fluid work from 28 (water / lava / none).
-- **Strip world ("1D Minecraft")** — the world is a narrow corridor (e.g. 16–64 blocks wide, infinitely long); everything must happen along one axis. Fits the existing exterior-envelope machinery (rectangular instead of square envelope).
-- **Chaos biomes** — biome assignment is shuffled per region from the full biome list, seed-based: deserts beside ice spikes beside jungles. Cheap to build on the existing biome-source tech; purely cosmetic-chaotic, terrain stays vanilla.
-- **End start** — begin on the outer End islands with a starter chest; work backward to the Overworld. Extreme variant of 27, likely shares most of its design.
+31. Oceans generate as drained, empty basins (exposed sand/gravel/stone floors); water is scarce. Configurable difficulty for finding water: by default, water still appears where it naturally spawns as part of structures and features (village farms and wells, strongholds, aquifer pockets, springs); harder settings remove more (e.g. no rivers or surface lakes). Strong lore-driven challenge potential. Beatability note: potions and other water-dependent progression must remain obtainable at every offered difficulty.
+
+### Strip-World Challenge — 1D Minecraft (approved 2026-07-16):
+
+32. The world is a narrow strip (configurable width in blocks or chunks) running along one axis; everything happens in that corridor. The stronghold/End portal must be reachable within the strip (progression guarantee — the existing fallback-portal machinery applies). Optionally apply the strip to the Nether as well. Composes with limited length (17) and the expanding/collapsing schedules (19–20).
+
+### Chaos-Biomes Challenge (approved 2026-07-16):
+
+33. Biome assignment is shuffled randomly (seed-based) per region over vanilla terrain — deserts beside ice spikes beside jungles. Configurable size for each random biome region. Terrain shape stays vanilla; option to keep natural rivers/oceans where vanilla put them.
+
+### End-Start Challenge (approved 2026-07-16):
+
+34. Player spawns on the outer End islands with a solid starter chest that makes surviving in the End genuinely possible (food, building blocks, tools — tuned so reaching and defeating the Ender Dragon is achievable). Must be beatable in hardcore, even if really hard. Respawn design needs care (beds explode in the End; no respawn anchors) — shares the Nether-start (27) spawn/respawn design work.
+
+### Stacked-Biome-Layers Challenge (added 2026-07-16):
+
+35. A limited-size world (blocks/chunks, per 17) where the underground is replaced by vertically stacked biome layers instead of normal caves — dig down through plains, then desert, then taiga, and so on, each layer with its own surface terrain. Layer list, order, and thicknesses configurable, with a seed-randomized option. Must account for ores that normally require deep levels (lapis, gold, diamond) — e.g. distribute an ore budget across the layers or expose config. Stronghold/End-portal placement within the stack needs design so the game stays beatable.
+    **Interpretation to confirm with Jason before design:** this is read as *vertical* stacking (successive biome surfaces as you dig down, replacing the deep underground), based on "instead of caves" and the deep-ores concern — not horizontal bands across the map.
 
 ## Questions:
 

@@ -1,6 +1,6 @@
 # TODO — jlt_worldz challenge-world plan
 
-**Requirements source:** `GOALS.md` (Jason's use cases 01–30). **Technical
+**Requirements source:** `GOALS.md` (Jason's use cases 01–35). **Technical
 reference:** `DESIGN.md` — §20 is the architecture for this plan; §§1–19
 document the already-built components and verified 26.2 APIs. **History:**
 `TODO-archive.md` (the completed 2026-07-14/15 feature-first plan).
@@ -121,101 +121,139 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       `allowOceans`.
 - [ ] 3.2 Test configs for 13 and 14; docs; **[Jason]** acceptance.
 
-## Phase 4 — World limits, expanding/collapsing (GOALS 17–20)
+## Phase 4 — Chaos biomes (GOALS 33)
+
+Small phase, placed here because it reuses Phase 2–3 machinery directly.
+
+- [ ] 4.1 Design + implement seed-shuffled biome regions over vanilla
+      terrain: the kept per-cell weighted selection machinery with a
+      configurable region size (33), land-role biomes only, composed with
+      Phase 3's pass-through so natural rivers/oceans stay vanilla (option).
+      Terrain height untouched → none of the removed coastline defect class
+      applies. Own type or `single_biome` variant — design decides.
+- [ ] 4.2 Test configs (default size, tiny regions, huge regions); docs;
+      **[Jason]** acceptance.
+
+## Phase 5 — World limits, expanding/collapsing (GOALS 17–20)
 
 Mostly verification of already-built borders/exteriors against GOALS wording,
 composed with the new world types; plus the one real gap (the End).
 
-- [ ] 4.1 Audit existing border + exterior behavior against 17–20: blocks
+- [ ] 5.1 Audit existing border + exterior behavior against 17–20: blocks
       and chunks as units (add chunk input if missing), invisible-wall
       (border) vs hard void (exterior) beyond the size (18), expansion rate +
       initial delay (19), contraction with larger default delay, minimum
       size, and center-safe start (20). Fix deltas only.
-- [ ] 4.2 The End gap (17): option to carry limits into the End with a
+- [ ] 5.2 The End gap (17): option to carry limits into the End with a
       minimum-size override so the dragon fight stays winnable; verify the
       existing Nether carry-over and blaze/End-portal guarantees still hold
       under the world-type restructure.
-- [ ] 4.3 Limits must compose with every world type (a shared module section
+- [ ] 5.3 Limits must compose with every world type (a shared module section
       in each type's config/Customize), not only the `limited` type.
-- [ ] 4.4 Test configs (static small, expanding, collapsing, End carry-over);
+- [ ] 5.4 Test configs (static small, expanding, collapsing, End carry-over);
       docs; **[Jason]** acceptance.
 
-## Phase 5 — Ocean island challenge, core (GOALS 01, 04)
+## Phase 6 — Strip world, 1D Minecraft (GOALS 32)
 
-- [ ] 5.1 Design pass (DESIGN §20 extension): natural-looking island shaping
+Right after the limits phase: it is the same access/envelope machinery in a
+rectangular shape.
+
+- [ ] 6.1 Design spike (DESIGN §20.11): vanilla `WorldBorder` is
+      square-only (verify in 26.2 sources), so the strip's long walls likely
+      come from the exterior-envelope mechanism (void or solid wall) rather
+      than the border — decide the access-prevention approach and its
+      interaction with the 17–20 schedules. Stronghold/End-portal
+      reachability inside the strip via the existing progression guarantees
+      (the fallback-portal machinery applies). Optional Nether strip (32).
+- [ ] 6.2 Implement (as a `limited` option or its own type — 6.1 decides);
+      configurable width in blocks/chunks; test configs; docs; **[Jason]**
+      acceptance.
+
+## Phase 7 — Ocean island challenge, core (GOALS 01, 04)
+
+- [ ] 7.1 Design pass (DESIGN §20 extension): natural-looking island shaping
       (noise-perturbed radius over the existing starter-land profile — not a
       disc), a dedicated narrow shore width (beach/stony-shore ring; fixes
       the logged beach-width gap properly), shallow→deep ocean depth gradient
       with depth-appropriate ocean biomes (all ocean biomes available), and
       the shared **exclusion zone** module (center = origin, default 2000
       blocks; reused by 04, 07, 08, 24). **Commit** design first.
-- [ ] 5.2 Implement the `ocean_island` world type: configurable island size
+- [ ] 7.2 Implement the `ocean_island` world type: configurable island size
       (1 chunk → huge), chosen island biome, endless ocean via the terrain
       cap, underground structures intact, unchanged Nether/End, beatable
       (progression guarantees). Use case 01.
-- [ ] 5.3 Distant natural islands (04): release the ocean cap beyond the
+- [ ] 7.3 Distant natural islands (04): release the ocean cap beyond the
       exclusion radius so the seed's natural terrain resumes far away.
-- [ ] 5.4 Test configs (tiny/default/huge island, 04 variant); docs;
+- [ ] 7.4 Test configs (tiny/default/huge island, 04 variant); docs;
       **[Jason]** acceptance including "does the island read as natural".
 
-## Phase 6 — Ocean island extras (GOALS 03, 02)
+## Phase 8 — Ocean island extras (GOALS 03, 02)
 
-- [ ] 6.1 Starter-chest infrastructure (shared with sky phases): loot presets
-      + YAML-configurable contents, placed at spawn. Then use case 03:
-      no-land ocean world, spawn on/next to a chest boat with essentials
-      (lily pad, dirt, grass block, saplings) + configurable randoms.
-- [ ] 6.2 Natural island by seed (02): search the real seed's unmodified
+- [ ] 8.1 Starter-chest infrastructure (shared with the sky, cave, Nether,
+      and End phases): loot presets + YAML-configurable contents, placed at
+      spawn. Then use case 03: no-land ocean world, spawn on/next to a chest
+      boat with essentials (lily pad, dirt, grass block, saplings) +
+      configurable randoms.
+- [ ] 8.2 Natural island by seed (02): search the real seed's unmodified
       climate/terrain for a small natural island, set world spawn/origin
       there, replace everything else with ocean beyond it. Reuses the 16.3
       spawn-search + recentering machinery. This is the hardest ocean item —
       keep it last and time-boxed; if the search proves unreliable, park it
       with findings in DESIGN and move on.
-- [ ] 6.3 Test configs; docs; **[Jason]** acceptance.
+- [ ] 8.3 Test configs; docs; **[Jason]** acceptance.
 
-## Phase 7 — Lava ocean (GOALS 28)
+## Phase 9 — Ocean fluid variants: lava ocean + dry world (GOALS 28, 31)
 
-Deliberately right after the ocean phases: it is the ocean-island shape with
-the fluid swapped, so the infrastructure is fresh.
+Right after the ocean phases: the ocean-island shape with the fluid swapped
+(lava) or removed (dry), so the infrastructure is fresh.
 
-- [ ] 7.1 Design pass (DESIGN §20.10): parameterize the ocean exterior/cap
-      fluid (water/lava; leave room for "none" if the dry-world candidate is
-      approved later). Verify 26.2 behavior for surface lava at scale: light,
-      fire spread near the shore, aquifer/fluid-tick interactions, map color.
-      Shore safety design (the transition ring shouldn't ignite spawn).
-- [ ] 7.2 Implement as an `ocean_island` fluid option or a separate
-      `lava_ocean` type (7.1 decides); test configs; docs; **[Jason]**
-      acceptance including strider/bridging travel viability.
+- [ ] 9.1 Design pass (DESIGN §20.10/§20.11): parameterize the ocean
+      exterior/cap fluid — water / lava / none. For lava (28): verify 26.2
+      surface-lava-at-scale behavior (light, fire spread at the shore ring,
+      fluid ticking, map color) and shore safety so the transition ring
+      can't ignite spawn. For dry (31): water-scarcity semantics —
+      default keeps water where structures/features naturally place it
+      (village farms and wells, strongholds, aquifer pockets, springs);
+      harder options remove more (rivers, surface lakes). Beatability:
+      potions and water-dependent progression obtainable at every offered
+      difficulty.
+- [ ] 9.2 Implement lava ocean (as an `ocean_island` fluid option or its own
+      type — 9.1 decides); test configs; **[Jason]** acceptance including
+      strider/bridging travel viability.
+- [ ] 9.3 Implement dry world with the water-findability difficulty option;
+      test configs; **[Jason]** acceptance.
 
-## Phase 8 — Sky island challenge (GOALS 05–07)
+## Phase 10 — Sky island challenge (GOALS 05–07)
 
-- [ ] 8.1 Design pass: true floating island (bounded below — not the current
-      full-depth terrain plug), default spawn platform Y ≥ 64 (slime rule),
-      necessities-chest presets easy/medium/hard informed by island biome
-      (water bucket vs cauldron etc.), all beatable; stronghold/structure
-      option reusing progression guarantees (05). Nether/End sky-island
-      options with structure retention (06). Villages beyond the exclusion
-      zone (07).
-- [ ] 8.2 Implement `sky_island` world type per the design; test configs;
+- [ ] 10.1 Design pass: true floating island (bounded below — not the
+      current full-depth terrain plug), default spawn platform Y ≥ 64 (slime
+      rule), necessities-chest presets easy/medium/hard informed by island
+      biome (water bucket vs cauldron etc.), all beatable;
+      stronghold/structure option reusing progression guarantees (05).
+      Nether/End sky-island options with structure retention (06). Villages
+      beyond the exclusion zone (07).
+- [ ] 10.2 Implement `sky_island` world type per the design; test configs;
       docs; **[Jason]** acceptance per sub-case.
 
-## Phase 9 — Floating resource islands (GOALS 08)
+## Phase 11 — Floating resource islands (GOALS 08)
 
-- [ ] 9.1 Seed-driven scattered floating islands with varied sizes/resources,
-      far enough apart to force serious bridging; option replaces pure void
-      between them. Design first (placement sampling can reuse the pure
-      hash-cell approach — uniform role, so no coastline-class defects), then
-      implement, test configs, **[Jason]** acceptance.
+- [ ] 11.1 Seed-driven scattered floating islands with varied
+      sizes/resources, far enough apart to force serious bridging; option
+      replaces pure void between them. Design first (placement sampling can
+      reuse the pure hash-cell approach — uniform role, so no
+      coastline-class defects), then implement, test configs, **[Jason]**
+      acceptance.
 
-## Phase 10 — Sky chunk challenge (GOALS 09)
+## Phase 12 — Sky chunk challenge (GOALS 09)
 
-- [ ] 10.1 Design + implement chunk-grid islands cut from the seed's natural
+- [ ] 12.1 Design + implement chunk-grid islands cut from the seed's natural
       chunks: full-chunk vs top-N-blocks-deep option, guarantee one generated
       chunk contains a portal room, normal-vs-chunk-island Nether/End
       options. Test configs; **[Jason]** acceptance.
 
-## Phase 11 — Cave challenge (GOALS 25–26)
+## Phase 13 — Cave challenge (GOALS 25–26)
 
-- [ ] 11.1 Design pass (DESIGN §20.10): underground spawn placement
+- [ ] 13.1 Design pass (DESIGN §20.10): underground spawn placement
       (configurable depth, safe cavity search — can reuse the spawn-search
       ring pattern from §18), optional sealed surface (solid roof / no sky
       access — decide generation approach and its interaction with
@@ -224,24 +262,35 @@ the fluid swapped, so the infrastructure is fresh.
       cave systems — decide carver vs. feature vs. noise approach against
       real 26.2 sources). Beatability: stronghold and underground structures
       unchanged, portal built underground works.
-- [ ] 11.2 Implement `cave` world type; starter-chest reuse; test configs;
+- [ ] 13.2 Implement `cave` world type; starter-chest reuse; test configs;
       docs; **[Jason]** acceptance (25 with/without sealed surface, 26).
 
-## Phase 12 — Nether-start challenge (GOALS 27)
+## Phase 14 — Nether-start challenge (GOALS 27)
 
-- [ ] 12.1 Feasibility spike first (the §16.1 pattern): how initial spawn in
+- [ ] 14.1 Feasibility spike first (the §16.1 pattern): how initial spawn in
       a non-Overworld dimension actually works in 26.2 — `MinecraftServer`/
       `PlayerList` spawn+respawn paths, respawn-anchor semantics, what
-      happens on death without an anchor. Verify against real sources;
-      commit findings to DESIGN §20.10 before implementing.
-- [ ] 12.2 Implement `nether_start` world type: safe Nether spawn site,
+      happens on death without an anchor. Findings cover the End too (for
+      Phase 15). Verify against real sources; commit findings to DESIGN
+      §20.10 before implementing.
+- [ ] 14.2 Implement `nether_start` world type: safe Nether spawn site,
       starter-chest difficulty tiers (easy = portal escape kit; every tier
       beatable), Overworld normal. Test configs; docs; **[Jason]**
       acceptance including death/respawn behavior.
 
-## Phase 13 — Flat worlds (GOALS 15, 16, 22)
+## Phase 15 — End-start challenge (GOALS 34)
 
-- [ ] 13.1 Design pass against DESIGN §19's verified `FlatLevelSource`
+- [ ] 15.1 Design pass building on 14.1's spike: spawn on the outer End
+      islands, starter chest tuned so survival through to defeating the
+      Ender Dragon is genuinely achievable, hardcore-beatable even if very
+      hard. Respawn semantics are the hard part (beds explode in the End, no
+      anchors) — decide and document before implementing.
+- [ ] 15.2 Implement `end_start` world type; test configs; docs; **[Jason]**
+      acceptance (ideally including a hardcore run's early game).
+
+## Phase 16 — Flat worlds (GOALS 15, 16, 22)
+
+- [ ] 16.1 Design pass against DESIGN §19's verified `FlatLevelSource`
       research: layer editor (arbitrary block layers/thicknesses, presets,
       text import/export), optional bedrock floor, structure toggles incl.
       the trial-chambers placement spike, spawn-Y/slime option (15);
@@ -249,49 +298,65 @@ the fluid swapped, so the infrastructure is fresh.
       (16 — likely noise-based underground below a flat surface, spike
       needed); underground structures buried at natural depth rather than
       floating (22).
-- [ ] 13.2 Implement `flat` world type(s) per design; test configs; docs;
+- [ ] 16.2 Implement `flat` world type(s) per design; test configs; docs;
       **[Jason]** acceptance.
 
-## Phase 14 — World-hazard rules module (GOALS 29–30)
+## Phase 17 — Stacked biome layers (GOALS 35)
+
+The biggest new generation concept — deliberately after flat (16), whose
+layer-editor concepts it likely reuses, and after limits (5), which it
+composes with.
+
+- [ ] 17.1 **Confirm the interpretation with Jason first** (GOALS 35 note:
+      vertical stacking — successive biome surfaces as you dig down,
+      replacing the deep underground). Then design spike: how to compose
+      multiple biome surface layers vertically in one dimension (per-layer
+      surface rules, lighting below the top layer, mob spawning), layer
+      config (list/order/thickness, seed-randomized option), the deep-ore
+      budget (lapis/gold/diamond redistributed across layers or exposed as
+      config), and stronghold/End-portal placement within the stack.
+- [ ] 17.2 Implement the `stacked` world type per design; test configs;
+      docs; **[Jason]** acceptance.
+
+## Phase 18 — World-hazard rules module (GOALS 29–30)
 
 A shared runtime module (server-tick + saved-data, like delayed borders),
-composable with any world type — **independent of Phases 5–13 and can be
+composable with any world type — **independent of Phases 5–17 and can be
 pulled earlier if Jason wants a fun quick win.**
 
-- [ ] 14.1 Forever night (30): start-at-night option and night-permanent-
+- [ ] 18.1 Forever night (30): start-at-night option and night-permanent-
       after-N-days trigger; once active, time is held at night and sleeping
       cannot skip it; insomnia/phantom option (keep vanilla or relax).
       Reuses the day/delay schedule idiom from borders (§12/§15).
-- [ ] 14.2 Rising lava floor (29): persisted world-wide lava level with
+- [ ] 18.2 Rising lava floor (29): persisted world-wide lava level with
       delay/rate/max (border-schedule config idiom); design the block-
       conversion rules (air/water below the level) and the application
       strategy for loaded vs. newly loaded chunks with acceptable
       performance — design task first, verified against 26.2 chunk/tick
       APIs.
-- [ ] 14.3 Test configs (night-from-day-0, night-after-N, rising lava on a
+- [ ] 18.3 Test configs (night-from-day-0, night-after-N, rising lava on a
       vanilla-limited world and on an ocean island); docs; **[Jason]**
       acceptance.
 
-## Phase 15 — Structure options wrap-up (GOALS 21, 23, 24)
+## Phase 19 — Structure options wrap-up (GOALS 21, 23, 24)
 
-- [ ] 15.1 Verify natural placement remains the default everywhere (21).
-- [ ] 15.2 Generalize the exclusion-zone module into per-structure-family
+- [ ] 19.1 Verify natural placement remains the default everywhere (21).
+- [ ] 19.2 Generalize the exclusion-zone module into per-structure-family
       "minimum distance from spawn" options (default 2000 blocks) usable by
       any world type (24).
-- [ ] 15.3 Stretch, only if Jason still wants it after 1–14: floating
+- [ ] 19.3 Stretch, only if Jason still wants it after 1–18: floating
       "Pandora" structure islands (23). Design spike first; park if cost is
       out of proportion.
-- [ ] 15.4 Test configs; docs; **[Jason]** acceptance.
+- [ ] 19.4 Test configs; docs; **[Jason]** acceptance.
 
-## Phase 16 — Wrap-up and release
+## Phase 20 — Wrap-up and release
 
-- [ ] 16.1 Full README/config-reference/example rewrite in challenge-first
+- [ ] 20.1 Full README/config-reference/example rewrite in challenge-first
       terms; MANUAL_TESTING.md final scenario tables; MEMORY.md tidy.
-- [ ] 16.2 Final clean multiloader build, artifact inspection, version bump.
+- [ ] 20.2 Final clean multiloader build, artifact inspection, version bump.
       Publishing decisions remain Jason's.
-- [ ] 16.3 Revisit GOALS' "Candidate ideas" list (dry world, strip world,
-      chaos biomes, End start) with Jason — plan approved ones as new
-      phases.
+- [ ] 20.3 Revisit any newly suggested challenge ideas with Jason — plan
+      approved ones as new phases.
 
 ---
 
@@ -300,7 +365,7 @@ pulled earlier if Jason wants a fun quick win.**
 - Dummy-RandomState fix (0.1.15) unverified in-game → Phase 1.1.
 - Worldz14 orange/glitchy terrain unexplained → Phase 1.1.
 - Straight coastlines + beach width → removed with the grid modes (1.2);
-  ocean-island shore quality is redesigned properly in 5.1.
+  ocean-island shore quality is redesigned properly in 7.1.
 - Layout sampling seed not the real world seed → Phase 1.3.
 
 ## Questions for Jason (running list)

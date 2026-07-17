@@ -1041,13 +1041,20 @@ per-type Customize screen and per-type defaults):
 
 - `jlt_worldz:single_biome` — GOALS 10–14.
 - `jlt_worldz:ocean_island` — GOALS 01–04, and 28 (lava ocean) either as a
-  fluid option here or as its own type (Phase 7.1 decides).
+  fluid option here or as its own type (TODO Phase 9.1 decides); the dry
+  world (31) generalizes the same fluid parameter to "none".
 - `jlt_worldz:sky_island` — GOALS 05–08.
 - `jlt_worldz:sky_chunk` — GOALS 09.
 - `jlt_worldz:cave` — GOALS 25–26 (added 2026-07-16).
 - `jlt_worldz:nether_start` — GOALS 27 (added 2026-07-16).
+- `jlt_worldz:end_start` — GOALS 34 (added 2026-07-16).
+- `jlt_worldz:chaos` — GOALS 33 (added 2026-07-16; possibly a
+  `single_biome` variant — TODO Phase 4.1 decides).
+- `jlt_worldz:stacked` — GOALS 35 (added 2026-07-16; name tentative).
 - `jlt_worldz:flat` — GOALS 15–16, 22.
-- `jlt_worldz:limited` — vanilla generation + size limits only (GOALS 17–20).
+- `jlt_worldz:limited` — vanilla generation + size limits only (GOALS
+  17–20); the strip/1D world (32) is either an option here or its own type
+  (TODO Phase 6.1 decides).
 
 Shared, composable modules available to every type: size limits/borders +
 exteriors (§§12/14/15), progression guarantees (§12), spawn strategies +
@@ -1100,19 +1107,19 @@ chosen shapes, defaults), following the pattern that worked for §§16–18. The
 executor designs details inside this section's decisions; it does not
 re-litigate them.
 
-### 20.7 Exclusion zone (shared module — design in Phase 5.1)
+### 20.7 Exclusion zone (shared module — design in TODO Phase 7.1)
 
 A radial zone around the world origin (default 2000 blocks) with per-feature
 semantics: suppress structure families inside it (GOALS 07, 24), or hold
 terrain overrides inside it and release natural generation beyond it (GOALS
 04, 08). One concept, one config shape, reused everywhere.
 
-### 20.8 Starter chest (shared module — design in Phase 6.1)
+### 20.8 Starter chest (shared module — design in TODO Phase 8.1)
 
 Configurable loot at spawn: named presets (easy/medium/hard, biome-informed
 for sky islands) plus YAML-listed guaranteed and random items. Used by the
 chest-boat ocean start (03), all sky variants (05–08), the cave start
-(25–26), and the Nether start's difficulty tiers (27).
+(25–26), and the Nether-start (27) and End-start (34) difficulty tiers.
 
 ### 20.9 World-hazard rules (shared runtime module — GOALS 29–30, added 2026-07-16)
 
@@ -1127,7 +1134,7 @@ resizing (§15) already uses, and they compose with any world type:
   delay/rate/maximum expressed in the same days-based schedule idiom as
   borders. The hard design question is application: which blocks convert
   (air/water below the level) and how loaded vs. newly loaded chunks get the
-  level applied without unacceptable tick cost — Phase 14.2 design task,
+  level applied without unacceptable tick cost — TODO Phase 18.2 design task,
   verified against 26.2 chunk/tick APIs before implementation.
 
 ### 20.10 Cave, Nether-start, and lava-ocean notes (added 2026-07-16)
@@ -1137,18 +1144,51 @@ resizing (§15) already uses, and they compose with any world type:
   configurable depth instead of a surface biome). The sealed-surface option
   and the mega-cave cavern both need a generation-approach spike (roof
   layer's interaction with heightmaps/mob rules; carver vs. feature vs.
-  noise for the cavern) — Phase 11.1. Beatability is free: strongholds,
+  noise for the cavern) — TODO Phase 13.1. Beatability is free: strongholds,
   mineshafts, trial chambers, and underground portals all work without sky
   access.
 - **Nether start (27):** the open question is initial spawn in a
   non-Overworld dimension — vanilla's spawn and respawn paths are
-  Overworld-centric, so Phase 12.1 is a §16.1-style feasibility spike
+  Overworld-centric, so TODO Phase 14.1 is a §16.1-style feasibility spike
+  (its findings must cover the End too, for the End start — GOALS 34)
   (verify `MinecraftServer`/`PlayerList`/respawn-anchor behavior in real
   26.2 sources, commit findings here) before any implementation. Every
   offered starter-chest tier must leave an escape/portal path.
 - **Lava ocean (28):** the ocean-island shape with the exterior/cap fluid
-  parameterized (water/lava; leave room for "none" if the dry-world
-  candidate idea is approved). Needs a 26.2 check on surface lava at scale:
+  parameterized — water / lava / none (the dry world, 31, approved
+  2026-07-16, uses "none"). Needs a 26.2 check on surface lava at scale:
   lighting cost, fire spread at the shore ring, fluid ticking, map color.
   Travel viability (striders/bridging) is an acceptance-test concern, not a
   code one.
+
+### 20.11 Second-wave challenges (approved 2026-07-16 — GOALS 31–35)
+
+- **Dry world (31):** ocean fluid "none" (drained basins) plus
+  water-scarcity semantics: default keeps water that structures/features
+  place naturally (village farms and wells, strongholds, aquifer pockets,
+  springs); harder settings remove more (rivers, surface lakes).
+  Beatability constraint at every difficulty: potions and other
+  water-dependent progression must remain obtainable.
+- **Strip world (32):** vanilla `WorldBorder` is square-only (verify in 26.2
+  sources), so the strip's long walls likely come from the exterior-envelope
+  mechanism (void or solid wall), not the border — TODO Phase 6.1 spike.
+  Stronghold/End-portal reachability inside the strip rides the existing
+  progression guarantees (fallback portal). Optional Nether strip. Composes
+  with length limits (17) and schedules (19–20).
+- **Chaos biomes (33):** the kept per-cell weighted selection machinery,
+  land-role biomes only, over untouched vanilla terrain, with a configurable
+  region size; compose with the vanilla pass-through (§20.5) so natural
+  rivers/oceans can stay. No height adjustment anywhere → the removed
+  coastline defect class cannot apply.
+- **End start (34):** shares the Phase 14.1 non-Overworld-spawn spike. The
+  hard design question is respawn (beds explode in the End, no anchors);
+  must be hardcore-beatable with the starter chest tuned for a genuine but
+  achievable dragon fight.
+- **Stacked biome layers (35):** vertical stack of biome surface layers
+  replacing the deep underground of a limited-size world — **interpretation
+  flagged in GOALS 35 for Jason's confirmation before the design spike**
+  (TODO Phase 17.1). Open design questions: per-layer surface rules and
+  lighting below the top layer, layer config (order/thickness/seed-random),
+  redistributing the deep-ore budget (lapis/gold/diamond), and
+  stronghold/portal placement within the stack. Likely reuses the flat
+  layer-editor concepts (§19) and the limits module.
