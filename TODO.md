@@ -98,7 +98,7 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       `preferred_natural_biome` strategy + origin recentering (12). Small
       per-type Customize screen — only this type's options, per-type
       defaults, scrolling per GOALS.
-- [ ] 2.3 Structures, caves, and randomness follow the seed (10; depends on
+- [x] 2.3 Structures, caves, and randomness follow the seed (10; depends on
       1.3). JUnit where pure; the rest is 2.7's manual pass.
 - [ ] 2.4 Per-world snapshot: on world creation, write a readable commented
       YAML of the resolved settings into the world folder. It is a record,

@@ -561,6 +561,21 @@ Durable decisions, verified API notes, and rationale that should survive across 
   configurable `starterRadiusBlocks`, not natural-patch-boundary detection —
   logged in TODO's Deviation log in case Jason meant the literal reading.
   See DESIGN §20.2's Phase 2.1 subsection for the full codec/config shape.
+- 2026-07-16 — **Done (Phase 2.3), no new code needed.** Confirmed
+  structures/caves/vanilla randomness already follow the real seed for
+  `single_biome` worlds through existing, preset-agnostic machinery: (a)
+  `ChunkMapMixin`'s `setLayoutSeed` hook type-checks
+  `instanceof LimitedBiomeSource` generically, not against a specific
+  preset, so it applies to `single_biome` worlds exactly like `worldz`
+  worlds; (b) `EnvelopedChunkGenerator.createStructures` delegates to
+  `super.createStructures`, and carvers/features run through the wrapped
+  vanilla `NoiseBasedChunkGenerator` unchanged — both already covered by
+  Phase 15/1.3-era component tests, untouched by Phase 2. The only
+  single_biome-specific seed question was whether its own layout sampling
+  (not vanilla's) depends on seed; added
+  `singleBiomeModeSamplingIsIndependentOfSeed` to document that it
+  deliberately does not (one biome, one answer per position — GOALS 10's
+  "randomness based on seed" is entirely vanilla's, not Worldz's layout).
 
 ## Reference Log
 

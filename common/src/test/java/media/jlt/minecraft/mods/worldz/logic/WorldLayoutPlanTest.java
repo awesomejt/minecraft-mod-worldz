@@ -104,6 +104,25 @@ class WorldLayoutPlanTest {
     }
 
     @Test
+    void singleBiomeModeSamplingIsIndependentOfSeed() {
+        // GOALS 10's "randomness is based on seed" comes entirely from vanilla's own
+        // real-seed-driven terrain/structures/caves (DESIGN §20.4's ChunkMapMixin fix) --
+        // single_biome's own layout sampling has only one possible answer per
+        // position, so re-seeding must never change what sampleAt returns.
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.SINGLE_BIOME, 1L, 512, List.of(), List.of(), List.of(),
+            Optional.of("minecraft:desert"), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+        WorldLayoutPlan reseeded = plan.withSeed(987654321L);
+
+        WorldLayoutPlan.LayoutSample original = plan.sampleAt(1234, -5678);
+        WorldLayoutPlan.LayoutSample afterReseed = reseeded.sampleAt(1234, -5678);
+        assertEquals(original.role(), afterReseed.role());
+        assertEquals(original.biomeId(), afterReseed.biomeId());
+        assertEquals(original.landFactor(), afterReseed.landFactor());
+    }
+
+    @Test
     void singleBiomeModeHonorsARoleOverride() {
         WorldLayoutPlan plan = new WorldLayoutPlan(
             LayoutMode.SINGLE_BIOME, 1L, 512, List.of(), List.of(), List.of(),
