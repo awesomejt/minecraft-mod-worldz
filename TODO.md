@@ -428,6 +428,22 @@ pulled earlier if Jason wants a fun quick win.**
   "starter biome not honored" specifically needs re-confirming since it may
   simply have been a symptom of the 122-second spawn-area stall rather than
   a separate defect.
+- 2026-07-17 — **Root cause found and fixed (0.2.4) for the floating-
+  structure mystery.** Jason's side-by-side same-seed comparison (vanilla
+  village at Y77 vs. Worldz's copy of the same village at Y120-150,
+  `Worldz-NF-01`/NeoForge) pinned it down: `ChunkMapMixin`'s dummy-
+  RandomState fix (0.1.15) reassigned `this.randomState` at the wrong
+  bytecode point relative to the one-time `generator.createState(...)` call
+  that builds `ChunkGeneratorStructureState` (which governs all structure
+  placement for the level) — that call read the *stale* value regardless,
+  even though every later read of the field (actual terrain generation)
+  correctly saw the fix, which is exactly why the TODO 1.1 bottom-of-world
+  check passed while structures still floated. Fixed on both loaders by
+  switching from `@Inject` to `@Redirect` on the `createState(...)` call.
+  See MEMORY.md for the full bytecode-level explanation. Remaining
+  performance slowness (still ~60s spawn-area prep after the earlier
+  de-duplication fix) is unresolved — Jason is adding Spark to both test
+  instances to profile it directly next.
 
 ## Deviation log
 

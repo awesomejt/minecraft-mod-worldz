@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.3", properties.getProperty("version"));
+        assertEquals("0.2.4", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -467,6 +467,12 @@ class ProjectMetadataTest {
                 "if (enveloped.getBiomeSource() instanceof LimitedBiomeSource source) {"
             ));
             assertTrue(mixin.contains("source.setLayoutSeed(level.getSeed());"));
+            // 2026-07-17: @Inject at @At("INVOKE") fixed this.randomState for every later
+            // read, but createState(...) itself still read the stale field value as its own
+            // inline argument (evaluated before the injected callback runs) -- switched to
+            // @Redirect so the passed-in value is chosen explicitly instead.
+            assertTrue(mixin.contains("@Redirect("));
+            assertTrue(mixin.contains("return generator.createState(structureSets, this.randomState, legacyLevelSeed);"));
         }
     }
 

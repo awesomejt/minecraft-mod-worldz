@@ -1103,6 +1103,55 @@ Durable decisions, verified API notes, and rationale that should survive across 
   now. Sparse (but present) caves in the shallower layers is separately
   judged likely normal vanilla cave-density falloff near the surface, not
   a defect — not investigated further absent contrary evidence.
+- 2026-07-17 — **Root cause found and fixed for the floating-structure
+  mystery (0.2.4).** Jason's decisive test: same seed, same position
+  `(-6817, y, 5472)`, a desert village exists in both a plain vanilla world
+  and a Worldz `single_biome` world (`Worldz-NF-01`, NeoForge) — vanilla
+  places it at Y77 (normal); Worldz places the identical village at
+  Y120-150, detached from the real terrain below. Same seed/position rules
+  out coincidence and proves something in Worldz's own generator wrapping
+  changes the outcome relative to true vanilla.
+
+  Root cause: `ChunkMapMixin`'s 0.1.15 dummy-RandomState fix
+  (`@Inject` at `@At("INVOKE")` on `generator.createState(...)`,
+  reassigning `this.randomState`) has a bytecode-timing bug. Decompiled
+  `ChunkMap`'s constructor:
+  `this.chunkGeneratorState = generator.createState(registryAccess
+  .lookupOrThrow(Registries.STRUCTURE_SET), this.randomState, levelSeed);`
+  — `this.randomState` is read via `GETFIELD` as this call's own inline
+  argument. An `@At("INVOKE")` callback fires immediately before the
+  `INVOKE` instruction itself, which is *after* the argument-loading
+  instructions for that same call (including that `GETFIELD`) have already
+  executed — so the field reassignment always landed one instruction too
+  late for this *specific* call. Every *later* read of `this.randomState`
+  (actual terrain generation, via the `randomState()` accessor) correctly
+  saw the fix — which is exactly why the TODO 1.1 bottom-of-world check
+  passed clean while structures kept floating: bulk terrain generation was
+  never affected, only the one-time `ChunkGeneratorStructureState` built
+  during construction, which governs every structure-placement decision
+  for the whole level and was still built from the dummy, zero-density
+  `RandomState` regardless of the "fix." A degenerate density-based
+  placement/height estimate for structures, combined with correctly-
+  generated real terrain around it, is consistent with structures ending
+  up anchored well above (or otherwise detached from) where the terrain
+  actually ends up.
+
+  **Fix:** switched both loaders' `ChunkMapMixin` from `@Inject` to
+  `@Redirect` on the same `createState(...)` call — the redirect handler
+  computes the correct `RandomState` (when applicable) and passes it
+  explicitly to `generator.createState(...)` itself, sidestepping the
+  field-read-timing issue entirely rather than depending on reassignment
+  order. `ProjectMetadataTest` updated to assert the `@Redirect` shape.
+  Not yet confirmed in-game — needs a fresh world on both loaders to verify
+  villages no longer float. Version bump 0.2.3 → 0.2.4; deployed to both
+  Prism instances (manual copy for NeoForge, no `deployToPrism`-equivalent
+  Gradle task exists there yet).
+
+  **Open question this doesn't yet answer:** whether this also explains
+  the remaining ~60s spawn-area-prep slowness (unclear — a degenerate
+  density router isn't obviously *slower* to evaluate than a real one, so
+  the performance issue may be genuinely separate; Jason is profiling with
+  Spark next).
 
 ## API Deviations
 

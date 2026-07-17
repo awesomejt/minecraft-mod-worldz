@@ -10,10 +10,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.thread.BlockableEventLoop;
 import net.minecraft.world.level.TicketStorage;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.entity.ChunkStatusUpdateListener;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.SavedDataStorage;
@@ -21,8 +23,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
@@ -51,6 +52,23 @@ import java.util.function.Supplier;
  * no seed-aware hook, so the seed baked into a freshly created world's plan is a
  * placeholder until this injection runs. No persistence of its own is needed --
  * {@code ServerLevel.getSeed()} already returns the same value on every load.
+ *
+ * <p><b>2026-07-17 correction:</b> the original fix used {@code @Inject} at
+ * {@code @At("INVOKE")} on {@code generator.createState(...)}, reassigning
+ * {@code this.randomState} there. That correctly fixes every <i>later</i> read of the
+ * field (actual terrain generation), confirmed by a clean bottom-of-world check -- but
+ * not the {@code createState(...)} call itself: decompiled source shows
+ * {@code this.chunkGeneratorState = generator.createState(structureSets, this.randomState,
+ * levelSeed);}, reading the field inline as an argument. An {@code @At("INVOKE")} callback
+ * fires immediately before the {@code INVOKE} instruction, which is *after* the argument
+ * list -- including that {@code GETFIELD} -- has already been evaluated onto the stack, so
+ * the reassignment always landed one instruction too late for this specific call.
+ * {@code ChunkGeneratorStructureState} (built once here, governing every structure
+ * placement decision for the whole level) was still built from the dummy
+ * {@code RandomState} regardless -- consistent with in-game reports of villages/structures
+ * generating detached from the real (correctly-generated) terrain around them. Switched to
+ * {@code @Redirect} so the value passed into {@code createState(...)} is chosen explicitly
+ * rather than depending on field-read timing.
  */
 @Mixin(ChunkMap.class)
 abstract class ChunkMapMixin {
@@ -58,7 +76,7 @@ abstract class ChunkMapMixin {
     @Mutable
     private RandomState randomState;
 
-    @Inject(
+    @Redirect(
         method = "<init>",
         at = @At(
             value = "INVOKE",
@@ -66,21 +84,12 @@ abstract class ChunkMapMixin {
                 + "Lnet/minecraft/world/level/levelgen/RandomState;J)Lnet/minecraft/world/level/chunk/ChunkGeneratorStructureState;"
         )
     )
-    private void jltWorldz$useDelegateSettingsInsteadOfDummy(
-        ServerLevel level,
-        LevelStorageSource.LevelStorageAccess levelStorage,
-        DataFixer dataFixer,
-        StructureTemplateManager structureManager,
-        Executor executor,
-        BlockableEventLoop<Runnable> mainThreadExecutor,
-        LightChunkGetter chunkGetter,
+    private ChunkGeneratorStructureState jltWorldz$createStateWithDelegateSettings(
         ChunkGenerator generator,
-        ChunkStatusUpdateListener chunkStatusListener,
-        Supplier<SavedDataStorage> overworldDataStorage,
-        TicketStorage ticketStorage,
-        int serverViewDistance,
-        boolean syncWrites,
-        CallbackInfo callback
+        HolderLookup<StructureSet> structureSets,
+        RandomState randomState,
+        long legacyLevelSeed,
+        ServerLevel level
     ) {
         if (generator instanceof EnvelopedChunkGenerator enveloped) {
             if (enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {
@@ -94,5 +103,9 @@ abstract class ChunkMapMixin {
                 source.setLayoutSeed(level.getSeed());
             }
         }
+        // Pass this.randomState explicitly (now fixed above when applicable) rather than
+        // the redirect's own captured randomState argument, which is this call's original,
+        // possibly-stale value.
+        return generator.createState(structureSets, this.randomState, legacyLevelSeed);
     }
 }
