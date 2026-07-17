@@ -436,7 +436,17 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Global config hygiene: never rewrite `config/jlt_worldz.yaml` when absent or
   all-defaults, document via generated comment-based YAML (our own emitter;
   SnakeYAML doesn't round-trip comments), drop JSON migration.
-- 2026-07-16 — Jason's GOALS Question 1 answered from the Worldz5/6 evidence:
+- 2026-07-16 — Jason approved five additional challenges in the same planning
+  session: cave-only start with mega-cave option (GOALS 25–26), Nether start
+  (27), lava ocean (28), rising lava floor (29), and forever night (30). The
+  plan grew from 12 to 16 phases (lava ocean lands right after the ocean
+  phases to reuse fresh infrastructure; cave and Nether start after the sky
+  phases; 29–30 form a shared **world-hazard rules** runtime module — DESIGN
+  §20.9 — built on the same tick+saved-data mechanism as delayed borders,
+  composable with any world type and movable earlier as a quick win). Four
+  further candidate ideas (dry world, strip world, chaos biomes, End start)
+  are listed in GOALS pending Jason's explicit approval — do not plan them
+  until he approves (TODO 16.3).
   ocean-only biome filtering cannot prevent land (biome ≠ terrain), so endless
   ocean needs the terrain cap and distant natural islands (use case 04) come
   from releasing that cap beyond the exclusion zone. Recorded in GOALS.md

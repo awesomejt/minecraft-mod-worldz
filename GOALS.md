@@ -101,6 +101,31 @@ Client only mod loaders:
 23. Having an option for certain land structures to float high above - like Pandora in Avatar. Floating islands containing a village would be pretty cool generation - but only as an option.
 24. Have option for structures like villages, outposts, strongholds, trail chambers, etc to generate far enough way from spawn to require a significant trip. Should be configuratable - but 2000 blocks is a good distance away.
 
+### Cave Challenge:
+
+25. Cave-only start — player spawns deep underground in a natural cave (configurable depth), optionally with a starter chest. Option to seal the surface so the entire game is played underground (solid roof / no sky access). Underground structures (mineshafts, dungeons, trial chambers, stronghold) generate normally so the game stays beatable; the Nether is reached via a portal built underground.
+26. Same as 25, but with a mega-cave option: a huge natural-looking cavern (configurable size) around spawn — a buried "world in a cave" with room to build a base, blended into the natural cave systems at its edges.
+
+### Nether-Start Challenge:
+
+27. Player begins in the Nether instead of the Overworld (Overworld generates normally and is reachable by portal). Configurable starter chest sets the difficulty — easy includes what is needed to build a portal out (obsidian, flint and steel); harder tiers give less, but every offered tier must leave the game beatable. Respawn behavior in the Nether (respawn anchor semantics, spawn-point safety) needs design.
+
+### Lava-Ocean Challenge:
+
+28. Same shape as the ocean island challenge (01/04), but the endless ocean is lava instead of water. The island remains a normal land biome with a transition shore. Consider travel (no boats — striders/bridging) and fire hazards near the shore. Nether and End unchanged; game beatable.
+
+### World-Hazard Rules (composable with any world type above):
+
+29. Rising lava floor — after a configurable delay (in-game days), a world-wide lava level rises from a configurable starting depth at a configurable rate (blocks per days), stopping at a configurable maximum level (sensible default). Design decides exactly which blocks convert (air/water below the level) and how existing and newly loaded chunks are handled without performance problems.
+30. Forever night — either the world starts at permanent night, or night becomes permanent after a configurable number of days. Once active, sleeping cannot skip the night and time stays at night. Consider phantom/insomnia pressure (option to keep or relax vanilla rules).
+
+### Candidate ideas (suggested 2026-07-16 — need Jason's approval before they enter the plan):
+
+- **Dry world** — oceans generate as drained, empty basins (sand/gravel floors exposed); water is scarce (no rain barrels aside, limited springs). Water scarcity becomes the challenge; would generalize the ocean-fluid work from 28 (water / lava / none).
+- **Strip world ("1D Minecraft")** — the world is a narrow corridor (e.g. 16–64 blocks wide, infinitely long); everything must happen along one axis. Fits the existing exterior-envelope machinery (rectangular instead of square envelope).
+- **Chaos biomes** — biome assignment is shuffled per region from the full biome list, seed-based: deserts beside ice spikes beside jungles. Cheap to build on the existing biome-source tech; purely cosmetic-chaotic, terrain stays vanilla.
+- **End start** — begin on the outer End islands with a starter chest; work backward to the Overworld. Extreme variant of 27, likely shares most of its design.
+
 ## Questions:
 
 1. Depending on ocean biomes, do small islands naturally happen. If so, then after the starter island (if one is generated), use ocean and deep ocean to prevent islands from generating until beyond exclusion zone.

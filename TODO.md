@@ -1,6 +1,6 @@
 # TODO — jlt_worldz challenge-world plan
 
-**Requirements source:** `GOALS.md` (Jason's use cases 01–24). **Technical
+**Requirements source:** `GOALS.md` (Jason's use cases 01–30). **Technical
 reference:** `DESIGN.md` — §20 is the architecture for this plan; §§1–19
 document the already-built components and verified 26.2 APIs. **History:**
 `TODO-archive.md` (the completed 2026-07-14/15 feature-first plan).
@@ -172,36 +172,76 @@ composed with the new world types; plus the one real gap (the End).
       with findings in DESIGN and move on.
 - [ ] 6.3 Test configs; docs; **[Jason]** acceptance.
 
-## Phase 7 — Sky island challenge (GOALS 05–07)
+## Phase 7 — Lava ocean (GOALS 28)
 
-- [ ] 7.1 Design pass: true floating island (bounded below — not the current
+Deliberately right after the ocean phases: it is the ocean-island shape with
+the fluid swapped, so the infrastructure is fresh.
+
+- [ ] 7.1 Design pass (DESIGN §20.10): parameterize the ocean exterior/cap
+      fluid (water/lava; leave room for "none" if the dry-world candidate is
+      approved later). Verify 26.2 behavior for surface lava at scale: light,
+      fire spread near the shore, aquifer/fluid-tick interactions, map color.
+      Shore safety design (the transition ring shouldn't ignite spawn).
+- [ ] 7.2 Implement as an `ocean_island` fluid option or a separate
+      `lava_ocean` type (7.1 decides); test configs; docs; **[Jason]**
+      acceptance including strider/bridging travel viability.
+
+## Phase 8 — Sky island challenge (GOALS 05–07)
+
+- [ ] 8.1 Design pass: true floating island (bounded below — not the current
       full-depth terrain plug), default spawn platform Y ≥ 64 (slime rule),
       necessities-chest presets easy/medium/hard informed by island biome
       (water bucket vs cauldron etc.), all beatable; stronghold/structure
       option reusing progression guarantees (05). Nether/End sky-island
       options with structure retention (06). Villages beyond the exclusion
       zone (07).
-- [ ] 7.2 Implement `sky_island` world type per the design; test configs;
+- [ ] 8.2 Implement `sky_island` world type per the design; test configs;
       docs; **[Jason]** acceptance per sub-case.
 
-## Phase 8 — Floating resource islands (GOALS 08)
+## Phase 9 — Floating resource islands (GOALS 08)
 
-- [ ] 8.1 Seed-driven scattered floating islands with varied sizes/resources,
+- [ ] 9.1 Seed-driven scattered floating islands with varied sizes/resources,
       far enough apart to force serious bridging; option replaces pure void
       between them. Design first (placement sampling can reuse the pure
       hash-cell approach — uniform role, so no coastline-class defects), then
       implement, test configs, **[Jason]** acceptance.
 
-## Phase 9 — Sky chunk challenge (GOALS 09)
+## Phase 10 — Sky chunk challenge (GOALS 09)
 
-- [ ] 9.1 Design + implement chunk-grid islands cut from the seed's natural
+- [ ] 10.1 Design + implement chunk-grid islands cut from the seed's natural
       chunks: full-chunk vs top-N-blocks-deep option, guarantee one generated
       chunk contains a portal room, normal-vs-chunk-island Nether/End
       options. Test configs; **[Jason]** acceptance.
 
-## Phase 10 — Flat worlds (GOALS 15, 16, 22)
+## Phase 11 — Cave challenge (GOALS 25–26)
 
-- [ ] 10.1 Design pass against DESIGN §19's verified `FlatLevelSource`
+- [ ] 11.1 Design pass (DESIGN §20.10): underground spawn placement
+      (configurable depth, safe cavity search — can reuse the spawn-search
+      ring pattern from §18), optional sealed surface (solid roof / no sky
+      access — decide generation approach and its interaction with
+      heightmaps, mob spawning, and phantom rules), and the mega-cave option
+      (huge natural-looking cavern around spawn, edges blended into natural
+      cave systems — decide carver vs. feature vs. noise approach against
+      real 26.2 sources). Beatability: stronghold and underground structures
+      unchanged, portal built underground works.
+- [ ] 11.2 Implement `cave` world type; starter-chest reuse; test configs;
+      docs; **[Jason]** acceptance (25 with/without sealed surface, 26).
+
+## Phase 12 — Nether-start challenge (GOALS 27)
+
+- [ ] 12.1 Feasibility spike first (the §16.1 pattern): how initial spawn in
+      a non-Overworld dimension actually works in 26.2 — `MinecraftServer`/
+      `PlayerList` spawn+respawn paths, respawn-anchor semantics, what
+      happens on death without an anchor. Verify against real sources;
+      commit findings to DESIGN §20.10 before implementing.
+- [ ] 12.2 Implement `nether_start` world type: safe Nether spawn site,
+      starter-chest difficulty tiers (easy = portal escape kit; every tier
+      beatable), Overworld normal. Test configs; docs; **[Jason]**
+      acceptance including death/respawn behavior.
+
+## Phase 13 — Flat worlds (GOALS 15, 16, 22)
+
+- [ ] 13.1 Design pass against DESIGN §19's verified `FlatLevelSource`
       research: layer editor (arbitrary block layers/thicknesses, presets,
       text import/export), optional bedrock floor, structure toggles incl.
       the trial-chambers placement spike, spawn-Y/slime option (15);
@@ -209,26 +249,49 @@ composed with the new world types; plus the one real gap (the End).
       (16 — likely noise-based underground below a flat surface, spike
       needed); underground structures buried at natural depth rather than
       floating (22).
-- [ ] 10.2 Implement `flat` world type(s) per design; test configs; docs;
+- [ ] 13.2 Implement `flat` world type(s) per design; test configs; docs;
       **[Jason]** acceptance.
 
-## Phase 11 — Structure options wrap-up (GOALS 21, 23, 24)
+## Phase 14 — World-hazard rules module (GOALS 29–30)
 
-- [ ] 11.1 Verify natural placement remains the default everywhere (21).
-- [ ] 11.2 Generalize the exclusion-zone module into per-structure-family
+A shared runtime module (server-tick + saved-data, like delayed borders),
+composable with any world type — **independent of Phases 5–13 and can be
+pulled earlier if Jason wants a fun quick win.**
+
+- [ ] 14.1 Forever night (30): start-at-night option and night-permanent-
+      after-N-days trigger; once active, time is held at night and sleeping
+      cannot skip it; insomnia/phantom option (keep vanilla or relax).
+      Reuses the day/delay schedule idiom from borders (§12/§15).
+- [ ] 14.2 Rising lava floor (29): persisted world-wide lava level with
+      delay/rate/max (border-schedule config idiom); design the block-
+      conversion rules (air/water below the level) and the application
+      strategy for loaded vs. newly loaded chunks with acceptable
+      performance — design task first, verified against 26.2 chunk/tick
+      APIs.
+- [ ] 14.3 Test configs (night-from-day-0, night-after-N, rising lava on a
+      vanilla-limited world and on an ocean island); docs; **[Jason]**
+      acceptance.
+
+## Phase 15 — Structure options wrap-up (GOALS 21, 23, 24)
+
+- [ ] 15.1 Verify natural placement remains the default everywhere (21).
+- [ ] 15.2 Generalize the exclusion-zone module into per-structure-family
       "minimum distance from spawn" options (default 2000 blocks) usable by
       any world type (24).
-- [ ] 11.3 Stretch, only if Jason still wants it after 1–10: floating
+- [ ] 15.3 Stretch, only if Jason still wants it after 1–14: floating
       "Pandora" structure islands (23). Design spike first; park if cost is
       out of proportion.
-- [ ] 11.4 Test configs; docs; **[Jason]** acceptance.
+- [ ] 15.4 Test configs; docs; **[Jason]** acceptance.
 
-## Phase 12 — Wrap-up and release
+## Phase 16 — Wrap-up and release
 
-- [ ] 12.1 Full README/config-reference/example rewrite in challenge-first
+- [ ] 16.1 Full README/config-reference/example rewrite in challenge-first
       terms; MANUAL_TESTING.md final scenario tables; MEMORY.md tidy.
-- [ ] 12.2 Final clean multiloader build, artifact inspection, version bump.
+- [ ] 16.2 Final clean multiloader build, artifact inspection, version bump.
       Publishing decisions remain Jason's.
+- [ ] 16.3 Revisit GOALS' "Candidate ideas" list (dry world, strip world,
+      chaos biomes, End start) with Jason — plan approved ones as new
+      phases.
 
 ---
 

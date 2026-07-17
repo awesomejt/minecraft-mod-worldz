@@ -1040,16 +1040,20 @@ Screen: mutually exclusive processes get their own types, each with a small
 per-type Customize screen and per-type defaults):
 
 - `jlt_worldz:single_biome` — GOALS 10–14.
-- `jlt_worldz:ocean_island` — GOALS 01–04.
+- `jlt_worldz:ocean_island` — GOALS 01–04, and 28 (lava ocean) either as a
+  fluid option here or as its own type (Phase 7.1 decides).
 - `jlt_worldz:sky_island` — GOALS 05–08.
 - `jlt_worldz:sky_chunk` — GOALS 09.
+- `jlt_worldz:cave` — GOALS 25–26 (added 2026-07-16).
+- `jlt_worldz:nether_start` — GOALS 27 (added 2026-07-16).
 - `jlt_worldz:flat` — GOALS 15–16, 22.
 - `jlt_worldz:limited` — vanilla generation + size limits only (GOALS 17–20).
 
 Shared, composable modules available to every type: size limits/borders +
 exteriors (§§12/14/15), progression guarantees (§12), spawn strategies +
-origin recentering (§18), starter land (§16), plus two new ones — the
-**exclusion zone** (20.7) and the **starter chest** (20.8). The YAML config
+origin recentering (§18), starter land (§16), plus new ones — the
+**exclusion zone** (20.7), the **starter chest** (20.8), and the
+**world-hazard rules** runtime module (20.9). The YAML config
 gains one section per world type plus shared-module sections; exact preset
 IDs, config shape, and lang/tag wiring are Phase 2.1's design task. The old
 `LayoutMode` becomes an internal composition detail of each type, not a
@@ -1107,4 +1111,44 @@ terrain overrides inside it and release natural generation beyond it (GOALS
 
 Configurable loot at spawn: named presets (easy/medium/hard, biome-informed
 for sky islands) plus YAML-listed guaranteed and random items. Used by the
-chest-boat ocean start (03) and all sky variants (05–08).
+chest-boat ocean start (03), all sky variants (05–08), the cave start
+(25–26), and the Nether start's difficulty tiers (27).
+
+### 20.9 World-hazard rules (shared runtime module — GOALS 29–30, added 2026-07-16)
+
+Unlike everything above, these are not worldgen: they are runtime rules
+driven by server ticks + saved data, exactly the mechanism delayed border
+resizing (§15) already uses, and they compose with any world type:
+
+- **Forever night (30):** start at permanent night, or lock to night after N
+  in-game days; once active, time is held at night and sleeping cannot skip
+  it. Insomnia/phantom pressure is an explicit option (vanilla or relaxed).
+- **Rising lava floor (29):** a persisted world-wide lava level with
+  delay/rate/maximum expressed in the same days-based schedule idiom as
+  borders. The hard design question is application: which blocks convert
+  (air/water below the level) and how loaded vs. newly loaded chunks get the
+  level applied without unacceptable tick cost — Phase 14.2 design task,
+  verified against 26.2 chunk/tick APIs before implementation.
+
+### 20.10 Cave, Nether-start, and lava-ocean notes (added 2026-07-16)
+
+- **Cave (25–26):** underground spawn placement can reuse §18's
+  deterministic ring-search pattern (searching for a safe cavity at a
+  configurable depth instead of a surface biome). The sealed-surface option
+  and the mega-cave cavern both need a generation-approach spike (roof
+  layer's interaction with heightmaps/mob rules; carver vs. feature vs.
+  noise for the cavern) — Phase 11.1. Beatability is free: strongholds,
+  mineshafts, trial chambers, and underground portals all work without sky
+  access.
+- **Nether start (27):** the open question is initial spawn in a
+  non-Overworld dimension — vanilla's spawn and respawn paths are
+  Overworld-centric, so Phase 12.1 is a §16.1-style feasibility spike
+  (verify `MinecraftServer`/`PlayerList`/respawn-anchor behavior in real
+  26.2 sources, commit findings here) before any implementation. Every
+  offered starter-chest tier must leave an escape/portal path.
+- **Lava ocean (28):** the ocean-island shape with the exterior/cap fluid
+  parameterized (water/lava; leave room for "none" if the dry-world
+  candidate idea is approved). Needs a 26.2 check on surface lava at scale:
+  lighting cost, fire spread at the shore ring, fluid ticking, map color.
+  Travel viability (striders/bridging) is an acceptance-test concern, not a
+  code one.
