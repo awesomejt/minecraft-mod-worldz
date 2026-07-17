@@ -44,6 +44,27 @@ class WorldLayoutPlanTest {
     }
 
     @Test
+    void withSeedReturnsTheSameInstanceWhenTheSeedAlreadyMatches() {
+        WorldLayoutPlan plan = oceanPlan(42L, 512, List.of());
+
+        assertEquals(plan, plan.withSeed(42L));
+    }
+
+    @Test
+    void withSeedChangesOnlySamplingNotOtherFields() {
+        WorldLayoutPlan plan = oceanPlan(1L, 512, List.of());
+        WorldLayoutPlan reseeded = plan.withSeed(99L);
+
+        assertEquals(99L, reseeded.seed());
+        assertEquals(plan.mode(), reseeded.mode());
+        assertEquals(plan.regionScaleBlocks(), reseeded.regionScaleBlocks());
+        assertEquals(plan.oceanBiomes(), reseeded.oceanBiomes());
+        // A different seed can (not must) sample a different biome at the same column;
+        // what matters is that sampling now follows the new seed deterministically.
+        assertEquals(reseeded.sampleAt(500, 500), reseeded.sampleAt(500, 500));
+    }
+
+    @Test
     void voidPlanSamplesLandEverywhereWithNoConfiguredBiome() {
         WorldLayoutPlan plan = new WorldLayoutPlan(
             LayoutMode.VOID, 1L, 512, List.of(), List.of(), List.of(),

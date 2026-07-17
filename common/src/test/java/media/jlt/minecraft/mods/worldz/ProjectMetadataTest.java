@@ -205,7 +205,7 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("applyLayoutAdjustment(chunk, randomState, false)"));
         assertTrue(generator.contains("applyLayoutAdjustment(chunk, randomState, true)"));
         assertTrue(generator.contains("LayoutTerrainProfile.targetHeight"));
-        assertTrue(generator.contains("plan.mode() == LayoutMode.LEGACY || plan.mode() == LayoutMode.VOID"));
+        assertTrue(generator.contains("mode == LayoutMode.LEGACY || mode == LayoutMode.VOID"));
         assertTrue(generator.contains("layoutAdjustedHeight(x, z, naturalHeight, heightAccessor, randomState)"));
         // fillFromNoise raises before buildSurface runs, and applyCarvers only repairs
         // (never lowers) so a carved-through raise still preserves the surface shell.
@@ -225,9 +225,27 @@ class ProjectMetadataTest {
         ));
 
         assertTrue(source.contains("this.worldLayoutPlan.mode() != LayoutMode.LEGACY"));
-        assertTrue(source.contains("this.worldLayoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()"));
+        assertTrue(source.contains("layoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()"));
         assertTrue(source.contains("resolveLayoutBiomes(worldLayoutPlan, biomeGetter)"));
         assertTrue(source.contains("possible.addAll(layoutBiomes.values())"));
+    }
+
+    @Test
+    void limitedBiomeSourceResolvesTheRealSeedThroughAMutableEffectivePlan() throws IOException {
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(source.contains("private volatile WorldLayoutPlan effectiveLayoutPlan;"));
+        assertTrue(source.contains("public WorldLayoutPlan effectiveLayoutPlan() {"));
+        assertTrue(source.contains("public void setLayoutSeed(long seed) {"));
+        assertTrue(source.contains("this.effectiveLayoutPlan = this.worldLayoutPlan.withSeed(seed);"));
+        assertTrue(source.contains("WorldLayoutPlan layoutPlan = this.effectiveLayoutPlan;"));
+        assertTrue(generator.contains("private record LayoutContext(LimitedBiomeSource source) {"));
+        assertTrue(generator.contains("return source.effectiveLayoutPlan();"));
     }
 
     @Test
@@ -237,7 +255,7 @@ class ProjectMetadataTest {
         ));
 
         assertTrue(source.contains("isInStarterTransitionRing(quartX, quartZ)"));
-        assertTrue(source.contains("this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX - originX, blockZ - originZ)"));
+        assertTrue(source.contains("layoutPlan.sampleRole(BiomeRole.BEACH, blockX - originX, blockZ - originZ)"));
         assertTrue(source.contains("StarterZone.inRingQuart("));
     }
 
@@ -411,11 +429,15 @@ class ProjectMetadataTest {
             assertTrue(mixin.contains("@Mixin(ChunkMap.class)"));
             assertTrue(mixin.contains("private RandomState randomState;"));
             assertTrue(mixin.contains("method = \"<init>\","));
+            assertTrue(mixin.contains("if (generator instanceof EnvelopedChunkGenerator enveloped) {"));
             assertTrue(mixin.contains(
-                "if (generator instanceof EnvelopedChunkGenerator enveloped\n"
-                    + "            && enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {"
+                "if (enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {"
             ));
             assertTrue(mixin.contains("this.randomState = RandomState.create("));
+            assertTrue(mixin.contains(
+                "if (enveloped.getBiomeSource() instanceof LimitedBiomeSource source) {"
+            ));
+            assertTrue(mixin.contains("source.setLayoutSeed(level.getSeed());"));
         }
     }
 

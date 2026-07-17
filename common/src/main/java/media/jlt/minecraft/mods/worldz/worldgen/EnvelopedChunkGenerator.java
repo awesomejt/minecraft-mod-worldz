@@ -684,14 +684,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (dimension != Dimension.OVERWORLD || !(delegate.getBiomeSource() instanceof LimitedBiomeSource source)) {
             return Optional.empty();
         }
-        WorldLayoutPlan plan = source.worldLayoutPlan();
+        LayoutMode mode = source.worldLayoutPlan().mode();
         // VOID's sky-island overlay is Phase 15.5 work; its placeholder sample
         // always reports full land factor, which would wrongly raise the whole
         // world instead of leaving it void. Skip terrain adjustment until then.
-        if (plan.mode() == LayoutMode.LEGACY || plan.mode() == LayoutMode.VOID) {
+        // Mode is invariant regardless of when the real world seed resolves, so
+        // gating on it here (rather than through the live effective plan) is safe.
+        if (mode == LayoutMode.LEGACY || mode == LayoutMode.VOID) {
             return Optional.empty();
         }
-        return Optional.of(new LayoutContext(plan));
+        return Optional.of(new LayoutContext(source));
     }
 
     private BlockState exteriorState(ExteriorMode mode, int y, LevelHeightAccessor heightAccessor) {
@@ -751,6 +753,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private record StarterLandContext(int radiusBlocks, StarterLandPlan plan) {
     }
 
-    private record LayoutContext(WorldLayoutPlan plan) {
+    /**
+     * Holds the source rather than a snapshotted plan so every read reflects the real
+     * world seed once {@link LimitedBiomeSource#setLayoutSeed(long)} resolves it --
+     * this context is captured at codec-decode time, before that resolution happens.
+     */
+    private record LayoutContext(LimitedBiomeSource source) {
+        WorldLayoutPlan plan() {
+            return source.effectiveLayoutPlan();
+        }
     }
 }

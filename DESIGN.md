@@ -1084,8 +1084,42 @@ The random-per-world sampling seed (§17's workaround for codecs decoding
 without seed context) is replaced by capturing the real world seed at
 generation time, where it *is* available to the generator (e.g. at
 `ChunkMap` construction, which `ChunkMapMixin` already intercepts, or from
-the server level). Same seed string ⇒ same Worldz decisions. Exact hook to be
-verified against 26.2 sources in Phase 1.3.
+the server level). Same seed string ⇒ same Worldz decisions.
+
+#### Implementation (Phase 1.3)
+
+`ChunkMapMixin`'s existing `<init>` injection (both loaders) already receives
+`ServerLevel level` and already reads `level.getSeed()` for the dummy-
+`RandomState` fix -- the identical value is the real Minecraft world seed,
+confirmed against the decompiled 26.2 `ChunkMap` constructor signature (no
+further source verification needed; this is the same call already shipped
+in 0.1.15). The injection now also calls
+`LimitedBiomeSource.setLayoutSeed(level.getSeed())` when the generator's
+biome source is a `LimitedBiomeSource`.
+
+Unlike the seed-informed spawn origin (§18), this needs **no persistence of
+its own**: `ServerLevel.getSeed()` already returns the same deterministic
+value on every load (it is vanilla-persisted, not something Worldz has to
+search for and remember), so the mixin can simply call `setLayoutSeed` every
+time a level's `ChunkMap` is constructed -- on first creation and every
+subsequent load alike -- with no `SavedData` and no
+`resolveFresh`/`reapplyPersisted` split.
+
+`WorldLayoutPlan` gained a pure `withSeed(long)` wither (returns `this`
+unchanged if the seed already matches, otherwise a re-seeded copy -- mode,
+biome pools, and every other field are untouched). `LimitedBiomeSource`
+holds two views of the plan: `worldLayoutPlan()` keeps returning the exact
+persisted plan (round-trips through the codec and the Customize screen
+unchanged), while a new mutable `effectiveLayoutPlan` field (initialized to
+the persisted plan, `volatile` for cross-thread visibility from the mixin's
+injection point) is what `getNoiseBiome` actually samples from, and is what
+`setLayoutSeed` updates via `withSeed`. `EnvelopedChunkGenerator`'s
+`LayoutContext` was changed from snapshotting a `WorldLayoutPlan` at
+generator-construction time (before `setLayoutSeed` can possibly have run)
+to holding the `LimitedBiomeSource` itself and reading `effectiveLayoutPlan()`
+live at each use -- the same "coordinate-shift-at-integration-boundary"
+shape already used for origin recentering (§18), just for a plan reference
+instead of a coordinate delta.
 
 ### 20.5 Vanilla pass-through selection (natural rivers/oceans)
 

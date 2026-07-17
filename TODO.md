@@ -57,7 +57,7 @@ and make the test loop fast. No new gameplay features.
       `SINGLE_BIOME`, `LEGACY` semantics survive as internal building blocks
       per DESIGN §20. Close out the straight-coastline and beach-width Known
       Risks in MEMORY.md as "removed with the feature".
-- [ ] 1.3 Route the real world seed into Worldz sampling (DESIGN §20.4):
+- [x] 1.3 Route the real world seed into Worldz sampling (DESIGN §20.4):
       capture it at generation time (it is available to the generator at
       runtime — e.g. via the level/`ChunkMap` construction the existing
       `ChunkMapMixin` already intercepts) and replace the random-per-world
@@ -384,7 +384,7 @@ pulled earlier if Jason wants a fun quick win.**
 - Worldz14 orange/glitchy terrain unexplained → Phase 1.1.
 - Straight coastlines + beach width → removed with the grid modes (1.2);
   ocean-island shore quality is redesigned properly in 7.1.
-- Layout sampling seed not the real world seed → Phase 1.3.
+- Layout sampling seed not the real world seed → fixed in Phase 1.3.
 
 ## Questions for Jason (running list)
 

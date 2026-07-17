@@ -71,6 +71,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final Supplier<Resolution> resolution;
     private volatile int originBlockX;
     private volatile int originBlockZ;
+    private volatile WorldLayoutPlan effectiveLayoutPlan;
 
     private LimitedBiomeSource(
         Supplier<HolderSet<Biome>> allowedBiomes,
@@ -90,6 +91,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.worldLimits = worldLimits;
         this.exteriorPlan = exteriorPlan;
         this.worldLayoutPlan = worldLayoutPlan;
+        this.effectiveLayoutPlan = worldLayoutPlan;
         this.spawnStrategy = spawnStrategy;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
@@ -366,12 +368,41 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
-     * Returns the coordinated-layout plan baked into this source.
+     * Returns the coordinated-layout plan baked into this source, exactly as persisted
+     * (round-trips through the codec and the Customize screen). Sampling call sites
+     * should use {@link #effectiveLayoutPlan()} instead, which reflects the real world
+     * seed once resolved.
      *
      * @return immutable persisted layout plan
      */
     public WorldLayoutPlan worldLayoutPlan() {
         return this.worldLayoutPlan;
+    }
+
+    /**
+     * Returns the layout plan actually used for sampling: the persisted plan re-seeded
+     * with the real Minecraft world seed once {@link #setLayoutSeed(long)} has resolved
+     * it, or the persisted plan's own placeholder seed until then. Codecs decode from
+     * {@code RegistryOps}, which has no seed-aware hook, so the real seed is applied
+     * later, at generation time (see DESIGN §20.4).
+     *
+     * @return the plan sampling call sites should use
+     */
+    public WorldLayoutPlan effectiveLayoutPlan() {
+        return this.effectiveLayoutPlan;
+    }
+
+    /**
+     * Resolves the real Minecraft world seed for layout sampling. Not part of the codec:
+     * the seed is applied after decode (mirrors {@link #setOrigin(int, int)}), but unlike
+     * the origin search it needs no persistence of its own -- {@code ServerLevel.getSeed()}
+     * already returns the same deterministic value on every load, so the loader hook can
+     * simply call this every time a level's {@code ChunkMap} is constructed.
+     *
+     * @param seed the real Minecraft world seed
+     */
+    public void setLayoutSeed(long seed) {
+        this.effectiveLayoutPlan = this.worldLayoutPlan.withSeed(seed);
     }
 
     /**
@@ -487,14 +518,15 @@ public final class LimitedBiomeSource extends BiomeSource {
             return this.starterBiome.orElseThrow();
         }
         if (this.worldLayoutPlan.mode() != LayoutMode.LEGACY) {
+            WorldLayoutPlan layoutPlan = this.effectiveLayoutPlan;
             if (isInStarterTransitionRing(quartX, quartZ)) {
-                Optional<Holder<Biome>> beach = this.worldLayoutPlan.sampleRole(BiomeRole.BEACH, blockX - originX, blockZ - originZ)
+                Optional<Holder<Biome>> beach = layoutPlan.sampleRole(BiomeRole.BEACH, blockX - originX, blockZ - originZ)
                     .map(this.resolution.get().layoutBiomes()::get);
                 if (beach.isPresent()) {
                     return beach.get();
                 }
             }
-            Optional<Holder<Biome>> sampled = this.worldLayoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()
+            Optional<Holder<Biome>> sampled = layoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()
                 .map(this.resolution.get().layoutBiomes()::get);
             if (sampled.isPresent()) {
                 return sampled.get();

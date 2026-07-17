@@ -104,6 +104,23 @@ public record WorldLayoutPlan(
     }
 
     /**
+     * Returns a copy of this plan sampling with a different seed, otherwise identical.
+     * Used to re-seed a decoded plan with the real Minecraft world seed once it becomes
+     * available at generation time (see DESIGN §20.4) -- codecs decode from
+     * {@code RegistryOps}, which has no seed-aware hook, so the seed baked in at decode
+     * time is necessarily a placeholder.
+     *
+     * @param newSeed replacement sampling seed
+     * @return this plan unchanged if the seed already matches, otherwise a re-seeded copy
+     */
+    public WorldLayoutPlan withSeed(long newSeed) {
+        return newSeed == this.seed ? this : new WorldLayoutPlan(
+            mode, newSeed, regionScaleBlocks, landBiomes, oceanBiomes, beachBiomes,
+            singleBiome, roleOverrides, layoutOriginBlockX, layoutOriginBlockZ, algorithmRevision
+        );
+    }
+
+    /**
      * Resolves a plan from sanitized YAML configuration and a caller-supplied seed.
      *
      * @param config sanitized startup configuration

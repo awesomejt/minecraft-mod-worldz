@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.mixin;
 
 import com.mojang.datafixers.DataFixer;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
+import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ChunkMap;
@@ -43,6 +44,13 @@ import java.util.function.Supplier;
  * rule, fed by a degenerate density field) and caves were mostly absent
  * instead of vanilla's usual winding systems (real cave shape comes from
  * the router's own noise, which the dummy router has none of).
+ *
+ * <p>Also resolves {@link LimitedBiomeSource#setLayoutSeed(long)} with the real world
+ * seed here, the earliest point it is available to Worldz's coordinated-layout sampling
+ * (DESIGN §20.4): {@code BiomeSource} codecs decode from {@code RegistryOps}, which has
+ * no seed-aware hook, so the seed baked into a freshly created world's plan is a
+ * placeholder until this injection runs. No persistence of its own is needed --
+ * {@code ServerLevel.getSeed()} already returns the same value on every load.
  */
 @Mixin(ChunkMap.class)
 abstract class ChunkMapMixin {
@@ -74,13 +82,17 @@ abstract class ChunkMapMixin {
         boolean syncWrites,
         CallbackInfo callback
     ) {
-        if (generator instanceof EnvelopedChunkGenerator enveloped
-            && enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {
-            this.randomState = RandomState.create(
-                noiseGenerator.generatorSettings().value(),
-                level.registryAccess().lookupOrThrow(Registries.NOISE),
-                level.getSeed()
-            );
+        if (generator instanceof EnvelopedChunkGenerator enveloped) {
+            if (enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {
+                this.randomState = RandomState.create(
+                    noiseGenerator.generatorSettings().value(),
+                    level.registryAccess().lookupOrThrow(Registries.NOISE),
+                    level.getSeed()
+                );
+            }
+            if (enveloped.getBiomeSource() instanceof LimitedBiomeSource source) {
+                source.setLayoutSeed(level.getSeed());
+            }
         }
     }
 }

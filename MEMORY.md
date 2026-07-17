@@ -438,6 +438,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   level — exact hook to verify in Phase 1.3). GOALS requires seed-reproducible
   randomness in use cases 08–10, 12, 16; the codec-decode-has-no-seed problem
   only forbids capturing it at decode time, not lazily at generation time.
+  **Done (Phase 1.3, same session):** `ChunkMapMixin`'s existing `<init>`
+  injection already had `level.getSeed()` in hand for the 0.1.15
+  dummy-RandomState fix — it now also calls the new
+  `LimitedBiomeSource.setLayoutSeed(level.getSeed())`. No persistence needed:
+  unlike the spawn-origin search (§18), `ServerLevel.getSeed()` is already
+  vanilla-deterministic across every load, so the mixin just calls it every
+  time. `WorldLayoutPlan` gained a pure `withSeed(long)` wither;
+  `LimitedBiomeSource` now holds both the exact persisted plan
+  (`worldLayoutPlan()`, unchanged, still what the codec/Customize screen
+  round-trip) and a mutable `effectiveLayoutPlan` that `setLayoutSeed`
+  updates and `getNoiseBiome` actually samples from.
+  `EnvelopedChunkGenerator.LayoutContext` was changed from snapshotting a
+  `WorldLayoutPlan` at generator-construction time (necessarily before
+  `setLayoutSeed` can have run) to holding the `LimitedBiomeSource` and
+  reading `effectiveLayoutPlan()` live — same
+  coordinate-shift-at-integration-boundary shape as origin recentering, for
+  a plan reference instead of a coordinate delta. See DESIGN §20.4
+  Implementation.
 - 2026-07-16 — Per-world settings snapshot: world creation writes a commented
   YAML record of resolved settings into the world folder — a reference
   artifact, not a control file; baked codec settings remain authoritative.
