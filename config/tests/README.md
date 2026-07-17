@@ -15,9 +15,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
       fabric/runs/client/config/jlt_worldz.yaml
    ```
 
-   (Dev client. For the dev server use `fabric/runs/server/config/`. For a
-   real installed instance, use that instance's `config/` folder instead —
-   e.g. wherever your launcher points `.minecraft/config/`.)
+   (Dev client. For the dev server use `fabric/runs/server/config/`. For the
+   dedicated Prism test instance, target `<instance>/minecraft/config/`
+   instead — deploy a fresh jar there first with
+   `./gradlew :fabric:deployToPrism`, see
+   [`MANUAL_TESTING.md`](../../MANUAL_TESTING.md#testing-against-a-real-prism-instance-instead-of-the-dev-client).)
 
 2. **Delete the old world save first if one exists** —
    `fabric/runs/client/saves/<world-name>/`. Worldz settings are baked into
@@ -41,6 +43,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `05-preferred-natural-biome-unfindable.yaml` | Same strategy with a starter biome unlikely to exist within the search radius (`mushroom_fields`) — expect the "search found no biome" warning and the same fallback. |
 | `06-preferred-natural-biome-recentering.yaml` | Combines a found preferred biome with an enabled border, an ocean exterior, and an `ocean` layout — confirms border/exterior/layout all recenter on the *found* origin together, not just the spawn point. |
 | `07-legacy-regression-baseline.yaml` | Everything at documented defaults except an explicit `legacy` layout mode and a plain starter zone — a control run to compare every other file against. |
+| `08-single-biome-regression.yaml` | `layout.mode: single_biome` (`desert`) — confirms this surviving mode still works after the 2026-07-16 `MIXED`/`LAND_ONLY` removal and real-seed change. |
+| `09-void-regression.yaml` | `layout.mode: void` with starter land enabled — confirms the sky-void starter island still works after the same changes. |
 
 ### Why `01` showed ocean labeled as river
 

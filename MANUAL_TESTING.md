@@ -45,10 +45,32 @@ Launch with:
 ./gradlew :fabric:runServer      # or :neoforge:runServer
 ```
 
-Config file per run directory: `<rundir>/config/jlt_worldz.yaml`. Edit it
-directly, or delete it to regenerate documented defaults on next launch.
-Worlds live in `<rundir>/saves/<world-name>/` (client) — delete the folder for
-a clean slate. A dedicated server's single world is `<rundir>/world/`.
+Config file per run directory: `<rundir>/config/jlt_worldz.yaml`. It is
+optional — absent means the mod's built-in defaults apply directly, and the
+mod never creates the file for you (see
+[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for the
+documented reference to copy from). Worlds live in
+`<rundir>/saves/<world-name>/` (client) — delete the folder for a clean
+slate. A dedicated server's single world is `<rundir>/world/`.
+
+### Testing against a real Prism instance instead of the dev client
+
+Jason tests Fabric against a dedicated Prism Launcher instance rather than
+the dev client (it carries the recommended test-aid mods — Xaero's
+world/minimap, Chunky, Spark; MiniHUD is disabled since `jlt_info` covers
+the same ground). Deploy a freshly built jar to it with:
+
+```bash
+./gradlew :fabric:deployToPrism
+```
+
+This copies the built Fabric jar into the instance's `mods/` folder,
+replacing any older `jlt_worldz` jar there. It reads the instance path from
+`prism.instance.dir` in a git-ignored `local.properties` file at the repo
+root (create one if missing — never committed), or accept it ad hoc with
+`-PprismInstanceDir=<path>`. Config file and worlds/logs for that instance
+live under `<instance>/minecraft/` (Prism's own layout), following the same
+"config is optional, delete the world for a clean slate" rules as above.
 
 Log file: `<rundir>/logs/latest.log`. Grep for the mod's warnings:
 
@@ -59,6 +81,60 @@ grep -i "worldz\|preferred_natural_biome\|starter_at_origin" <rundir>/logs/lates
 F3 debug screen gives you: block position, biome id, and (F3+G / vanilla
 chunk borders) the current world seed if unsure — all needed to verify
 recentering and strategy behavior below.
+
+## Phase 1 acceptance (2026-07-16 challenge-world replan, TODO 1.1/1.7)
+
+Everything below is unverified in-game as of 0.2.0. Use the dedicated Prism
+instance (see above) with a fixed seed (e.g. `12345`) and a fresh world per
+scenario, per the principles above. None of this needs the dev client unless
+you prefer it.
+
+### 1. Dummy-RandomState fix (TODO 1.1)
+
+Shipped in 0.1.15, carried into 0.2.0, never confirmed in-game. This is the
+most important check in this pass — it affects the terrain shape of every
+Worldz world regardless of layout mode.
+
+1. Create a world with any config (e.g. `07-legacy-regression-baseline.yaml`,
+   or no config file at all for pure defaults).
+2. Go to spectator mode and drop below Y-64, well outside the starter zone.
+3. **Pass:** ordinary bedrock at the bottom, and normal winding cave systems
+   (not huge open gaps, not near-total lava). This is the exact failure
+   pattern described in `MEMORY.md`'s dummy-RandomState entry — compare
+   against that description if anything looks off.
+4. Repeat step 1-3 briefly on **NeoForge** (`./gradlew :neoforge:runClient`
+   or a NeoForge Prism instance if you set one up) — this is the first
+   NeoForge-side mixin this project has shipped, so it needs its own check,
+   not just an assumption that "Fabric passed so NeoForge did too."
+5. While you're down there: do the Worldz14 orange/glitchy-terrain screenshots
+   reproduce? They were never explained and are plausibly the same root
+   cause. Note yes/no either way — a "no" closes out the question, not just
+   a "not tested."
+
+### 2. Removed-mode regression + default generation (TODO 1.7)
+
+1. **Default-config world.** No `jlt_worldz.yaml` present (delete it if the
+   instance already has one) — confirms defaults apply without a file at
+   all (TODO 1.4). Create a world, confirm normal cave/structure generation,
+   and open **Customize → Layout**: confirm the mode cycle button only ever
+   shows `legacy` / `ocean` / `single_biome` / `void` — never `land_only` or
+   `mixed`.
+2. **Single-biome-style world**, using
+   `08-single-biome-regression.yaml` (`layout.mode: single_biome`, desert).
+   Confirm the whole world is desert-shaped terrain (raised to the land
+   role), normal structures/caves still generate, and the same seed
+   reproduces the same result on a second world (TODO 1.3's real-seed
+   change).
+3. **Void mode**, using `09-void-regression.yaml`. Confirm a solid starter
+   island floats in sky void, sized to the starter radius plus its land
+   transition.
+4. **Ocean mode / recentering**, using
+   `06-preferred-natural-biome-recentering.yaml` (now `ocean` instead of the
+   removed `mixed`). Confirm border/exterior/layout all still recenter on
+   the found origin together (see the existing recentering checklist below)
+   — this exercises the exact code path Phase 1.2/1.3 touched.
+5. **Legacy baseline**, using `07-legacy-regression-baseline.yaml`, as a
+   known-good control to compare the above against.
 
 ## Scenario table: seed-informed spawn (Phase 16)
 
@@ -116,17 +192,13 @@ confirm the feature is centered on the *new* origin, not `(0,0)`:
   `LevelEvent.CreateSpawnPosition`/the Fabric mixin only fire server-side —
   a client-only smoke test would miss a server-side wiring bug entirely.
 
-## Terrain sanity check (flagged risk, MEMORY.md "Known Risks")
+## Terrain sanity check (superseded by "Phase 1 acceptance" above)
 
-Not a pass/fail test, but worth a look while you're in-game: `MEMORY.md`
-flags that `EnvelopedChunkGenerator` may cause Minecraft to build terrain
-from a dummy zero-density `RandomState` (flat, structureless noise) rather
-than real vanilla shaping, for every Worldz world, unrelated to Phase 16.
-While testing any scenario above, glance at terrain well outside the starter
-zone/layout-controlled area — if hills, ravines, and ordinary vanilla terrain
-variation are visibly present, that's evidence against the flagged risk; if
-terrain looks suspiciously flat or noise-free, that's worth flagging back for
-investigation before trusting anything else about generated terrain shape.
+The dummy-RandomState fix this section used to flag as an open risk shipped
+in 0.1.15; see "Phase 1 acceptance" above for the concrete pass/fail check.
+Still worth a passing glance during any scenario below: terrain well outside
+the starter zone/layout-controlled area should show ordinary hills, ravines,
+and vanilla-typical variation, not suspiciously flat or noise-free ground.
 
 ## Recording results
 

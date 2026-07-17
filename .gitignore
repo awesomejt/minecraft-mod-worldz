@@ -41,3 +41,7 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# local developer config (Prism instance path, etc.)
+
+local.properties

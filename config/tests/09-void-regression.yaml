@@ -1,0 +1,12 @@
+# Regression check for VOID mode after the 2026-07-16 MIXED/LAND_ONLY removal
+# (TODO 1.2) and the real-seed sampling change (TODO 1.3) -- confirms this
+# surviving mode still works: a starter island (guaranteed solid via
+# ensureStarterLand) floats in an otherwise infinite sky void, radius =
+# starterRadiusBlocks + the starter-land transition width.
+starterBiome: 'minecraft:plains'
+starterRadiusBlocks: 256
+ensureStarterLand: true
+layout:
+  mode: void
+spawn:
+  strategy: starter_at_origin

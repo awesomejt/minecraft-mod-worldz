@@ -474,6 +474,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   judged more machinery than the problem warranted. A JUnit test parses the
   example file and compares its *values* against `new WorldzConfig()`'s
   defaults to keep it honest without needing byte-for-byte text comparison.
+- 2026-07-16 — **Done (Phase 1.5).** Jason created a dedicated Prism Launcher
+  instance for manual testing (`Worldz-Test`, includes Xaero's world/minimap,
+  Chunky, Spark; MiniHUD disabled since `jlt_info` overlaps it) and provided
+  its path. Added `:fabric:deployToPrism` (a plain `doLast` task, not a
+  `Copy` task — this is a one-off local dev convenience, not something that
+  needs incremental-build participation): copies the built Fabric jar into
+  the instance's `mods/` folder, deleting any older `jlt_worldz-fabric-*`
+  jar first. Reads the instance path from `prism.instance.dir` in a
+  git-ignored `local.properties` at the repo root (created with Jason's
+  path), or accepts `-PprismInstanceDir=<path>` ad hoc. Discovered this Loom
+  setup (1.17.14) has no separate `remapJar` task — plain `jar` already
+  produces the fully remapped output (confirmed: it's the same file already
+  landing in `build/libs/` from `./gradlew build`) — so the task depends on
+  `jar`, not `remapJar`. Also added `config/tests/08-single-biome-regression.yaml`
+  and `09-void-regression.yaml`, the only two surviving layout modes with no
+  existing test-config coverage, plus a new "Phase 1 acceptance" section in
+  `MANUAL_TESTING.md` covering TODO 1.1 (RandomState fix verification) and
+  1.7 (removed-mode regression) concretely.
 - 2026-07-16 — Jason approved five additional challenges in the same planning
   session: cave-only start with mega-cave option (GOALS 25–26), Nether start
   (27), lava ocean (28), rising lava floor (29), and forever night (30). The

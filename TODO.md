@@ -69,7 +69,7 @@ and make the test loop fast. No new gameplay features.
       generate the documented example (comment-based YAML, not `_docs` keys)
       as the way users discover options. Drop the legacy `.json` migration
       path (new-worlds-only policy makes it dead weight).
-- [ ] 1.5 Prism test-loop automation (GOALS §Automation): a Gradle task (e.g.
+- [x] 1.5 Prism test-loop automation (GOALS §Automation): a Gradle task (e.g.
       `./gradlew deployToPrism -Pinstance=...`) that copies the built Fabric
       jar into the Prism instance's `mods/`, replacing any older jlt_worldz
       jar. Ask Jason for the instance path; put it in a git-ignored local

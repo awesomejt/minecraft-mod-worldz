@@ -35,6 +35,48 @@ loom {
 	}
 }
 
+tasks.register('deployToPrism') {
+	group = 'worldz'
+	description = "Copies the built Fabric jar into a Prism Launcher instance's mods folder for fast manual " +
+		"testing, replacing any older jlt_worldz jar there. Configure the instance path via 'prism.instance.dir' " +
+		"in a git-ignored local.properties at the repo root, or pass -PprismInstanceDir=<path>."
+	dependsOn(tasks.named('jar'))
+
+	doLast {
+		def instanceDir = project.findProperty('prismInstanceDir')
+		if (instanceDir == null) {
+			def localFile = rootProject.file('local.properties')
+			if (localFile.exists()) {
+				def localProps = new Properties()
+				localFile.withInputStream { localProps.load(it) }
+				instanceDir = localProps.getProperty('prism.instance.dir')
+			}
+		}
+		if (instanceDir == null) {
+			throw new GradleException(
+				"No Prism instance directory configured. Set 'prism.instance.dir' in a git-ignored " +
+					"local.properties at the repo root, or pass -PprismInstanceDir=<path>."
+			)
+		}
+
+		def modsDir = new File(instanceDir as String, 'minecraft/mods')
+		if (!modsDir.isDirectory()) {
+			modsDir = new File(instanceDir as String, '.minecraft/mods')
+		}
+		if (!modsDir.isDirectory()) {
+			throw new GradleException("Could not find a mods folder under ${instanceDir} (tried minecraft/mods and .minecraft/mods).")
+		}
+
+		modsDir.listFiles({ dir, name -> name.startsWith("${mod_id}-fabric-") && name.endsWith('.jar') } as FilenameFilter)
+			?.each { it.delete() }
+
+		def builtJar = tasks.named('jar').get().archiveFile.get().asFile
+		def target = new File(modsDir, builtJar.name)
+		target.bytes = builtJar.bytes
+		logger.lifecycle("Deployed ${builtJar.name} to ${target}")
+	}
+}
+
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
 ['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
 	configurations.named(variant) {
