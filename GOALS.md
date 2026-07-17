@@ -142,6 +142,17 @@ Client only mod loaders:
 35. A limited-size world (blocks/chunks, per 17) where the underground is replaced by stacked horizontal biome layers instead of normal caves — plains above desert above taiga, and so on, each layer a horizontal slab with its own surface. Layer list, order, and thicknesses configurable, with a seed-randomized option. Must account for ores that normally require deep levels (lapis, gold, diamond) — e.g. distribute an ore budget across the layers or expose config. Stronghold/End-portal placement within the stack needs design so the game stays beatable.
     **Clarified 2026-07-16:** each layer is a flat or low-relief slab — a thin slice through the world can't fit multiple "extreme hills"-style biomes, so layers mainly use the flatter variants of their biome. This ties the feature to the flat-world layer machinery (15–16) rather than full noise terrain per layer. There must be an **air gap above each layer's surface** (configurable headroom) so biome-specific trees and structures can generate and grow on every layer, not just the top one.
 
+## Considered and rejected (2026-07-16):
+
+- **Glowing ores option** — proposed as an off-by-default world-generation
+  setting to make ores easier to see in caves. Rejected for worldz: ore
+  *placement* wouldn't change, only appearance, so it isn't world generation.
+  Emissive-texture resource packs deliver the visual with no code and work in
+  any world; actual light emission is a code-level block property (not
+  per-world data) and would suppress mob spawning around every vein — a
+  gameplay side effect this mod shouldn't own. If it ever becomes a mod
+  feature, jlt_ores is the natural home as a mod-wide client option.
+
 ## Questions:
 
 1. Depending on ocean biomes, do small islands naturally happen. If so, then after the starter island (if one is generated), use ocean and deep ocean to prevent islands from generating until beyond exclusion zone.

@@ -476,6 +476,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   top-only vs full-column, and where feasible showcased cave biomes, geodes,
   and structure chunks — TODO 12.2, with per-island feature targeting an
   explicit design question).
+- 2026-07-16 — Scope decision: **no glowing-ores option in worldz** (Jason
+  proposed, agreed to keep it out). It changes ore appearance, not
+  generation; emissive-texture resource packs cover it with no code, and
+  real per-world light emission would need fragile block-property mixins
+  plus an unwanted gameplay side effect (light suppresses mob spawning
+  around veins). If ever built, it belongs in jlt_ores as a mod-wide client
+  option. Recorded in GOALS.md "Considered and rejected".
 - 2026-07-16 — Jason's GOALS Question 1 answered from the Worldz5/6 evidence:
   ocean-only biome filtering cannot prevent land (biome ≠ terrain), so endless
   ocean needs the terrain cap and distant natural islands (use case 04) come
