@@ -1013,6 +1013,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   bundled SnakeYAML/license resources are all present as expected. TODO 1.5
   (Prism deploy Gradle task) is still open pending Jason's instance path;
   Phase 1 acceptance (1.1, 1.7) remains Jason's in-game pass.
+- 2026-07-16 / Phase 2 (World types + Single-biome challenge, 0.2.2) —
+  `jlt_worldz:single_biome`, the first typed world preset (GOALS 10-12),
+  ships alongside the unchanged generic `jlt_worldz:worldz` preset. Design
+  committed first (DESIGN §20.2's Phase 2.1 subsection); implementation
+  reused the existing `jlt_worldz:limited`/`jlt_worldz:enveloped` registry
+  types via one non-round-tripped codec hint field, a new `singleBiome:`
+  config section, a small dedicated Customize screen/editor registered in
+  both loaders, and confirmed (no code changes needed) that structures/
+  caves/vanilla randomness already follow the real seed through existing
+  preset-agnostic machinery. Added the per-world settings snapshot
+  (`jlt_worldz-snapshot.yaml`, TODO 2.4) and a loader-neutral runtime
+  mod-version resource. `./gradlew clean build` passed all modules with 193
+  JUnit/component tests (up from 176 at the 0.2.0 release). Test configs
+  `10`-`13` and a "Phase 2 acceptance" section in `MANUAL_TESTING.md` are
+  ready for Jason's TODO 2.7 in-game pass; version bumped per-task this
+  phase (0.2.1 for 2.2, 0.2.2 for 2.4) per Jason's explicit per-task-bump
+  instruction for this session, rather than once at phase-end as Phase 1
+  did.
 
 ## API Deviations
 
