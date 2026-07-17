@@ -1,0 +1,12 @@
+# GOALS 12: same as 11, but the starter biome's location is chosen by the
+# seed instead of forced at (0,0) -- preferred_natural_biome searches near
+# the origin for a natural occurrence of starterBiome and recenters the
+# layout origin (and spawn) there; falls back to starter_at_origin behavior
+# if none is found within the search radius. Select "Worldz: Single Biome".
+# Use a fixed seed on the creation screen so repeat runs are comparable.
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: 'minecraft:plains'
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: preferred_natural_biome

@@ -136,6 +136,50 @@ Worldz world regardless of layout mode.
 5. **Legacy baseline**, using `07-legacy-regression-baseline.yaml`, as a
    known-good control to compare the above against.
 
+## Phase 2 acceptance (2026-07-16 challenge-world replan, TODO 2.7)
+
+Uses configs `10`-`13` (see [`config/tests/README.md`](config/tests/README.md)).
+**Configs `10`-`12` need the new "Worldz: Single Biome" entry in the World
+Type dropdown** — a separate preset from plain "Worldz", with its own small
+Customize screen (land biome / starter biome / starter radius / spawn
+strategy only; no border/exterior/starter-land controls here yet — those
+stay YAML-only for this type until Phase 5.3). Config `13` uses plain
+"Worldz" as a control. Fixed seed recommended for all four.
+
+1. **Basic single biome (GOALS 10)**, `10-single-biome-basic.yaml`. Create a
+   world, confirm the entire explored area is desert (F3 biome id), normal
+   structures/caves/features generate (compare against the Phase 1.1
+   dummy-RandomState check — same underlying terrain pipeline), and no
+   starter-zone seam is visible anywhere (there is none to see: the whole
+   world is already the land biome).
+2. **Different starter biome (GOALS 11)**, `11-single-biome-different-starter.yaml`.
+   Confirm spawn is inside a ~256-block plains circle, desert begins beyond
+   it, and the transition is blended (starter land guarantee), not a hard
+   cliff.
+3. **Seed-chosen starter (GOALS 12)**, `12-single-biome-seed-chosen-starter.yaml`.
+   Confirm spawn lands inside a *naturally occurring* plains patch found via
+   search (not forced at `(0,0)`) — note the coordinates. Recreate the world
+   with the same seed and confirm the same location is found again (real-seed
+   reproducibility, TODO 1.3). If no natural plains patch exists within the
+   search radius for your seed, confirm the documented fallback: spawn at
+   `(0,0)` behaving like `starter_at_origin`, with a "search found no biome"
+   warning in the log.
+4. **Vanilla-limited control**, `13-vanilla-limited-baseline.yaml`. Confirm
+   this looks and feels like ordinary vanilla Minecraft (climate-filtered
+   biomes, no single-biome uniformity) ringed off by a 1000-block border —
+   this is the regression guard for the shared border/limit path, which now
+   flows through the same `LimitedBiomeSource.resolve()` method as the new
+   `singleBiome:` branch.
+5. **Per-world snapshot (TODO 2.4).** After any of the above, check the new
+   world's save folder for `jlt_worldz-snapshot.yaml` (sibling to
+   `level.dat`). Confirm it exists, is readable, and its values match what
+   you actually selected — this file is a reference record only; editing it
+   does nothing.
+6. **Customize-screen sanity.** Open "Worldz: Single Biome"'s Customize
+   screen before creating a world: confirm it shows only land biome/starter
+   biome/starter radius/spawn strategy — none of the full "Worldz" preset's
+   allowed-biomes list, border, exterior, or layout-mode controls.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

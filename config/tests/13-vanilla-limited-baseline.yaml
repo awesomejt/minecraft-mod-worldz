@@ -1,0 +1,16 @@
+# Control run for Phase 2: the plain "Worldz" preset (NOT Single Biome),
+# legacy layout (near-vanilla terrain/biomes) with a modest Overworld
+# border enabled -- confirms the shared border/limit machinery Phase 2
+# didn't touch still works correctly through the resolve() path it now
+# shares with the new singleBiome: branch. Compare against 10-12: this
+# world should look and feel like ordinary ringed-off vanilla Minecraft,
+# nothing single-biome about it.
+layout:
+  mode: legacy
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 1000
+  finalRadiusBlocks: 1000
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin

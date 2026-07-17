@@ -1,0 +1,8 @@
+# GOALS 11: same as 10, but the starter zone around spawn is a different
+# biome from the rest of the world. Select "Worldz: Single Biome".
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: 'minecraft:plains'
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin

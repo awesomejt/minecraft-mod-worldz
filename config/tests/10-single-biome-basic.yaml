@@ -1,0 +1,10 @@
+# GOALS 10: one land biome fills the whole world, everything else generates
+# normally. Select the "Worldz: Single Biome" world type (NOT plain "Worldz")
+# on the creation screen -- only that preset reads this singleBiome: section
+# fieldless; the plain Worldz preset ignores it entirely.
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin

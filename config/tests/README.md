@@ -27,7 +27,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world using the shipped `jlt_worldz` world preset.
+   new world. Since Phase 2, the World Type dropdown has **two** Worldz
+   entries -- pick the one the table below tells you to: "Worldz" (files
+   `01`-`09`, `13`) reads the flat top-level config fields; "Worldz: Single
+   Biome" (files `10`-`12`) reads only the `singleBiome:` section and
+   ignores everything else.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -45,6 +49,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `07-legacy-regression-baseline.yaml` | Everything at documented defaults except an explicit `legacy` layout mode and a plain starter zone — a control run to compare every other file against. |
 | `08-single-biome-regression.yaml` | `layout.mode: single_biome` (`desert`) — confirms this surviving mode still works after the 2026-07-16 `MIXED`/`LAND_ONLY` removal and real-seed change. |
 | `09-void-regression.yaml` | `layout.mode: void` with starter land enabled — confirms the sky-void starter island still works after the same changes. |
+| `10-single-biome-basic.yaml` | GOALS 10, the `jlt_worldz:single_biome` typed preset: one land biome fills the world, no starter-zone override. **Select "Worldz: Single Biome" on the creation screen**, not plain "Worldz". |
+| `11-single-biome-different-starter.yaml` | GOALS 11: same as 10, but a different biome is forced around spawn. |
+| `12-single-biome-seed-chosen-starter.yaml` | GOALS 12: same as 11, but the starter biome's location is seed-chosen (`preferred_natural_biome`) instead of forced at `(0,0)`. |
+| `13-vanilla-limited-baseline.yaml` | Control run for Phase 2: plain "Worldz" preset, legacy layout, a modest border — confirms the shared border/limit path Phase 2 didn't touch still works through the `LimitedBiomeSource.resolve()` branch it now shares with `singleBiome:`. |
 
 ### Why `01` showed ocean labeled as river
 

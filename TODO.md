@@ -103,7 +103,7 @@ every later phase reuses. Design task first, per DESIGN §20.6.
 - [x] 2.4 Per-world snapshot: on world creation, write a readable commented
       YAML of the resolved settings into the world folder. It is a record,
       not a control file (new-worlds-only; README documents this).
-- [ ] 2.5 Test configs `config/tests/` for 10, 11, 12 + a vanilla-limited
+- [x] 2.5 Test configs `config/tests/` for 10, 11, 12 + a vanilla-limited
       baseline; update MANUAL_TESTING.md scenario table.
 - [ ] 2.6 README restructure begins: challenge-type-first presentation,
       **new worlds only** restriction, single-biome section.
