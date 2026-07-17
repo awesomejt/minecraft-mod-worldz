@@ -883,9 +883,21 @@ field, matching how every other Phase-15 plan decodes old saves to today's
 behavior — existing worlds are unaffected regardless of which strategy a
 YAML/Customize default later changes to.
 
-**`STARTER_AT_ORIGIN`** — unchanged: the layout origin stays `(0, 0)`; the
-existing starter-zone/starter-land guarantee and vanilla's own surface-height
-spawn search (already layout-aware since Phase 15.4) apply exactly as today.
+**`STARTER_AT_ORIGIN`** — the layout origin stays `(0, 0)`; the existing
+starter-zone/starter-land guarantee applies as before. **Corrected
+2026-07-17:** originally documented here as deferring to "vanilla's own
+surface-height spawn search," on the assumption that search would naturally
+land inside the guaranteed zone. In-game testing found this assumption
+false: vanilla's `findSpawnPosition()` searches the *underlying, unmodified*
+climate sampler for a "spawn-favorable" signature, entirely independent of
+whatever biome `LimitedBiomeSource` actually reports at that position — so
+for seeds whose raw climate near `(0, 0)` doesn't match vanilla's criteria,
+the search can travel up to vanilla's own ~2048-block radius away, even
+though the starter zone itself is guaranteed safe, solid land in the
+intended biome. `STARTER_AT_ORIGIN` now explicitly resolves a safe surface
+spawn at `(0, 0)` itself (`SpawnOriginManager.safeSpawnNear`, the same
+height-lookup pattern `PREFERRED_NATURAL_BIOME`'s found-target case already
+used), bypassing vanilla's search entirely rather than hoping it agrees.
 
 **`VANILLA_SPAWN`** — the layout origin stays `(0, 0)` (so border/exterior/
 progression/layout math is unaffected), and Worldz does not touch spawn

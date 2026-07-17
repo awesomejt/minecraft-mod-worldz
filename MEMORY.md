@@ -1152,6 +1152,43 @@ Durable decisions, verified API notes, and rationale that should survive across 
   density router isn't obviously *slower* to evaluate than a real one, so
   the performance issue may be genuinely separate; Jason is profiling with
   Spark next).
+- 2026-07-17 — **Root cause found and fixed for the "Fabric spawns far from
+  origin" mystery (0.2.5) — turned out not to be Fabric-specific at all.**
+  Jason's diagnosis: after using ChunkBase to pick a seed with
+  vanilla-favorable climate right at `(0, 0)`, both loaders spawned
+  correctly with it — proving the earlier "bad on Fabric, fine on
+  NeoForge" pattern was seed coincidence, not a loader bug. Confirmed
+  against decompiled `MinecraftServer.setInitialSpawn`: vanilla finds the
+  spawn chunk via `chunkSource.randomState().sampler().findSpawnPosition()`
+  — a purely climate-based search (vanilla's own "does this look like a
+  good spawn biome" heuristic) operating on the *underlying, unmodified*
+  noise sampler. `LimitedBiomeSource` only overrides the *reported* biome
+  (`getNoiseBiome`); it never touches the raw climate signature
+  `findSpawnPosition()` actually reads. For seeds whose raw climate near
+  `(0, 0)` doesn't satisfy vanilla's criteria, that search travels outward
+  (up to vanilla's own ~2048-block radius) looking for a match — completely
+  unaware that Worldz's `single_biome` mode had already guaranteed solid,
+  correctly-biomed land right at the origin. This means `STARTER_AT_ORIGIN`
+  never actually guaranteed a near-origin spawn in the first place, on
+  either loader — DESIGN §18's "Strategy specification" subsection
+  documented it as deferring to vanilla's search on the (untested, now
+  disproven) assumption that search would naturally land inside the
+  guaranteed zone; that assumption predates this session and was never
+  Phase-2-introduced.
+
+  **Fix:** `SpawnOriginManager.resolveFreshOrigin` now explicitly resolves
+  and returns a safe surface spawn at `(0, 0)` for `STARTER_AT_ORIGIN` (a
+  new `safeSpawnNear` helper, reusing the exact height-lookup pattern
+  `PREFERRED_NATURAL_BIOME`'s found-target case already used), instead of
+  returning `Optional.empty()` to defer to vanilla's climate search.
+  `VANILLA_SPAWN` is unaffected — deferring to vanilla is literally its
+  whole point. The three `PREFERRED_NATURAL_BIOME` fallback paths (no
+  starter biome configured, no real generator, search found nothing) all
+  say "using starter_at_origin instead" in their log messages, so they now
+  consistently use the same explicit-spawn behavior too, rather than
+  reverting to the old defer-to-vanilla behavior only fallbacks used to
+  get. DESIGN §18 corrected to match. Version bump 0.2.4 → 0.2.5. Not yet
+  confirmed in-game.
 
 ## API Deviations
 

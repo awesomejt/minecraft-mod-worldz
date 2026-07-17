@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.4", properties.getProperty("version"));
+        assertEquals("0.2.5", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -398,6 +398,12 @@ class ProjectMetadataTest {
         assertTrue(manager.contains("MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD"));
         assertTrue(manager.contains("SpawnSearchPlan.defaults().offsetsInSearchOrder()"));
         assertTrue(state.contains("Identifier.fromNamespaceAndPath(WorldzCommon.MOD_ID, \"spawn_origin\")"));
+        // 2026-07-17: STARTER_AT_ORIGIN now explicitly resolves spawn via safeSpawnNear
+        // instead of deferring to vanilla's climate-blind findSpawnPosition() -- only
+        // VANILLA_SPAWN still returns Optional.empty() to genuinely defer to vanilla.
+        assertTrue(manager.contains("limitedSource.spawnStrategy() == SpawnStrategy.VANILLA_SPAWN"));
+        assertTrue(manager.contains("private static BlockPos safeSpawnNear(ServerLevel overworld, int originX, int originZ) {"));
+        assertTrue(manager.contains("return Optional.of(safeSpawnNear(overworld, 0, 0));"));
     }
 
     @Test

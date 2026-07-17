@@ -79,11 +79,9 @@ public final class SpawnOriginManager {
      * spawn-chunk generation has happened.
      *
      * @param overworld the newly constructed Overworld level
-     * @return the spawn position to use instead of vanilla's own search, only
-     *     when a {@code PREFERRED_NATURAL_BIOME} search found its target
-     *     biome; empty means the caller should let vanilla's own spawn
-     *     selection proceed unmodified (covers {@code STARTER_AT_ORIGIN},
-     *     {@code VANILLA_SPAWN}, and every fallback case)
+     * @return the spawn position to use instead of vanilla's own search;
+     *     empty only for {@code VANILLA_SPAWN}, which means exactly what it
+     *     says -- let vanilla's own spawn selection proceed unmodified
      */
     public static Optional<BlockPos> resolveFreshOrigin(ServerLevel overworld) {
         BiomeSource source = overworld.getChunkSource().getGenerator().getBiomeSource();
@@ -99,9 +97,24 @@ public final class SpawnOriginManager {
             return Optional.empty();
         }
 
-        if (limitedSource.spawnStrategy() != SpawnStrategy.PREFERRED_NATURAL_BIOME) {
+        if (limitedSource.spawnStrategy() == SpawnStrategy.VANILLA_SPAWN) {
             markResolved(overworld, limitedSource, 0, 0);
             return Optional.empty();
+        }
+
+        if (limitedSource.spawnStrategy() != SpawnStrategy.PREFERRED_NATURAL_BIOME) {
+            // STARTER_AT_ORIGIN (and any future default): place spawn at the guaranteed
+            // starter zone explicitly (2026-07-17 fix) instead of deferring to vanilla's own
+            // findSpawnPosition(), which searches the *underlying, unmodified* climate
+            // sampler for a "spawn-favorable" signature -- entirely independent of whatever
+            // biome LimitedBiomeSource actually reports there. For seeds whose raw climate
+            // near (0,0) doesn't match vanilla's criteria, that search can travel up to
+            // ~2048 blocks away even though the starter zone itself is guaranteed safe,
+            // solid, and the intended biome. Confirmed in-game (Jason, 2026-07-17): a
+            // ChunkBase-selected seed with vanilla-favorable climate at (0,0) spawned
+            // correctly on both loaders, proving this was never loader-specific.
+            markResolved(overworld, limitedSource, 0, 0);
+            return Optional.of(safeSpawnNear(overworld, 0, 0));
         }
 
         Optional<Holder<Biome>> target = limitedSource.starterBiome();
@@ -110,7 +123,7 @@ public final class SpawnOriginManager {
                 "Layout strategy preferred_natural_biome needs a starter biome; using starter_at_origin instead."
             );
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.empty();
+            return Optional.of(safeSpawnNear(overworld, 0, 0));
         }
 
         ChunkGenerator generator = overworld.getChunkSource().getGenerator();
@@ -120,7 +133,7 @@ public final class SpawnOriginManager {
                 "Cannot build a real climate sampler for preferred_natural_biome; using starter_at_origin instead."
             );
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.empty();
+            return Optional.of(safeSpawnNear(overworld, 0, 0));
         }
 
         Optional<BlockPos> found = search(overworld, noiseGenerator, target.get());
@@ -131,18 +144,28 @@ public final class SpawnOriginManager {
                 SpawnSearchPlan.DEFAULT_MAX_RADIUS_BLOCKS
             );
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.empty();
+            return Optional.of(safeSpawnNear(overworld, 0, 0));
         }
 
         int originX = found.get().getX();
         int originZ = found.get().getZ();
         markResolved(overworld, limitedSource, originX, originZ);
+        return Optional.of(safeSpawnNear(overworld, originX, originZ));
+    }
 
+    /**
+     * Resolves a safe surface spawn position at the given origin, without relying on
+     * vanilla's own climate-based {@code findSpawnPosition()} search (see the
+     * {@code STARTER_AT_ORIGIN} note in {@link #resolveFreshOrigin} for why that search is
+     * unsuitable here).
+     */
+    private static BlockPos safeSpawnNear(ServerLevel overworld, int originX, int originZ) {
+        ChunkGenerator generator = overworld.getChunkSource().getGenerator();
         int height = generator.getSpawnHeight(overworld);
         if (height < overworld.getMinY()) {
             height = overworld.getHeight(Heightmap.Types.WORLD_SURFACE, originX + 8, originZ + 8);
         }
-        return Optional.of(new BlockPos(originX + 8, height, originZ + 8));
+        return new BlockPos(originX + 8, height, originZ + 8);
     }
 
     private static Optional<BlockPos> search(

@@ -396,10 +396,23 @@ pulled earlier if Jason wants a fun quick win.**
 ## Carried-over open risks (from MEMORY.md)
 
 - Dummy-RandomState fix (0.1.15) unverified in-game → Phase 1.1.
+  **Update 2026-07-17:** verification (bottom-of-world check) passed, but
+  in the process found and fixed a *related* bug the original fix missed
+  (`ChunkGeneratorStructureState` still built from the dummy RandomState —
+  see MEMORY.md's 0.2.4 entry). NeoForge repeat and the Worldz14
+  orange/glitchy reproduction retest are still outstanding (that specific
+  visual symptom never reproduced in any of this session's testing, which
+  is itself informative — the new symptoms found were floating structures
+  and a spawn-search gap, both different from Worldz14's description).
 - Worldz14 orange/glitchy terrain unexplained → Phase 1.1.
 - Straight coastlines + beach width → removed with the grid modes (1.2);
   ocean-island shore quality is redesigned properly in 7.1.
 - Layout sampling seed not the real world seed → fixed in Phase 1.3.
+- **New 2026-07-17, fixed (0.2.5):** `starter_at_origin` didn't actually
+  guarantee spawn near origin — it deferred to vanilla's own
+  `findSpawnPosition()`, which searches the *unmodified* climate sampler,
+  ignoring Worldz's biome override entirely. Fixed to explicitly resolve
+  spawn at the origin instead. See MEMORY.md.
 
 ## Questions for Jason (running list)
 
