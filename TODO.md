@@ -46,6 +46,11 @@ and make the test loop fast. No new gameplay features.
       NeoForge mixin this project ships). Also retest whether the Worldz14
       orange/glitchy-terrain screenshots reproduce on 0.1.15 — plausibly the
       same dummy-RandomState root cause, never confirmed (MEMORY Known Risks).
+      **Partial (2026-07-17):** Fabric bottom-of-world check done on
+      `Worldz-06` (single_biome desert) — bedrock and terrain below Y-64
+      look normal, no lava sheet. NeoForge repeat and the Worldz14
+      reproduction retest are still outstanding; see MEMORY.md for how this
+      interacts with the still-open floating-terrain finding.
 - [x] 1.2 Remove the `MIXED` and `LAND_ONLY` grid layout modes and everything
       only they used: land/ocean cell composition, coast-blend height
       transition, role-boundary structure suppression
@@ -120,6 +125,16 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       grid, no height blending. Config/Customize toggles: `allowRivers`,
       `allowOceans`.
 - [ ] 3.2 Test configs for 13 and 14; docs; **[Jason]** acceptance.
+- [ ] 3.3 (GOALS 15, approved 2026-07-17) Configuration option to let
+      vanilla's own underground cave biomes (dripstone caves, lush caves,
+      deep dark) generate normally in single_biome worlds, instead of the
+      single biome applying uniformly at every depth. Needs a design pass
+      first: `LimitedBiomeSource.getNoiseBiome`'s layout branch currently
+      samples `WorldLayoutPlan` using only `(blockX, blockZ)` — no `quartY`
+      — so this needs genuinely depth-aware sampling, not just the
+      surface-family pass-through 3.1 adds. Decide the depth/threshold rule
+      and how it composes with 3.1's toggles. Test configs; **[Jason]**
+      acceptance.
 
 ## Phase 4 — Chaos biomes (GOALS 33)
 

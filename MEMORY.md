@@ -1075,8 +1075,34 @@ Durable decisions, verified API notes, and rationale that should survive across 
   by single_biome's height math (a no-op `Math.max` on terrain already
   this tall) and **not** explained by the performance bug above (that
   world had no starter biome configured, so the buggy code path never
-  ran). Still unresolved; needs Jason's in-game fall/clip test plus the
-  long-overdue TODO 1.1 bedrock/cave check.
+  ran). Reproduced again in `Worldz-06` (config 11, after the performance
+  fix) — this time as disconnected floating *terrain* (not just a
+  structure) visible right at spawn in broad daylight, ruling out a
+  night-lighting illusion. Spawn itself landed at `(-504, 65, -329)`
+  despite `starter_at_origin`, which should spawn at/near `(0,0)` —
+  plausibly vanilla's own spawn search skipping unsafe/patchy ground near
+  the origin. **Jason's TODO 1.1 bottom-of-world check on `Worldz-06`
+  passed** (bedrock and terrain below Y-64 look normal, no lava sheet),
+  which weakens (a single per-chunk `RandomState` object being "mostly
+  fixed but still broken higher up" would be an odd failure mode) but does
+  not fully rule out the dummy-RandomState theory — the passing check was
+  specifically the deep-generation zone; the floating terrain is at
+  surface/near-surface Y. Still unresolved; NeoForge repeat and the
+  Worldz14 orange/glitchy reproduction retest (TODO 1.1's other two parts)
+  remain outstanding, and no code fix has been attempted for the floating
+  terrain since the root cause isn't yet identified.
+- 2026-07-17 — **Decision (approved, scope for a later phase, GOALS 15):**
+  Jason confirmed single_biome forcing one biome at every depth (no cave
+  biomes possible — confirmed via code review: `LimitedBiomeSource
+  .getNoiseBiome`'s layout branch samples `WorldLayoutPlan` using only
+  `(blockX, blockZ)`, never `quartY`) is acceptable for now, but wants a
+  future option to let vanilla's own cave biomes (dripstone/lush/deep dark)
+  generate normally. Logged as GOALS 15 and TODO 3.3 (needs its own design
+  pass — genuinely depth-aware sampling, not just the surface-family
+  pass-through Phase 3.1 already plans for rivers/oceans). Not implemented
+  now. Sparse (but present) caves in the shallower layers is separately
+  judged likely normal vanilla cave-density falloff near the surface, not
+  a defect — not investigated further absent contrary evidence.
 
 ## API Deviations
 

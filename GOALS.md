@@ -79,6 +79,16 @@ Client only mod loaders:
 12. Same as 11, but starter biome is based on seed - including size and location. World spawn set to the middle or somewhere in the desired biome.
 13. Same as 10-12, but Rivers allowed to generate.
 14. Same as 10-13, but natural oceans allowed to generate.
+15. (Approved 2026-07-17, scope for a later phase) Same as 10-14, but with a
+    configuration option to let vanilla's own underground cave biomes
+    (dripstone caves, lush caves, deep dark) generate normally instead of
+    the single biome applying uniformly at every depth. Current behavior
+    (Phase 2, 0.2.x): the single biome applies from bedrock to sky with no
+    vertical variation, so cave biomes never appear — acceptable for now,
+    but this option is approved future scope. See DESIGN §20.5's vanilla
+    pass-through mechanism (rivers/oceans, Phase 3) for the closest existing
+    precedent; this would need a similar but depth-aware (not just
+    surface-family-aware) pass-through.
 
 ### Flat-World challenge:
 
