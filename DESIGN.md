@@ -1181,7 +1181,18 @@ integration call site writes it to
 `<worldFolder>/jlt_worldz-snapshot.yaml` via
 `overworld.getServer().getWorldPath(LevelResource.ROOT)`, best-effort (log a
 WARN and continue world creation on any `IOException` — never block world
-creation over a reference file).
+creation over a reference file). The write itself lives inside
+`SpawnOriginManager.markResolved` — the one place every `resolveFreshOrigin`
+branch (found, not-found fallback, wrong strategy, missing generator) already
+converges through exactly once per fresh world, with the final resolved
+origin already in hand, so the snapshot's `layoutOriginBlockX/Z` fields are
+accurate even for `preferred_natural_biome` worlds. The mod version comes
+from a new build-time-expanded `${mod_id}-version.properties` classpath
+resource (added to `build-logic`'s shared `multiloader-common.gradle`,
+alongside the existing `fabric.mod.json`/`neoforge.mods.toml` expansion) read
+once into `WorldzCommon.MOD_VERSION` — loader-neutral, avoiding a
+Fabric-`ModContainer`-vs-NeoForge-`ModList` split for a cosmetic header
+field.
 
 #### Implementation (Phase 1.4 — global config hygiene)
 

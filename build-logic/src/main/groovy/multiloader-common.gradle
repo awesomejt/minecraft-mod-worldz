@@ -65,6 +65,10 @@ processResources {
         expand jsonExpandProps
     }
 
+    filesMatching(["${mod_id}-version.properties".toString()]) {
+        expand expandProps
+    }
+
     inputs.properties(expandProps)
 }
 

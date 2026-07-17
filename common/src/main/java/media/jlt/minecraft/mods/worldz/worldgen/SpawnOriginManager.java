@@ -3,6 +3,7 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.SpawnSearchPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
+import media.jlt.minecraft.mods.worldz.logic.WorldSnapshotWriter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
@@ -18,7 +19,12 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.storage.LevelResource;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -178,5 +184,38 @@ public final class SpawnOriginManager {
     private static void markResolved(ServerLevel overworld, LimitedBiomeSource source, int originX, int originZ) {
         overworld.getDataStorage().set(SpawnOriginState.TYPE, new SpawnOriginState(true, originX, originZ));
         source.setOrigin(originX, originZ);
+        writeSnapshot(overworld, source);
+    }
+
+    /**
+     * Best-effort per-world settings snapshot (DESIGN §20.3): a reference record only, never
+     * read back by the mod, so any failure here must never block world creation.
+     */
+    private static void writeSnapshot(ServerLevel overworld, LimitedBiomeSource source) {
+        try {
+            WorldSnapshotWriter.WorldSnapshot snapshot = new WorldSnapshotWriter.WorldSnapshot(
+                WorldzCommon.MOD_VERSION,
+                Instant.now().toString(),
+                source.allowedBiomes().stream().map(SpawnOriginManager::registeredName).toList(),
+                source.starterBiome().map(SpawnOriginManager::registeredName).orElse(""),
+                source.starterRadiusBlocks(),
+                source.starterLandPlan(),
+                source.worldLimits(),
+                source.exteriorPlan(),
+                source.effectiveLayoutPlan(),
+                source.spawnStrategy(),
+                source.originBlockX(),
+                source.originBlockZ()
+            );
+            Path target = overworld.getServer().getWorldPath(LevelResource.ROOT)
+                .resolve(WorldzCommon.MOD_ID + "-snapshot.yaml");
+            Files.writeString(target, WorldSnapshotWriter.render(snapshot));
+        } catch (IOException | RuntimeException exception) {
+            WorldzCommon.LOGGER.warn("Could not write the per-world settings snapshot: {}", exception.getMessage());
+        }
+    }
+
+    private static String registeredName(Holder<Biome> holder) {
+        return holder.unwrapKey().map(key -> key.identifier().toString()).orElseGet(holder::getRegisteredName);
     }
 }

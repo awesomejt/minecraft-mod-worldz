@@ -576,6 +576,27 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `singleBiomeModeSamplingIsIndependentOfSeed` to document that it
   deliberately does not (one biome, one answer per position — GOALS 10's
   "randomness based on seed" is entirely vanilla's, not Worldz's layout).
+- 2026-07-16 — **Done (Phase 2.4).** Per-world snapshot writer implemented:
+  `logic.WorldSnapshotWriter` (pure, write-only — no `parse`/`sanitize` half
+  since the file is never read back) renders a `LimitedBiomeSource`'s
+  resolved fields as commented YAML. The write call lives inside
+  `SpawnOriginManager.markResolved`, the single point every
+  `resolveFreshOrigin` branch already converges through exactly once per
+  fresh world — chosen over duplicating a call at each loader's own
+  `LevelEvent.CreateSpawnPosition`/`setInitialSpawn` site because it already
+  has the final resolved origin in hand (accurate even for
+  `preferred_natural_biome` worlds) and needs no new per-loader wiring.
+  Target: `<worldFolder>/jlt_worldz-snapshot.yaml` via
+  `overworld.getServer().getWorldPath(LevelResource.ROOT)` (verified against
+  the decompiled 26.2 `MinecraftServer`/`LevelResource` sources), best-effort
+  (catches `IOException`/`RuntimeException`, logs a WARN, never blocks world
+  creation). Added a new loader-neutral way to read the mod's own build
+  version at runtime: `${mod_id}-version.properties`, expanded at build time
+  by `build-logic`'s shared `multiloader-common.gradle` (same mechanism
+  already used for `fabric.mod.json`/`neoforge.mods.toml`) and read once into
+  `WorldzCommon.MOD_VERSION` — avoids needing separate Fabric-`ModContainer`
+  vs. NeoForge-`ModList` lookups in loader-neutral `common` code for one
+  cosmetic header field. See DESIGN §20.3's Phase 2.4 subsection.
 
 ## Reference Log
 
