@@ -543,6 +543,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   ocean needs the terrain cap and distant natural islands (use case 04) come
   from releasing that cap beyond the exclusion zone. Recorded in GOALS.md
   inline and DESIGN §20.5.
+- 2026-07-16 — **Done (Phase 2.1/2.2).** `jlt_worldz:single_biome`, the first
+  typed preset, ships reusing the existing `jlt_worldz:limited`/
+  `jlt_worldz:enveloped` registry types unchanged — `LayoutMode.SINGLE_BIOME`
+  already produced a uniform, land-shaped single-biome world, so the new work
+  is UX exposure plus one non-round-tripped codec hint field (`world_type`)
+  telling `LimitedBiomeSource.resolve()` to default from the new
+  `singleBiome:` config section instead of the flat top-level fields. A small
+  `SingleBiomeCustomizeScreen` exposes only land biome/starter biome/starter
+  radius/spawn strategy — border/exterior/starter-land stay YAML-only shared
+  sections for this type until Phase 5.3 formally wires limits into every
+  type's screen. `allowedBiomes` for this type is never user-edited — it's
+  auto-derived as `{landBiome} ∪ {starterBiome}` to avoid a two-lists-that-
+  must-agree trap. GOALS 12's "based on seed — including size and location"
+  is implemented as seed-determined location only (existing
+  `preferred_natural_biome` search + recentering); "size" is the
+  configurable `starterRadiusBlocks`, not natural-patch-boundary detection —
+  logged in TODO's Deviation log in case Jason meant the literal reading.
+  See DESIGN §20.2's Phase 2.1 subsection for the full codec/config shape.
 
 ## Reference Log
 

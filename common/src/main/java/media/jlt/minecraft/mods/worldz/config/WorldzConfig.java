@@ -85,6 +85,8 @@ public final class WorldzConfig {
     public LayoutConfig layout = new LayoutConfig();
     /** Layout-origin and initial-spawn strategy. */
     public SpawnConfig spawn = new SpawnConfig();
+    /** Defaults for the {@code jlt_worldz:single_biome} typed preset (DESIGN §20.2). */
+    public SingleBiomeConfig singleBiome = new SingleBiomeConfig();
 
     /** Creates a config populated with defaults. */
     public WorldzConfig() {
@@ -168,6 +170,9 @@ public final class WorldzConfig {
         if (object.containsKey("spawn")) {
             config.spawn = readSpawnConfig(object.get("spawn"), "spawn");
         }
+        if (object.containsKey("singleBiome")) {
+            config.singleBiome = readSingleBiomeConfig(object.get("singleBiome"), "singleBiome");
+        }
         return config;
     }
 
@@ -212,7 +217,47 @@ public final class WorldzConfig {
         if (spawn.strategy == null) {
             spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
         }
+        singleBiome = sanitizeSingleBiome(singleBiome, logger);
         return this;
+    }
+
+    private static SingleBiomeConfig sanitizeSingleBiome(SingleBiomeConfig config, Logger logger) {
+        SingleBiomeConfig sanitized = config == null ? new SingleBiomeConfig() : config;
+
+        sanitized.landBiome = sanitizeSingleBiomeId(sanitized.landBiome, "singleBiome.landBiome", logger);
+        if (sanitized.landBiome.isEmpty()) {
+            logger.warn("singleBiome.landBiome must be one biome ID; using minecraft:plains instead.");
+            sanitized.landBiome = "minecraft:plains";
+        }
+
+        sanitized.starterBiome = sanitizeSingleBiomeId(sanitized.starterBiome, "singleBiome.starterBiome", logger);
+
+        int originalRadius = sanitized.starterRadiusBlocks;
+        sanitized.starterRadiusBlocks = Math.clamp(
+            sanitized.starterRadiusBlocks, MIN_STARTER_RADIUS_BLOCKS, MAX_STARTER_RADIUS_BLOCKS
+        );
+        if (sanitized.starterRadiusBlocks != originalRadius) {
+            logger.warn("Clamped singleBiome.starterRadiusBlocks from {} to {}.", originalRadius, sanitized.starterRadiusBlocks);
+        }
+
+        sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
+        if (sanitized.spawn.strategy == null) {
+            sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
+        }
+        return sanitized;
+    }
+
+    private static String sanitizeSingleBiomeId(String value, String name, Logger logger) {
+        String trimmed = value == null ? "" : value.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        BiomeListSpec spec = BiomeListSpec.parse(List.of(trimmed));
+        if (spec.entries().size() != 1 || spec.entries().getFirst().tag()) {
+            logger.warn("Ignoring invalid {} '{}'.", name, trimmed);
+            return "";
+        }
+        return spec.entries().getFirst().id();
     }
 
     /**
@@ -232,7 +277,8 @@ public final class WorldzConfig {
             + ", overworldExterior=" + exteriorSummary(overworldExterior)
             + ", netherExterior=" + exteriorSummary(netherExterior)
             + ", layout=" + layoutSummary(layout)
-            + ", spawn=" + spawn.strategy.serializedName();
+            + ", spawn=" + spawn.strategy.serializedName()
+            + ", singleBiome=" + singleBiomeSummary(singleBiome);
     }
 
     String toYaml() {
@@ -249,6 +295,7 @@ public final class WorldzConfig {
         values.put("netherExterior", exteriorMap(netherExterior));
         values.put("layout", layoutMap(layout));
         values.put("spawn", spawnMap(spawn));
+        values.put("singleBiome", singleBiomeMap(singleBiome));
         return createYaml().dump(values);
     }
 
@@ -377,6 +424,26 @@ public final class WorldzConfig {
         SpawnConfig config = new SpawnConfig();
         if (map.containsKey("strategy")) {
             config.strategy = SpawnStrategy.parse(readString(map.get("strategy"), name + ".strategy"));
+        }
+        return config;
+    }
+
+    private static SingleBiomeConfig readSingleBiomeConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        SingleBiomeConfig config = new SingleBiomeConfig();
+        if (map.containsKey("landBiome")) {
+            config.landBiome = readString(map.get("landBiome"), name + ".landBiome");
+        }
+        if (map.containsKey("starterBiome")) {
+            config.starterBiome = readString(map.get("starterBiome"), name + ".starterBiome");
+        }
+        if (map.containsKey("starterRadiusBlocks")) {
+            config.starterRadiusBlocks = readInt(map.get("starterRadiusBlocks"), name + ".starterRadiusBlocks");
+        }
+        if (map.containsKey("spawn")) {
+            config.spawn = readSpawnConfig(map.get("spawn"), name + ".spawn");
         }
         return config;
     }
@@ -591,6 +658,15 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> singleBiomeMap(SingleBiomeConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("landBiome", config.landBiome);
+        values.put("starterBiome", config.starterBiome);
+        values.put("starterRadiusBlocks", config.starterRadiusBlocks);
+        values.put("spawn", spawnMap(config.spawn));
+        return values;
+    }
+
     private static String borderSummary(BorderConfig config, String objectiveName) {
         if (!config.enabled) {
             return "<disabled>";
@@ -612,6 +688,13 @@ public final class WorldzConfig {
         return config.mode.serializedName() + ", boundary="
             + (config.boundaryRadiusBlocks == 0 ? "auto" : config.boundaryRadiusBlocks)
             + (config.mode == ExteriorMode.OCEAN ? ", transition=" + config.oceanTransitionWidthBlocks : "");
+    }
+
+    private static String singleBiomeSummary(SingleBiomeConfig config) {
+        return "landBiome=" + config.landBiome
+            + ", starterBiome=" + (config.starterBiome.isEmpty() ? "<none>" : config.starterBiome)
+            + ", starterRadiusBlocks=" + config.starterRadiusBlocks
+            + ", spawn=" + config.spawn.strategy.serializedName();
     }
 
     private static String layoutSummary(LayoutConfig config) {

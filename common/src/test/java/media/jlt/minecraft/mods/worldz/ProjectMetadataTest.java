@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.0", properties.getProperty("version"));
+        assertEquals("0.2.1", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -90,6 +90,25 @@ class ProjectMetadataTest {
         assertTrue(Files.readString(
             ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
         ).contains("RegisterPresetEditorsEvent"));
+    }
+
+    @Test
+    void singleBiomeTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("SingleBiomePresetEditor.SINGLE_BIOME_PRESET"));
+        assertTrue(fabricMixin.contains("SingleBiomePresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(SingleBiomePresetEditor.SINGLE_BIOME_PRESET, SingleBiomePresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Single Biome", lang.get("generator.jlt_worldz.single_biome").getAsString());
     }
 
     @Test
@@ -335,8 +354,11 @@ class ProjectMetadataTest {
         assertTrue(source.contains(
             "SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()\n"
                 + "            ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)\n"
-                + "            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> config.spawn.strategy);"
+                + "            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> singleBiomeDefaults\n"
+                + "                ? config.singleBiome.spawn.strategy\n"
+                + "                : config.spawn.strategy);"
         ));
+        assertTrue(source.contains("Codec.STRING.optionalFieldOf(\"world_type\").forGetter(source -> Optional.<String>empty())"));
     }
 
     @Test

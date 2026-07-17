@@ -94,3 +94,17 @@ layout:
 # selection).
 spawn:
   strategy: starter_at_origin
+
+# Defaults for the jlt_worldz:single_biome typed preset (its own small
+# Customize screen, separate from the fields above). landBiome fills the
+# whole world; starterBiome empty means no forced zone (same as landBiome
+# everywhere already, via layout mode single_biome); starterRadiusBlocks
+# only matters when starterBiome is set; spawn.strategy accepts the same
+# values as the shared spawn section above (preferred_natural_biome
+# searches for starterBiome using the real seed).
+singleBiome:
+  landBiome: 'minecraft:plains'
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin

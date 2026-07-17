@@ -92,7 +92,7 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       starter chest, exclusion zone) each type composes, and the per-world
       snapshot file (2.4). Verify 26.2 preset/tag/lang wiring for multiple
       presets. **Commit** the design before implementing.
-- [ ] 2.2 Implement the `single_biome` world type: one land biome everywhere
+- [x] 2.2 Implement the `single_biome` world type: one land biome everywhere
       (use case 10), optional different starter biome around spawn (11),
       optional seed-chosen natural starter placement via the existing
       `preferred_natural_biome` strategy + origin recentering (12). Small

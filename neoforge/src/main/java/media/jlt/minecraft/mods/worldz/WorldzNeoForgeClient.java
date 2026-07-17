@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz;
 
+import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.RegisterPresetEditorsEvent;
@@ -15,5 +16,6 @@ final class WorldzNeoForgeClient {
 
     private static void registerPresetEditor(RegisterPresetEditorsEvent event) {
         event.register(WorldzPresetEditor.WORLDZ_PRESET, WorldzPresetEditor.INSTANCE);
+        event.register(SingleBiomePresetEditor.SINGLE_BIOME_PRESET, SingleBiomePresetEditor.INSTANCE);
     }
 }

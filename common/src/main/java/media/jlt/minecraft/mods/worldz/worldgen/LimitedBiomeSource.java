@@ -56,6 +56,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         LayoutCodecs.PLAN_CODEC.optionalFieldOf("world_layout").forGetter(source -> Optional.of(source.worldLayoutPlan)),
         Codec.STRING.optionalFieldOf("spawn_strategy")
             .forGetter(source -> Optional.of(source.spawnStrategy.serializedName())),
+        Codec.STRING.optionalFieldOf("world_type").forGetter(source -> Optional.<String>empty()),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
@@ -114,19 +115,33 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<ExteriorPlan> encodedExteriorPlan,
         Optional<WorldLayoutPlan> encodedWorldLayout,
         Optional<String> encodedSpawnStrategy,
+        Optional<String> encodedWorldType,
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
+        // world_type is a decode-time-only hint (never round-tripped, see the codec's
+        // forGetter) distinguishing which config section a fieldless preset defaults
+        // from -- see DESIGN §20.2's Phase 2.1 subsection. Once any field is explicit
+        // (Customize screen "Done"), it is meaningless and ignored.
+        boolean singleBiomeDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("single_biome"::equals).orElse(false);
+
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
-            .orElseGet(() -> () -> resolveConfiguredBiomes(config, biomeGetter));
+            .orElseGet(() -> singleBiomeDefaults
+                ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
+                : () -> resolveConfiguredBiomes(config, biomeGetter));
 
         // Every encoded instance has starter_radius. Its presence distinguishes a
         // persisted "no starter biome" from the fieldless preset that consults config.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : encodedStarterBiome.or(() -> resolveConfiguredStarter(config, biomeGetter));
-        int radius = encodedStarterRadius.orElse(config.starterRadiusBlocks);
+            : encodedStarterBiome.or(() -> singleBiomeDefaults
+                ? resolveSingleBiomeStarter(config, biomeGetter)
+                : resolveConfiguredStarter(config, biomeGetter));
+        int radius = encodedStarterRadius.orElse(
+            singleBiomeDefaults ? config.singleBiome.starterRadiusBlocks : config.starterRadiusBlocks
+        );
         StarterLandPlan starterLand = encodedStarterRadius.isPresent()
             ? encodedStarterLand.orElseGet(StarterLandPlan::disabled)
             : encodedStarterLand.orElseGet(() -> StarterLandPlan.fromConfig(config));
@@ -137,18 +152,21 @@ public final class LimitedBiomeSource extends BiomeSource {
             ? encodedExteriorPlan.orElseGet(ExteriorPlan::normal)
             : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
         // A fresh random sampling seed is picked once per newly created fieldless-preset
-        // world and then persisted, giving distinct worlds distinct layouts even though
-        // it is not yet tied to the player's chosen Minecraft world seed string: no
-        // decode-time hook here exposes that seed (BiomeSource codecs decode from
-        // RegistryOps, not a seed-aware context). Ideally would use the actual world
-        // seed; verifying where to obtain it is deferred alongside Phase 16's related
-        // finalized-seed-timing investigation.
+        // world and then re-seeded to the real Minecraft world seed at generation time
+        // (DESIGN §20.4) -- this placeholder never reaches actual sampling.
         WorldLayoutPlan worldLayout = encodedStarterRadius.isPresent()
             ? encodedWorldLayout.orElseGet(WorldLayoutPlan::legacy)
-            : encodedWorldLayout.orElseGet(() -> WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
+            : encodedWorldLayout.orElseGet(() -> singleBiomeDefaults
+                ? WorldLayoutPlan.resolve(
+                    LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
+                    WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
+                )
+                : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
         SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()
             ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)
-            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> config.spawn.strategy);
+            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> singleBiomeDefaults
+                ? config.singleBiome.spawn.strategy
+                : config.spawn.strategy);
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
@@ -298,6 +316,37 @@ public final class LimitedBiomeSource extends BiomeSource {
             }
         }
         return HolderSet.direct(List.copyOf(resolved));
+    }
+
+    private static HolderSet<Biome> resolveSingleBiomeAllowed(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
+        Set<Holder<Biome>> resolved = new LinkedHashSet<>();
+        resolveSingleBiomeHolder(config.singleBiome.landBiome, biomeGetter)
+            .ifPresentOrElse(
+                resolved::add,
+                () -> WorldzCommon.LOGGER.warn("Unknown singleBiome.landBiome '{}'.", config.singleBiome.landBiome)
+            );
+        if (!config.singleBiome.starterBiome.isEmpty()) {
+            resolveSingleBiomeHolder(config.singleBiome.starterBiome, biomeGetter).ifPresent(resolved::add);
+        }
+        return HolderSet.direct(List.copyOf(resolved));
+    }
+
+    private static Optional<Holder<Biome>> resolveSingleBiomeStarter(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
+        if (config.singleBiome.starterBiome.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<Holder<Biome>> holder = resolveSingleBiomeHolder(config.singleBiome.starterBiome, biomeGetter);
+        if (holder.isEmpty()) {
+            WorldzCommon.LOGGER.warn(
+                "Unknown singleBiome.starterBiome '{}'; starter zone disabled.", config.singleBiome.starterBiome
+            );
+        }
+        return holder;
+    }
+
+    private static Optional<Holder<Biome>> resolveSingleBiomeHolder(String id, HolderGetter<Biome> biomeGetter) {
+        ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(id));
+        return biomeGetter.get(key).map(value -> value);
     }
 
     private static Optional<Holder<Biome>> resolveConfiguredStarter(WorldzConfig config, HolderGetter<Biome> biomeGetter) {

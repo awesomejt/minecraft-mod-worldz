@@ -56,6 +56,10 @@ class WorldzConfigTest {
         assertEquals(ExteriorMode.NORMAL, config.overworldExterior.mode);
         assertEquals(ExteriorMode.NORMAL, config.netherExterior.mode);
         assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
+        assertEquals("minecraft:plains", config.singleBiome.landBiome);
+        assertEquals("", config.singleBiome.starterBiome);
+        assertEquals(256, config.singleBiome.starterRadiusBlocks);
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.singleBiome.spawn.strategy);
         assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.yaml")));
     }
 
@@ -447,9 +451,68 @@ class WorldzConfigTest {
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
                 + ", layout=<legacy>"
-                + ", spawn=starter_at_origin",
+                + ", spawn=starter_at_origin"
+                + ", singleBiome=landBiome=minecraft:plains, starterBiome=<none>"
+                + ", starterRadiusBlocks=256, spawn=starter_at_origin",
             config.summary()
         );
+    }
+
+    @Test
+    void singleBiomeSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            singleBiome:
+              landBiome: desert
+              starterBiome: plains
+              starterRadiusBlocks: 512
+              spawn:
+                strategy: preferred_natural_biome
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:desert", config.singleBiome.landBiome);
+        assertEquals("minecraft:plains", config.singleBiome.starterBiome);
+        assertEquals(512, config.singleBiome.starterRadiusBlocks);
+        assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, config.singleBiome.spawn.strategy);
+    }
+
+    @Test
+    void singleBiomeInvalidLandBiomeFallsBackToPlains() {
+        WorldzConfig config = WorldzConfig.parse("""
+            singleBiome:
+              landBiome: '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:plains", config.singleBiome.landBiome);
+    }
+
+    @Test
+    void singleBiomeStarterBiomeAcceptsIdsButRejectsTags() {
+        WorldzConfig id = WorldzConfig.parse("""
+            singleBiome:
+              starterBiome: ' desert '
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tag = WorldzConfig.parse("""
+            singleBiome:
+              starterBiome: '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:desert", id.singleBiome.starterBiome);
+        assertEquals("", tag.singleBiome.starterBiome);
+    }
+
+    @Test
+    void singleBiomeRadiusIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            singleBiome:
+              starterRadiusBlocks: 1
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            singleBiome:
+              starterRadiusBlocks: 999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(WorldzConfig.MIN_STARTER_RADIUS_BLOCKS, tooSmall.singleBiome.starterRadiusBlocks);
+        assertEquals(WorldzConfig.MAX_STARTER_RADIUS_BLOCKS, tooLarge.singleBiome.starterRadiusBlocks);
     }
 
 }

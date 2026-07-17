@@ -1,5 +1,10 @@
 {
   "generator.jlt_worldz.worldz": "Worldz",
+  "generator.jlt_worldz.single_biome": "Worldz: Single Biome",
+  "jlt_worldz.single_biome.title": "Customize Worldz: Single Biome",
+  "jlt_worldz.single_biome.land_biome": "Land biome (fills the whole world)",
+  "jlt_worldz.single_biome.starter_biome": "Starter biome (empty = same as land biome)",
+  "jlt_worldz.single_biome.starter_radius": "Starter radius in blocks (64–4096)",
   "jlt_worldz.customize.title": "Customize Worldz",
   "jlt_worldz.customize.allowed_biomes": "Allowed biomes or #tags (one per line or comma-separated)",
   "jlt_worldz.customize.allowed_biomes.hint": "minecraft:plains\n#minecraft:is_overworld",

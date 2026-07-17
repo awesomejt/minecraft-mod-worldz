@@ -54,12 +54,31 @@ class WorldPresetResourcesTest {
     }
 
     @Test
+    void singleBiomePresetMirrorsWorldzButFlagsWorldType() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/single_biome.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject biomeSource = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator")
+            .getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("single_biome", biomeSource.get("world_type").getAsString());
+
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
+    }
+
+    @Test
     void normalPresetTagAppendsWorldz() throws IOException {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(1, tag.getAsJsonArray("values").size());
+        assertEquals(2, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
+        assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
     }
 
     @Test
