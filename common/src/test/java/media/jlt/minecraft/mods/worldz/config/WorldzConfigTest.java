@@ -41,7 +41,7 @@ class WorldzConfigTest {
     Path temporaryDirectory;
 
     @Test
-    void missingConfigCreatesDocumentedDefaults() throws IOException {
+    void missingConfigUsesDefaultsWithoutCreatingAFile() throws IOException {
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
         assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
@@ -56,11 +56,19 @@ class WorldzConfigTest {
         assertEquals(ExteriorMode.NORMAL, config.overworldExterior.mode);
         assertEquals(ExteriorMode.NORMAL, config.netherExterior.mode);
         assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
-        Path generated = temporaryDirectory.resolve("jlt_worldz.yaml");
-        assertTrue(Files.isRegularFile(generated));
-        Object example = YAML.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
-        Object actual = YAML.load(Files.readString(generated));
-        assertEquals(example, actual);
+        assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.yaml")));
+    }
+
+    @Test
+    void documentedExampleParsesToTheSameDefaultsAsCode() throws IOException {
+        WorldzConfig fromExample = WorldzConfig.parse(
+            Files.readString(Path.of("../config/jlt_worldz.example.yaml")), LOGGER
+        ).sanitize(LOGGER);
+        WorldzConfig codeDefaults = new WorldzConfig().sanitize(LOGGER);
+
+        Object expected = YAML.load(codeDefaults.toYaml());
+        Object actual = YAML.load(fromExample.toYaml());
+        assertEquals(expected, actual);
     }
 
     @Test
@@ -424,25 +432,6 @@ class WorldzConfigTest {
     }
 
     @Test
-    void docsKeepCustomTextAndRestoreRequiredEntries() {
-        WorldzConfig config = WorldzConfig.parse("""
-            _docs:
-              allowedBiomes: Custom allowed-biome help
-              customNote: Keep me
-              invalid: 42
-            """, LOGGER).sanitize(LOGGER);
-
-        assertEquals("Custom allowed-biome help", config._docs.get("allowedBiomes"));
-        assertEquals("Keep me", config._docs.get("customNote"));
-        assertFalse(config._docs.containsKey("invalid"));
-        assertTrue(config._docs.containsKey("starterBiome"));
-        assertTrue(config._docs.containsKey("starterRadiusBlocks"));
-        assertTrue(config._docs.containsKey("ensureStarterLand"));
-        assertTrue(config._docs.containsKey("starterLandTransitionBlocks"));
-        assertTrue(config._docs.containsKey("starterLandFoundationDepthBlocks"));
-    }
-
-    @Test
     void summaryUsesCanonicalValuesAndReadableDisabledStarter() {
         WorldzConfig config = WorldzConfig.parse("""
             allowedBiomes:
@@ -463,47 +452,4 @@ class WorldzConfigTest {
         );
     }
 
-    @Test
-    void legacyJsonIsMigratedToYamlAndBackedUp() throws IOException {
-        Path legacy = temporaryDirectory.resolve("jlt_worldz.json");
-        String original = """
-            {"allowedBiomes":["desert"],"starterBiome":"plains","starterRadiusBlocks":128}
-            """;
-        Files.writeString(legacy, original);
-
-        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
-
-        assertEquals(List.of("minecraft:desert"), config.allowedBiomes);
-        assertEquals("minecraft:plains", config.starterBiome);
-        assertEquals(128, config.starterRadiusBlocks);
-        assertTrue(Files.isRegularFile(temporaryDirectory.resolve("jlt_worldz.yaml")));
-        assertFalse(Files.exists(legacy));
-        assertEquals(original, Files.readString(temporaryDirectory.resolve("jlt_worldz.json.bak")));
-    }
-
-    @Test
-    void yamlTakesPrecedenceOverLegacyJson() throws IOException {
-        Files.writeString(temporaryDirectory.resolve("jlt_worldz.yaml"), "allowedBiomes: [desert]");
-        Path legacy = temporaryDirectory.resolve("jlt_worldz.json");
-        Files.writeString(legacy, "{\"allowedBiomes\":[\"plains\"]}");
-
-        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
-
-        assertEquals(List.of("minecraft:desert"), config.allowedBiomes);
-        assertTrue(Files.isRegularFile(legacy));
-        assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.json.bak")));
-    }
-
-    @Test
-    void invalidLegacyJsonIsLeftUntouched() throws IOException {
-        Path legacy = temporaryDirectory.resolve("jlt_worldz.json");
-        String malformed = "{\"allowedBiomes\":[";
-        Files.writeString(legacy, malformed);
-
-        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
-
-        assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
-        assertEquals(malformed, Files.readString(legacy));
-        assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.yaml")));
-    }
 }

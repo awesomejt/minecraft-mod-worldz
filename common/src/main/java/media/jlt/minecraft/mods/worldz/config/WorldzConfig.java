@@ -49,7 +49,6 @@ public final class WorldzConfig {
     public static final int MAX_LAYOUT_REGION_SCALE_BLOCKS = 8192;
 
     private static final String YAML_EXTENSION = ".yaml";
-    private static final String LEGACY_JSON_EXTENSION = ".json";
 
     /** Biome ids and biome-tag ids allowed in new Worldz worlds. */
     public List<String> allowedBiomes = new ArrayList<>(List.of(
@@ -86,44 +85,28 @@ public final class WorldzConfig {
     public LayoutConfig layout = new LayoutConfig();
     /** Layout-origin and initial-spawn strategy. */
     public SpawnConfig spawn = new SpawnConfig();
-    /** Human-readable inline documentation persisted with the config. */
-    public Map<String, String> _docs = defaultDocs();
 
-    /** Creates a config populated with documented defaults. */
+    /** Creates a config populated with defaults. */
     public WorldzConfig() {
     }
 
     /**
-     * Loads {@code <configDir>/<modId>.yaml}, creating a default file when absent.
-     * A legacy JSON config is migrated because JSON is valid YAML input.
+     * Loads {@code <configDir>/<modId>.yaml} when present. The mod-level config file is
+     * optional: when absent, code defaults apply directly and no file is created. See
+     * {@code config/jlt_worldz.example.yaml} for the documented, comment-annotated
+     * reference to copy from when a reusable custom config is wanted.
      *
      * @param configDir loader-provided configuration directory
      * @param modId stable mod id used as the filename
      * @param logger destination for validation diagnostics
-     * @return sanitized configuration, or defaults when input cannot be read
+     * @return sanitized configuration, or defaults when the file is absent or unreadable
      */
     public static WorldzConfig load(Path configDir, String modId, Logger logger) {
         Path configFile = configDir.resolve(modId + YAML_EXTENSION);
-        if (Files.exists(configFile)) {
-            return loadExisting(configFile, logger);
-        }
-
-        Path legacyFile = configDir.resolve(modId + LEGACY_JSON_EXTENSION);
-        if (Files.exists(legacyFile)) {
-            WorldzConfig migrated = loadLegacy(legacyFile, configFile, logger);
-            if (migrated != null) {
-                return migrated;
-            }
+        if (!Files.exists(configFile)) {
             return new WorldzConfig().sanitize(logger);
         }
-
-        WorldzConfig defaults = new WorldzConfig().sanitize(logger);
-        try {
-            defaults.save(configFile);
-        } catch (IOException exception) {
-            logger.warn("Could not create config {}: {}", configFile, exception.getMessage());
-        }
-        return defaults;
+        return loadExisting(configFile, logger);
     }
 
     private static WorldzConfig loadExisting(Path configFile, Logger logger) {
@@ -135,26 +118,6 @@ public final class WorldzConfig {
             logger.warn("Could not load config {}: {}. Using defaults without changing the file.",
                 configFile, exception.getMessage());
             return new WorldzConfig().sanitize(logger);
-        }
-    }
-
-    private static WorldzConfig loadLegacy(Path legacyFile, Path configFile, Logger logger) {
-        try {
-            WorldzConfig config = parse(Files.readString(legacyFile), logger).sanitize(logger);
-            config.save(configFile);
-            Path backup = legacyFile.resolveSibling(legacyFile.getFileName() + ".bak");
-            try {
-                Files.move(legacyFile, backup, StandardCopyOption.REPLACE_EXISTING);
-                logger.info("Migrated legacy config {} to {}; old file kept as {}.", legacyFile, configFile, backup);
-            } catch (IOException exception) {
-                logger.warn("Migrated legacy config to {}, but could not move {} to a backup: {}",
-                    configFile, legacyFile, exception.getMessage());
-            }
-            return config;
-        } catch (Exception exception) {
-            logger.warn("Could not migrate legacy config {}: {}. Using defaults without changing the file.",
-                legacyFile, exception.getMessage());
-            return null;
         }
     }
 
@@ -205,9 +168,6 @@ public final class WorldzConfig {
         if (object.containsKey("spawn")) {
             config.spawn = readSpawnConfig(object.get("spawn"), "spawn");
         }
-        if (object.containsKey("_docs")) {
-            config._docs = readDocs(object.get("_docs"), logger);
-        }
         return config;
     }
 
@@ -252,9 +212,6 @@ public final class WorldzConfig {
         if (spawn.strategy == null) {
             spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
         }
-
-        _docs = _docs == null ? new LinkedHashMap<>() : new LinkedHashMap<>(_docs);
-        defaultDocs().forEach(_docs::putIfAbsent);
         return this;
     }
 
@@ -292,7 +249,6 @@ public final class WorldzConfig {
         values.put("netherExterior", exteriorMap(netherExterior));
         values.put("layout", layoutMap(layout));
         values.put("spawn", spawnMap(spawn));
-        values.put("_docs", _docs);
         return createYaml().dump(values);
     }
 
@@ -453,41 +409,6 @@ public final class WorldzConfig {
         } catch (ArithmeticException exception) {
             throw new IllegalArgumentException(name + " must be an integer", exception);
         }
-    }
-
-    private static Map<String, String> readDocs(Object value, Logger logger) {
-        if (!(value instanceof Map<?, ?> map)) {
-            logger.warn("Ignoring non-mapping _docs value.");
-            return new LinkedHashMap<>();
-        }
-        Map<String, String> docs = new LinkedHashMap<>();
-        map.forEach((key, entry) -> {
-            if (!(key instanceof String stringKey)) {
-                logger.warn("Ignoring non-string _docs key '{}'.", key);
-            } else if (entry instanceof String stringValue) {
-                docs.put(stringKey, stringValue);
-            } else {
-                logger.warn("Ignoring non-string _docs entry '{}'.", stringKey);
-            }
-        });
-        return docs;
-    }
-
-    private static Map<String, String> defaultDocs() {
-        Map<String, String> docs = new LinkedHashMap<>();
-        docs.put("allowedBiomes", "Biome ids and/or #tag ids allowed in newly created Worldz overworlds. Default: a desert/badlands/cave biome mix with a plains starter.");
-        docs.put("starterBiome", "Biome id forced around origin in newly created worlds. Default: minecraft:plains. Empty disables the starter zone. Tags are not accepted.");
-        docs.put("starterRadiusBlocks", "Circular starter-zone radius in blocks. Default: 256. Range: 64..4096.");
-        docs.put("ensureStarterLand", "Raise insufficient natural terrain beneath a selected starter biome. Default: true; no effect without a starter biome.");
-        docs.put("starterLandTransitionBlocks", "Smooth outward blend from guaranteed starter land to natural terrain. Default: 128. Range: 0..4096.");
-        docs.put("starterLandFoundationDepthBlocks", "Solid repair depth below the natural ocean floor. Default: 48. Range: 0..384.");
-        docs.put("overworldBorder", "Optional square border centered at 0,0. Radius is center-to-side distance; resizeDelayDays waits at the initial radius. End portal is reachable by the final size when enabled.");
-        docs.put("netherBorder", "Optional independent Nether border; resizeDelayDays waits at the initial radius. Blaze access is reachable by the final size when enabled.");
-        docs.put("overworldExterior", "Terrain beyond a central square: normal, ocean, or void. Boundary 0 derives from an enabled border.");
-        docs.put("netherExterior", "Nether terrain beyond a central square: normal or void. Boundary 0 derives from an enabled border.");
-        docs.put("layout", "Coordinated terrain layout: mode (legacy/ocean/single_biome/void), weighted biomes list (id or id@weight, roles resolved via maintained defaults plus roleOverrides), regionScaleBlocks, singleBiome. Default: legacy (today's climate-filter-only behavior).");
-        docs.put("spawn", "How the layout origin and initial spawn are chosen: strategy is starter_at_origin (default, today's behavior), preferred_natural_biome (search near the origin for starterBiome using the real seed, moving the layout origin there; falls back to starter_at_origin if not found or starterBiome is empty), or vanilla_spawn (unmodified vanilla spawn selection).");
-        return docs;
     }
 
     private static BorderConfig sanitizeBorder(BorderConfig config, String name, Logger logger) {

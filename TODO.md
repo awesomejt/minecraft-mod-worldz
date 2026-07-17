@@ -64,7 +64,7 @@ and make the test loop fast. No new gameplay features.
       sampling seed, so identical seed strings reproduce identical Worldz
       decisions (GOALS 10, 12, 16, 08, 09). Verify the exact hook against
       26.2 sources first; JUnit-cover the plumbing that is pure.
-- [ ] 1.4 Config hygiene (GOALS §Configuration): stop rewriting
+- [x] 1.4 Config hygiene (GOALS §Configuration): stop rewriting
       `config/jlt_worldz.yaml` when it is absent or holds pure defaults;
       generate the documented example (comment-based YAML, not `_docs` keys)
       as the way users discover options. Drop the legacy `.json` migration

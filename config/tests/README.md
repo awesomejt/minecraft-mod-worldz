@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
    new world using the shipped `jlt_worldz` world preset.
 
-4. Worldz rewrites the file back with full defaults and `_docs` filled in
+4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
 
 ## Files

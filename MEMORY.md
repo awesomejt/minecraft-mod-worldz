@@ -462,6 +462,18 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Global config hygiene: never rewrite `config/jlt_worldz.yaml` when absent or
   all-defaults, document via generated comment-based YAML (our own emitter;
   SnakeYAML doesn't round-trip comments), drop JSON migration.
+  **Done (Phase 1.4, same session — global-config half only; the per-world
+  snapshot is still Phase 2.4):** `WorldzConfig.load()` returns in-memory
+  defaults and writes nothing when the file is absent; an existing file's
+  rewrite-after-sanitize behavior is unchanged. `loadLegacy` and all
+  `jlt_worldz.json`/`.json.bak` handling deleted outright (new-worlds-only
+  makes it dead weight). The `_docs` in-file map is gone from the schema;
+  `config/jlt_worldz.example.yaml` is now hand-authored with real `#`
+  comments instead of being generated output the mod itself produces —
+  building a comment-preserving emitter for a file that changes rarely was
+  judged more machinery than the problem warranted. A JUnit test parses the
+  example file and compares its *values* against `new WorldzConfig()`'s
+  defaults to keep it honest without needing byte-for-byte text comparison.
 - 2026-07-16 — Jason approved five additional challenges in the same planning
   session: cave-only start with mega-cave option (GOALS 25–26), Nether start
   (27), lava ocean (28), rising lava floor (29), and forever night (30). The

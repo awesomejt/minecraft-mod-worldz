@@ -128,6 +128,12 @@ maps to holders. All syntax validation and the quart-distance/radius math
 
 ## 6. Config (`config/jlt_worldz.yaml`, flat + `_docs`, mirror trees' `ModConfig` pattern)
 
+> **Superseded (2026-07-16, Phase 1.4):** the `_docs` in-file documentation
+> and the legacy `jlt_worldz.json` migration path described here were
+> removed. Current behavior is §20.3 (Implementation): the config file is
+> fully optional and never auto-created; documentation lives in
+> `config/jlt_worldz.example.yaml` as real YAML comments.
+
 Loaded at startup; each loader entrypoint passes its config-dir `Path` into
 `WorldzCommon.init(...)` (check how trees wires this and mirror it).
 
@@ -1071,11 +1077,31 @@ user-facing mode switch.
 On world creation, write a commented, human-readable YAML snapshot of the
 resolved settings into the world folder (GOALS §Configuration). It is a
 *record* for reference/reproducibility, not a control file — authoritative
-settings stay baked in the world's generator codec as today. Config hygiene
-also changes: the global `config/jlt_worldz.yaml` is no longer rewritten when
-absent or all-defaults, documentation moves to real YAML comments (generated
-by our own emitter — SnakeYAML round-trips don't preserve comments), and the
-legacy JSON migration path is dropped.
+settings stay baked in the world's generator codec as today. **This
+per-world snapshot itself remains TODO Phase 2.4** — the global-config half
+of this section (below) is done.
+
+#### Implementation (Phase 1.4 — global config hygiene)
+
+`WorldzConfig.load()` no longer creates a file when `config/jlt_worldz.yaml`
+is absent — it returns in-memory sanitized defaults directly, and the mod
+never writes to disk on that path. A file that already exists is still
+loaded, sanitized, and rewritten as before (unchanged: malformed/wrongly-
+typed input is still never rewritten). The legacy `jlt_worldz.json`
+migration path (`loadLegacy`, the `.json`/`.json.bak` handling) is deleted
+outright — the new-worlds-only policy (§20.1) makes it dead weight, since
+there is no cross-version config to carry forward either.
+
+The in-file `_docs` map (data living inside the YAML the mod itself
+read/wrote) is gone from the schema entirely. Documentation moved to
+`config/jlt_worldz.example.yaml`, hand-authored with real `#` comments
+above each key rather than generated: SnakeYAML's dumper cannot preserve
+comments on round-trip, and building a comment-preserving emitter for a
+file that changes only when a field is added would be more machinery than
+the problem warrants. A JUnit test (`documentedExampleParsesToTheSameDefaultsAsCode`)
+keeps the example's *values* honest by parsing it and comparing against
+`new WorldzConfig()`'s own defaults — comments carry no data, so this
+catches drift without needing byte-for-byte text comparison.
 
 ### 20.4 Real-seed sampling
 

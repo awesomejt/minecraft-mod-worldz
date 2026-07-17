@@ -39,11 +39,14 @@ world types are untouched.
 
 For singleplayer:
 
-1. Start Minecraft once so the default config is created.
-2. Edit `config/jlt_worldz.yaml` if you want different reusable defaults, then
-   restart Minecraft.
-3. Create a world and select **Worldz** under **World Type**.
-4. Select **Customize** to change the biome list, starter zone and land,
+1. (Optional) Create `config/jlt_worldz.yaml` if you want different reusable
+   defaults than the ones built into the mod — copy from
+   [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml), which
+   documents every setting with comments, then restart Minecraft. No config
+   file at all is a normal, supported setup: the mod's own defaults apply
+   directly and it never creates one for you.
+2. Create a world and select **Worldz** under **World Type**.
+3. Select **Customize** to change the biome list, starter zone and land,
    borders, exterior terrain, coordinated layout, or resize rates for this
    world only.
 
@@ -64,12 +67,13 @@ the server to create a new one. Worldz never converts an existing world.
 
 ## Configuration
 
-The mod reads `config/jlt_worldz.yaml` at startup. These values are the defaults
-for the singleplayer Customize screen and the direct inputs for dedicated-server
-world creation. A complete documented example is available at
-[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml).
-If an older `jlt_worldz.json` exists and no YAML config exists yet, Worldz
-migrates it automatically and retains the original as `jlt_worldz.json.bak`.
+The mod reads `config/jlt_worldz.yaml` at startup if present; it is entirely
+optional and the mod never creates or requires one. These values are the
+defaults for the singleplayer Customize screen and the direct inputs for
+dedicated-server world creation. A complete, comment-documented reference —
+the way to discover every available setting — lives at
+[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml); copy the
+parts you want into your own `config/jlt_worldz.yaml`.
 
 | Setting | Default | Description |
 |---|---|---|
