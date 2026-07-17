@@ -17,8 +17,23 @@ NeoForge for Minecraft 26.2.
 > types (ocean island, sky island, sky chunk, single biome, flat, limited
 > size) per [GOALS.md](GOALS.md) and [TODO.md](TODO.md). The `mixed` and
 > `land_only` coordinated-layout modes have been removed as part of that
-> restructure (TODO.md Phase 1); see TODO.md for the challenge types
-> replacing them.
+> restructure (TODO.md Phase 1). The first dedicated challenge type,
+> **Worldz: Single Biome**, has landed (TODO.md Phase 2) — its own World Type
+> entry with a small Customize screen, described below. The original
+> flexible **Worldz** preset (allowed-biome list, coordinated layouts,
+> borders, exteriors) is unchanged and still the way to reach every other
+> mode; later phases give the remaining challenge types their own entries the
+> same way.
+
+## Challenge types
+
+Worldz adds more than one entry to the **World Type** dropdown, one per
+challenge family, each with its own small Customize screen:
+
+| World Type | Covers | Customize screen |
+|---|---|---|
+| **Worldz** | The original flexible preset: allowed-biome list, coordinated `ocean`/`single_biome`/`void`/`legacy` layouts, borders, exteriors, starter land. See [Using Worldz](#using-worldz) below. | Full screen: biomes, starter zone, borders, exteriors, layout, spawn strategy. |
+| **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy only. |
 
 ## Supported loaders
 
@@ -62,8 +77,47 @@ For a dedicated server, set these values before creating the world:
 level-type=jlt_worldz:worldz
 ```
 
+For the single-biome challenge instead, use `level-type=jlt_worldz:single_biome`
+and the `singleBiome:` config section (see [Single-biome challenge](#single-biome-challenge)).
+
 Delete or rename an existing `level-name` world only when you intentionally want
 the server to create a new one. Worldz never converts an existing world.
+
+## Single-biome challenge
+
+Select **Worldz: Single Biome** under **World Type** for a world where one
+chosen biome fills the entire generated world — structures, caves, and
+vanilla randomness all generate normally and follow the world seed exactly
+as they would in a vanilla world of that biome. Select **Customize** for a
+small screen with only this type's fields: land biome, an optional different
+starter biome around spawn, starter radius, and spawn strategy. This is a
+separate World Type from plain **Worldz** above — it does not read
+`allowedBiomes`, borders, exteriors, or `layout` at all; those shared
+modules stay YAML-only for this type for now (a future phase gives every
+type its own Customize section for them).
+
+Configure its defaults with a `singleBiome:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: 'minecraft:plains'
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `landBiome` | `"minecraft:plains"` | The one biome that fills the entire world. |
+| `starterBiome` | `""` | Optional different biome forced in a circular zone around spawn; empty means no forced zone (the whole world is already `landBiome`). |
+| `starterRadiusBlocks` | `256` | Starter-zone radius, only meaningful when `starterBiome` is set; clamped to `64..4096`. |
+| `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. `preferred_natural_biome` searches for a *natural* occurrence of `starterBiome` using the real seed and moves spawn there instead of forcing a zone at `(0, 0)` — the way to get a starter biome whose location (and, incidentally, whatever natural shape it has) comes from the seed rather than being placed arbitrarily. |
+
+`allowedBiomes` (what structures/features see as possible biomes) is derived
+automatically from `landBiome` and `starterBiome` — there is nothing to keep
+in sync by hand for this type.
 
 ## Configuration
 
@@ -238,6 +292,12 @@ disabled, so unexplored chunks in those saves do not change shape.
 Starter-land profile revisions are also baked into the save: worlds made with
 0.1.4 or earlier retain the legacy profile, while fresh 0.1.5 worlds use rolling
 relief. Create a new world to evaluate the newer terrain algorithm.
+
+Every newly created world also gets a `jlt_worldz-snapshot.yaml` file written
+into its save folder (alongside `level.dat`), recording the settings it was
+created with. It is a reference for your own notes and reproducibility only —
+the mod never reads it back, and editing it has no effect; the world's actual
+generator settings are the codec-encoded values described above.
 
 ## How biome limiting works
 

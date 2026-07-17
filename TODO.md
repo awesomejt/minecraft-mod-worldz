@@ -105,7 +105,7 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       not a control file (new-worlds-only; README documents this).
 - [x] 2.5 Test configs `config/tests/` for 10, 11, 12 + a vanilla-limited
       baseline; update MANUAL_TESTING.md scenario table.
-- [ ] 2.6 README restructure begins: challenge-type-first presentation,
+- [x] 2.6 README restructure begins: challenge-type-first presentation,
       **new worlds only** restriction, single-biome section.
 - [ ] 2.7 [Jason] Acceptance: 10 (one biome, normal terrain/caves/structures),
       11 (starter differs), 12 (same seed twice → same placement; spawn in
