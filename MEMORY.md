@@ -21,6 +21,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   (perturb the effective cell boundary with its own noise field) — a design
   pass, not a mid-testing patch. Revisit before promising "natural-looking"
   coastlines for `mixed`/`ocean` layouts.
+  **Update 2026-07-16 replan:** resolved by removal, not by fixing —
+  `MIXED`/`LAND_ONLY` grid composition is being deleted in 0.2.0 (TODO Phase
+  1.2, DESIGN §20.1); ocean-island shorelines get a proper redesign in Phase
+  5.1 instead.
 
 - 2026-07-16 / **`layout.biomes` picks one biome per whole region cell, so
   linear vanilla biomes like `river` render as a huge flat area, not a
@@ -40,6 +44,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Customize-screen input includes `river` (or another inherently linear/thin
   biome) in `layout.biomes` again, this is why it looks wrong, not a
   regression.
+  **Update 2026-07-16 replan:** moot after Phase 1.2 removes the grid modes;
+  natural rivers/oceans in single-biome worlds are instead delivered by
+  vanilla pass-through selection (DESIGN §20.5), which needs no biome-cell
+  concept at all.
 
 ## Decisions
 
@@ -389,6 +397,50 @@ Durable decisions, verified API notes, and rationale that should survive across 
   separate per-loader files rather than shared via `common`, matching this
   project's existing per-loader mixin convention (`MinecraftServerMixin` is
   also Fabric-only). Not yet confirmed fixed in-game.
+
+- 2026-07-16 — **GOALS.md replan (planning session with Jason, Fable).**
+  `GOALS.md` (24 challenge-world use cases) replaces the feature-first plan as
+  the requirements source; `TODO.md` was rewritten into 12 challenge-first
+  phases (old plan archived as `TODO-archive.md`); DESIGN §20 records the
+  architecture. Settled decisions, confirmed by Jason explicitly:
+  (a) **remove** the `MIXED`/`LAND_ONLY` hash-grid layout system rather than
+  fix or park it — no GOALS use case needs region-composed worlds, and it
+  caused the straight-coastline/beach-width/floating-structure defect class;
+  (b) **adjust, don't restart** — keep the pure-logic core and codec/mixin
+  plumbing; (c) first implementation target after stabilization is the
+  **single-biome challenge (use cases 10–12)**, the closest to already
+  working; (d) **new worlds only** — the mod targets newly created worlds, no
+  cross-version save compatibility, restriction documented in README, legacy
+  shims (JSON config migration, old-save decode paths) may be dropped;
+  (e) **client-first** — Fabric singleplayer is the acceptance path, dedicated
+  server stays only as the free config-driven path (worldgen runs on the
+  logical server, so a client install covers every use case; Open-to-LAN
+  covers multiplayer), never a per-phase test gate.
+- 2026-07-16 — One preset per challenge family (`single_biome`,
+  `ocean_island`, `sky_island`, `sky_chunk`, `flat`, `limited`) replaces the
+  single `jlt_worldz:worldz` preset and its overloaded Customize screen, per
+  GOALS' own suggestion of multiple world types for mutually exclusive
+  processes. Shared modules (limits, spawn, starter land, progression, plus
+  new exclusion-zone and starter-chest modules) compose into each type.
+  Each new type/module phase starts with a committed DESIGN §20 design task
+  before implementation (the §16–18 pattern that worked).
+- 2026-07-16 — Replace the random-per-world layout sampling seed with the
+  real world seed captured at generation time (available at `ChunkMap`
+  construction, which `ChunkMapMixin` already intercepts, or from the server
+  level — exact hook to verify in Phase 1.3). GOALS requires seed-reproducible
+  randomness in use cases 08–10, 12, 16; the codec-decode-has-no-seed problem
+  only forbids capturing it at decode time, not lazily at generation time.
+- 2026-07-16 — Per-world settings snapshot: world creation writes a commented
+  YAML record of resolved settings into the world folder — a reference
+  artifact, not a control file; baked codec settings remain authoritative.
+  Global config hygiene: never rewrite `config/jlt_worldz.yaml` when absent or
+  all-defaults, document via generated comment-based YAML (our own emitter;
+  SnakeYAML doesn't round-trip comments), drop JSON migration.
+- 2026-07-16 — Jason's GOALS Question 1 answered from the Worldz5/6 evidence:
+  ocean-only biome filtering cannot prevent land (biome ≠ terrain), so endless
+  ocean needs the terrain cap and distant natural islands (use case 04) come
+  from releasing that cap beyond the exclusion zone. Recorded in GOALS.md
+  inline and DESIGN §20.5.
 
 ## Reference Log
 

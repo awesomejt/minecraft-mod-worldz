@@ -1,704 +1,249 @@
-# TODO — jlt_worldz implementation
+# TODO — jlt_worldz challenge-world plan
+
+**Requirements source:** `GOALS.md` (Jason's use cases 01–24). **Technical
+reference:** `DESIGN.md` — §20 is the architecture for this plan; §§1–19
+document the already-built components and verified 26.2 APIs. **History:**
+`TODO-archive.md` (the completed 2026-07-14/15 feature-first plan).
 
 **Executor:** any capable Claude model (Opus/Sonnet). Planned by Fable on
-2026-07-14; the design is settled — execute it, don't redesign it.
+2026-07-16 with Jason; the direction is settled — execute it, don't redesign
+it. Jason manually tests **every phase** before the next begins, and a
+high-power model reviews the code between phases.
 
-**Read first, before writing any code:**
-1. `DESIGN.md` (this repo) — the mod spec.
-2. `../reseed` — the structural template. Copy its build wiring; do not modify it.
-3. `../trees/common/src/main/java/media/jlt/minecraft/mods/trees/config/` —
-   the config-class pattern (flat YAML + `_docs`, sanitization, tests) and how
-   the loader entrypoints hand the config dir to common code.
+## Ground rules (per GOALS.md workflow + carried over)
 
-**Ground rules**
-- Work on `main` in this repo (`/shared/projects/minecraft/worldz`,
-  github.com/awesomejt/minecraft-mod-worldz). Do not touch the sibling repos.
-- DESIGN.md's Java sketches use Mojmap names remembered from ~1.20-era APIs.
-  **Verify every vanilla class/method against the actual 26.2 sources**
-  (Loom's `genSources` / IDE navigation) before use. Shape adjustments are
-  fine; log every deviation from DESIGN.md in the Deviation log below.
-- `./gradlew build` (which runs the unit tests) must be green before every
-  commit. Commit at each numbered checkpoint with a descriptive message; do
-  **not** push unless Jason asks.
-- Items marked **[Jason]** need a human (in-game smoke tests). Ask; don't fake.
-- Keep checkboxes in this file updated as you go.
+- Work on `main` in this repo. Do not touch the sibling repos.
+- **Verify every vanilla class/method against the actual 26.2 sources** before
+  use; for "can I extend/override this" questions, check `javap` on the real
+  compiled jar, not decompiled source (see MEMORY.md, 2026-07-16 lesson).
+- `./gradlew build` (all modules + JUnit) must be green before every commit.
+  **Commit per task**: first line is a brief summary, details below. Do not
+  push unless Jason asks.
+- Tests are JUnit logic/component tests only — **no automated game tests**.
+- Items marked **[Jason]** need a human in-game pass. Ask; don't fake.
+- New tasks discovered mid-phase get added here, not silently done.
+- Keep checkboxes, the Deviation log, and MEMORY.md updated as you go.
+- **New worlds only** (Jason's 2026-07-16 decision): the mod targets newly
+  created worlds. No save-compat shims for worlds created by older mod
+  versions; test worlds are disposable. Document the restriction in README.
+- Each phase ships at least one `config/tests/` YAML per covered use case.
 
-Environment: only JDK is Temurin 25. Toolchain identical to `../reseed`
-(Gradle wrapper 9.5.1, Loom 1.17-SNAPSHOT, MC 26.2, fabric-loader 0.19.3,
-fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta).
+Environment: Temurin 25, Gradle wrapper 9.5.1, Loom 1.17-SNAPSHOT, MC 26.2,
+fabric-loader 0.19.3, fabric-api 0.154.2+26.2, NeoForge 26.2.0.12-beta.
+Fabric is the primary manual-test loader; NeoForge must always build and gets
+a brief check when loader-level code (mixins, events) changes.
+
+---
+
+## Phase 1 — Stabilize and simplify (release 0.2.0)
+
+Goal: retire the complexity GOALS doesn't need, verify the outstanding fixes,
+and make the test loop fast. No new gameplay features.
+
+- [ ] 1.1 [Jason] Verify the 0.1.15 dummy-RandomState mixin fix in-game on
+      Fabric: bottom-of-world has bedrock, normal cave systems, and no
+      near-total lava sheet below Y-64. Briefly repeat on NeoForge (first
+      NeoForge mixin this project ships). Also retest whether the Worldz14
+      orange/glitchy-terrain screenshots reproduce on 0.1.15 — plausibly the
+      same dummy-RandomState root cause, never confirmed (MEMORY Known Risks).
+- [ ] 1.2 Remove the `MIXED` and `LAND_ONLY` grid layout modes and everything
+      only they used: land/ocean cell composition, coast-blend height
+      transition, role-boundary structure suppression
+      (`isNearRoleBoundary` + the 128-block margin), beach-role transition
+      ring, and their Customize UI, config keys, docs, and tests. Keep the
+      per-cell weighted biome selection machinery only where every cell shares
+      one role (ocean-biome variety for the future ocean type; no height
+      cliffs → none of the removed defect class applies). `OCEAN`, `VOID`,
+      `SINGLE_BIOME`, `LEGACY` semantics survive as internal building blocks
+      per DESIGN §20. Close out the straight-coastline and beach-width Known
+      Risks in MEMORY.md as "removed with the feature".
+- [ ] 1.3 Route the real world seed into Worldz sampling (DESIGN §20.4):
+      capture it at generation time (it is available to the generator at
+      runtime — e.g. via the level/`ChunkMap` construction the existing
+      `ChunkMapMixin` already intercepts) and replace the random-per-world
+      sampling seed, so identical seed strings reproduce identical Worldz
+      decisions (GOALS 10, 12, 16, 08, 09). Verify the exact hook against
+      26.2 sources first; JUnit-cover the plumbing that is pure.
+- [ ] 1.4 Config hygiene (GOALS §Configuration): stop rewriting
+      `config/jlt_worldz.yaml` when it is absent or holds pure defaults;
+      generate the documented example (comment-based YAML, not `_docs` keys)
+      as the way users discover options. Drop the legacy `.json` migration
+      path (new-worlds-only policy makes it dead weight).
+- [ ] 1.5 Prism test-loop automation (GOALS §Automation): a Gradle task (e.g.
+      `./gradlew deployToPrism -Pinstance=...`) that copies the built Fabric
+      jar into the Prism instance's `mods/`, replacing any older jlt_worldz
+      jar. Ask Jason for the instance path; put it in a git-ignored local
+      properties file. Document in MANUAL_TESTING.md.
+- [ ] 1.6 Bump to 0.2.0 (breaking removal), align the metadata-test contract,
+      clean build, artifact inspection. **Commit** per task throughout.
+- [ ] 1.7 [Jason] Phase acceptance: a default-config world and a
+      single-biome-style world both create, generate normal caves/structures,
+      and show nothing from the removed modes in Customize.
+
+## Phase 2 — World types + Single-biome challenge (GOALS 10–12)
+
+Goal: the first challenge type end-to-end, plus the per-type architecture
+every later phase reuses. Design task first, per DESIGN §20.6.
+
+- [ ] 2.1 Design pass (extend DESIGN §20): finalize the world-type preset
+      list and IDs (e.g. `jlt_worldz:single_biome`, `jlt_worldz:limited`
+      replacing the catch-all `jlt_worldz:worldz`), the per-type YAML config
+      sections with per-type defaults, which shared modules (limits, spawn,
+      starter chest, exclusion zone) each type composes, and the per-world
+      snapshot file (2.4). Verify 26.2 preset/tag/lang wiring for multiple
+      presets. **Commit** the design before implementing.
+- [ ] 2.2 Implement the `single_biome` world type: one land biome everywhere
+      (use case 10), optional different starter biome around spawn (11),
+      optional seed-chosen natural starter placement via the existing
+      `preferred_natural_biome` strategy + origin recentering (12). Small
+      per-type Customize screen — only this type's options, per-type
+      defaults, scrolling per GOALS.
+- [ ] 2.3 Structures, caves, and randomness follow the seed (10; depends on
+      1.3). JUnit where pure; the rest is 2.7's manual pass.
+- [ ] 2.4 Per-world snapshot: on world creation, write a readable commented
+      YAML of the resolved settings into the world folder. It is a record,
+      not a control file (new-worlds-only; README documents this).
+- [ ] 2.5 Test configs `config/tests/` for 10, 11, 12 + a vanilla-limited
+      baseline; update MANUAL_TESTING.md scenario table.
+- [ ] 2.6 README restructure begins: challenge-type-first presentation,
+      **new worlds only** restriction, single-biome section.
+- [ ] 2.7 [Jason] Acceptance: 10 (one biome, normal terrain/caves/structures),
+      11 (starter differs), 12 (same seed twice → same placement; spawn in
+      the chosen biome).
+
+## Phase 3 — Single-biome variations: natural rivers and oceans (GOALS 13–14)
+
+- [ ] 3.1 Design + implement vanilla pass-through selection (DESIGN §20.5):
+      where vanilla's own biome would be a river (13) or river/ocean family
+      (14), keep vanilla's choice; otherwise substitute the single biome.
+      Terrain is untouched, so coastlines/rivers are exactly natural — no
+      grid, no height blending. Config/Customize toggles: `allowRivers`,
+      `allowOceans`.
+- [ ] 3.2 Test configs for 13 and 14; docs; **[Jason]** acceptance.
+
+## Phase 4 — World limits, expanding/collapsing (GOALS 17–20)
+
+Mostly verification of already-built borders/exteriors against GOALS wording,
+composed with the new world types; plus the one real gap (the End).
+
+- [ ] 4.1 Audit existing border + exterior behavior against 17–20: blocks
+      and chunks as units (add chunk input if missing), invisible-wall
+      (border) vs hard void (exterior) beyond the size (18), expansion rate +
+      initial delay (19), contraction with larger default delay, minimum
+      size, and center-safe start (20). Fix deltas only.
+- [ ] 4.2 The End gap (17): option to carry limits into the End with a
+      minimum-size override so the dragon fight stays winnable; verify the
+      existing Nether carry-over and blaze/End-portal guarantees still hold
+      under the world-type restructure.
+- [ ] 4.3 Limits must compose with every world type (a shared module section
+      in each type's config/Customize), not only the `limited` type.
+- [ ] 4.4 Test configs (static small, expanding, collapsing, End carry-over);
+      docs; **[Jason]** acceptance.
+
+## Phase 5 — Ocean island challenge, core (GOALS 01, 04)
+
+- [ ] 5.1 Design pass (DESIGN §20 extension): natural-looking island shaping
+      (noise-perturbed radius over the existing starter-land profile — not a
+      disc), a dedicated narrow shore width (beach/stony-shore ring; fixes
+      the logged beach-width gap properly), shallow→deep ocean depth gradient
+      with depth-appropriate ocean biomes (all ocean biomes available), and
+      the shared **exclusion zone** module (center = origin, default 2000
+      blocks; reused by 04, 07, 08, 24). **Commit** design first.
+- [ ] 5.2 Implement the `ocean_island` world type: configurable island size
+      (1 chunk → huge), chosen island biome, endless ocean via the terrain
+      cap, underground structures intact, unchanged Nether/End, beatable
+      (progression guarantees). Use case 01.
+- [ ] 5.3 Distant natural islands (04): release the ocean cap beyond the
+      exclusion radius so the seed's natural terrain resumes far away.
+- [ ] 5.4 Test configs (tiny/default/huge island, 04 variant); docs;
+      **[Jason]** acceptance including "does the island read as natural".
+
+## Phase 6 — Ocean island extras (GOALS 03, 02)
+
+- [ ] 6.1 Starter-chest infrastructure (shared with sky phases): loot presets
+      + YAML-configurable contents, placed at spawn. Then use case 03:
+      no-land ocean world, spawn on/next to a chest boat with essentials
+      (lily pad, dirt, grass block, saplings) + configurable randoms.
+- [ ] 6.2 Natural island by seed (02): search the real seed's unmodified
+      climate/terrain for a small natural island, set world spawn/origin
+      there, replace everything else with ocean beyond it. Reuses the 16.3
+      spawn-search + recentering machinery. This is the hardest ocean item —
+      keep it last and time-boxed; if the search proves unreliable, park it
+      with findings in DESIGN and move on.
+- [ ] 6.3 Test configs; docs; **[Jason]** acceptance.
+
+## Phase 7 — Sky island challenge (GOALS 05–07)
+
+- [ ] 7.1 Design pass: true floating island (bounded below — not the current
+      full-depth terrain plug), default spawn platform Y ≥ 64 (slime rule),
+      necessities-chest presets easy/medium/hard informed by island biome
+      (water bucket vs cauldron etc.), all beatable; stronghold/structure
+      option reusing progression guarantees (05). Nether/End sky-island
+      options with structure retention (06). Villages beyond the exclusion
+      zone (07).
+- [ ] 7.2 Implement `sky_island` world type per the design; test configs;
+      docs; **[Jason]** acceptance per sub-case.
+
+## Phase 8 — Floating resource islands (GOALS 08)
+
+- [ ] 8.1 Seed-driven scattered floating islands with varied sizes/resources,
+      far enough apart to force serious bridging; option replaces pure void
+      between them. Design first (placement sampling can reuse the pure
+      hash-cell approach — uniform role, so no coastline-class defects), then
+      implement, test configs, **[Jason]** acceptance.
+
+## Phase 9 — Sky chunk challenge (GOALS 09)
+
+- [ ] 9.1 Design + implement chunk-grid islands cut from the seed's natural
+      chunks: full-chunk vs top-N-blocks-deep option, guarantee one generated
+      chunk contains a portal room, normal-vs-chunk-island Nether/End
+      options. Test configs; **[Jason]** acceptance.
+
+## Phase 10 — Flat worlds (GOALS 15, 16, 22)
+
+- [ ] 10.1 Design pass against DESIGN §19's verified `FlatLevelSource`
+      research: layer editor (arbitrary block layers/thicknesses, presets,
+      text import/export), optional bedrock floor, structure toggles incl.
+      the trial-chambers placement spike, spawn-Y/slime option (15);
+      deep-flat variant with seeded caves/cave biomes/optional far-off rivers
+      (16 — likely noise-based underground below a flat surface, spike
+      needed); underground structures buried at natural depth rather than
+      floating (22).
+- [ ] 10.2 Implement `flat` world type(s) per design; test configs; docs;
+      **[Jason]** acceptance.
+
+## Phase 11 — Structure options wrap-up (GOALS 21, 23, 24)
+
+- [ ] 11.1 Verify natural placement remains the default everywhere (21).
+- [ ] 11.2 Generalize the exclusion-zone module into per-structure-family
+      "minimum distance from spawn" options (default 2000 blocks) usable by
+      any world type (24).
+- [ ] 11.3 Stretch, only if Jason still wants it after 1–10: floating
+      "Pandora" structure islands (23). Design spike first; park if cost is
+      out of proportion.
+- [ ] 11.4 Test configs; docs; **[Jason]** acceptance.
+
+## Phase 12 — Wrap-up and release
+
+- [ ] 12.1 Full README/config-reference/example rewrite in challenge-first
+      terms; MANUAL_TESTING.md final scenario tables; MEMORY.md tidy.
+- [ ] 12.2 Final clean multiloader build, artifact inspection, version bump.
+      Publishing decisions remain Jason's.
 
 ---
 
-## Phase 0 — Repo skeleton (copy from ../reseed)
+## Carried-over open risks (from MEMORY.md)
 
-- [x] 0.1 Copy `gradlew`, `gradlew.bat`, `gradle/wrapper/`, `build-logic/`
-      (sources only — no `.gradle/` caches), `.github/workflows/build.yml`,
-      and `LICENSE` from `../reseed`.
-- [x] 0.2 `settings.gradle` copied and adapted: `rootProject.name = 'mod-worldz'`.
-- [x] 0.3 `gradle.properties` copied and adapted: `version=0.1.0`,
-      `mod_id=jlt_worldz`, `mod_name=JLT Worldz`, description from DESIGN §1;
-      all version numbers unchanged from reseed.
-- [x] 0.4 `common/`, `fabric/`, `neoforge/` module `build.gradle` files copied
-      from reseed (keep the gametest wiring if it comes along; it's harmless).
-- [x] 0.5 Entrypoints `WorldzCommon` / `WorldzFabric` / `WorldzNeoForge` in
-      `media.jlt.minecraft.mods.worldz` (log-only init, mirroring reseed),
-      `fabric.mod.json` + `neoforge.mods.toml` adapted (id, name, entrypoint
-      class, sources URL `minecraft-mod-worldz`; drop reseed's
-      `fabric-gametest` entrypoint).
-- [x] 0.6 `./gradlew build` green. **Commit** ("Repo skeleton from reseed template").
+- Dummy-RandomState fix (0.1.15) unverified in-game → Phase 1.1.
+- Worldz14 orange/glitchy terrain unexplained → Phase 1.1.
+- Straight coastlines + beach width → removed with the grid modes (1.2);
+  ocean-island shore quality is redesigned properly in 5.1.
+- Layout sampling seed not the real world seed → Phase 1.3.
 
-## Phase 1 — Config
+## Questions for Jason (running list)
 
-- [x] 1.1 `config/WorldzConfig`: fields, defaults, clamps per DESIGN §6;
-      loader entrypoints pass the config dir `Path` (mirror trees' wiring).
-- [x] 1.2 Unit tests: defaults on missing/malformed file, unknown-key
-      tolerance, list-entry filtering, radius clamp.
-- [x] 1.3 `logic/BiomeListSpec` (+ starter-zone math helper): pure parsing /
-      validation / quart-distance per DESIGN §5, with unit tests including
-      boundary cases (`r*r` inclusive, block→quart conversion).
-- [x] 1.4 `config/jlt_worldz.example.yaml` checked into the repo.
-- [x] 1.5 Build green. **Commit** ("Config + pure biome-list logic").
-- [x] 1.6 Config switched to safe, map-based YAML at the user's request;
-      existing JSON configs migrate automatically to YAML with a `.json.bak`
-      backup. Fabric and NeoForge bundle SnakeYAML 2.6. JUnit covers YAML
-      parsing, persistence, malformed input, type checks, precedence, and
-      JSON migration. **Commit** ("Migrate Worldz config to YAML").
-
-## Phase 2 — LimitedBiomeSource
-
-- [x] 2.1 `worldgen/LimitedBiomeSource` per DESIGN §4: codec with optional
-      fields + registry getters, config fallback at decode, resolved values
-      on encode, filtered multi-noise delegate, starter-zone override in
-      `getNoiseBiome`, possible-biomes union.
-- [x] 2.2 Fail-safes: empty filter result → WARN + unfiltered overworld list;
-      WARN for allowed ids with no overworld climate entry; unknown ids
-      skipped with WARN.
-- [x] 2.3 Registration under `jlt_worldz:limited`: Fabric — direct
-      `Registry.register` in `WorldzFabric.onInitialize`; NeoForge —
-      `DeferredRegister.create(Registries.BIOME_SOURCE, MOD_ID)` on the mod
-      bus in `WorldzNeoForge`.
-- [x] 2.4 Build green on both loaders. **Commit** ("LimitedBiomeSource + registration").
-
-## Phase 3 — World preset data
-
-- [x] 3.1 `data/jlt_worldz/worldgen/world_preset/worldz.json` per DESIGN §8
-      (overworld stem with bare `jlt_worldz:limited` source; vanilla nether +
-      end stems copied for 26.2).
-- [x] 3.2 `data/minecraft/tags/worldgen/world_preset/normal.json` tag entry.
-- [x] 3.3 `assets/jlt_worldz/lang/en_us.json` with the preset display name
-      (verify the 26.2 world-preset lang key format against vanilla).
-- [ ] 3.4 `./gradlew :fabric:runClient` — verify at minimum that the game
-      reaches the title screen and the create-world screen lists "Worldz"
-      under World Type without datapack-validation errors. **Commit**
-      ("Worldz world preset").
-      Automated status: Fabric reached title-screen resource reload; Fabric and
-      NeoForge dedicated servers both created and saved fresh
-      `level-type=jlt_worldz:worldz` worlds, including tag-based and starter-zone
-      configs. Visual dropdown confirmation remains.
-
-## Phase 4 — Smoke test [Jason]
-
-Automated coverage before manual testing: 50 passing JUnit tests cover project
-identity/license metadata, config load/sanitation, biome/tag parsing,
-climate-entry filtering, starter-zone math,
-and preset/tag/lang resources. Dedicated-server creation also passed on both
-loaders; the items below remain the requested visual/gameplay acceptance pass.
-
-- [ ] 4.1 [Jason] Fabric client: create a Worldz world with default config
-      (plains only); fly around, F3 shows only plains; terrain still has
-      rivers/hills shape.
-- [ ] 4.2 [Jason] Multi-biome config (e.g. plains + desert + snowy_plains) →
-      distinct regions appear.
-- [ ] 4.3 [Jason] Starter biome config (e.g. allowed cherry_grove, starter
-      plains, radius 512): spawn is in plains, cherry_grove past the radius.
-      **Note whether spawn landed inside the zone.**
-- [ ] 4.4 [Jason] NeoForge client: repeat 4.1 briefly.
-- [ ] 4.5 [Jason] Dedicated-server check (either loader):
-      `level-type=jlt_worldz:worldz` in server.properties generates a limited
-      world.
-- [x] 4.6 Config-change isolation: reopen the 4.1 world after changing
-      `allowedBiomes` — world must be unchanged (settings baked at creation).
-      Automated equivalent passed on Fabric: a plains + cherry starter world
-      reopened after the config changed to desert + no starter, retained its
-      saved settings, and still located cherry at origin and plains outside the
-      512-block zone.
-
-## Phase 5 — Spawn guard (only if 4.3 showed spawn outside the zone)
-
-- [ ] 5.1 Server-started hook on both loaders per DESIGN §7; skipped entirely
-      when the overworld source isn't a `LimitedBiomeSource` with a starter
-      biome. If 4.3 was fine, check this box with a note and skip.
-- [ ] 5.2 Build green. **Commit** if implemented.
-
-## Phase 6 — Wrap-up
-
-- [x] 6.1 README.md: what it does, config reference, world-type selection
-      (client + server.properties), caveats from DESIGN §10. Mirror reseed's
-      README structure.
-- [ ] 6.2 Check off remaining boxes here, fill the Deviation log, final
-      **commit**. Do not push, tag, or publish — [Jason] decides.
-
-## Phase 7 — Optional limited worlds
-
-- [x] 7.1 YAML schema for independent overworld/Nether borders: enabled,
-      initial/final half-width, linear resize days, and optional End-portal or
-      blaze-access guarantee. Pure `BorderSchedule` tests cover static, growth,
-      shrink, endpoint clamping, and invalid values. Borders default disabled.
-      **Commit** ("Add limited-world border configuration").
-- [x] 7.2 Persist and apply border schedules only to newly created Worldz
-      worlds on Fabric and NeoForge. The plan is baked into the biome-source
-      codec and a saved-data marker prevents restarts from resetting native
-      border interpolation. Older Worldz saves decode with limits disabled.
-      **Commit** ("Apply persistent Worldz border schedules").
-- [x] 7.3 Guarantee a natural stronghold when it safely fits; otherwise create
-      a visible compact End-portal site near the origin. Eyes still locate a
-      natural stronghold, while fallback coordinates are deterministic and
-      logged. The fallback begins with zero eyes.
-- [x] 7.4 Guarantee a natural fortress when sufficient area safely fits;
-      otherwise create an enclosed nether-brick room with a real blaze spawner.
-      **Commit** ("Guarantee limited-world progression objectives").
-- [x] 7.5 JUnit hardening, full loader builds, documentation, review, and
-      commits. No live test required; Jason will perform acceptance testing.
-      Final clean build passed with 50 tests.
-- [x] 7.6 Release version bumped to 0.1.1, metadata contract and documentation
-      aligned, and both loader artifacts rebuilt. **Commit** ("Release Worldz
-      0.1.1").
-
-## Phase 8 — World-creation customization
-
-- [x] 8.1 Add an immutable, pure-Java customization snapshot seeded from the
-      YAML config. Validate/canonicalize biome IDs and tags, starter settings,
-      and every Overworld/Nether border value with focused JUnit coverage.
-- [x] 8.2 Add the Worldz Customize screen and dimension sub-screens. Applying
-      settings resolves the active biome registry, preserves vanilla noise and
-      the preset's Nether/End, and bakes an explicit biome source into the new
-      world. Register with NeoForge's preset-editor event and a client-only
-      Fabric lookup mixin.
-- [x] 8.3 Complete resource/metadata contracts, documentation, clean loader
-      build, artifact inspection, quality review, and **commit** ("Add Worldz
-      world-creation customization"). Final clean build passed 57 JUnit tests;
-      Javadocs and whitespace lint are clean. No live test was requested.
-
-## Phase 9 — Exterior terrain and rate-based borders
-
-- [x] 9.1 Define the technical contract for independent Overworld
-      normal/ocean/void and Nether normal/void envelopes, automatic or explicit
-      square boundaries, an accessible ocean transition, persistence,
-      structure guarantees, and continuous X-blocks-per-Y-days border rates.
-      **Commit** ("Design exterior terrain envelopes").
-- [x] 9.2 Extend YAML, codecs, immutable customization values, and pure logic
-      for exterior plans and rate-derived border durations. Preserve old config
-      and saved-world decoding. Added focused JUnit tests; full build passes 71
-      tests with clean Javadocs and whitespace lint. **Commit** ("Add exterior
-      and rate configuration").
-- [x] 9.3 Register and implement the delegating `jlt_worldz:enveloped` chunk
-      generator for both loaders. Wrap Overworld and Nether in the preset,
-      generate block-level void/ocean exteriors, suppress exterior decoration
-      and structures, and keep height/column queries consistent. Add component
-      and resource tests. Full build passes 76 tests; Javadocs and whitespace
-      lint are clean. **Commit** ("Generate ocean and void exteriors").
-- [x] 9.4 Expose exterior modes/boundaries/ocean transition and rate fields in
-      Customize. Apply explicit Overworld and Nether wrappers while retaining
-      YAML-as-default behavior and vanilla End generation. Progression bounds
-      now use the tighter border/solid-terrain radius, including exterior-only
-      worlds. Full build passes 80 tests. **Commit** ("Add exterior world
-      creation controls").
-- [x] 9.5 Constrain progression guarantees to supportive terrain, update README
-      and Memory, run all JUnit tests and clean loader builds, inspect artifacts,
-      address review/lint findings, and final **commit**. The clean multiloader
-      build passes 80 tests and both 0.1.1 jars contain the generator, UI,
-      preset, YAML dependency, and license resources. Javadocs and whitespace
-      lint are clean. No live test required; Jason will perform acceptance
-      testing. **Commit** ("Document exterior world generation").
-
-## Phase 10 — Delayed border resizing
-
-- [x] 10.1 Define a backward-compatible `resizeDelayDays` contract using
-      Minecraft game time, persisted per-dimension pending start ticks, and
-      loader server-tick hooks. Record API references and **commit** ("Design
-      delayed border resizing").
-- [x] 10.2 Extend YAML, codecs, scheduling/customization values, saved data, and
-      JUnit coverage while preserving older configs and saves. Full build passes
-      85 tests with clean Javadocs and whitespace lint. **Commit** ("Add delayed
-      border schedule state").
-- [x] 10.3 Register both loader tick hooks, implement delayed start/resume,
-      expose the value in Customize, and add component/resource tests. Full
-      build passes 86 tests with clean Javadocs and whitespace lint. **Commit**
-      ("Start border resizing after a delay").
-- [x] 10.4 Update user/technical docs, run the clean multiloader build, inspect
-      artifacts, review quality, update Memory/TODO, and final **commit**. The
-      clean build passes 86 tests and both 0.1.1 jars contain the delayed-state
-      manager, border UI, localization, and bundled YAML dependency. Javadocs
-      and whitespace lint are clean. No live testing required. **Commit**
-      ("Document delayed border resizing").
-
-## Phase 11 — Release 0.1.2
-
-- [x] 11.1 Bump project and metadata-test versions to 0.1.2, update technical
-      documentation, run the clean multiloader build, inspect both release
-      artifacts, update Memory, and **commit** ("Release version 0.1.2"). Clean
-      build passes 86 tests; filenames and embedded loader metadata are 0.1.2.
-
-## Phase 12 — Guaranteed starter land
-
-- [x] 12.1 Diagnose the reported thin floating starter island, verify the
-      Minecraft 26.2 noise/surface/carver and base-column APIs, define a
-      natural-height-preserving circular terrain profile, document persistence
-      compatibility, and **commit** ("Design guaranteed starter land").
-- [x] 12.2 Add YAML fields, immutable persisted plan/codecs, customization
-      values, pure profile math, and focused JUnit coverage; sanitize old and
-      malformed configs without changing existing saved worlds. Full build
-      passes 94 tests with clean Javadocs and whitespace lint. **Commit**
-      ("Add starter land configuration").
-- [x] 12.3 Apply the profile during Overworld noise, surface, and carver stages;
-      make base-height/base-column queries agree; add component tests, lint,
-      review, and **commit**. The full build passes 95 tests; Javadocs and
-      whitespace lint are clean. Review confirmed surface-shell preservation,
-      exterior precedence, ocean-floor-based columns, and wrapper-aware
-      structure heights. **Commit** ("Generate guaranteed starter land").
-- [x] 12.4 Expose starter-land choices during world creation, keep YAML as the
-      default, update progression/spawn integration and resource tests, lint,
-      review, and **commit**. A dedicated editor controls enablement,
-      transition, and foundation depth; explicit worlds retain their plan.
-      Existing spawn/progression paths consume corrected height queries or
-      generated heightmaps. Full build passes 96 tests with clean Javadocs and
-      whitespace lint. **Commit** ("Add starter land controls").
-- [x] 12.5 Update README/config/technical docs and Memory, release as 0.1.3,
-      run the clean multiloader build, inspect artifacts, address findings,
-      update TODO, and final **commit**. The clean build passes 96 tests; both
-      loader jars contain the terrain profile, codec, generator integration,
-      Customize screen, YAML dependency, and 0.1.3 metadata. Javadocs and
-      whitespace lint are clean. No live test was required; Jason will perform
-      manual acceptance. **Commit** ("Release guaranteed starter land").
-
-## Phase 13 — Release 0.1.4
-
-- [x] 13.1 Bump project and metadata-test versions to 0.1.4, update technical
-      documentation and Memory, run the clean multiloader build, inspect both
-      release artifacts, and **commit** ("Release version 0.1.4"). Clean build
-      passes 96 tests; filenames and embedded loader metadata are 0.1.4.
-
-## Phase 14 — Relief-preserving starter land
-
-- [x] 14.1 Review the Worldz4 log, screenshots, and saved generator settings;
-      identify the constant-height core and absolute-height interpolation as
-      the causes of shelves, terraces, and structure slabs. Verify Minecraft
-      26.2 seeded-noise and generator-query APIs.
-- [x] 14.2 Replace the flat clamp for new worlds with compressed natural-floor
-      relief plus broad seeded vanilla noise, blend only vertical lift, and
-      remove rounded one-block fringes. Persist profile revision 2 while older
-      encoded plans default to revision 1, preventing chunk seams in existing
-      saves. Add regression/component tests and update documentation.
-- [x] 14.3 Release as 0.1.5, run the clean multiloader build, inspect artifacts,
-      update Memory/TODO, and **commit** ("Preserve starter terrain relief").
-      Clean build passes 97 tests; filenames and embedded metadata are 0.1.5.
-
-## Phase 15 — Coordinated world-layout design
-
-- [x] 15.1 Diagnose Worldz5/Worldz6 mixed-biome results, verify that filtered
-      biome climate entries do not alter vanilla continental terrain, and
-      define the coordinated land/mixed/ocean/single/void layout requirements.
-      Capture seed-informed spawn and deferred customizable-flat requirements
-      in DESIGN, README, TODO, and Memory. Review Minecraft 26.2 flat settings,
-      presets, structures, and spawn APIs. No runtime behavior changes in this
-      documentation iteration. **Commit** ("Design coordinated world layouts").
-- [x] 15.2 Design the pure, versioned `WorldLayoutPlan` model: layout modes,
-      biome roles and role overrides, weights, mixed ocean coverage, region
-      scale, deterministic seed sampling, coast blending, compatibility
-      defaults, and YAML/customization snapshots. Define recommended defaults
-      from deterministic fixture maps before implementation.
-      DESIGN §17 now specifies the record's fields, a hash-grid sampler (no
-      Perlin/`DensityFunction` dependency, so it stays pure like
-      `BiomeListSpec`), and the weighted-argmax biome-selection transform. A
-      throwaway (uncommitted) fixture harness caught that the obvious
-      `hash * weight` scoring starves low-weight biomes and confirmed the
-      `hash ** (1/weight)` correction reproduces target ratios to ~1%; it also
-      calibrated recommended defaults `regionScaleBlocks=512`,
-      `oceanCoverageFraction=0.35`, `coastBlendWidthBlocks=128` (all reusing
-      existing starter-zone/starter-land ratios) and a ±5-point coverage
-      tolerance for 15.3's JUnit coverage. No runtime code changed.
-      **Commit** ("Design the WorldLayoutPlan model").
-- [x] 15.3 Implement the pure layout sampler and persisted codecs/config with
-      JUnit coverage for determinism, allowed-only output, positive-weight
-      representation, approximate coverage, transition continuity, validation,
-      immutable snapshots, and old-save decoding. Update generated YAML docs.
-      Added `logic.LayoutMode`/`BiomeRole`/`BiomeRoles`/`WeightedBiomeListSpec`/
-      `WorldLayoutPlan` (hash-grid sampler, weighted-argmax selection, coast
-      blend), `config.LayoutConfig` wired into `WorldzConfig` (parse/sanitize/
-      YAML/docs/summary, with a safety fallback to `legacy` when a mode's
-      required role has no usable biomes), and `worldgen.LayoutCodecs`
-      persisted as an optional `world_layout` field on `LimitedBiomeSource`
-      (round-trips only; `getNoiseBiome` still uses the legacy delegate until
-      15.4). Regenerated `config/jlt_worldz.example.yaml` and the README config
-      table/subsection to describe the layout config as persisted-but-inert.
-      Released as 0.1.6 (version-only bump so the running mod is easy to tell
-      apart from 0.1.5 for reinstalling). Full clean build passes common,
-      Fabric, and NeoForge with 125 JUnit tests (28 new); Javadocs and
-      `git diff --check` are clean. **Commit** ("Implement the WorldLayoutPlan
-      sampler and persisted config").
-- [x] 15.4 Make `LimitedBiomeSource` and `EnvelopedChunkGenerator` consume the
-      same layout. Preserve vanilla local relief/caves/surfaces, coordinate
-      land/ocean height adjustment, make base queries agree, prevent structures
-      from observing submerged planned land, and retain legacy mode unchanged.
-      Add component tests, lint, review, document, and commit.
-      `LimitedBiomeSource.getNoiseBiome` now samples the plan for every
-      non-legacy mode (exterior ocean override and the existing starter-zone
-      override still take precedence), and `collectPossibleBiomes()` includes
-      every resolved layout biome. A new pure `logic.LayoutTerrainProfile`
-      blends a raised land floor and a capped ocean ceiling by the sampled
-      `landFactor`; `EnvelopedChunkGenerator` applies that as a uniform
-      vertical delta so every `Heightmap.Types` query, `getBaseColumn`, and the
-      actual generated blocks agree, preserving vanilla local relief instead of
-      replacing terrain outright. The existing starter-land guarantee runs as
-      an independent second pass and always wins in its own zone. `VOID` mode
-      is explicitly excluded from terrain adjustment (its sky-island overlay is
-      Phase 15.5); its layout sampling and Customize wiring are otherwise
-      unaffected. The fieldless preset's sampling seed is chosen randomly per
-      newly created world (not yet tied to the player's actual seed string —
-      no verified decode-time hook exposes it; noted as a deviation and paired
-      with Phase 16's related investigation). Added component tests reading
-      `EnvelopedChunkGenerator.java`/`LimitedBiomeSource.java` source (matching
-      this project's established pattern for generator-level component
-      coverage) plus full `LayoutTerrainProfile` JUnit coverage. Released as
-      0.1.7. Full clean build passes common, Fabric, and NeoForge with 134
-      JUnit tests (9 new); Javadocs and `git diff --check` are clean. No live
-      test was run; Jason will perform acceptance testing for actual generated
-      terrain shape. **Commit** ("Make LimitedBiomeSource and
-      EnvelopedChunkGenerator consume the layout").
-- [x] 15.5 Expose layout mode, ocean coverage, scale, biome roles, and weights
-      in Customize without removing the simple allowed-biome list. Integrate
-      starter overlays: land-only rivers, mixed coasts, ocean starter island
-      and beaches, single-biome terrain, and sky-void island. Add localization,
-      UI/resource tests, documentation, and commit.
-      Added `WorldzLayoutScreen` (mode-cycle button, weighted-biome and
-      role-override text areas, numeric fields) wired into
-      `WorldzCustomizeScreen` via a new `WorldzCustomization.LayoutSettings`
-      nested record and a shared `WorldLayoutPlan.resolve(...)` factory (used
-      by both YAML loading and Customize). Selecting Done generates a fresh
-      random sampling seed for that world. Starter overlays: `LAND_ONLY` now
-      uses a new `LayoutTerrainProfile.landOnlyTarget` that only raises
-      clearly-deep-ocean floors, leaving rivers/ponds alone;
-      `LimitedBiomeSource` prefers a beach-role biome in the existing starter
-      zone's transition ring (`StarterZone.inRingQuart`,
-      `WorldLayoutPlan.sampleRole`); the starter-land height transition now
-      blends toward the layout-adjusted floor instead of raw vanilla terrain
-      so an island connects smoothly to (e.g.) an ocean mode's capped depth;
-      `VOID` mode forces a sky-void exterior around the starter radius (or a
-      256-block fallback), reusing the existing exterior mechanism rather than
-      building a new one. Single-biome terrain needed no change. Added lang
-      keys, 17 new JUnit/component tests, and doc updates. Released as 0.1.8.
-      Full clean build passes common, Fabric, and NeoForge with 151 JUnit
-      tests; Javadocs and `git diff --check` are clean. No live test was run;
-      Jason will perform acceptance testing, especially for the coast/beach
-      blending and the sky-void island. **Commit** ("Expose layout in
-      Customize and add starter overlays").
-- [x] 15.6 Integrate borders, exteriors, spawn, progression objectives, and
-      structure eligibility with supportive layout terrain. Run the clean
-      multiloader build and artifact review; defer live acceptance to Jason.
-      Audited all five: only progression objectives needed new code. Added
-      `ObjectiveSite.isSupportiveColumn` (rejects a natural stronghold sitting
-      on layout-classified ocean, Overworld-only, `VOID` excluded since its
-      exterior boundary already bounds the island) and
-      `ObjectiveSite.supportiveFallbackZ` (tries a few nearby deterministic Z
-      offsets for the compact End-portal fallback site, unchanged if none are
-      supportive). Borders, exteriors, and spawn were already correct by
-      construction (borders are coordinate-only; `applyLayoutAdjustment`
-      already yields to a configured exterior; vanilla spawn already reads
-      through the layout-aware biome/height queries from 15.4); structure
-      eligibility was already the core motivation Phase 15.4 addressed.
-      Released as 0.1.9. Full clean build passes common, Fabric, and NeoForge
-      with 157 JUnit tests (6 new); artifact inspection confirmed 0.1.9 and
-      the new classes in both loader jars. Javadocs and `git diff --check` are
-      clean. No live test was run; Jason will perform final acceptance
-      testing across all of Phase 15. **Commit** ("Require layout-supportive
-      terrain for progression objectives").
-
-## Phase 16 — Seed-informed spawn strategy
-
-- [x] 16.1 Feasibility spike: identify the earliest common/Fabric/NeoForge hook
-      at which the finalized seed and vanilla climate sampler are available but
-      affected spawn chunks are not generated. Determine whether a preferred
-      biome can safely become a persisted layout origin.
-      Verified against decompiled MC 26.2 sources: the seed is a concrete
-      `long` well before any level exists (client-side `WorldOptions`/
-      `CreateWorldScreen` UI state, or `server.properties` at boot).
-      NeoForge's `LevelEvent.CreateSpawnPosition` fires with the real seed
-      bound, cancellable, strictly before vanilla's own spawn search and
-      before any chunk generation — the earliest safe hook, on both
-      integrated and dedicated servers, never on the client. `LevelEvent.Load`
-      fires even earlier (right after `ServerLevel` construction, on every
-      load) and is the right place to re-apply a persisted origin on restart.
-      Yes, a preferred biome can safely become the persisted layout origin,
-      but needs two real (not blocking) engineering pieces: (1) a mutable
-      indirection for `WorldLayoutPlan`'s origin, populated from a
-      `DimensionDataStorage` entry using the same `initialized()`-flag idiom
-      `WorldLimitState` already uses, since codec decode has no seed context;
-      (2) building our own `RandomState`/`Climate.Sampler` from the delegate's
-      real `NoiseGeneratorSettings` for the search itself, rather than trusting
-      the level's ambient one (see the flagged risk below). **Found and
-      flagged, not fixed at Jason's direction:** the level's own
-      `chunkSource.randomState()` is very likely a dummy zero-density
-      `RandomState` for every Worldz world regardless of this feature —
-      `ChunkMap` only builds a real one when the top-level generator is
-      literally `instanceof NoiseBasedChunkGenerator`, which
-      `EnvelopedChunkGenerator` (delegates by composition, doesn't extend it)
-      never satisfies. Logged as an unresolved, high-priority risk in
-      `MEMORY.md` (Known Risks); not investigated further or acted on this
-      session. No runtime code changed this item. **Commit** ("Research
-      seed-informed spawn feasibility").
-- [x] 16.2 Specify and test `starter at origin`, `preferred natural biome`, and
-      `vanilla spawn` strategies, including bounded search, deterministic
-      fallback, fixed/random seeds, safe-height checks, and migration behavior.
-      If the layout origin moves, recenter border, envelope, progression, and
-      all distance calculations consistently; do not merely teleport spawn.
-      Added `logic.SpawnStrategy` (the three-way enum, decodes to
-      `STARTER_AT_ORIGIN` for old saves) and `logic.SpawnSearchPlan` (pure,
-      deterministic ring-search offset generator: origin first, then rings
-      every `stepBlocks` to `maxRadiusBlocks`, `pointsPerRing` candidates each,
-      defaults `2048`/`32`/`8` matching vanilla's own `Climate.SpawnFinder`
-      radius). DESIGN §18 specifies each strategy's exact semantics,
-      deterministic fallback to `(0,0)`/`STARTER_AT_ORIGIN` if
-      `PREFERRED_NATURAL_BIOME` finds nothing within its radius, why fixed vs.
-      random seeds need no special-casing (the seed is already concrete by
-      hook time), and enumerates every class Phase 16.3 must recenter
-      (`StarterZone`, `ExteriorPlan.DimensionEnvelope`, `WorldLimitManager`,
-      `ObjectiveSite`) alongside `WorldLayoutPlan`'s already-present origin
-      fields. Released as 0.1.10. `./gradlew build` passes all modules and 166
-      JUnit tests (9 new); no MC integration yet — that is 16.3's job.
-      **Commit** ("Specify spawn strategies and their search plan").
-- [x] 16.3 Implement only after 16.1 proves safe initialization ordering. Add
-      world-creation controls, persistence, JUnit/component coverage,
-      documentation, lint/review, and a separate commit.
-      Added `config.SpawnConfig`/`WorldzConfig.spawn` (documented YAML key,
-      default `starter_at_origin`), `LimitedBiomeSource.spawnStrategy` (codec
-      field) plus a mutable, non-codec `originBlockX`/`originBlockZ` pair
-      (`setOrigin`) resolved after decode, `WorldzCustomization.spawnStrategy`,
-      and a Customize-screen cycle button. Recentered every system DESIGN §18
-      called out: `LimitedBiomeSource`'s starter-zone/transition-ring/layout
-      sampling, `EnvelopedChunkGenerator`'s exterior/layout/starter-land height
-      math (new `originX()`/`originZ()` reading the Overworld's
-      `LimitedBiomeSource`), `WorldLimitManager`'s `border.setCenter(...)`, and
-      `ProgressionGuarantees`' natural-structure search and fallback site — all
-      via the coordinate-shift-at-integration-boundary pattern (pure logic
-      stays origin-agnostic; only MC-integration call sites subtract the
-      origin). Nether intentionally stays centered at `(0,0)` (recentering is
-      Overworld-only). Added `worldgen.SpawnOriginState` (`SavedData`,
-      mirrors `WorldLimitState`'s `initialized()` idiom) and
-      `worldgen.SpawnOriginManager` with two entry points matching 16.1's
-      two-hook design: `reapplyPersistedOrigin` (every load) and
-      `resolveFreshOrigin` (fresh-world spawn choice only, avoiding a
-      conflated-method bug caught during design where a single method would
-      let the Load hook consume the one-time search before
-      CreateSpawnPosition could use its result). The search builds an
-      independent `RandomState`/`Climate.Sampler` from the delegate's real
-      `NoiseGeneratorSettings` and a full unfiltered vanilla
-      `MultiNoiseBiomeSource` (per the flagged risk in 16.1, not the level's
-      ambient `RandomState`). Wired NeoForge's `LevelEvent.Load`/
-      `LevelEvent.CreateSpawnPosition` and a new Fabric
-      `MinecraftServerMixin` into `MinecraftServer.setInitialSpawn` (Fabric API
-      has no equivalent cancellable event) plus `ServerLevelEvents.LOAD`.
-      DESIGN §18 gained an "Implementation (Phase 16.3)" subsection. Released
-      as 0.1.11. `./gradlew build` passes all modules and 179 JUnit/component
-      tests (13 new, covering config parsing, `WorldzCustomization` round-trips,
-      and source-scan checks for every new class/wiring point). **Commit**
-      ("Implement seed-informed spawn strategy and origin recentering").
-
-## Manual QA follow-ups
-
-- [x] Q.1 Fabric manual-testing pass on Phase 16.3 surfaced two Customize
-      screen problems and a request for reusable test configs. Added
-      `config/tests/` (7 YAML files covering every spawn-strategy case in
-      `MANUAL_TESTING.md`'s scenario table, plus a legacy regression
-      baseline, verified to parse/sanitize cleanly) with a `README.md`
-      explaining how to cycle one into a dev run's `config/jlt_worldz.yaml`.
-      Fixed `WorldzCustomizeScreen` having no scroll container at all (a
-      plain `LinearLayout` in `HeaderAndFooterLayout`, so a validation
-      error/warning growing the form could push content below the visible
-      area with no way back to the top): wrapped the form in vanilla's own
-      `ScrollableLayout`, mirroring `ExperimentsScreen`'s exact pattern
-      (`repositionElements()` now resizes the scroll area to the available
-      height on both layout and error-message changes). Clarified border-vs-
-      exterior independence (already true in the config/codec — a border
-      restricts access while `exterior.mode: normal` keeps ordinary infinite
-      generation regardless — the Customize screen just didn't say so) with
-      hover tooltips on the border and exterior buttons rather than adding
-      visible text, since the screen was already reported as too busy.
-      Released as 0.1.12. `./gradlew clean build` passes all modules and 180
-      JUnit/component tests (1 new, verifying the scroll wiring and both
-      tooltip keys exist). **Commit** ("Add Fabric test configs and fix
-      Customize screen scrolling").
-- [x] Q.2 Config `09` (`mixed` layout) manual test (world "Worldz13") found
-      villages stranded floating or buried at nearly every distant location
-      visited, plus perfectly straight coastlines. Traced the floating-
-      structure bug to vanilla's `JigsawPlacement`: a multi-piece structure
-      samples one anchor height once (via our layout-aware `getBaseHeight`)
-      and places every other piece at a fixed relative offset, never
-      re-sampling terrain — fine within one region, but `MIXED`'s land/ocean
-      cells can differ in height by far more than a structure's footprint
-      can tolerate across a coast-blend transition. Fixed by adding
-      `WorldLayoutPlan.isNearRoleBoundary` (reuses the exact same boundary
-      logic that drives the height blend, so it can never disagree with it)
-      and checking all four chunk corners against it in
-      `EnvelopedChunkGenerator.createStructures`, alongside the existing
-      `isEntirelyExterior` suppression. Only `MIXED` is affected;
-      `LAND_ONLY`/`OCEAN`/`SINGLE_BIOME` have no cell-to-cell height cliff.
-      The straight-coastline finding was logged, not fixed (see DESIGN §17
-      and `MEMORY.md`): it's a bigger deviation from the currently-scoped
-      "minor kink at grid corners" than previously understood — the entire
-      boundary is a straight, unjittered grid line, not just the corner
-      joint — and needs an actual algorithm change (noise-perturbed
-      boundaries), not a mid-testing patch. Released as 0.1.13. `./gradlew
-      clean build` passes all modules and 183 JUnit/component tests (3 new:
-      two for `isNearRoleBoundary`'s pure logic, one component test for the
-      generator wiring). **Commit** ("Suppress structures near mixed-layout
-      coast-blend transitions").
-- [x] Q.3 Same testing session (world "Worldz14", config `09`) found an
-      isolated `mixed` land cell surrounded by ocean rendering as an
-      ordinary round island but labeled "River" with no channel anywhere —
-      screenshot-confirmed. Not a code bug: `mixed`/`land_only`/`ocean` pick
-      **one** biome per whole region cell (up to 512x512 blocks), which
-      works for broad biomes but not one vanilla only ever generates as a
-      narrow noise-carved channel. Natural rivers/ponds already show up
-      inside land cells unaided (the height adjustment only raises columns
-      that are too low, never flattens a natural dip), so `river` in
-      `layout.biomes` added no benefit, only this failure mode. Removed
-      `river` from `config/tests/09`'s `layout.biomes` (documented why in
-      its header comment) and added the same caveat to DESIGN §17 and
-      README's coordinated-layouts section: don't add linear/thin vanilla
-      biomes to `layout.biomes`. No main-code change and no version bump —
-      test-config and documentation only. **Commit** ("Document that
-      layout.biomes can't represent linear biomes like river").
-- [x] Q.4 Worldz14 also showed villages still stranded floating/buried
-      (after Q.2's fix) and an ocean monument on an artificial platform.
-      Confirmed the installed jar already had Q.2's fix compiled in
-      (verified via `javap` on the actual mods-folder jar) — the fix was
-      real but insufficient. Root cause: `createStructures` only checked
-      the anchor chunk's own 4 corners for a nearby role boundary, but a
-      structure's actual pieces can land up to vanilla's own
-      `JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE` (128 blocks) away from
-      that anchor — comparable to `coastBlendWidthBlocks` itself (128
-      default), so an anchor safely outside the checked chunk could still
-      have pieces reaching into a blend zone. Ocean monuments hit the same
-      failure via `Structure.onTopOfChunkCenter` (a different, non-jigsaw
-      structure class using the identical single-anchor-height pattern).
-      Fixed by also checking corners expanded by a new
-      `STRUCTURE_FOOTPRINT_SAFETY_MARGIN_BLOCKS` (128) — in *addition to*
-      the original corners, not instead of them (expanding outward alone
-      moves checked points further from a boundary running through the
-      anchor chunk itself, reopening that case). Also confirmed (screenshot)
-      that `mixed`'s beach role spans the *entire* coast-blend transition
-      (100+ blocks into both land and water at default
-      `coastBlendWidthBlocks`), not a narrow shoreline — logged as a design
-      gap needing a separate width concept, not fixed (see DESIGN §17,
-      `MEMORY.md`). Some Worldz14 screenshots showed bizarre orange/glitchy
-      terrain and floating chunk fragments; initially misattributed to
-      Distant Horizons/Iris without checking — the "26.2" instance only has
-      Fabric API and Jason's own mods (`jlt_info`, `jlt_ores`, `jlt_reseed`,
-      `jlt_worldz`, `mod-trees`) loaded, no rendering mods at all. Cause not
-      yet re-investigated; see MEMORY.md Known Risks. Released as 0.1.14.
-      `./gradlew clean build` passes all modules and 183 JUnit/component
-      tests (existing structure-suppression test widened, no new tests).
-      **Commit** ("Widen the mixed-layout structure-suppression margin to
-      cover a structure's full reach").
-- [x] Q.5 Jason described what he saw below the world (spectator, below
-      Y-64): almost entirely lava with no bedrock visible, and caves mostly
-      absent (occasional geode, huge gaps instead of winding paths) instead
-      of vanilla's usual systems. This matched the long-flagged (Phase 16.1),
-      never-investigated dummy-`RandomState` risk exactly: `ChunkMap` only
-      builds a real `RandomState` when the generator is directly
-      `instanceof NoiseBasedChunkGenerator`, silently falling back to
-      `NoiseGeneratorSettings.dummy()` (zero-density router, air surface
-      rule) otherwise; `EnvelopedChunkGenerator` wraps a `NoiseBasedChunkGenerator`
-      delegate by composition, never satisfying that check. Confirmed via
-      decompiled source (`ChunkMap.java:182-186`). The previously-assumed fix
-      ("have `EnvelopedChunkGenerator` extend `NoiseBasedChunkGenerator`
-      instead") turned out to be impossible: `javap` against the actual
-      compiled game jar shows `NoiseBasedChunkGenerator` is `final` in 26.2 —
-      the decompiled source used throughout this investigation misleadingly
-      showed a non-final class. An attempted extends-refactor hit the
-      compiler error immediately and was reverted before any breakage.
-      Fixed instead with a mixin into `ChunkMap`'s constructor
-      (`ChunkMapMixin`, on both loaders — NeoForge's own mixin support had
-      never been set up in this project, added via a `[[mixins]]` entry in
-      `neoforge.mods.toml` plus a new `jlt_worldz.neoforge.mixins.json`):
-      injected right before `generator.createState(...)`, it overwrites the
-      already-assigned dummy `this.randomState` with a real one built from
-      the delegate's actual settings whenever the generator is
-      `EnvelopedChunkGenerator`, using `@Shadow @Mutable` to reassign an
-      otherwise-`final` vanilla field. Released as 0.1.15. `./gradlew clean
-      build` passes all modules and 184 JUnit/component tests (1 new,
-      verifying both loaders' mixin classes and registration). Not yet
-      confirmed fixed in-game; Jason will verify terrain/caves near the
-      bottom of the world on the next test. **Commit** ("Fix ChunkMap's
-      dummy-RandomState fallback with a mixin on both loaders").
-
-## Deferred phase — Customizable flat worlds
-
-- [ ] F.1 Design a Worldz flat plan/editor for arbitrary bottom-to-top block
-      layers and thicknesses, total-height validation, templates, and text
-      import/export. Include any registered fixed biome plus independent lake,
-      feature, and structure-set controls.
-- [ ] F.2 Add a configurable surface elevation/padding preset with spawn
-      positions at Y 40 or higher, avoiding ordinary slime-chunk spawning while
-      retaining classic shallow-flat behavior. Do not claim this suppresses
-      biome-specific surface slime spawning.
-- [ ] F.3 Research and test each optional structure set. Minecraft 26.2's
-      Overworld flat preset includes villages, mineshafts, pillager outposts,
-      ruined portals, and strongholds; trial chambers are absent and need a
-      placement-compatibility spike before being offered.
-- [ ] F.4 Integrate flat generation with Worldz spawn, borders, progression,
-      and exterior choices using `FlatLevelSource` semantics rather than the
-      noise-layout terrain shaper. Implement only after Phase 15 stabilizes.
-
----
+(Add here when blocked; don't guess on gameplay/scope questions.)
 
 ## Deviation log
 
-(record every departure from DESIGN.md here: what, where, why)
-
-- DESIGN §4's remembered `ResourceLocation` API is named `Identifier` in the
-  verified Minecraft 26.2 sources. All ids use `net.minecraft.resources.Identifier`.
-- Fabric registers the codec in `BuiltInRegistries.BIOME_SOURCE`; `Registries.BIOME_SOURCE`
-  is the corresponding registry key and is used by NeoForge's `DeferredRegister`.
-- A persisted `starter_radius` is treated as the marker that an absent
-  `starter_biome` is resolved-disabled. Without this distinction, the optional
-  field codec would omit an empty starter and reload an existing world's starter
-  from a newly edited config, violating the baked-settings requirement.
-- When the empty-filter fail-safe activates, `collectPossibleBiomes()` reports
-  the fallback delegate's vanilla overworld biomes (plus any starter), rather
-  than an empty configured set. This keeps feature/structure logic consistent
-  with the biomes the fail-safe actually returns.
-- The codec does not retrieve the multi-noise parameter-list registry getter in
-  26.2. World presets and that registry load in parallel, so its overworld holder
-  is still unbound during preset decode. Instead it constructs the public vanilla
-  `Preset.OVERWORLD` parameter list with the retrieved biome getter; this uses the
-  identical vanilla provider and is safe during parallel registry loading.
-- Configured biome tags are expanded lazily on the first biome-source query,
-  rather than during codec decode. Minecraft 26.2 decodes world presets before
-  dynamic-registry tags are bound; eager expansion crashes datapack loading.
-  The resolved direct holder list is still what gets persisted into the world.
-- Minecraft 26.2 persists dimension-generator settings in
-  `data/minecraft/world_gen_settings.dat`, rather than directly inside
-  `level.dat` as described in DESIGN §§2–3. The biome-source codec remains the
-  persistence mechanism and the baked-settings behavior is unchanged.
-- Unsupported configured holders are omitted from `collectPossibleBiomes()`
-  when at least one allowed biome matched the overworld climate map. Reporting
-  only values the delegate can actually return avoids exposing ignored Nether,
-  End, or special biomes to overworld feature and structure logic.
-- The reseed template's root `LICENSE` was CC0, conflicting with DESIGN §1 and
-  both loader manifests. Worldz replaces it with the canonical MIT license.
-- The root project is named `mod-worldz`, but the loader artifacts retain the
-  reseed multiloader naming scheme (`jlt_worldz-<loader>-26.2-<version>`) so
-  Fabric and NeoForge outputs are unambiguous; there is no root artifact.
-- At the user's request, the config format is YAML rather than the original
-  JSON design. Parsing uses SnakeYAML's safe constructor plus explicit
-  map/list/scalar validation. Legacy JSON remains readable because JSON is a
-  YAML-compatible input form and is migrated to the canonical `.yaml` file.
-- DESIGN §12 was added after implementation began at the user's request.
-  Minecraft's vanilla square border is used, configuration names its
-  center-to-side half-width a radius, and progression objectives only need to
-  become reachable by the end of a growth schedule rather than on day zero.
-- Strict small borders do not relocate vanilla structure starts. When natural
-  structures cannot safely fit, Worldz builds only the progression-critical
-  fallback requested by the user. Fallback End portals are not Eye-of-Ender
-  locate targets, so they are placed visibly near the origin and logged.
+(Record every departure from DESIGN.md/GOALS.md here: what, where, why.)

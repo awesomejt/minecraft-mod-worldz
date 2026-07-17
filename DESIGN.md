@@ -360,6 +360,12 @@ change the algorithm in unexplored chunks of an established save.
 
 ## 17. Coordinated world layouts
 
+> **Superseded (2026-07-16):** the 2026-07-16 replan (§20) removes the
+> `MIXED`/`LAND_ONLY` grid composition described here, including coast
+> blending, role-boundary structure suppression, and the beach ring. This
+> section stays as the record of what was built, why, and what its in-game
+> defects were. Where §17 and §20 disagree, §20 wins.
+
 The current climate-filter implementation limits biome identity but delegates
 continentalness and density entirely to vanilla. Testing Worldz5 and Worldz6
 showed why that is insufficient: a seed with a large vanilla ocean can report
@@ -988,3 +994,117 @@ villages and strongholds. Its `overworld` flat preset additionally lists
 mineshafts, pillager outposts, ruined portals, and strongholds, but not trial
 chambers. Therefore the structure difference is preset configuration rather
 than an inherent limitation of `FlatLevelSource`.
+
+## 20. Challenge-first restructure (2026-07-16 replan)
+
+`GOALS.md` (Jason, 2026-07-16) is now the requirements source: the mod's
+purpose is generating **challenge worlds** (ocean island, sky island, sky
+chunk, single biome, flat, limited/expanding/collapsing size, structure
+placement options). §§1–19 above remain the technical reference for the
+components already built and the verified 26.2 APIs; where §17 conflicts with
+this section, this section wins. Execution order lives in `TODO.md`.
+
+### 20.1 Scope decisions (settled with Jason, 2026-07-16)
+
+- **Remove the grid land/ocean composition.** `MIXED` and `LAND_ONLY` layout
+  modes, the coast-blend height transition, role-boundary structure
+  suppression, and the beach transition ring are removed rather than fixed —
+  no GOALS use case needs region-composed worlds, and they caused the open
+  straight-coastline, beach-width, and floating-structure defect class.
+  Per-cell weighted biome selection survives only where every cell shares one
+  role (e.g. ocean-biome variety), which has no cell-to-cell height cliffs.
+- **Adjust, don't restart.** The pure-logic core (config, borders, exteriors,
+  starter land, spawn search, progression guarantees) and the plumbing
+  (codecs, per-loader registration, `ChunkMapMixin` RandomState fix, NeoForge
+  mixin support) all map onto GOALS and are kept.
+- **New worlds only.** The mod exists to create new worlds. No save-compat
+  obligations for worlds created by older mod versions; legacy decode shims
+  are no longer added (and may be deleted when touched). A created world must
+  still reopen consistently under the version that created it. README states
+  the restriction prominently.
+- **Client-first.** Singleplayer world creation on Fabric is the acceptance
+  path; NeoForge must build and gets brief checks when loader code changes.
+  Server research result: world generation always runs on the *logical*
+  server, which the client embeds in singleplayer — so a client installation
+  covers every GOALS use case, and Open-to-LAN gives multiplayer without a
+  dedicated server. The only scenario needing the jar on a dedicated server
+  is hosting challenge worlds there; the existing config-driven
+  `level-type` path already covers it and is kept as long as it stays free,
+  but it is not a per-phase test gate and no server-only features are built.
+
+### 20.2 World types instead of one preset
+
+The single catch-all `jlt_worldz:worldz` preset + giant Customize screen is
+replaced by one world type per challenge family (GOALS §World Generation
+Screen: mutually exclusive processes get their own types, each with a small
+per-type Customize screen and per-type defaults):
+
+- `jlt_worldz:single_biome` — GOALS 10–14.
+- `jlt_worldz:ocean_island` — GOALS 01–04.
+- `jlt_worldz:sky_island` — GOALS 05–08.
+- `jlt_worldz:sky_chunk` — GOALS 09.
+- `jlt_worldz:flat` — GOALS 15–16, 22.
+- `jlt_worldz:limited` — vanilla generation + size limits only (GOALS 17–20).
+
+Shared, composable modules available to every type: size limits/borders +
+exteriors (§§12/14/15), progression guarantees (§12), spawn strategies +
+origin recentering (§18), starter land (§16), plus two new ones — the
+**exclusion zone** (20.7) and the **starter chest** (20.8). The YAML config
+gains one section per world type plus shared-module sections; exact preset
+IDs, config shape, and lang/tag wiring are Phase 2.1's design task. The old
+`LayoutMode` becomes an internal composition detail of each type, not a
+user-facing mode switch.
+
+### 20.3 Per-world snapshot file
+
+On world creation, write a commented, human-readable YAML snapshot of the
+resolved settings into the world folder (GOALS §Configuration). It is a
+*record* for reference/reproducibility, not a control file — authoritative
+settings stay baked in the world's generator codec as today. Config hygiene
+also changes: the global `config/jlt_worldz.yaml` is no longer rewritten when
+absent or all-defaults, documentation moves to real YAML comments (generated
+by our own emitter — SnakeYAML round-trips don't preserve comments), and the
+legacy JSON migration path is dropped.
+
+### 20.4 Real-seed sampling
+
+GOALS repeatedly requires "randomness based on seed" (10, 12, 16, 08, 09).
+The random-per-world sampling seed (§17's workaround for codecs decoding
+without seed context) is replaced by capturing the real world seed at
+generation time, where it *is* available to the generator (e.g. at
+`ChunkMap` construction, which `ChunkMapMixin` already intercepts, or from
+the server level). Same seed string ⇒ same Worldz decisions. Exact hook to be
+verified against 26.2 sources in Phase 1.3.
+
+### 20.5 Vanilla pass-through selection (natural rivers/oceans)
+
+For single-biome variants 13/14, do not compose terrain at all: sample what
+vanilla would have chosen at that position; if it is a river (13) or
+river/ocean-family (14) biome, keep vanilla's choice, otherwise substitute
+the configured biome. Terrain, coastlines, and channels are exactly vanilla's
+— this replaces everything the removed grid tried to do for water, with zero
+height-adjustment machinery. (Answers GOALS Question 1 as well: biome
+filtering never shaped terrain — see the Worldz5/6 finding in §17/MEMORY —
+so endless ocean needs the terrain cap, and distant natural islands (04) come
+from *releasing* that cap beyond the exclusion zone.)
+
+### 20.6 Design-first phases
+
+Every phase in `TODO.md` that introduces a new world type or module starts
+with a committed design task extending this section (verified 26.2 APIs,
+chosen shapes, defaults), following the pattern that worked for §§16–18. The
+executor designs details inside this section's decisions; it does not
+re-litigate them.
+
+### 20.7 Exclusion zone (shared module — design in Phase 5.1)
+
+A radial zone around the world origin (default 2000 blocks) with per-feature
+semantics: suppress structure families inside it (GOALS 07, 24), or hold
+terrain overrides inside it and release natural generation beyond it (GOALS
+04, 08). One concept, one config shape, reused everywhere.
+
+### 20.8 Starter chest (shared module — design in Phase 6.1)
+
+Configurable loot at spawn: named presets (easy/medium/hard, biome-informed
+for sky islands) plus YAML-listed guaranteed and random items. Used by the
+chest-boat ocean start (03) and all sky variants (05–08).

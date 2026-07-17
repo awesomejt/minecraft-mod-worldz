@@ -1,0 +1,148 @@
+# Goals
+
+Create a mod to generatate a wide set of "challenge worlds" commonly seen on YouTube - like "ocean-only challenge" and "100 days on a small island" type challenges. Mod should exceed the functionality of simple world datapacks - but may use them to make world generation easier and consistent in certain scenarios.
+
+
+## Workflow
+
+1. Planning and Requirements
+ - Lookup any questions online
+ - Prompt user for questions that are unresolved or need clarification
+2. Document decisions and TODOs - structured based upon phases.
+3. Implementation per Phase
+ - Review TODO items, choose item/task to work on
+ - Ensure all information is needed to proceed with task
+ - Create code for each task
+ - Create test code for each task using JUnit to test logic and components - no automatic game testing
+ - Create or update documentation
+ - If new tasks are required - add to TODO file for tracking
+ - Commit per task - first line of commit has a brief summary of changes with more details below
+4. Wait for manual testing and fix any defects in current phase
+5. Proceed to next phase with given permission
+
+## Technical Aspects
+
+### Mod Loader Support
+
+Client only mod loaders:
+
+- Fabric (primary)
+- NeoForge
+
+### Configuration
+
+- YAML configuration format
+- Comment-based documentation
+- Documentation, including examples, in Markdown file like README
+- Ideally, mod should not override file if just using defaults
+- Mod-level configuration file provides defaults that override defaults in code
+- Each world gets own configuration file once world is generated and based on the settings chosen during the world creation process
+
+### World Generation Screen
+
+- If no changes are made, use default settings if no config file is defined or use setting from configuration file.
+- If it makes the screen easier to manage, have multiple World types for major or perhaps mutually exclusive world generation processes
+- Break initial configuration screen into multiple parts
+- Change defaults based on type of world generation chosen when it makes sense
+- For long screens, use scrolling UI option
+
+### Building
+
+- Have project-level Gradle build that can build all components - including each mod loader - without errors.
+- Use "media.jlt.minecraft.mods.worldz" as base package for mod.
+
+## Phases and major use cases
+
+### Ocean Island Challenge:
+
+01. Island challenge - configuratable size - including very small (16 blocks/1 chunk) to huge. Player spawns upon an island of chosen biome type - surrounded by endless ocean. Biome should use a combination of beach and/or stony shore to transition to the ocean. Underground structures still remain. Ocean should gracefully go from shallow (warm/lukewarm) to deep, but all ocean biomes available. Nether and End are unchanged. Game is beatable. Ideally, the island should look natural, not just a square or circle.
+02. Same as 1, but instead of creating an artifical island, mod chooses a natural island based on seed (sets world spawn) - but replaces all other biomes with ocean biomes.
+03. Same as 1, but instead of a starter island, player starts on a chest boat in the middle of the ocean - no land biomes. Chest contains a few essential items (including lily pad, dirt block, grass block, and sapplings) and a few random ones - this can be configurable.
+04. Same as 1 or 2, but can contain some very small islands but really far away (2000+ block away). Can just use natural generation (seed) of small islands beyond exclusion zone.
+
+### Sky Island Challenge (similar to Skybock):
+
+05. Sky island challenge - similar to Skyblock. Configuarable necessities starting chest - depending on starting conditions. Can choose from easy, medium, and hard starting materials - all should be beatable given enough time. For example, giving the user a bucket of water vs a couldren to capture rain water. Biome of sky island is configurable but informs what is necessities chest. Sky island is surrounded by void (no ocean). Option to generate structures - specifically a stronghold so game remains beatable. By default, spawn at Y 64 to avoid slimes (may be configurable).
+06. Same as 5 but Nether/End is a sky island too. Configuarable to retain structures so game is still beatable.
+07. Same as 5/8 but villages can be generated outside of an exclusion zone - requiring significant bridging to reach.
+08. Same as 7, but instead of pure void. Random, small floating islands generate containing different resources with various sizes. Use seed as a way to randomize generatation. Islands should be sufficiently far away to require a lot of bridging.
+
+### Sky Chunk challenge:
+
+09. Similar to 5-8, but based on chunks. Use the natural chunks of the seed. For chunk islands, make sure one generates with a portal room. Have option to include entire chunk or only top (land) until a certain depth - like 5 deep to ensure access to stone. Options for a normal Nether and End, or chunk islands.
+
+### Single-biome challenge:
+
+10. Single biome challenge - world contains one land biome. Configuration option to allow structure, caves, and everything else to generate. Randomness is based on seed.
+11. Same as 10, but starter biome can be different.
+12. Same as 11, but starter biome is based on seed - including size and location. World spawn set to the middle or somewhere in the desired biome.
+13. Same as 10-12, but Rivers allowed to generate.
+14. Same as 10-13, but natural oceans allowed to generate.
+
+### Flat-World challenge:
+
+15. World is flat or mostly flat. No hills or mountains. Based upon a single biome - default to plains like vanilla. Options to generate structures (including trial chambers). Option for starting Y level to avoid slimes if desired. Options for floor components like different layers with presets. Bottom layer to be bedrock or not - allowing for building "under" the world. Basically, my version of vanilla superflat but with more options.
+16. World is flat - no hills or mountains, but underground can contain caves if deep enough. Can use seed to determine randomness of caves, structure, and cave biomes. Option for rivers to generate if enough layers exist - with option ensure they generate far away from world spawn.
+
+### Minecraft World Limited Size:
+
+17. Limit world size to certain number of blocks (square radius) or chunks. This is independent of above use cases - so vanilla generation or any of the above cases would still be impacted. Option to force access to blaze rods and end portal so game remains beatable. Option to carry world size to Nether and End - but must be large enough to defeat the game. Thus, really small sizes should be overridden in End to allow access to kill the Ender Dragon.
+18. Option to have world outside defined size to be hard set (no generation/void) or infinate natural generation based on seed - but invisible wall prevents access to world beyond defined size.
+
+### Expanding/Collapsing World:
+
+19. Similar to 16, but world size becomes starting world size. World expands based on number of days in game, after an initial starting delay. Both the rate of expansion, number of blocks radius/chunks, and initial delay are configurable.
+20. World contracts - similar to 19, but in reverse. Default should be a much larger delay to allow exploration of world before the collapsing begins. There should be a minimum size (blocks or chunks) of the world. The starting location should be the center of the world - so any build there should be safe.
+
+### Structure Options:
+
+21. Default should be for structure to generate in natural locations and Y levels.
+22. Flat worlds with deep enough layers should have option to have underground structures generate below surface level so they aren't floating and too easy to find.
+23. Having an option for certain land structures to float high above - like Pandora in Avatar. Floating islands containing a village would be pretty cool generation - but only as an option.
+24. Have option for structures like villages, outposts, strongholds, trail chambers, etc to generate far enough way from spawn to require a significant trip. Should be configuratable - but 2000 blocks is a good distance away.
+
+## Questions:
+
+1. Depending on ocean biomes, do small islands naturally happen. If so, then after the starter island (if one is generated), use ocean and deep ocean to prevent islands from generating until beyond exclusion zone.
+
+   **Answer (2026-07-16):** Biome choice and terrain shape are independent in
+   modern Minecraft — restricting biomes to ocean/deep-ocean does **not**
+   prevent land; full continents still generate, just labeled as ocean biomes
+   (confirmed in-game during the Worldz5/6 tests, see MEMORY.md). Endless
+   ocean therefore requires the terrain height-cap Worldz already has, and
+   distant natural islands (use case 04) come from *releasing* that cap
+   beyond the exclusion zone so the seed's natural terrain resumes. Small
+   natural islands do occur in vanilla ocean regions (terrain noise poking
+   above sea level), which is what makes use case 02's "find a natural
+   island" search plausible. See DESIGN.md §20.5/§20.7.
+
+## Testing and Automation
+
+### Test Configurations
+
+- Need to create a configuration file per test case. Perhaps multiple per phase.
+
+### Automation:
+
+- Point to Instance in Prism for managing mods - automatic replacement of existing mod to speed up manual testing.
+- Review logs, world information, and screenshots.
+
+### Advice to user:
+
+- what additional mods should be added to aid in manual testing?
+
+  **Answer (2026-07-16)** — recommended test-aid mods for the Fabric
+  instance (check each has a 26.2 build in Prism before adding):
+  - **Xaero's World Map + Minimap** — the single biggest time-saver here:
+    biome layout, island shapes, and coastlines verifiable from the map
+    instead of flying everywhere.
+  - **MiniHUD** — overlays for light level (slime checks), biome/coords, and
+    structure bounding boxes (needs its structure data channel; works in
+    singleplayer).
+  - **Chunky** — pre-generate a radius around spawn, then inspect the map;
+    catches distant-terrain defects (like the past stranded-village bugs)
+    in minutes instead of long survival flights.
+  - **Spark** — only if generation feels slow; profiles worldgen cost.
+  - Vanilla commands cover the rest: `/locate biome`, `/locate structure`,
+    `/fill`, spectator mode. External seed maps (e.g. Chunkbase) help
+    compare natural vs. modded placement for the same seed.

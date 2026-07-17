@@ -8,6 +8,17 @@ with ocean or void. Optional starter-land reinforcement prevents a chosen
 starter biome from becoming a thin island over deep water. Supports Fabric and
 NeoForge for Minecraft 26.2.
 
+> **Use with new worlds only.** Worldz is a world-*creation* mod: settings are
+> baked into a world when it is generated. Do not add Worldz to, or expect it
+> to change, an existing world, and do not expect worlds created by one Worldz
+> version to be supported by a different version.
+
+> **Status (2026-07-16):** the mod is being restructured around challenge-world
+> types (ocean island, sky island, sky chunk, single biome, flat, limited
+> size) per [GOALS.md](GOALS.md) and [TODO.md](TODO.md). The `mixed` and
+> `land_only` coordinated-layout modes described below are being removed in
+> 0.2.0.
+
 ## Supported loaders
 
 | Loader | Status |
