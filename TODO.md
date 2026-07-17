@@ -1,6 +1,6 @@
 # TODO — jlt_worldz challenge-world plan
 
-**Requirements source:** `GOALS.md` (Jason's use cases 01–35). **Technical
+**Requirements source:** `GOALS.md` (Jason's use cases 01–37). **Technical
 reference:** `DESIGN.md` — §20 is the architecture for this plan; §§1–19
 document the already-built components and verified 26.2 APIs. **History:**
 `TODO-archive.md` (the completed 2026-07-14/15 feature-first plan).
@@ -168,6 +168,11 @@ rectangular shape.
 - [ ] 6.2 Implement (as a `limited` option or its own type — 6.1 decides);
       configurable width in blocks/chunks; test configs; docs; **[Jason]**
       acceptance.
+- [ ] 6.3 Biome-sequence strip (36): the strip passes through ordered (or
+      seed-randomized) biome bands, changing every N chunks, selecting
+      biomes over untouched vanilla terrain — Phase 4's selection machinery
+      with ordered bands instead of random cells. Config: band width, biome
+      list/order, seed-random option. Test config; **[Jason]** acceptance.
 
 ## Phase 7 — Ocean island challenge, core (GOALS 01, 04)
 
@@ -244,12 +249,20 @@ Right after the ocean phases: the ocean-island shape with the fluid swapped
       coastline-class defects), then implement, test configs, **[Jason]**
       acceptance.
 
-## Phase 12 — Sky chunk challenge (GOALS 09)
+## Phase 12 — Sky chunk challenge (GOALS 09, 37)
 
 - [ ] 12.1 Design + implement chunk-grid islands cut from the seed's natural
       chunks: full-chunk vs top-N-blocks-deep option, guarantee one generated
       chunk contains a portal room, normal-vs-chunk-island Nether/End
       options. Test configs; **[Jason]** acceptance.
+- [ ] 12.2 Multi-biome chunk islands (37): beyond the starter island,
+      further chunk islands of different biomes; per-island top-only vs
+      full-column choice; where feasible, islands showcasing underground
+      content — cave biomes (lush/dripstone/deep dark), amethyst geodes,
+      structure-bearing chunks — so bridging yields varied resources.
+      Feasibility of targeting specific underground features per island is
+      part of the design task (may require seed-search or forced placement —
+      decide there). Test configs; **[Jason]** acceptance.
 
 ## Phase 13 — Cave challenge (GOALS 25–26)
 
@@ -307,14 +320,19 @@ The biggest new generation concept — deliberately after flat (16), whose
 layer-editor concepts it likely reuses, and after limits (5), which it
 composes with.
 
-- [ ] 17.1 **Confirm the interpretation with Jason first** (GOALS 35 note:
-      vertical stacking — successive biome surfaces as you dig down,
-      replacing the deep underground). Then design spike: how to compose
-      multiple biome surface layers vertically in one dimension (per-layer
-      surface rules, lighting below the top layer, mob spawning), layer
-      config (list/order/thickness, seed-randomized option), the deep-ore
-      budget (lapis/gold/diamond redistributed across layers or exposed as
-      config), and stronghold/End-portal placement within the stack.
+- [ ] 17.1 Design spike (interpretation confirmed by Jason 2026-07-16:
+      stacked horizontal slabs — plains above desert above taiga — each
+      layer flat or low-relief, using the flatter variants of its biome, so
+      this builds on Phase 16's flat layer machinery rather than full noise
+      terrain per layer; each layer gets a configurable air gap above its
+      surface so biome-specific trees and structures generate and can grow
+      on every layer): per-layer surface rules and biome features
+      (tree/structure generation within the gap height — tall trees need
+      real headroom), lighting and mob spawning below the top layer, layer
+      config (list/order/thickness/air gap, seed-randomized option), the
+      deep-ore budget
+      (lapis/gold/diamond redistributed across layers or exposed as config),
+      and stronghold/End-portal placement within the stack.
 - [ ] 17.2 Implement the `stacked` world type per design; test configs;
       docs; **[Jason]** acceptance.
 

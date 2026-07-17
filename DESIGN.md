@@ -1169,12 +1169,16 @@ resizing (§15) already uses, and they compose with any world type:
   springs); harder settings remove more (rivers, surface lakes).
   Beatability constraint at every difficulty: potions and other
   water-dependent progression must remain obtainable.
-- **Strip world (32):** vanilla `WorldBorder` is square-only (verify in 26.2
-  sources), so the strip's long walls likely come from the exterior-envelope
-  mechanism (void or solid wall), not the border — TODO Phase 6.1 spike.
-  Stronghold/End-portal reachability inside the strip rides the existing
-  progression guarantees (fallback portal). Optional Nether strip. Composes
-  with length limits (17) and schedules (19–20).
+- **Strip world (32, 36):** vanilla `WorldBorder` is square-only (verify in
+  26.2 sources), so the strip's long walls likely come from the
+  exterior-envelope mechanism (void or solid wall), not the border — TODO
+  Phase 6.1 spike. Stronghold/End-portal reachability inside the strip rides
+  the existing progression guarantees (fallback portal). Optional Nether
+  strip. Composes with length limits (17) and schedules (19–20). The
+  biome-sequence variation (36) selects ordered biome bands every N chunks
+  over untouched vanilla terrain — the chaos-biomes selection machinery
+  (§20.11 above) with ordered bands instead of random cells; no height
+  adjustment, so no coastline-class defects.
 - **Chaos biomes (33):** the kept per-cell weighted selection machinery,
   land-role biomes only, over untouched vanilla terrain, with a configurable
   region size; compose with the vanilla pass-through (§20.5) so natural
@@ -1184,11 +1188,23 @@ resizing (§15) already uses, and they compose with any world type:
   hard design question is respawn (beds explode in the End, no anchors);
   must be hardcore-beatable with the starter chest tuned for a genuine but
   achievable dragon fight.
-- **Stacked biome layers (35):** vertical stack of biome surface layers
-  replacing the deep underground of a limited-size world — **interpretation
-  flagged in GOALS 35 for Jason's confirmation before the design spike**
-  (TODO Phase 17.1). Open design questions: per-layer surface rules and
-  lighting below the top layer, layer config (order/thickness/seed-random),
+- **Stacked biome layers (35):** stacked horizontal biome slabs replacing
+  the deep underground of a limited-size world — plains above desert above
+  taiga. Interpretation confirmed by Jason 2026-07-16: each layer is a flat
+  or low-relief slab using the flatter variants of its biome (a thin slice
+  cannot fit extreme-hills-style relief), so the feature builds on the flat
+  layer machinery (§19) plus the limits module, not full noise terrain per
+  layer. Each layer has a configurable **air gap above its surface** so
+  biome-specific trees and structures generate and grow on every layer
+  (Jason, 2026-07-16) — gap height must accommodate the layer biome's tall
+  features. Open design questions (TODO Phase 17.1): per-layer surface
+  rules and feature generation within the gap, lighting and mob spawning
+  below the top layer, layer config (order/thickness/air gap/seed-random),
   redistributing the deep-ore budget (lapis/gold/diamond), and
-  stronghold/portal placement within the stack. Likely reuses the flat
-  layer-editor concepts (§19) and the limits module.
+  stronghold/portal placement within the stack.
+- **Multi-biome chunk islands (37):** the sky-chunk world's islands beyond
+  the starter can carry different biomes, per-island top-only vs full-column
+  depth, and — where feasible — showcased underground content (cave biomes,
+  amethyst geodes, structure chunks). Whether specific features can be
+  *targeted* per island (seed-search vs forced placement) is a TODO Phase
+  12.2 design question.

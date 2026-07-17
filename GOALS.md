@@ -70,6 +70,7 @@ Client only mod loaders:
 ### Sky Chunk challenge:
 
 09. Similar to 5-8, but based on chunks. Use the natural chunks of the seed. For chunk islands, make sure one generates with a portal room. Have option to include entire chunk or only top (land) until a certain depth - like 5 deep to ensure access to stone. Options for a normal Nether and End, or chunk islands.
+37. Same as 09, but beyond the starter chunk island, additional chunk islands of *different biomes* generate. Each island can independently be top-only (to a configured depth) or the entire chunk column. Where possible, some islands should showcase underground content: cave biomes (lush caves, dripstone caves, deep dark), amethyst geodes, and structure-bearing chunks — so exploration/bridging yields varied resources. (Clarified 2026-07-16.)
 
 ### Single-biome challenge:
 
@@ -126,6 +127,7 @@ Client only mod loaders:
 ### Strip-World Challenge — 1D Minecraft (approved 2026-07-16):
 
 32. The world is a narrow strip (configurable width in blocks or chunks) running along one axis; everything happens in that corridor. The stronghold/End portal must be reachable within the strip (progression guarantee — the existing fallback-portal machinery applies). Optionally apply the strip to the Nether as well. Composes with limited length (17) and the expanding/collapsing schedules (19–20).
+36. Same as 32, but the strip passes through an ordered (or seed-randomized) sequence of biomes, changing every N chunks — plains for N chunks, then desert, then taiga, and so on. Bands select biomes over untouched vanilla terrain (like 33, but ordered instead of random), so the terrain stays natural. Band width, biome list, and order are configurable. (Added 2026-07-16 as a variation Jason suggested alongside 35.)
 
 ### Chaos-Biomes Challenge (approved 2026-07-16):
 
@@ -137,8 +139,8 @@ Client only mod loaders:
 
 ### Stacked-Biome-Layers Challenge (added 2026-07-16):
 
-35. A limited-size world (blocks/chunks, per 17) where the underground is replaced by vertically stacked biome layers instead of normal caves — dig down through plains, then desert, then taiga, and so on, each layer with its own surface terrain. Layer list, order, and thicknesses configurable, with a seed-randomized option. Must account for ores that normally require deep levels (lapis, gold, diamond) — e.g. distribute an ore budget across the layers or expose config. Stronghold/End-portal placement within the stack needs design so the game stays beatable.
-    **Interpretation to confirm with Jason before design:** this is read as *vertical* stacking (successive biome surfaces as you dig down, replacing the deep underground), based on "instead of caves" and the deep-ores concern — not horizontal bands across the map.
+35. A limited-size world (blocks/chunks, per 17) where the underground is replaced by stacked horizontal biome layers instead of normal caves — plains above desert above taiga, and so on, each layer a horizontal slab with its own surface. Layer list, order, and thicknesses configurable, with a seed-randomized option. Must account for ores that normally require deep levels (lapis, gold, diamond) — e.g. distribute an ore budget across the layers or expose config. Stronghold/End-portal placement within the stack needs design so the game stays beatable.
+    **Clarified 2026-07-16:** each layer is a flat or low-relief slab — a thin slice through the world can't fit multiple "extreme hills"-style biomes, so layers mainly use the flatter variants of their biome. This ties the feature to the flat-world layer machinery (15–16) rather than full noise terrain per layer. There must be an **air gap above each layer's surface** (configurable headroom) so biome-specific trees and structures can generate and grow on every layer, not just the top one.
 
 ## Questions:
 

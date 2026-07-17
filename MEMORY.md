@@ -462,6 +462,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Phase 9 as ocean-fluid variants; End start = Phase 15 sharing Phase 14's
   non-Overworld-spawn spike; stacked layers = Phase 17 after flat, whose
   layer concepts it reuses). DESIGN §20.11 holds the technical notes.
+- 2026-07-16 — Jason confirmed GOALS 35's stacked-biome interpretation:
+  stacked **horizontal slabs** (plains above desert above taiga), each layer
+  flat or low-relief using the flatter variants of its biome — a thin slice
+  can't fit extreme-hills relief — so the feature builds on the flat layer
+  machinery (§19), not full noise terrain per layer; and each layer gets a
+  configurable air gap above its surface so biome-specific trees and
+  structures generate and grow on every layer. He also added two
+  variations, captured as GOALS 36 and 37: a biome-sequence strip (ordered
+  biome bands every N chunks along the 1D strip, reusing the chaos-selection
+  machinery with ordered bands — TODO 6.3) and multi-biome chunk islands
+  (sky-chunk islands beyond the starter carry different biomes, per-island
+  top-only vs full-column, and where feasible showcased cave biomes, geodes,
+  and structure chunks — TODO 12.2, with per-island feature targeting an
+  explicit design question).
 - 2026-07-16 — Jason's GOALS Question 1 answered from the Worldz5/6 evidence:
   ocean-only biome filtering cannot prevent land (biome ≠ terrain), so endless
   ocean needs the terrain cap and distant natural islands (use case 04) come
