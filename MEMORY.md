@@ -1031,6 +1031,52 @@ Durable decisions, verified API notes, and rationale that should survive across 
   phase (0.2.1 for 2.2, 0.2.2 for 2.4) per Jason's explicit per-task-bump
   instruction for this session, rather than once at phase-end as Phase 1
   did.
+- 2026-07-17 — **Performance bug found and fixed during Phase 2.7 testing
+  (0.2.3).** Config 11 (`single_biome` + a starter biome — the exact
+  combination Phase 1's config 08 also uses, but TODO 1.7's in-game
+  acceptance was never actually done) took **122.7 seconds** just to
+  prepare the spawn area (vanilla's own log timer), vs. near-instant for
+  every other tested config; ongoing 230-290-tick "Can't keep up!" lag
+  followed. Root cause: whenever a non-legacy layout mode *and* a starter
+  biome are both active, `EnvelopedChunkGenerator`'s two separate per-column
+  passes (`applyLayoutAdjustment`, `applyStarterLand`, one call each from
+  both `applyCarvers` and `fillFromNoise`) each independently called
+  `naturalOceanFloorHeight` — a real vanilla noise-based terrain query, not
+  a cheap lookup — for the *same* column, 4× total per column across both
+  generation stages. On top of that, `starterLandTargetHeight` sampled an
+  expensive `Noises.SURFACE_SECONDARY` relief-noise value unconditionally,
+  even for columns far outside the starter zone and its transition, where
+  `StarterLandProfile.strengthAt` is provably `0.0` and the noise value
+  can't affect the result at all.
+  **Fix:** merged the two per-column loops into one
+  (`applyTerrainAdjustments`) that computes the natural floor once and
+  threads it through both adjustments (4× → 2× worst case, and the
+  redundant layout-floor recompute inside the old `starterLandTargetHeight`
+  is gone too); added a `strengthAt`-gated early exit that skips the relief
+  noise sample entirely outside the starter zone/transition, returning the
+  blend baseline directly (locked in by a new pure test,
+  `resultIsIndependentOfNoiseOutsideTheStarterZoneAndTransition`, proving
+  the result really is noise-independent there). `getBaseHeight` and
+  `getBaseColumn` (single-point queries used by structure placement etc.)
+  got the same natural-floor/layout-floor de-duplication. No behavior
+  change intended — every calling context passes the same values the old
+  code computed internally, just without recomputing them. Component tests
+  in `ProjectMetadataTest` updated for the renamed/merged method. Not yet
+  re-verified in-game; Jason will redeploy and retest config 11.
+  **Scope note:** the buggy code (`applyStarterLand`/starter-land blending)
+  predates Phase 2 — it's Phase 15/16-era — but was never exercised through
+  a live acceptance pass until Phase 2.7 surfaced it, so it's fixed here
+  rather than deferred, per the phase-gate rule that defects found during a
+  phase's acceptance pass get addressed before moving on.
+- 2026-07-17 — The Worldz14-class floating-fragment concern (still open,
+  TODO 1.1) reproduced again during Phase 2.7 in a `single_biome` world
+  (config 10, no starter biome) — a floating desert village around
+  `(-280, 143, 140)`. Confirmed via code review this is **not** explained
+  by single_biome's height math (a no-op `Math.max` on terrain already
+  this tall) and **not** explained by the performance bug above (that
+  world had no starter biome configured, so the buggy code path never
+  ran). Still unresolved; needs Jason's in-game fall/clip test plus the
+  long-overdue TODO 1.1 bedrock/cave check.
 
 ## API Deviations
 

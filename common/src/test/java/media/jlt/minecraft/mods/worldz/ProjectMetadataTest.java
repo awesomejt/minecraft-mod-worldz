@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.2", properties.getProperty("version"));
+        assertEquals("0.2.3", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -206,9 +206,10 @@ class ProjectMetadataTest {
             "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
         ));
 
-        assertTrue(generator.contains("applyStarterLand(chunk, randomState, false)"));
-        assertTrue(generator.contains("applyStarterLand(chunk, randomState, true)"));
+        assertTrue(generator.contains("applyTerrainAdjustments(chunk, randomState, false)"));
+        assertTrue(generator.contains("applyTerrainAdjustments(chunk, randomState, true)"));
         assertTrue(generator.contains("StarterLandProfile.targetHeight"));
+        assertTrue(generator.contains("StarterLandProfile.strengthAt"));
         assertTrue(generator.contains("Heightmap.Types.OCEAN_FLOOR_WG"));
         assertTrue(generator.contains("Noises.SURFACE_SECONDARY"));
         assertTrue(generator.contains("Math.max(layoutHeight, starterLandTargetHeight"));
@@ -221,20 +222,22 @@ class ProjectMetadataTest {
             "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
         ));
 
-        assertTrue(generator.contains("applyLayoutAdjustment(chunk, randomState, false)"));
-        assertTrue(generator.contains("applyLayoutAdjustment(chunk, randomState, true)"));
+        assertTrue(generator.contains("applyTerrainAdjustments(chunk, randomState, false)"));
+        assertTrue(generator.contains("applyTerrainAdjustments(chunk, randomState, true)"));
         assertTrue(generator.contains("LayoutTerrainProfile.targetHeight"));
         assertTrue(generator.contains("mode == LayoutMode.LEGACY || mode == LayoutMode.VOID"));
-        assertTrue(generator.contains("layoutAdjustedHeight(x, z, naturalHeight, heightAccessor, randomState)"));
-        // fillFromNoise raises before buildSurface runs, and applyCarvers only repairs
-        // (never lowers) so a carved-through raise still preserves the surface shell.
+        assertTrue(generator.contains("layoutFloorOrNatural(x, z, naturalFloor)"));
+        // Both stages now share one merged per-column pass (computes the natural floor once
+        // instead of twice -- see MEMORY.md's 2026-07-17 performance entry), so what used to
+        // be two distinct calls is now one call per stage; still confirm carvers (repair-only)
+        // runs before fillFromNoise (the full raise/lower pass).
         int fillFromNoiseIndex = generator.indexOf("public CompletableFuture<ChunkAccess> fillFromNoise(");
         int applyCarversIndex = generator.indexOf("public void applyCarvers(");
-        int layoutInFillFromNoise = generator.indexOf("applyLayoutAdjustment(chunk, randomState, false)");
-        int layoutInApplyCarvers = generator.indexOf("applyLayoutAdjustment(chunk, randomState, true)");
+        int adjustmentsInFillFromNoise = generator.indexOf("applyTerrainAdjustments(chunk, randomState, false)");
+        int adjustmentsInApplyCarvers = generator.indexOf("applyTerrainAdjustments(chunk, randomState, true)");
         assertTrue(fillFromNoiseIndex >= 0 && applyCarversIndex >= 0);
-        assertTrue(layoutInApplyCarvers > applyCarversIndex && layoutInApplyCarvers < fillFromNoiseIndex);
-        assertTrue(layoutInFillFromNoise > fillFromNoiseIndex);
+        assertTrue(adjustmentsInApplyCarvers > applyCarversIndex && adjustmentsInApplyCarvers < fillFromNoiseIndex);
+        assertTrue(adjustmentsInFillFromNoise > fillFromNoiseIndex);
     }
 
     @Test
@@ -315,8 +318,12 @@ class ProjectMetadataTest {
         ));
 
         assertTrue(generator.contains(
-            "int blendBaseline = this.layout.isPresent()\n"
-                + "            ? layoutFloorFor(this.layout.get().plan(), x - originX, z - originZ, naturalFloor, getSeaLevel())\n"
+            "int targetHeight = starterLandTargetHeight(x, z, chunk, randomState, naturalFloor, layoutFloor);"
+        ));
+        assertTrue(generator.contains(
+            "private int layoutFloorOrNatural(int x, int z, int naturalFloor) {\n"
+                + "        return this.layout.isPresent()\n"
+                + "            ? layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel())\n"
                 + "            : naturalFloor;"
         ));
     }

@@ -196,8 +196,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkAccess chunk
     ) {
         this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
-        applyLayoutAdjustment(chunk, randomState, true);
-        applyStarterLand(chunk, randomState, true);
+        applyTerrainAdjustments(chunk, randomState, true);
         applyEnvelope(chunk);
     }
 
@@ -250,8 +249,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
-                applyLayoutAdjustment(chunk, randomState, false);
-                applyStarterLand(chunk, randomState, false);
+                applyTerrainAdjustments(chunk, randomState, false);
                 applyEnvelope(chunk);
                 return chunk;
             });
@@ -288,8 +286,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
-            int layoutHeight = layoutAdjustedHeight(x, z, naturalHeight, heightAccessor, randomState);
-            return Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState));
+            int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
+            int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor);
+            int layoutHeight = naturalHeight + (layoutFloor - naturalFloor);
+            return Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
         }
         return ExteriorTerrainProfile.baseHeight(
             mode,
@@ -311,10 +311,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
+            int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor);
             BlockState[] states = null;
 
             if (this.layout.isPresent()) {
-                int layoutFloor = layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel());
                 if (layoutFloor > naturalFloor) {
                     states = copyColumn(naturalColumn, heightAccessor);
                     int minY = StarterLandProfile.foundationMinY(
@@ -327,7 +327,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 }
             }
 
-            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor);
+            int targetHeight = starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor);
             if (targetHeight > naturalFloor) {
                 if (states == null) {
                     states = copyColumn(naturalColumn, heightAccessor);
@@ -416,11 +416,18 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         }
     }
 
-    private void applyLayoutAdjustment(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
-        if (this.layout.isEmpty()) {
+    /**
+     * Applies both the layout raise/lower and the starter-land raise in one pass per
+     * column. Merged (rather than two separate per-column loops, as before) so the
+     * natural ocean-floor height -- a real vanilla noise-based terrain query, not a
+     * cheap lookup -- is computed once per column instead of twice; see MEMORY.md's
+     * 2026-07-17 performance entry for the in-game symptoms this fixed.
+     */
+    private void applyTerrainAdjustments(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
+        if (this.layout.isEmpty() && this.starterLand.isEmpty()) {
             return;
         }
-        WorldLayoutPlan plan = this.layout.get().plan();
+        WorldLayoutPlan plan = this.layout.map(LayoutContext::plan).orElse(null);
         ChunkPos chunkPos = chunk.getPos();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         int seaLevel = getSeaLevel();
@@ -432,38 +439,33 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     continue;
                 }
                 int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
-                int layoutFloor = layoutFloorFor(plan, x - originX, z - originZ, naturalFloor, seaLevel);
-                if (layoutFloor > naturalFloor) {
-                    int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
-                    int maxY = repairOnly ? layoutFloor - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : layoutFloor - 1;
-                    fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
-                } else if (layoutFloor < naturalFloor && !repairOnly) {
-                    // Lowering only clears solid ground down to open water/air; there is nothing
-                    // for a carver-stage repair pass to restore, unlike a starter-land raise.
-                    lowerColumn(chunk, pos, x, z, layoutFloor, naturalFloor - 1, seaLevel);
+                int layoutFloor = naturalFloor;
+
+                if (plan != null) {
+                    layoutFloor = layoutFloorFor(plan, x - originX, z - originZ, naturalFloor, seaLevel);
+                    if (layoutFloor > naturalFloor) {
+                        int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
+                        int maxY = repairOnly ? layoutFloor - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : layoutFloor - 1;
+                        fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
+                    } else if (layoutFloor < naturalFloor && !repairOnly) {
+                        // Lowering only clears solid ground down to open water/air; there is nothing
+                        // for a carver-stage repair pass to restore, unlike a starter-land raise.
+                        lowerColumn(chunk, pos, x, z, layoutFloor, naturalFloor - 1, seaLevel);
+                    }
+                }
+
+                if (this.starterLand.isPresent()) {
+                    int targetHeight = starterLandTargetHeight(x, z, chunk, randomState, naturalFloor, layoutFloor);
+                    if (targetHeight > naturalFloor) {
+                        int minY = StarterLandProfile.foundationMinY(
+                            naturalFloor, this.starterLand.get().plan().foundationDepthBlocks(), chunk.getMinY()
+                        );
+                        int maxY = repairOnly ? targetHeight - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : targetHeight - 1;
+                        fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
+                    }
                 }
             }
         }
-    }
-
-    /**
-     * Shifts an arbitrary heightmap query by the same delta the layout applies
-     * to the ocean-floor baseline, so every {@link Heightmap.Types} agrees with
-     * the actual raised or lowered column without special-casing each type.
-     */
-    private int layoutAdjustedHeight(
-        int x,
-        int z,
-        int naturalHeight,
-        LevelHeightAccessor heightAccessor,
-        RandomState randomState
-    ) {
-        if (this.layout.isEmpty()) {
-            return naturalHeight;
-        }
-        int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-        int layoutFloor = layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel());
-        return naturalHeight + (layoutFloor - naturalFloor);
     }
 
     /** Computes the layout's target floor height by blending the sampled land/ocean factor. */
@@ -472,78 +474,63 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, seaLevel);
     }
 
-    private void applyStarterLand(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
-        if (this.starterLand.isEmpty()) {
-            return;
-        }
-        StarterLandPlan plan = this.starterLand.get().plan();
-        ChunkPos chunkPos = chunk.getPos();
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
-            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
-                int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
-                int targetHeight = starterLandTargetHeight(x, z, chunk, randomState, naturalFloor);
-                if (targetHeight <= naturalFloor) {
-                    continue;
-                }
-                int minY = StarterLandProfile.foundationMinY(
-                    naturalFloor, plan.foundationDepthBlocks(), chunk.getMinY()
-                );
-                int maxY = repairOnly ? targetHeight - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : targetHeight - 1;
-                fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
-            }
-        }
+    /** Returns the layout-adjusted floor, or {@code naturalFloor} unchanged with no active layout. */
+    private int layoutFloorOrNatural(int x, int z, int naturalFloor) {
+        return this.layout.isPresent()
+            ? layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel())
+            : naturalFloor;
     }
 
-    private int starterLandTargetHeight(
-        int x,
-        int z,
-        LevelHeightAccessor heightAccessor,
-        RandomState randomState
-    ) {
-        if (this.starterLand.isEmpty()) {
-            return heightAccessor.getMinY();
-        }
-        int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-        return starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor);
-    }
-
+    /**
+     * Computes the starter-land target height for one column. Blends back toward
+     * {@code blendBaseline} (the layout-adjusted floor when a layout is active, otherwise
+     * the natural floor -- callers already have this value, so it is passed in rather than
+     * recomputed) so the starter island's transition connects to what generation will
+     * actually leave beyond it, rather than jumping to unrelated natural shape.
+     */
     private int starterLandTargetHeight(
         int x,
         int z,
         LevelHeightAccessor heightAccessor,
         RandomState randomState,
-        int naturalFloor
+        int naturalFloor,
+        int blendBaseline
     ) {
         if (this.starterLand.isEmpty()) {
             return heightAccessor.getMinY();
         }
         StarterLandContext context = this.starterLand.get();
-        double reliefNoise = context.plan().profileVersion() <= StarterLandPlan.LEGACY_PROFILE_VERSION
-            ? 0.0
-            : randomState.getOrCreateNoise(Noises.SURFACE_SECONDARY).getValue(
-                x * StarterLandProfile.RELIEF_NOISE_SCALE,
-                0.0,
-                z * StarterLandProfile.RELIEF_NOISE_SCALE
-            );
         int originX = originX();
         int originZ = originZ();
-        // Blend back toward the layout-adjusted floor (not raw vanilla terrain) so the
-        // starter island's transition connects to what generation will actually leave
-        // beyond it (e.g. an ocean-mode cap), rather than jumping to unrelated natural shape.
-        int blendBaseline = this.layout.isPresent()
-            ? layoutFloorFor(this.layout.get().plan(), x - originX, z - originZ, naturalFloor, getSeaLevel())
-            : naturalFloor;
-        int target = StarterLandProfile.targetHeight(
-            x - originX,
-            z - originZ,
-            context.radiusBlocks(),
-            context.plan().transitionWidthBlocks(),
-            blendBaseline,
-            getSeaLevel(),
-            context.plan().profileVersion(),
-            reliefNoise
+        double strength = StarterLandProfile.strengthAt(
+            x - originX, z - originZ, context.radiusBlocks(), context.plan().transitionWidthBlocks()
         );
+        int target;
+        if (strength <= 0.0) {
+            // Outside the starter zone and its transition, StarterLandProfile.targetHeight
+            // always returns blendBaseline unchanged regardless of relief noise -- skip
+            // sampling it. This is the common case for every column away from the starter
+            // zone (i.e. almost the entire generated world).
+            target = blendBaseline;
+        } else {
+            double reliefNoise = context.plan().profileVersion() <= StarterLandPlan.LEGACY_PROFILE_VERSION
+                ? 0.0
+                : randomState.getOrCreateNoise(Noises.SURFACE_SECONDARY).getValue(
+                    x * StarterLandProfile.RELIEF_NOISE_SCALE,
+                    0.0,
+                    z * StarterLandProfile.RELIEF_NOISE_SCALE
+                );
+            target = StarterLandProfile.targetHeight(
+                x - originX,
+                z - originZ,
+                context.radiusBlocks(),
+                context.plan().transitionWidthBlocks(),
+                blendBaseline,
+                getSeaLevel(),
+                context.plan().profileVersion(),
+                reliefNoise
+            );
+        }
         return Math.min(target, heightAccessor.getMaxY() + 1);
     }
 

@@ -29,6 +29,17 @@ class StarterLandProfileTest {
     }
 
     @Test
+    void resultIsIndependentOfNoiseOutsideTheStarterZoneAndTransition() {
+        // EnvelopedChunkGenerator relies on this: at zero strength, it skips sampling relief
+        // noise entirely and returns the baseline height directly (see the 2026-07-17
+        // performance fix in MEMORY.md) -- this must hold for every noise value, not just one.
+        assertEquals(0.0, StarterLandProfile.strengthAt(192, 0, 64, 128), 0.000_001);
+        assertEquals(40, target(192, 0, 40, StarterLandPlan.RELIEF_PROFILE_VERSION, -1.0));
+        assertEquals(40, target(192, 0, 40, StarterLandPlan.RELIEF_PROFILE_VERSION, 0.0));
+        assertEquals(40, target(192, 0, 40, StarterLandPlan.RELIEF_PROFILE_VERSION, 1.0));
+    }
+
+    @Test
     void zeroWidthHasAnExactBoundary() {
         assertEquals(65, target(64, 0, 20, StarterLandPlan.RELIEF_PROFILE_VERSION, -1.0, 0));
         assertEquals(20, target(65, 0, 20, StarterLandPlan.RELIEF_PROFILE_VERSION, -1.0, 0));

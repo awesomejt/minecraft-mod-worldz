@@ -390,6 +390,30 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Add here when blocked; don't guess on gameplay/scope questions.)
 
+- 2026-07-17 — Phase 2.7 in-game testing (config 10, world `Worldz-04`,
+  desert) found what looks like a floating desert village around
+  `(-236..-340, 143..146, 138..146)`: several disconnected structure
+  clusters in open air (stars visible through the gaps), coinciding with a
+  290-tick server-lag spike in the log at `01:16:08`. Code review of
+  `EnvelopedChunkGenerator`/`LayoutTerrainProfile` found single_biome's
+  height adjustment is a no-op on terrain this tall (`Math.max` only raises
+  columns that are naturally too low; already-elevated columns pass through
+  unmodified) — no evidence this is Phase-2-introduced. Most likely either
+  a vanilla structure-placement/blending quirk on extreme terrain, or a
+  reproduction of the still-unverified TODO 1.1 issue (Worldz14's
+  floating/glitchy terrain, theorized-but-never-confirmed fixed by the
+  0.1.15 dummy-RandomState mixin). **Not explained by the 2026-07-17
+  performance fix below** — config 10 has no starter biome, so that code
+  path never ran in this session. Still open: Jason's in-game fall/clip
+  test at that location, plus the still-open TODO 1.1 bedrock/cave check,
+  are both still needed.
+- 2026-07-17 — Phase 2.7 in-game testing (config 11, world `Worldz-05`,
+  desert + plains starter) found a severe, real performance bug — see the
+  MEMORY.md entry for the fix. Re-test config 11 once the fix is deployed;
+  "starter biome not honored" specifically needs re-confirming since it may
+  simply have been a symptom of the 122-second spawn-area stall rather than
+  a separate defect.
+
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
