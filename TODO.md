@@ -74,7 +74,7 @@ and make the test loop fast. No new gameplay features.
       jar into the Prism instance's `mods/`, replacing any older jlt_worldz
       jar. Ask Jason for the instance path; put it in a git-ignored local
       properties file. Document in MANUAL_TESTING.md.
-- [ ] 1.6 Bump to 0.2.0 (breaking removal), align the metadata-test contract,
+- [x] 1.6 Bump to 0.2.0 (breaking removal), align the metadata-test contract,
       clean build, artifact inspection. **Commit** per task throughout.
 - [ ] 1.7 [Jason] Phase acceptance: a default-config world and a
       single-biome-style world both create, generate normal caves/structures,

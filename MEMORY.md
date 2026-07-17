@@ -927,6 +927,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   verified in-game; Jason will check terrain/caves near the bottom of the
   world on the next test, on both loaders if possible since this is the
   first NeoForge-side mixin this project has shipped.
+- 2026-07-16 / Release 0.2.0 — First release of the 2026-07-16 challenge-
+  world replan's Phase 1 (Stabilize and simplify): `MIXED`/`LAND_ONLY` grid
+  layouts removed (TODO 1.2), real world seed routed into layout sampling
+  (1.3), config hygiene — optional file, no legacy JSON, comment-based
+  `config/jlt_worldz.example.yaml` instead of an in-file `_docs` map (1.4).
+  `./gradlew clean build` passed all modules with 176 JUnit/component tests;
+  artifact inspection of both loader jars confirmed `0.2.0` in filenames,
+  `fabric.mod.json`, and `neoforge.mods.toml`, and confirmed no
+  `MIXED`/`LAND_ONLY`-named classes remain while `ChunkMapMixin` (both
+  loaders, now also resolving the layout seed), `LimitedBiomeSource`,
+  `EnvelopedChunkGenerator`, both loaders' mixin config files, and the
+  bundled SnakeYAML/license resources are all present as expected. TODO 1.5
+  (Prism deploy Gradle task) is still open pending Jason's instance path;
+  Phase 1 acceptance (1.1, 1.7) remains Jason's in-game pass.
 
 ## API Deviations
 
