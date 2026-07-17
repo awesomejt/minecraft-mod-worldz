@@ -1072,14 +1072,116 @@ IDs, config shape, and lang/tag wiring are Phase 2.1's design task. The old
 `LayoutMode` becomes an internal composition detail of each type, not a
 user-facing mode switch.
 
+#### Implementation (Phase 2.1 — `single_biome`, first typed preset)
+
+**Decision (confirmed against MEMORY.md's 2026-07-16 entry — not re-litigated,
+only made concrete): typed presets replace `jlt_worldz:worldz` one challenge
+family at a time.** Phase 2 adds the first one, `jlt_worldz:single_biome`,
+alongside the existing generic preset (unchanged, still the only way to reach
+`ocean`/`void`/`legacy` layout modes until their own phases land). Later
+phases repeat this pattern for `ocean_island`, `sky_island`, etc.; `worldz`
+is retired only once every mode it offers has a typed replacement (tracked,
+not scheduled, in TODO's carried-over risks).
+
+**No new registry types.** `jlt_worldz:single_biome` reuses the existing
+`jlt_worldz:limited` `BiomeSource` codec and `jlt_worldz:enveloped`
+`ChunkGenerator` wrapper unchanged — `LayoutMode.SINGLE_BIOME` already
+produces a uniform single-biome, land-shaped world (verified: `sampleAt`
+never consults the climate-filtered delegate once `mode != LEGACY`, so the
+existing per-cell weighted-selection/terrain-profile machinery already
+satisfies GOALS 10 wholesale). The only genuinely new codec surface is one
+optional decode-time hint field on `jlt_worldz:limited`:
+`Codec.STRING.optionalFieldOf("world_type")`. It is never round-tripped
+(`forGetter` always returns `Optional.empty()`) — it exists only to tell
+`LimitedBiomeSource.resolve()` which config section to default from when
+`biomes`/`starter_biome`/etc. are absent (the fieldless-preset path,
+distinguished today by `encodedStarterRadius.isEmpty()`, per §3/§4). When
+`world_type` is `"single_biome"` on that path, defaults come from a new
+`WorldzConfig.singleBiome` section instead of the flat top-level fields;
+absent (the `worldz` preset's case), resolution is byte-for-byte what it is
+today. Once a player hits Customize → Done, every field is explicit and
+`world_type` is irrelevant — matches how `starter_radius`'s presence already
+distinguishes "config defaults" from "fully explicit" (MEMORY, 2026-07-14).
+
+**`single_biome.json`** is `worldz.json` with one line added to the
+Overworld `biome_source` block (`"world_type": "single_biome"`); dimensions,
+the `jlt_worldz:enveloped` wrapper, and the End are identical. A new
+`data/minecraft/tags/worldgen/world_preset/normal.json` entry adds it to the
+dropdown alongside `jlt_worldz:worldz`.
+
+**Config section** (`singleBiome:`, new top-level `WorldzConfig` field,
+parsed/sanitized/dumped the same way every other section is):
+
+```yaml
+singleBiome:
+  landBiome: 'minecraft:plains'   # GOALS 10 — the one biome that fills the world
+  starterBiome: ''                # GOALS 11 — empty = same as landBiome, no forced zone
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin   # or preferred_natural_biome for GOALS 12
+```
+
+Resolution when `world_type=single_biome` and fields are absent:
+`worldLayout` = `WorldLayoutPlan.resolve(SINGLE_BIOME, [], {}, DEFAULT_REGION_SCALE_BLOCKS, landBiome, freshSeed)`
+(re-seeded to the real world seed at generation time regardless, per §20.4).
+`starterBiome`/`starterRadiusBlocks` = **only forced when `starterBiome` is
+non-empty** (GOALS 11) — when empty, no starter-zone override is created at
+all, since `SINGLE_BIOME` layout mode already makes every column that biome;
+forcing a redundant identical circle would be dead weight. `ensureStarterLand`
+defaults `true` regardless (still meaningful when the starter biome differs
+from the land biome — exactly the blended-seam case §16 was built for).
+`allowedBiomes` (the set structures/features see as "possible") is
+auto-derived as `{landBiome}` ∪ `{starterBiome}` if set — never user-edited
+directly for this type, avoiding the two-lists-that-must-agree trap the
+generic preset's `allowedBiomes` field has.
+
+**Small Customize screen** (`SingleBiomeCustomizeScreen` + a new
+`SingleBiomePresetEditor implements PresetEditor`, its own
+`ResourceKey<WorldPreset>`, registered alongside the existing one in both
+loaders' preset-editor wiring): land biome, starter biome, starter radius,
+spawn-strategy cycle button (all three strategies — `vanilla_spawn` stays
+available for flexibility even though it is not GOALS 10–12's focus). No
+border/exterior/starter-land controls — those shared modules stay
+YAML-only for this type until Phase 5.3 formally wires "limits compose with
+every world type" into each type's screen; the fields still work if set in
+`config/jlt_worldz.yaml` (`overworldBorder`, etc. are unconditional
+top-level sections, not gated by `world_type`).
+
+**GOALS 12 interpretation (logged here, not a silent guess): "based on
+seed — including size and location"** is read as: seed-determined *location*
+via the existing `PREFERRED_NATURAL_BIOME` search + recentering (§18,
+already built), with *size* satisfied by the still-configurable
+`starterRadiusBlocks` rather than by detecting a natural patch's true
+boundary (which would need new flood-fill/region-detection work with no
+other GOALS use case asking for it). If Jason means literally the latter,
+flag it — noted in TODO's Deviation log.
+
 ### 20.3 Per-world snapshot file
 
 On world creation, write a commented, human-readable YAML snapshot of the
 resolved settings into the world folder (GOALS §Configuration). It is a
 *record* for reference/reproducibility, not a control file — authoritative
-settings stay baked in the world's generator codec as today. **This
-per-world snapshot itself remains TODO Phase 2.4** — the global-config half
-of this section (below) is done.
+settings stay baked in the world's generator codec as today.
+
+#### Implementation (Phase 2.4 — per-world snapshot)
+
+Hooks into the exact same "genuinely new world" call site `SpawnOriginManager
+.resolveFreshOrigin` already uses (NeoForge's `LevelEvent.CreateSpawnPosition`,
+the matching Fabric `MinecraftServer.setInitialSpawn` mixin — both loaders
+already guard this to fire once, guarded by vanilla's own
+`!levelData.isInitialized()`) — the natural place, since it already has the
+resolved `LimitedBiomeSource` and the live `ServerLevel` in hand, and only
+runs for brand-new worlds. A new pure `logic.WorldSnapshotWriter` (mirrors
+`WorldzConfig`'s existing map-building/YAML-dump shape, but write-only — this
+file is never parsed back, so no `parse`/`sanitize` half is needed) renders
+the source's resolved fields (allowed biomes, starter biome/radius, starter
+land, world limits, exterior plan, world layout plan, spawn strategy) plus a
+header comment stating the mod version and creation timestamp. The MC
+integration call site writes it to
+`<worldFolder>/jlt_worldz-snapshot.yaml` via
+`overworld.getServer().getWorldPath(LevelResource.ROOT)`, best-effort (log a
+WARN and continue world creation on any `IOException` — never block world
+creation over a reference file).
 
 #### Implementation (Phase 1.4 — global config hygiene)
 

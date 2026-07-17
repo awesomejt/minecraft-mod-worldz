@@ -393,3 +393,12 @@ pulled earlier if Jason wants a fun quick win.**
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-16 (Phase 2.1) — GOALS 12 ("starter biome is based on seed —
+  including size and location") is implemented as seed-determined *location*
+  only, via the existing `preferred_natural_biome` search + recentering
+  (DESIGN §18); *size* is the still-configurable `starterRadiusBlocks`, not
+  detection of a natural biome patch's true boundary (no other GOALS use
+  case needs patch-boundary detection, and it would be substantial new
+  work). See DESIGN §20.2's Phase 2.1 subsection. Flag if a literal
+  patch-size reading was intended.
