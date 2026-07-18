@@ -143,14 +143,18 @@ every later phase reuses. Design task first, per DESIGN §20.6.
 
 Small phase, placed here because it reuses Phase 2–3 machinery directly.
 
-- [ ] 4.1 Design + implement seed-shuffled biome regions over vanilla
+- [x] 4.1 Design + implement seed-shuffled biome regions over vanilla
       terrain: the kept per-cell weighted selection machinery with a
       configurable region size (33), land-role biomes only, composed with
       Phase 3's pass-through so natural rivers/oceans stay vanilla (option).
       Terrain height untouched → none of the removed coastline defect class
-      applies. Own type or `single_biome` variant — design decides.
-- [ ] 4.2 Test configs (default size, tiny regions, huge regions); docs;
-      **[Jason]** acceptance.
+      applies. **Decided: own type** (`jlt_worldz:chaos_biomes`, a new
+      `LayoutMode.CHAOS` value reusing the generic `WorldLayoutPlan`
+      machinery directly — not a `single_biome` variant). **Done (0.2.8).**
+- [x] 4.2 Test configs (`config/tests/16`-`19`: default/tiny/huge region
+      size, pass-through + starter zone); docs. **[Jason] acceptance
+      outstanding** — see MANUAL_TESTING.md's "Phase 4 acceptance" for the
+      exact steps. 0.2.8 deployed to Worldz-Test.
 
 ## Phase 5 — World limits, expanding/collapsing (GOALS 17–20)
 
