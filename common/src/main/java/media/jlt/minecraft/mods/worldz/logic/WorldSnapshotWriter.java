@@ -47,6 +47,8 @@ public final class WorldSnapshotWriter {
         values.put("netherExterior", exteriorMap(snapshot.exteriorPlan().nether()));
         values.put("layout", layoutMap(snapshot.worldLayoutPlan()));
         values.put("spawn", spawnMap(snapshot));
+        values.put("allowRivers", snapshot.allowRivers());
+        values.put("allowOceans", snapshot.allowOceans());
 
         String header = HEADER.formatted(snapshot.modVersion(), snapshot.createdAtIso());
         return header + createYaml().dump(values);
@@ -121,6 +123,8 @@ public final class WorldSnapshotWriter {
      * @param spawnStrategy resolved layout-origin and spawn strategy
      * @param originBlockX resolved layout origin X (0 unless recentered)
      * @param originBlockZ resolved layout origin Z (0 unless recentered)
+     * @param allowRivers resolved vanilla river pass-through (GOALS 13, {@code single_biome} only)
+     * @param allowOceans resolved vanilla river/ocean pass-through (GOALS 14, {@code single_biome} only)
      */
     public record WorldSnapshot(
         String modVersion,
@@ -134,7 +138,9 @@ public final class WorldSnapshotWriter {
         WorldLayoutPlan worldLayoutPlan,
         SpawnStrategy spawnStrategy,
         int originBlockX,
-        int originBlockZ
+        int originBlockZ,
+        boolean allowRivers,
+        boolean allowOceans
     ) {
     }
 }

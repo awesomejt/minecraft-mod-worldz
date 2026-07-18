@@ -1,0 +1,16 @@
+# GOALS 13: same as 10-12, but vanilla's own rivers are allowed to generate
+# wherever vanilla would naturally place one, instead of the single biome
+# applying everywhere. Terrain is untouched -- the river channel should look
+# exactly like a vanilla river, just running through desert instead of
+# whatever vanilla's own biome would have been. Select "Worldz: Single
+# Biome". Pick a seed with a river reasonably close to spawn (outside the
+# 256-block starter zone, which always stays desert) to make this practical
+# to check in-game.
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin
+  allowRivers: true
+  allowOceans: false

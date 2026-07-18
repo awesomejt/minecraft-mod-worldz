@@ -106,6 +106,8 @@ singleBiome:
   starterRadiusBlocks: 256
   spawn:
     strategy: starter_at_origin
+  allowRivers: false
+  allowOceans: false
 ```
 
 | Setting | Default | Description |
@@ -114,10 +116,15 @@ singleBiome:
 | `starterBiome` | `""` | Optional different biome forced in a circular zone around spawn; empty means no forced zone (the whole world is already `landBiome`). |
 | `starterRadiusBlocks` | `256` | Starter-zone radius, only meaningful when `starterBiome` is set; clamped to `64..4096`. |
 | `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. `preferred_natural_biome` searches for a *natural* occurrence of `starterBiome` using the real seed and moves spawn there instead of forcing a zone at `(0, 0)` — the way to get a starter biome whose location (and, incidentally, whatever natural shape it has) comes from the seed rather than being placed arbitrarily. |
+| `allowRivers` | `false` | Let vanilla's own river biomes generate wherever vanilla would naturally place one, instead of `landBiome` applying there too. Terrain is untouched — the river channel is exactly vanilla's shape. Never overrides the starter zone, which always stays guaranteed land. |
+| `allowOceans` | `false` | Same idea for vanilla's own ocean biomes (every temperature and depth variant) — additive over `allowRivers`, so turning this on keeps rivers passing through too. Coastlines are exactly vanilla's: no straight edges, no height blending. |
 
 `allowedBiomes` (what structures/features see as possible biomes) is derived
 automatically from `landBiome` and `starterBiome` — there is nothing to keep
-in sync by hand for this type.
+in sync by hand for this type. When `allowRivers`/`allowOceans` are on, the
+matching vanilla biome tags (`#minecraft:is_river`, `#minecraft:is_ocean`)
+are folded in too, so structure/feature placement knows those biomes can
+occur.
 
 ## Configuration
 

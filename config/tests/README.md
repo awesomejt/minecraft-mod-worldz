@@ -30,8 +30,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
    new world. Since Phase 2, the World Type dropdown has **two** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`) reads the flat top-level config fields; "Worldz: Single
-   Biome" (files `10`-`12`) reads only the `singleBiome:` section and
-   ignores everything else.
+   Biome" (files `10`-`12`, `14`-`15`) reads only the `singleBiome:`
+   section and ignores everything else.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -53,6 +53,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `11-single-biome-different-starter.yaml` | GOALS 11: same as 10, but a different biome is forced around spawn. |
 | `12-single-biome-seed-chosen-starter.yaml` | GOALS 12: same as 11, but the starter biome's location is seed-chosen (`preferred_natural_biome`) instead of forced at `(0,0)`. |
 | `13-vanilla-limited-baseline.yaml` | Control run for Phase 2: plain "Worldz" preset, legacy layout, a modest border — confirms the shared border/limit path Phase 2 didn't touch still works through the `LimitedBiomeSource.resolve()` branch it now shares with `singleBiome:`. |
+| `14-single-biome-allow-rivers.yaml` | GOALS 13: `allowRivers: true` — vanilla's own rivers pass through wherever vanilla would naturally place one, everywhere else stays desert. |
+| `15-single-biome-allow-oceans.yaml` | GOALS 14: `allowRivers: true` + `allowOceans: true` — vanilla's own rivers and oceans (every depth/temperature) both pass through; coastlines should look exactly like natural vanilla terrain, no straight edges. |
 
 ### Why `01` showed ocean labeled as river
 

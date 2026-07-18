@@ -180,6 +180,34 @@ stay YAML-only for this type until Phase 5.3). Config `13` uses plain
    biome/starter radius/spawn strategy — none of the full "Worldz" preset's
    allowed-biomes list, border, exterior, or layout-mode controls.
 
+## Phase 3 acceptance (2026-07-17 challenge-world replan, TODO 3.2)
+
+Uses configs `14`-`15` (see [`config/tests/README.md`](config/tests/README.md)).
+Both need **"Worldz: Single Biome"** on the creation screen. A fixed seed
+with a known nearby river and ocean makes this much easier to check —
+[Chunkbase's biome finder](https://www.chunkbase.com/apps/biome-finder) (or
+similar) against the same seed, checked in plain vanilla first, gives exact
+coordinates to fly to before checking the same spot in Worldz.
+
+1. **Rivers pass through (GOALS 13)**, `14-single-biome-allow-rivers.yaml`.
+   Locate a river in plain vanilla at this seed, note its coordinates, then
+   create the Worldz world at the same seed and fly there: confirm a river
+   (F3 biome id `minecraft:river` or `minecraft:frozen_river`) actually
+   exists in the same place, with the same natural channel shape — not the
+   configured desert. Everywhere else (and outside the river) should still
+   be desert. Confirm the starter zone (within ~256 blocks of spawn) is
+   never a river even if vanilla would have put one there — starter land
+   stays guaranteed.
+2. **Oceans pass through too (GOALS 14)**, `15-single-biome-allow-oceans.yaml`.
+   Same idea at an ocean location instead: confirm the ocean (any of
+   vanilla's ocean biome variants — warm/lukewarm/cold/frozen, deep or not)
+   generates naturally, with an unmodified vanilla coastline — no straight
+   edges, no visible height blending at the shore. Rivers should still pass
+   through too (`allowRivers` stays on alongside `allowOceans`).
+3. **Per-world snapshot.** Check `jlt_worldz-snapshot.yaml` for either world:
+   confirm it now includes `allowRivers`/`allowOceans` matching what the
+   config file set.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

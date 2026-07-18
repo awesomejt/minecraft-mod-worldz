@@ -228,7 +228,9 @@ public final class SpawnOriginManager {
                 source.effectiveLayoutPlan(),
                 source.spawnStrategy(),
                 source.originBlockX(),
-                source.originBlockZ()
+                source.originBlockZ(),
+                source.allowRivers(),
+                source.allowOceans()
             );
             Path target = overworld.getServer().getWorldPath(LevelResource.ROOT)
                 .resolve(WorldzCommon.MOD_ID + "-snapshot.yaml");

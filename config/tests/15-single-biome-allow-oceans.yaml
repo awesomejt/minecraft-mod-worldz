@@ -1,0 +1,15 @@
+# GOALS 14: same as 10-13, but vanilla's own oceans (every temperature/depth
+# variant, plus rivers -- allowOceans is additive over allowRivers, both
+# stay on together) are also allowed to generate naturally. Confirms
+# coastlines are exactly vanilla's -- no straight edges, no height
+# blending -- since terrain is never touched for single_biome outside the
+# starter zone. Select "Worldz: Single Biome". Pick a seed with an ocean
+# reasonably close to spawn to make this practical to check in-game.
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin
+  allowRivers: true
+  allowOceans: true

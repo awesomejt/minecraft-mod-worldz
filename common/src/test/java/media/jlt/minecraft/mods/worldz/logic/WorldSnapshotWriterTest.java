@@ -53,6 +53,9 @@ class WorldSnapshotWriterTest {
         assertEquals("starter_at_origin", spawn.get("strategy"));
         assertEquals(64, spawn.get("layoutOriginBlockX"));
         assertEquals(-64, spawn.get("layoutOriginBlockZ"));
+
+        assertEquals(true, parsed.get("allowRivers"));
+        assertEquals(false, parsed.get("allowOceans"));
     }
 
     private static WorldSnapshotWriter.WorldSnapshot sample() {
@@ -71,7 +74,9 @@ class WorldSnapshotWriterTest {
             ),
             SpawnStrategy.STARTER_AT_ORIGIN,
             64,
-            -64
+            -64,
+            true,
+            false
         );
     }
 }
