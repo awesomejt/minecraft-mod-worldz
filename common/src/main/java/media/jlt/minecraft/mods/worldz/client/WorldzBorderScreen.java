@@ -19,7 +19,7 @@ final class WorldzBorderScreen extends Screen {
     private static final int FORM_WIDTH = 310;
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
-    private final WorldzCustomizeScreen parent;
+    private final LimitEditorHosts.BorderEditorHost parent;
     private final boolean overworld;
     private final WorldzCustomization.BorderSettings initial;
     private boolean enabled;
@@ -34,7 +34,7 @@ final class WorldzBorderScreen extends Screen {
     private EditBox resizeRateDays;
     private MultiLineTextWidget errorMessage;
 
-    WorldzBorderScreen(WorldzCustomizeScreen parent, boolean overworld, WorldzCustomization.BorderSettings initial) {
+    WorldzBorderScreen(LimitEditorHosts.BorderEditorHost parent, boolean overworld, WorldzCustomization.BorderSettings initial) {
         super(Component.translatable(overworld ? "jlt_worldz.customize.overworld_border.title" : "jlt_worldz.customize.nether_border.title"));
         this.parent = parent;
         this.overworld = overworld;
@@ -190,6 +190,6 @@ final class WorldzBorderScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.gui.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent.asScreen());
     }
 }

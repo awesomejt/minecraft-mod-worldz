@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
 import media.jlt.minecraft.mods.worldz.config.BorderConfig;
+import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
 import media.jlt.minecraft.mods.worldz.config.ExteriorConfig;
 import media.jlt.minecraft.mods.worldz.config.LayoutConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
@@ -21,6 +22,7 @@ import java.util.Map;
  * @param starterLandPlan starter terrain guarantee
  * @param overworldBorder overworld border selection
  * @param netherBorder Nether border selection
+ * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
  * @param overworldExterior Overworld exterior-terrain selection
  * @param netherExterior Nether exterior-terrain selection
  * @param worldLayout coordinated world-layout selection
@@ -33,6 +35,7 @@ public record WorldzCustomization(
     StarterLandPlan starterLandPlan,
     BorderSettings overworldBorder,
     BorderSettings netherBorder,
+    EndBorderSettings endBorder,
     ExteriorSettings overworldExterior,
     ExteriorSettings netherExterior,
     LayoutSettings worldLayout,
@@ -61,7 +64,7 @@ public record WorldzCustomization(
             WorldzConfig.MAX_STARTER_RADIUS_BLOCKS,
             "Starter radius"
         );
-        if (starterLandPlan == null || overworldBorder == null || netherBorder == null
+        if (starterLandPlan == null || overworldBorder == null || netherBorder == null || endBorder == null
             || overworldExterior == null || netherExterior == null || worldLayout == null || spawnStrategy == null) {
             throw new IllegalArgumentException("Starter-land, border, exterior, layout, and spawn settings are required.");
         }
@@ -95,6 +98,7 @@ public record WorldzCustomization(
             StarterLandPlan.disabled(),
             overworldBorder,
             netherBorder,
+            EndBorderSettings.disabled(),
             ExteriorSettings.normal(),
             ExteriorSettings.normal(),
             LayoutSettings.legacy(),
@@ -129,6 +133,7 @@ public record WorldzCustomization(
             StarterLandPlan.disabled(),
             overworldBorder,
             netherBorder,
+            EndBorderSettings.disabled(),
             overworldExterior,
             netherExterior,
             LayoutSettings.legacy(),
@@ -149,6 +154,7 @@ public record WorldzCustomization(
             StarterLandPlan.fromConfig(config),
             BorderSettings.fromConfig(config.overworldBorder),
             BorderSettings.fromConfig(config.netherBorder),
+            EndBorderSettings.fromConfig(config.endBorder),
             ExteriorSettings.fromConfig(config.overworldExterior),
             ExteriorSettings.fromConfig(config.netherExterior),
             LayoutSettings.fromConfig(config),
@@ -216,6 +222,7 @@ public record WorldzCustomization(
             StarterLandPlan.disabled(),
             overworldBorder,
             netherBorder,
+            EndBorderSettings.disabled(),
             overworldExterior,
             netherExterior,
             LayoutSettings.legacy(),
@@ -257,6 +264,7 @@ public record WorldzCustomization(
             starterLandPlan,
             overworldBorder,
             netherBorder,
+            EndBorderSettings.disabled(),
             overworldExterior,
             netherExterior,
             LayoutSettings.legacy(),
@@ -300,6 +308,7 @@ public record WorldzCustomization(
             starterLandPlan,
             overworldBorder,
             netherBorder,
+            EndBorderSettings.disabled(),
             overworldExterior,
             netherExterior,
             worldLayout,
@@ -334,6 +343,51 @@ public record WorldzCustomization(
         LayoutSettings worldLayout,
         SpawnStrategy spawnStrategy
     ) {
+        return fromText(
+            allowedBiomes,
+            starterBiome,
+            starterRadiusBlocks,
+            starterLandPlan,
+            overworldBorder,
+            netherBorder,
+            EndBorderSettings.disabled(),
+            overworldExterior,
+            netherExterior,
+            worldLayout,
+            spawnStrategy
+        );
+    }
+
+    /**
+     * Parses editable biome fields while preserving explicit starter-land, border, exterior,
+     * layout, and spawn settings, including an explicit End border selection.
+     *
+     * @param allowedBiomes newline- or comma-separated biome ids and tags
+     * @param starterBiome optional direct biome id
+     * @param starterRadiusBlocks decimal starter radius
+     * @param starterLandPlan validated starter-land values
+     * @param overworldBorder validated overworld border values
+     * @param netherBorder validated Nether border values
+     * @param endBorder validated End border values
+     * @param overworldExterior validated Overworld exterior values
+     * @param netherExterior validated Nether exterior values
+     * @param worldLayout validated layout values
+     * @param spawnStrategy layout-origin and spawn strategy
+     * @return canonical immutable customization values
+     */
+    public static WorldzCustomization fromText(
+        String allowedBiomes,
+        String starterBiome,
+        String starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        BorderSettings overworldBorder,
+        BorderSettings netherBorder,
+        EndBorderSettings endBorder,
+        ExteriorSettings overworldExterior,
+        ExteriorSettings netherExterior,
+        LayoutSettings worldLayout,
+        SpawnStrategy spawnStrategy
+    ) {
         List<String> allowed = Arrays.stream(allowedBiomes.split("[,\\r\\n]+"))
             .map(String::trim)
             .filter(value -> !value.isEmpty())
@@ -345,6 +399,7 @@ public record WorldzCustomization(
             starterLandPlan,
             overworldBorder,
             netherBorder,
+            endBorder,
             overworldExterior,
             netherExterior,
             worldLayout,
@@ -362,15 +417,12 @@ public record WorldzCustomization(
     }
 
     /**
-     * Converts both border selections to the world-persisted plan. The End's border is not yet
-     * exposed on this preset's Customize screen (GOALS 17 is config-only here; see TODO 5.3 for
-     * per-type Customize wiring), so the caller supplies it from the shared config snapshot.
+     * Converts all three border selections to the world-persisted plan.
      *
-     * @param endLimit the End's border plan, taken from the shared config
      * @return immutable codec-backed world-limit plan
      */
-    public WorldLimitPlan worldLimitPlan(WorldLimitPlan.EndLimit endLimit) {
-        return new WorldLimitPlan(overworldBorder.toPlan(), netherBorder.toPlan(), endLimit);
+    public WorldLimitPlan worldLimitPlan() {
+        return new WorldLimitPlan(overworldBorder.toPlan(), netherBorder.toPlan(), endBorder.toPlan());
     }
 
     /**
@@ -599,7 +651,7 @@ public record WorldzCustomization(
             );
         }
 
-        private WorldLimitPlan.DimensionLimit toPlan() {
+        WorldLimitPlan.DimensionLimit toPlan() {
             return new WorldLimitPlan.DimensionLimit(
                 enabled,
                 initialRadiusBlocks,
@@ -610,6 +662,59 @@ public record WorldzCustomization(
                 resizeRateDays,
                 ensureObjective
             );
+        }
+    }
+
+    /**
+     * The End's editable border values (GOALS 17): whether to carry the Overworld's eventual
+     * radius over, and the floor that keeps the dragon fight winnable regardless.
+     *
+     * @param carryFromOverworld whether the End receives a border at all
+     * @param minimumRadiusBlocks smallest End border half-width regardless of the carried radius
+     */
+    public record EndBorderSettings(boolean carryFromOverworld, int minimumRadiusBlocks) {
+        /** Validates End border values even while not carrying. */
+        public EndBorderSettings {
+            requireRange(
+                minimumRadiusBlocks,
+                WorldzConfig.MIN_BORDER_RADIUS_BLOCKS,
+                WorldzConfig.MAX_BORDER_RADIUS_BLOCKS,
+                "End minimum radius"
+            );
+        }
+
+        /**
+         * Returns the backward-compatible default: not carrying a border into the End.
+         *
+         * @return disabled End border values
+         */
+        public static EndBorderSettings disabled() {
+            return new EndBorderSettings(false, 256);
+        }
+
+        /**
+         * Copies sanitized YAML values.
+         *
+         * @param config sanitized End border configuration
+         * @return immutable End border values
+         */
+        public static EndBorderSettings fromConfig(EndBorderConfig config) {
+            return new EndBorderSettings(config.carryFromOverworld, config.minimumRadiusBlocks);
+        }
+
+        /**
+         * Parses the editable End border fields used by the client screen.
+         *
+         * @param carryFromOverworld whether the End receives a border at all
+         * @param minimumRadiusBlocks decimal minimum radius
+         * @return validated immutable End border values
+         */
+        public static EndBorderSettings fromText(boolean carryFromOverworld, String minimumRadiusBlocks) {
+            return new EndBorderSettings(carryFromOverworld, parseInteger(minimumRadiusBlocks, "End minimum radius"));
+        }
+
+        WorldLimitPlan.EndLimit toPlan() {
+            return new WorldLimitPlan.EndLimit(carryFromOverworld, minimumRadiusBlocks);
         }
     }
 
@@ -673,7 +778,7 @@ public record WorldzCustomization(
             );
         }
 
-        private ExteriorPlan.DimensionEnvelope toPlan(BorderSettings border) {
+        ExteriorPlan.DimensionEnvelope toPlan(BorderSettings border) {
             if (mode == ExteriorMode.NORMAL) {
                 return ExteriorPlan.DimensionEnvelope.normal();
             }
@@ -840,7 +945,7 @@ public record WorldzCustomization(
         }
     }
 
-    private static int parseInteger(String value, String name) {
+    static int parseInteger(String value, String name) {
         try {
             return Integer.parseInt(value.trim());
         } catch (NullPointerException | NumberFormatException exception) {
@@ -848,13 +953,13 @@ public record WorldzCustomization(
         }
     }
 
-    private static void requireRange(int value, int minimum, int maximum, String name) {
+    static void requireRange(int value, int minimum, int maximum, String name) {
         if (value < minimum || value > maximum) {
             throw new IllegalArgumentException(name + " must be between " + minimum + " and " + maximum + ".");
         }
     }
 
-    private static void validateAutomaticBoundary(ExteriorSettings exterior, BorderSettings border, String dimension) {
+    static void validateAutomaticBoundary(ExteriorSettings exterior, BorderSettings border, String dimension) {
         if (exterior.mode() != ExteriorMode.NORMAL && exterior.boundaryRadiusBlocks() == 0 && !border.enabled()) {
             throw new IllegalArgumentException(dimension + " exterior needs a boundary or an enabled border.");
         }

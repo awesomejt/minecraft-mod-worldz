@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
+import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,6 +19,11 @@ import java.util.List;
  * @param spawnStrategy layout-origin and initial-spawn strategy
  * @param allowRivers let vanilla's own river biomes generate naturally
  * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+ * @param overworldBorder overworld border selection (GOALS 17-20, TODO 5.3)
+ * @param netherBorder Nether border selection
+ * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
+ * @param overworldExterior Overworld exterior-terrain selection
+ * @param netherExterior Nether exterior-terrain selection
  */
 public record ChaosBiomesCustomization(
     List<String> biomes,
@@ -26,7 +32,12 @@ public record ChaosBiomesCustomization(
     int starterRadiusBlocks,
     SpawnStrategy spawnStrategy,
     boolean allowRivers,
-    boolean allowOceans
+    boolean allowOceans,
+    WorldzCustomization.BorderSettings overworldBorder,
+    WorldzCustomization.BorderSettings netherBorder,
+    WorldzCustomization.EndBorderSettings endBorder,
+    WorldzCustomization.ExteriorSettings overworldExterior,
+    WorldzCustomization.ExteriorSettings netherExterior
 ) {
     /** Validates and canonicalizes customization values. */
     public ChaosBiomesCustomization {
@@ -63,9 +74,15 @@ public record ChaosBiomesCustomization(
                     + " and " + WorldzConfig.MAX_STARTER_RADIUS_BLOCKS + "."
             );
         }
-        if (spawnStrategy == null) {
-            throw new IllegalArgumentException("Spawn strategy is required.");
+        if (spawnStrategy == null || overworldBorder == null || netherBorder == null || endBorder == null
+            || overworldExterior == null || netherExterior == null) {
+            throw new IllegalArgumentException("Spawn strategy, border, and exterior settings are required.");
         }
+        if (netherExterior.mode() == ExteriorMode.OCEAN) {
+            throw new IllegalArgumentException("Ocean exterior is only supported in the Overworld.");
+        }
+        WorldzCustomization.validateAutomaticBoundary(overworldExterior, overworldBorder, "Overworld");
+        WorldzCustomization.validateAutomaticBoundary(netherExterior, netherBorder, "Nether");
     }
 
     /**
@@ -82,7 +99,12 @@ public record ChaosBiomesCustomization(
             config.chaosBiomes.starterRadiusBlocks,
             config.chaosBiomes.spawn.strategy,
             config.chaosBiomes.allowRivers,
-            config.chaosBiomes.allowOceans
+            config.chaosBiomes.allowOceans,
+            WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
+            WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
+            WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
+            WorldzCustomization.ExteriorSettings.fromConfig(config.overworldExterior),
+            WorldzCustomization.ExteriorSettings.fromConfig(config.netherExterior)
         );
     }
 
@@ -96,6 +118,11 @@ public record ChaosBiomesCustomization(
      * @param spawnStrategy layout-origin and spawn strategy
      * @param allowRivers let vanilla's own river biomes generate naturally
      * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+     * @param overworldBorder validated overworld border values
+     * @param netherBorder validated Nether border values
+     * @param endBorder validated End border values
+     * @param overworldExterior validated Overworld exterior values
+     * @param netherExterior validated Nether exterior values
      * @return canonical immutable customization values
      */
     public static ChaosBiomesCustomization fromText(
@@ -105,7 +132,12 @@ public record ChaosBiomesCustomization(
         String starterRadiusBlocks,
         SpawnStrategy spawnStrategy,
         boolean allowRivers,
-        boolean allowOceans
+        boolean allowOceans,
+        WorldzCustomization.BorderSettings overworldBorder,
+        WorldzCustomization.BorderSettings netherBorder,
+        WorldzCustomization.EndBorderSettings endBorder,
+        WorldzCustomization.ExteriorSettings overworldExterior,
+        WorldzCustomization.ExteriorSettings netherExterior
     ) {
         List<String> biomes = Arrays.stream(biomesText.split("[,\\r\\n]+"))
             .map(String::trim)
@@ -118,7 +150,12 @@ public record ChaosBiomesCustomization(
             parseInteger(starterRadiusBlocks, "Starter radius"),
             spawnStrategy,
             allowRivers,
-            allowOceans
+            allowOceans,
+            overworldBorder,
+            netherBorder,
+            endBorder,
+            overworldExterior,
+            netherExterior
         );
     }
 
@@ -148,6 +185,24 @@ public record ChaosBiomesCustomization(
             ids.add(starterBiome);
         }
         return ids;
+    }
+
+    /**
+     * Converts all three border selections to the world-persisted plan.
+     *
+     * @return immutable codec-backed world-limit plan
+     */
+    public WorldLimitPlan worldLimitPlan() {
+        return new WorldLimitPlan(overworldBorder.toPlan(), netherBorder.toPlan(), endBorder.toPlan());
+    }
+
+    /**
+     * Converts both exterior selections to resolved, persisted envelopes.
+     *
+     * @return immutable resolved exterior plan
+     */
+    public ExteriorPlan exteriorPlan() {
+        return new ExteriorPlan(overworldExterior.toPlan(overworldBorder), netherExterior.toPlan(netherBorder));
     }
 
     private static int parseInteger(String value, String name) {

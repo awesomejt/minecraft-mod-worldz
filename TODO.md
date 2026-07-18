@@ -220,8 +220,26 @@ composed with the new world types; plus the one real gap (the End).
       needed. Not yet exposed on any Customize screen (config-only for
       now, consistent with single_biome/chaos_biomes' own border/exterior
       gap — both close together in 5.3).
-- [ ] 5.3 Limits must compose with every world type (a shared module section
+- [x] 5.3 Limits must compose with every world type (a shared module section
       in each type's config/Customize), not only the `limited` type.
+      **Done (0.2.11):** border/exterior/limits already applied uniformly
+      at the code level for every type since Phase 2-4 (each type's
+      preset editor already read the shared config's border/exterior/
+      limit plans); the actual gap was Customize-screen exposure —
+      `single_biome` and `chaos_biomes` silently used config-file
+      defaults with no in-screen controls. `SingleBiomeCustomization` and
+      `ChaosBiomesCustomization` gain the same 5 fields as the generic
+      preset's `WorldzCustomization` (overworld/Nether border, End
+      border, overworld/Nether exterior) plus `worldLimitPlan()`/
+      `exteriorPlan()` conversions; their Customize screens gain the same
+      Border/End Border/Exterior buttons, reusing `WorldzBorderScreen`/
+      `WorldzExteriorScreen`/new `EndBorderScreen` through small
+      `LimitEditorHosts` callback interfaces instead of duplicating a
+      screen per type. Also finished 5.2's stop-gap: the generic preset's
+      Customize screen now has its own End Border button and editable
+      `endBorder` field too (previously config-only). See the Deviation
+      log — this changes what Phase 4.2's Customize-screen acceptance
+      item validated.
 - [ ] 5.4 Test configs (static small, expanding, collapsing, End carry-over);
       docs; **[Jason]** acceptance.
 
@@ -571,6 +589,19 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-18 (Phase 5.3) — Supersedes Phase 4.2's acceptance item 5
+  ("Chaos Biomes Customize screen shows... nothing from the full Worldz
+  preset's... border, exterior... controls"), confirmed 2026-07-18 in
+  MANUAL_TESTING.md before this phase existed. TODO 5.3 explicitly calls
+  for the opposite — border/exterior/End-border composing with every
+  world type via each type's own Customize screen, not just the plain
+  preset — so `single_biome` and `chaos_biomes` now both show Overworld/
+  Nether Border, End Border, and Overworld/Nether Exterior buttons
+  (reusing `WorldzBorderScreen`/`WorldzExteriorScreen`/new
+  `EndBorderScreen` via small host interfaces in `LimitEditorHosts`).
+  This is intentional forward evolution of that acceptance criterion, not
+  a regression: re-verify in Phase 5.4's acceptance pass instead of
+  re-flagging it as a defect.
 - 2026-07-16 (Phase 2.1) — GOALS 12 ("starter biome is based on seed —
   including size and location") is implemented as seed-determined *location*
   only, via the existing `preferred_natural_biome` search + recentering

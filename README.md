@@ -92,12 +92,15 @@ Select **Worldz: Single Biome** under **World Type** for a world where one
 chosen biome fills the entire generated world — structures, caves, and
 vanilla randomness all generate normally and follow the world seed exactly
 as they would in a vanilla world of that biome. Select **Customize** for a
-small screen with only this type's fields: land biome, an optional different
-starter biome around spawn, starter radius, and spawn strategy. This is a
-separate World Type from plain **Worldz** above — it does not read
-`allowedBiomes`, borders, exteriors, or `layout` at all; those shared
-modules stay YAML-only for this type for now (a future phase gives every
-type its own Customize section for them).
+small screen with this type's fields (land biome, an optional different
+starter biome around spawn, starter radius, spawn strategy) plus the same
+shared Overworld/Nether Border, End Border, and Overworld/Nether Exterior
+buttons as the generic preset (see [Limited-world borders](#limited-world-borders)
+and [Carrying the border into the End](#carrying-the-border-into-the-end)).
+This is a separate World Type from plain **Worldz** above — it still does
+not read `allowedBiomes` or `layout` at all; `allowedBiomes` derives
+automatically (below) and coordinated layout modes are specific to the
+generic preset.
 
 Configure its defaults with a `singleBiome:` section in
 `config/jlt_worldz.yaml`:
@@ -137,7 +140,9 @@ desert beside ice spikes beside jungle, changing every `regionScaleBlocks`
 or so. Unlike **Worldz: Single Biome**, terrain shape is *always* completely
 untouched vanilla terrain everywhere (hills, mountains, ravines, natural
 water bodies stand exactly as the seed generated them) — chaos only ever
-relabels biome identity, never height.
+relabels biome identity, never height. Its Customize screen also has the
+same shared Overworld/Nether Border, End Border, and Overworld/Nether
+Exterior buttons as `single_biome` and the generic preset.
 
 Configure its defaults with a `chaosBiomes:` section in
 `config/jlt_worldz.yaml`:

@@ -11,6 +11,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChaosBiomesCustomizationTest {
+    private static ChaosBiomesCustomization create(
+        List<String> biomes, int regionScaleBlocks, String starterBiome, int starterRadiusBlocks,
+        SpawnStrategy spawnStrategy, boolean allowRivers, boolean allowOceans
+    ) {
+        return new ChaosBiomesCustomization(
+            biomes, regionScaleBlocks, starterBiome, starterRadiusBlocks, spawnStrategy, allowRivers, allowOceans,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
+        );
+    }
+
+    private static WorldzCustomization.BorderSettings defaultBorder() {
+        return new WorldzCustomization.BorderSettings(false, 512, 512, 0, true);
+    }
+
     @Test
     void fromConfigCopiesSanitizedDefaults() {
         WorldzConfig config = new WorldzConfig();
@@ -27,22 +42,40 @@ class ChaosBiomesCustomizationTest {
     }
 
     @Test
+    void fromConfigCopiesBorderExteriorAndEndBorderSettings() {
+        WorldzConfig config = new WorldzConfig();
+        config.overworldBorder.enabled = true;
+        config.overworldBorder.finalRadiusBlocks = 2048;
+        config.endBorder.carryFromOverworld = true;
+        config.endBorder.minimumRadiusBlocks = 320;
+
+        ChaosBiomesCustomization customization = ChaosBiomesCustomization.fromConfig(config);
+
+        assertTrue(customization.overworldBorder().enabled());
+        assertEquals(2048, customization.overworldBorder().finalRadiusBlocks());
+        assertTrue(customization.endBorder().carryFromOverworld());
+        assertEquals(320, customization.endBorder().minimumRadiusBlocks());
+        assertTrue(customization.worldLimitPlan().overworld().enabled());
+        assertTrue(customization.worldLimitPlan().end().carryFromOverworld());
+    }
+
+    @Test
     void constructorRequiresAtLeastOneBiome() {
-        assertThrows(IllegalArgumentException.class, () -> new ChaosBiomesCustomization(
+        assertThrows(IllegalArgumentException.class, () -> create(
             List.of(), 512, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void constructorRejectsInvalidBiomeEntries() {
-        assertThrows(IllegalArgumentException.class, () -> new ChaosBiomesCustomization(
+        assertThrows(IllegalArgumentException.class, () -> create(
             List.of("#minecraft:is_overworld"), 512, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void constructorCanonicalizesWeightedEntries() {
-        ChaosBiomesCustomization customization = new ChaosBiomesCustomization(
+        ChaosBiomesCustomization customization = create(
             List.of("desert@2", "jungle"), 512, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
 
@@ -51,29 +84,29 @@ class ChaosBiomesCustomizationTest {
 
     @Test
     void constructorRejectsRegionScaleOutOfRange() {
-        assertThrows(IllegalArgumentException.class, () -> new ChaosBiomesCustomization(
+        assertThrows(IllegalArgumentException.class, () -> create(
             List.of("minecraft:desert"), 1, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
-        assertThrows(IllegalArgumentException.class, () -> new ChaosBiomesCustomization(
+        assertThrows(IllegalArgumentException.class, () -> create(
             List.of("minecraft:desert"), 999_999, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void starterBiomeIsOptionalButRejectsTags() {
-        ChaosBiomesCustomization empty = new ChaosBiomesCustomization(
+        ChaosBiomesCustomization empty = create(
             List.of("minecraft:desert"), 512, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
         assertEquals("", empty.starterBiome());
 
-        assertThrows(IllegalArgumentException.class, () -> new ChaosBiomesCustomization(
+        assertThrows(IllegalArgumentException.class, () -> create(
             List.of("minecraft:desert"), 512, "#minecraft:is_overworld", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void starterRadiusMustBeInRange() {
-        assertThrows(IllegalArgumentException.class, () -> new ChaosBiomesCustomization(
+        assertThrows(IllegalArgumentException.class, () -> create(
             List.of("minecraft:desert"), 512, "", 1, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
@@ -82,7 +115,9 @@ class ChaosBiomesCustomizationTest {
     void fromTextParsesNewlineSeparatedBiomesAndDecimalFields() {
         ChaosBiomesCustomization customization = ChaosBiomesCustomization.fromText(
             "minecraft:desert\nminecraft:jungle@2", "256", "minecraft:plains", "128",
-            SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false
+            SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
 
         assertEquals(List.of("minecraft:desert", "minecraft:jungle@2.0"), customization.biomes());
@@ -97,13 +132,15 @@ class ChaosBiomesCustomizationTest {
     @Test
     void fromTextRejectsNonNumericFields() {
         assertThrows(IllegalArgumentException.class, () -> ChaosBiomesCustomization.fromText(
-            "minecraft:desert", "not-a-number", "", "256", SpawnStrategy.STARTER_AT_ORIGIN, false, false
+            "minecraft:desert", "not-a-number", "", "256", SpawnStrategy.STARTER_AT_ORIGIN, false, false,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));
     }
 
     @Test
     void biomesTextRoundTripsNewlineSeparatedEntries() {
-        ChaosBiomesCustomization customization = new ChaosBiomesCustomization(
+        ChaosBiomesCustomization customization = create(
             List.of("minecraft:desert", "minecraft:jungle"), 512, "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
 
@@ -112,7 +149,7 @@ class ChaosBiomesCustomizationTest {
 
     @Test
     void allowedBiomeIdsIsBiomesPlusDistinctStarter() {
-        ChaosBiomesCustomization customization = new ChaosBiomesCustomization(
+        ChaosBiomesCustomization customization = create(
             List.of("minecraft:desert", "minecraft:jungle"), 512, "minecraft:plains", 256,
             SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
@@ -122,7 +159,7 @@ class ChaosBiomesCustomizationTest {
 
     @Test
     void allowedBiomeIdsDoesNotDuplicateAStarterAlreadyInBiomes() {
-        ChaosBiomesCustomization customization = new ChaosBiomesCustomization(
+        ChaosBiomesCustomization customization = create(
             List.of("minecraft:desert", "minecraft:jungle"), 512, "minecraft:desert", 256,
             SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );

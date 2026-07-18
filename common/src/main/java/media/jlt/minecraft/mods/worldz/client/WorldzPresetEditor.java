@@ -79,7 +79,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             starter,
             customization.starterRadiusBlocks(),
             customization.starterLandPlan(),
-            customization.worldLimitPlan(WorldLimitPlan.fromConfig(WorldzCommon.config()).end()),
+            customization.worldLimitPlan(),
             customization.exteriorPlan(),
             customization.worldLayoutPlan(new Random().nextLong()),
             customization.spawnStrategy(),
@@ -127,6 +127,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             source.starterLandPlan(),
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
+            fromPlan(plan.end()),
             fromPlan(exterior.overworld()),
             fromPlan(exterior.nether()),
             fromPlan(source.worldLayoutPlan()),
@@ -181,6 +182,10 @@ public final class WorldzPresetEditor implements PresetEditor {
             limit.resizeRateDays(),
             limit.ensureObjective()
         );
+    }
+
+    private static WorldzCustomization.EndBorderSettings fromPlan(WorldLimitPlan.EndLimit limit) {
+        return new WorldzCustomization.EndBorderSettings(limit.carryFromOverworld(), limit.minimumRadiusBlocks());
     }
 
     private static WorldzCustomization.ExteriorSettings fromPlan(

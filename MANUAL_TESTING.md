@@ -176,9 +176,13 @@ stay YAML-only for this type until Phase 5.3). Config `13` uses plain
    you actually selected — this file is a reference record only; editing it
    does nothing.
 6. **Customize-screen sanity.** Open "Worldz: Single Biome"'s Customize
-   screen before creating a world: confirm it shows only land biome/starter
-   biome/starter radius/spawn strategy — none of the full "Worldz" preset's
-   allowed-biomes list, border, exterior, or layout-mode controls.
+   screen before creating a world: confirm it shows land biome/starter
+   biome/starter radius/spawn strategy, plus Overworld/Nether Border, End
+   Border, and Overworld/Nether Exterior buttons — none of the full
+   "Worldz" preset's allowed-biomes list or layout-mode controls. (Border/
+   exterior/End Border buttons were added in Phase 5.3 — see TODO.md's
+   Deviation log; this item originally required their absence too, before
+   that phase existed.)
 
 ## Phase 3 acceptance (2026-07-17 challenge-world replan, TODO 3.2)
 
@@ -242,9 +246,13 @@ All four need **"Worldz: Chaos Biomes"** on the creation screen.
    opposite — long, uninterrupted stretches of one biome before it changes.
 5. **Customize-screen sanity.** Open "Worldz: Chaos Biomes"'s Customize
    screen before creating a world: confirm it shows the weighted biomes
-   list, region size, starter biome/radius, spawn strategy, and
-   allowRivers/allowOceans checkboxes — nothing from the full "Worldz"
-   preset's allowed-biomes list, border, exterior, or layout-mode controls.
+   list, region size, starter biome/radius, spawn strategy,
+   allowRivers/allowOceans checkboxes, and Overworld/Nether Border, End
+   Border, and Overworld/Nether Exterior buttons — nothing from the full
+   "Worldz" preset's allowed-biomes list or layout-mode controls. (Border/
+   exterior/End Border buttons were added in Phase 5.3 — see TODO.md's
+   Deviation log; this item originally required their absence too, before
+   that phase existed.)
 
 ## Scenario table: seed-informed spawn (Phase 16)
 

@@ -1,7 +1,6 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
-import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -68,6 +67,7 @@ class WorldzCustomizationTest {
     void spawnStrategyIsRequired() {
         assertThrows(IllegalArgumentException.class, () -> new WorldzCustomization(
             List.of("plains"), "", 512, StarterLandPlan.disabled(), border(false), border(false),
+            WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(),
             WorldzCustomization.LayoutSettings.legacy(), null
         ));
@@ -135,9 +135,9 @@ class WorldzCustomizationTest {
             new WorldzCustomization.BorderSettings(false, 512, 512, 0, false)
         );
 
-        assertTrue(customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().enabled());
-        assertEquals(2048, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().finalRadiusBlocks());
-        assertFalse(customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).nether().enabled());
+        assertTrue(customization.worldLimitPlan().overworld().enabled());
+        assertEquals(2048, customization.worldLimitPlan().overworld().finalRadiusBlocks());
+        assertFalse(customization.worldLimitPlan().nether().enabled());
     }
 
     @Test
@@ -152,7 +152,7 @@ class WorldzCustomizationTest {
             "plains", "", "512", border, border(false), exterior, WorldzCustomization.ExteriorSettings.normal()
         );
 
-        assertEquals(128, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeRateBlocks());
+        assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
         assertEquals(2048, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
         assertEquals(1792, customization.exteriorPlan().overworld().solidRadiusBlocks());
     }
@@ -167,9 +167,9 @@ class WorldzCustomizationTest {
         );
 
         assertEquals(12, border.resizeDelayDays());
-        assertEquals(12, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeDelayDays());
-        assertEquals(100, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeDays());
-        assertEquals(128, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeRateBlocks());
+        assertEquals(12, customization.worldLimitPlan().overworld().resizeDelayDays());
+        assertEquals(100, customization.worldLimitPlan().overworld().resizeDays());
+        assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
     }
 
     @Test
@@ -248,6 +248,7 @@ class WorldzCustomizationTest {
         );
         WorldzCustomization customization = new WorldzCustomization(
             List.of("plains"), "", 512, StarterLandPlan.disabled(), border(false), border(false),
+            WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal(), settings,
             SpawnStrategy.STARTER_AT_ORIGIN
         );

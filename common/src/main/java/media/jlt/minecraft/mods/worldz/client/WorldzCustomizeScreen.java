@@ -19,7 +19,8 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
 /** World-creation screen for biome, starter-zone, border, and exterior choices. */
-final class WorldzCustomizeScreen extends Screen {
+final class WorldzCustomizeScreen extends Screen implements
+    LimitEditorHosts.BorderEditorHost, LimitEditorHosts.ExteriorEditorHost, LimitEditorHosts.EndBorderEditorHost {
     private static final Component TITLE = Component.translatable("jlt_worldz.customize.title");
     private static final int FORM_WIDTH = 310;
     private static final int SCROLL_AREA_MIN_HEIGHT = 100;
@@ -28,6 +29,7 @@ final class WorldzCustomizeScreen extends Screen {
     private final CreateWorldScreen parent;
     private WorldzCustomization.BorderSettings overworldBorder;
     private WorldzCustomization.BorderSettings netherBorder;
+    private WorldzCustomization.EndBorderSettings endBorder;
     private WorldzCustomization.ExteriorSettings overworldExterior;
     private WorldzCustomization.ExteriorSettings netherExterior;
     private StarterLandPlan starterLandPlan;
@@ -48,6 +50,7 @@ final class WorldzCustomizeScreen extends Screen {
         this.parent = parent;
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
+        this.endBorder = initial.endBorder();
         this.overworldExterior = initial.overworldExterior();
         this.netherExterior = initial.netherExterior();
         this.starterLandPlan = initial.starterLandPlan();
@@ -110,6 +113,11 @@ final class WorldzCustomizeScreen extends Screen {
         ).tooltip(borderTooltip).build());
         form.addChild(borderButtons);
 
+        form.addChild(Button.builder(
+            endBorderButtonLabel(this.endBorder.carryFromOverworld()),
+            button -> this.minecraft.gui.setScreen(new EndBorderScreen(this, this.endBorder))
+        ).width(FORM_WIDTH).build());
+
         Tooltip exteriorTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.exterior.tooltip"));
         LinearLayout exteriorButtons = LinearLayout.horizontal().spacing(10);
         exteriorButtons.addChild(Button.builder(
@@ -169,6 +177,7 @@ final class WorldzCustomizeScreen extends Screen {
                 this.starterLandPlan,
                 this.overworldBorder,
                 this.netherBorder,
+                this.endBorder,
                 this.overworldExterior,
                 this.netherExterior,
                 this.worldLayout,
@@ -184,7 +193,13 @@ final class WorldzCustomizeScreen extends Screen {
         }
     }
 
-    void setBorder(boolean overworld, WorldzCustomization.BorderSettings settings) {
+    @Override
+    public Screen asScreen() {
+        return this;
+    }
+
+    @Override
+    public void setBorder(boolean overworld, WorldzCustomization.BorderSettings settings) {
         if (overworld) {
             this.overworldBorder = settings;
         } else {
@@ -192,11 +207,17 @@ final class WorldzCustomizeScreen extends Screen {
         }
     }
 
+    @Override
+    public void setEndBorder(WorldzCustomization.EndBorderSettings settings) {
+        this.endBorder = settings;
+    }
+
     void setStarterLand(StarterLandPlan plan) {
         this.starterLandPlan = plan;
     }
 
-    void setExterior(boolean overworld, WorldzCustomization.ExteriorSettings settings) {
+    @Override
+    public void setExterior(boolean overworld, WorldzCustomization.ExteriorSettings settings) {
         if (overworld) {
             this.overworldExterior = settings;
         } else {
@@ -225,6 +246,13 @@ final class WorldzCustomizeScreen extends Screen {
         return Component.translatable(
             "jlt_worldz.customize." + dimension + "_border",
             Component.translatable(enabled ? "options.on" : "options.off")
+        );
+    }
+
+    private static Component endBorderButtonLabel(boolean carryFromOverworld) {
+        return Component.translatable(
+            "jlt_worldz.customize.end_border",
+            Component.translatable(carryFromOverworld ? "options.on" : "options.off")
         );
     }
 

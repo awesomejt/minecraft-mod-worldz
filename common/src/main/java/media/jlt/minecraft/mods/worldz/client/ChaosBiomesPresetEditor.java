@@ -6,6 +6,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
+import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
@@ -87,8 +88,8 @@ public final class ChaosBiomesPresetEditor implements PresetEditor {
             starter,
             customization.starterRadiusBlocks(),
             StarterLandPlan.fromConfig(sharedConfig),
-            WorldLimitPlan.fromConfig(sharedConfig),
-            ExteriorPlan.fromConfig(sharedConfig),
+            customization.worldLimitPlan(),
+            customization.exteriorPlan(),
             layoutPlan,
             customization.spawnStrategy(),
             customization.allowRivers(),
@@ -96,7 +97,7 @@ public final class ChaosBiomesPresetEditor implements PresetEditor {
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
-        var exterior = ExteriorPlan.fromConfig(sharedConfig);
+        var exterior = customization.exteriorPlan();
         var replaced = new LinkedHashMap<>(dimensions.dimensions());
         LevelStem overworld = replaced.get(LevelStem.OVERWORLD);
         replaced.put(
@@ -129,6 +130,8 @@ public final class ChaosBiomesPresetEditor implements PresetEditor {
             biomes = WorldzCommon.config().chaosBiomes.biomes;
         }
         String starter = source.starterBiome().map(ChaosBiomesPresetEditor::registeredName).orElse("");
+        WorldLimitPlan plan = source.worldLimits();
+        var exterior = source.exteriorPlan();
         return new ChaosBiomesCustomization(
             biomes,
             source.worldLayoutPlan().regionScaleBlocks(),
@@ -136,7 +139,32 @@ public final class ChaosBiomesPresetEditor implements PresetEditor {
             source.starterRadiusBlocks(),
             source.spawnStrategy(),
             source.allowRivers(),
-            source.allowOceans()
+            source.allowOceans(),
+            fromPlan(plan.overworld()), fromPlan(plan.nether()), fromPlan(plan.end()),
+            fromPlan(exterior.overworld()), fromPlan(exterior.nether())
+        );
+    }
+
+    private static WorldzCustomization.BorderSettings fromPlan(WorldLimitPlan.DimensionLimit limit) {
+        return new WorldzCustomization.BorderSettings(
+            limit.enabled(),
+            limit.initialRadiusBlocks(),
+            limit.finalRadiusBlocks(),
+            limit.resizeDays(),
+            limit.resizeDelayDays(),
+            limit.resizeRateBlocks(),
+            limit.resizeRateDays(),
+            limit.ensureObjective()
+        );
+    }
+
+    private static WorldzCustomization.EndBorderSettings fromPlan(WorldLimitPlan.EndLimit limit) {
+        return new WorldzCustomization.EndBorderSettings(limit.carryFromOverworld(), limit.minimumRadiusBlocks());
+    }
+
+    private static WorldzCustomization.ExteriorSettings fromPlan(ExteriorPlan.DimensionEnvelope envelope) {
+        return new WorldzCustomization.ExteriorSettings(
+            envelope.mode(), envelope.boundaryRadiusBlocks(), envelope.oceanTransitionWidthBlocks()
         );
     }
 

@@ -19,7 +19,7 @@ final class WorldzExteriorScreen extends Screen {
     private static final int FORM_WIDTH = 310;
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
-    private final WorldzCustomizeScreen parent;
+    private final LimitEditorHosts.ExteriorEditorHost parent;
     private final boolean overworld;
     private final WorldzCustomization.ExteriorSettings initial;
     private ExteriorMode mode;
@@ -31,7 +31,7 @@ final class WorldzExteriorScreen extends Screen {
     private MultiLineTextWidget errorMessage;
 
     WorldzExteriorScreen(
-        WorldzCustomizeScreen parent,
+        LimitEditorHosts.ExteriorEditorHost parent,
         boolean overworld,
         WorldzCustomization.ExteriorSettings initial
     ) {
@@ -148,6 +148,6 @@ final class WorldzExteriorScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.gui.setScreen(this.parent);
+        this.minecraft.gui.setScreen(this.parent.asScreen());
     }
 }
