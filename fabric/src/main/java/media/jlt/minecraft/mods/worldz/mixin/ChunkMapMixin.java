@@ -1,7 +1,6 @@
 package media.jlt.minecraft.mods.worldz.mixin;
 
 import com.mojang.datafixers.DataFixer;
-import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
 import net.minecraft.core.HolderLookup;
@@ -98,14 +97,6 @@ abstract class ChunkMapMixin {
                     noiseGenerator.generatorSettings().value(),
                     level.registryAccess().lookupOrThrow(Registries.NOISE),
                     level.getSeed()
-                );
-                // TEMPORARY DIAGNOSTIC (2026-07-17, remove after the floating-structure
-                // investigation concludes): ground-truth log of the identity this mixin just
-                // assigned, to compare against EnvelopedChunkGenerator's own
-                // jltWorldzDiag$trackRandomState logs.
-                WorldzCommon.LOGGER.warn(
-                    "[DIAG] ChunkMapMixin fixed randomState: identity={}, thread={}, dimension={}",
-                    System.identityHashCode(this.randomState), Thread.currentThread().getName(), level.dimension().identifier()
                 );
             }
             if (enveloped.getBiomeSource() instanceof LimitedBiomeSource source) {
