@@ -1284,6 +1284,57 @@ filtering never shaped terrain — see the Worldz5/6 finding in §17/MEMORY —
 so endless ocean needs the terrain cap, and distant natural islands (04) come
 from *releasing* that cap beyond the exclusion zone.)
 
+**Phase 3.1 implementation decisions (2026-07-17):**
+
+- **Scope:** `LayoutMode.SINGLE_BIOME` only — the only mode 13/14 apply to.
+  Two new boolean flags on `LimitedBiomeSource` (not `WorldLayoutPlan`,
+  which stays a pure per-cell hash sampler with no vanilla-biome-source
+  access): `allowRivers` (13), `allowOceans` (14, additive over 13 — GOALS
+  13's rivers stay available when oceans are also on). Persisted as new
+  optional codec fields `allow_rivers`/`allow_oceans` (default `false`,
+  same "explicit vs. config-default" resolution pattern as every other
+  `LimitedBiomeSource` field keyed off `starter_radius`'s presence).
+  `SingleBiomeConfig` gains matching `allowRivers`/`allowOceans` fields
+  (default `false`); the Customize screen gains two toggle buttons.
+- **What "vanilla would have chosen" means:** the full, *unfiltered*
+  overworld `MultiNoiseBiomeSource` — the same `Climate.ParameterList`
+  `resolveAllowedBiomes` already builds from `MultiNoiseBiomeSourceParameterList
+  .Preset.OVERWORLD` before it gets filtered down to Worldz's allowed set.
+  Sampling the *filtered* delegate would be self-defeating (rivers/oceans
+  are essentially never in a single-biome world's tiny allowed set, so
+  they'd never be selectable). Built once, lazily, alongside the existing
+  memoized `Resolution` — no new per-column cost beyond the one extra
+  `getNoiseBiome` call the check itself needs.
+- **The actual check, in `LimitedBiomeSource.getNoiseBiome`:** runs after
+  the exterior-ocean check and the starter-zone check (both keep unconditional
+  precedence — the starter zone's guaranteed-land promise, and the
+  guaranteed-land *terrain* raise `EnvelopedChunkGenerator` applies inside
+  it, would otherwise disagree with an ocean biome label there), and before
+  `WorldLayoutPlan.sampleAt`'s fixed single-biome return, gated on
+  `mode() == SINGLE_BIOME && (allowRivers || allowOceans)`:
+  sample the unfiltered vanilla source once; if `allowRivers` and the result
+  is `BiomeTags.IS_RIVER`, or `allowOceans` and the result is
+  `BiomeTags.IS_OCEAN` (verified in the real 26.2 biome tag data: `is_ocean`
+  itself includes `#is_deep_ocean` as a nested tag, so one tag check covers
+  every ocean depth/temperature variant), return that real vanilla biome
+  holder; otherwise fall through to the existing single-biome substitution
+  unchanged.
+- **`possibleBiomes()`:** when a flag is on, the corresponding tag's full
+  holder set (`biomeGetter.get(BiomeTags.IS_RIVER)` /
+  `BiomeTags.IS_OCEAN`) is unioned into `resolveAllowedBiomes`'s `possible`
+  set alongside the configured land/starter biomes. Without this, vanilla
+  machinery that consults `possibleBiomes()` (structure-set precomputation,
+  feature placement checks) would not know rivers/oceans can occur here even
+  though `getNoiseBiome` can return them.
+- **No new terrain code.** `EnvelopedChunkGenerator`'s starter-land/layout
+  height adjustment is entirely biome-blind (it raises columns toward a
+  target height regardless of what biome ends up there) and stays that way;
+  a real river/ocean channel only reads as natural because *terrain* was
+  never touched for `SINGLE_BIOME` outside the starter zone in the first
+  place (§17/MEMORY's Worldz5/6 finding — biome selection was never a
+  terrain-composition system). This is why 13/14 need zero coordination
+  with the starter-land/layout-adjustment pipeline.
+
 ### 20.6 Design-first phases
 
 Every phase in `TODO.md` that introduces a new world type or module starts
