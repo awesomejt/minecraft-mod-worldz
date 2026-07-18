@@ -3,7 +3,7 @@
 # singleBiome's allowRivers/allowOceans -- confirms it generalizes
 # correctly to chaos_biomes too. Also exercises the optional starter zone
 # (a safe plains patch at spawn instead of chaos starting immediately),
-# since 16-18 all leave it disabled.
+# since 16, 18, and 19 all leave it disabled.
 chaosBiomes:
   biomes:
     - 'minecraft:desert'

@@ -13,5 +13,5 @@ chaosBiomes:
   starterRadiusBlocks: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
+  allowRivers: true
+  allowOceans: true

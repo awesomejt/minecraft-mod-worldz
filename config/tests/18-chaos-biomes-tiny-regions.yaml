@@ -10,8 +10,8 @@ chaosBiomes:
     - 'minecraft:taiga'
   regionScaleBlocks: 64
   starterBiome: ''
-  starterRadiusBlocks: 256
+  starterRadiusBlocks: 128
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
+  allowRivers: true
+  allowOceans: true

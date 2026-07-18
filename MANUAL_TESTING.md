@@ -224,20 +224,22 @@ All four need **"Worldz: Chaos Biomes"** on the creation screen.
    the terrain the way vanilla normally correlates them, and that's
    expected for this config since rivers/oceans pass-through is off); (c)
    normal structures/caves/features generate.
-2. **Tiny regions**, `17-chaos-biomes-tiny-regions.yaml`. Confirm biome
+2. **Pass-through + starter zone**, `17-chaos-biomes-pass-through-and-starter.yaml`.
+   Tested here, right after the default-regions check and before the
+   region-size variations, since it's the config that actually confirms
+   real rivers/oceans work under chaos biomes. Confirm spawn is inside a
+   ~256-block plains circle (the starter zone), with chaos biomes starting
+   beyond it. Using the same vanilla-first coordinate-finding approach as
+   Phase 3's rivers/oceans check, confirm a known vanilla river or ocean
+   location (outside the starter zone) still generates as a real
+   river/ocean here too, with natural terrain — not flattened, not
+   replaced by one of the configured land biomes (same mechanism as Phase
+   3.1, just confirming it composes correctly with `chaos_biomes`).
+3. **Tiny regions**, `18-chaos-biomes-tiny-regions.yaml`. Confirm biome
    changes noticeably more often while flying in a straight line than
    config 16 — regions should feel small and frequent.
-3. **Huge regions**, `18-chaos-biomes-huge-regions.yaml`. Confirm the
+4. **Huge regions**, `19-chaos-biomes-huge-regions.yaml`. Confirm the
    opposite — long, uninterrupted stretches of one biome before it changes.
-4. **Pass-through + starter zone**, `19-chaos-biomes-pass-through-and-starter.yaml`.
-   Confirm spawn is inside a ~256-block plains circle (the starter zone),
-   with chaos biomes starting beyond it. Using the same vanilla-first
-   coordinate-finding approach as Phase 3's rivers/oceans check, confirm a
-   known vanilla river or ocean location (outside the starter zone) still
-   generates as a real river/ocean here too, with natural terrain — not
-   flattened, not replaced by one of the configured land biomes (same
-   mechanism as Phase 3.1, just confirming it composes correctly with
-   `chaos_biomes`).
 5. **Customize-screen sanity.** Open "Worldz: Chaos Biomes"'s Customize
    screen before creating a world: confirm it shows the weighted biomes
    list, region size, starter biome/radius, spawn strategy, and

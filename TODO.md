@@ -151,10 +151,20 @@ Small phase, placed here because it reuses Phase 2–3 machinery directly.
       applies. **Decided: own type** (`jlt_worldz:chaos_biomes`, a new
       `LayoutMode.CHAOS` value reusing the generic `WorldLayoutPlan`
       machinery directly — not a `single_biome` variant). **Done (0.2.8).**
-- [x] 4.2 Test configs (`config/tests/16`-`19`: default/tiny/huge region
-      size, pass-through + starter zone); docs. **[Jason] acceptance
-      outstanding** — see MANUAL_TESTING.md's "Phase 4 acceptance" for the
-      exact steps. 0.2.8 deployed to Worldz-Test.
+- [x] 4.2 Test configs (`config/tests/16`-`19`: default region size,
+      pass-through + starter zone, tiny/huge region size); docs. 0.2.8
+      deployed to Worldz-Test. (2026-07-18: reordered so pass-through/
+      starter, GOALS 33's rivers/oceans check, is tested right after the
+      default-regions config and before the region-size variations —
+      renumbered `17`↔`19` accordingly: `17` is now pass-through+starter,
+      `18` tiny regions, `19` huge regions.) **[Jason] acceptance done
+      (2026-07-18):** all five checklist items confirmed — config 16
+      (checkerboard of land biomes over untouched vanilla terrain; water
+      relabeled with a land biome as designed since pass-through is off),
+      config 17 (real rivers/oceans survive under chaos biomes, composes
+      correctly with Phase 3.1's pass-through), configs 18/19 (tiny/huge
+      region size both behave as expected), and the Customize-screen
+      sanity check (Chaos Biomes screen shows only its own options).
 
 ## Phase 5 — World limits, expanding/collapsing (GOALS 17–20)
 
@@ -402,6 +412,23 @@ pulled earlier if Jason wants a fun quick win.**
 
 ## Backlog (approved, not yet scheduled to a phase)
 
+- **2026-07-18, Jason (from Phase 4.2 acceptance, config 16):** chaos_biomes'
+  `allowRivers`/`allowOceans` default to `false`, so out of the box a chaos
+  world shows real water bodies relabeled with a land biome (e.g. an ocean
+  or river reads as "Jungle") — Jason found this surprising when testing
+  config 16 (turned out to be working as designed, not a bug; see
+  MANUAL_TESTING.md's Phase 4 acceptance item 1c). Two options raised,
+  neither implemented yet:
+  1. Default `allowRivers`/`allowOceans` to `true` for chaos_biomes (and/or
+     single_biome?) so natural water reads correctly out of the box;
+     document the off behavior clearly for anyone who deliberately wants
+     land relabeling over water.
+  2. A land-only generation mode: when land-only biomes are configured,
+     remove/replace the water instead of just relabeling it — conceptually
+     similar to Phase 9's dry-world variant (GOALS 31), possibly shares
+     implementation.
+  Revisit with Jason once a phase slot is picked; not a blocker for closing
+  out Phase 4.2's acceptance.
 - GOALS 15 (approved 2026-07-17): configuration option to let vanilla's own
   underground cave biomes (dripstone caves, lush caves, deep dark) generate
   normally in `single_biome` worlds, instead of the single biome applying
