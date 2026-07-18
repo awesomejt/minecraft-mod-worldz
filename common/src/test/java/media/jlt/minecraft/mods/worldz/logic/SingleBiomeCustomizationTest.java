@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,65 +21,81 @@ class SingleBiomeCustomizationTest {
         assertEquals("", customization.starterBiome());
         assertEquals(256, customization.starterRadiusBlocks());
         assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, customization.spawnStrategy());
+        assertFalse(customization.allowRivers());
+        assertFalse(customization.allowOceans());
+    }
+
+    @Test
+    void fromConfigCopiesAllowRiversAndOceans() {
+        WorldzConfig config = new WorldzConfig();
+        config.singleBiome.allowRivers = true;
+        config.singleBiome.allowOceans = true;
+
+        SingleBiomeCustomization customization = SingleBiomeCustomization.fromConfig(config);
+
+        assertTrue(customization.allowRivers());
+        assertTrue(customization.allowOceans());
     }
 
     @Test
     void landBiomeMustBeOneIdNotATag() {
         assertThrows(IllegalArgumentException.class, () -> new SingleBiomeCustomization(
-            "#minecraft:is_overworld", "", 256, SpawnStrategy.STARTER_AT_ORIGIN
+            "#minecraft:is_overworld", "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void starterBiomeIsOptionalButRejectsTags() {
         SingleBiomeCustomization empty = new SingleBiomeCustomization(
-            "minecraft:plains", "", 256, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
         assertEquals("", empty.starterBiome());
 
         assertThrows(IllegalArgumentException.class, () -> new SingleBiomeCustomization(
-            "minecraft:plains", "#minecraft:is_overworld", 256, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "#minecraft:is_overworld", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void starterRadiusMustBeInRange() {
         assertThrows(IllegalArgumentException.class, () -> new SingleBiomeCustomization(
-            "minecraft:plains", "", 1, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "", 1, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
         assertThrows(IllegalArgumentException.class, () -> new SingleBiomeCustomization(
-            "minecraft:plains", "", 999_999, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "", 999_999, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void fromTextParsesDecimalRadius() {
         SingleBiomeCustomization customization = SingleBiomeCustomization.fromText(
-            "minecraft:desert", "minecraft:plains", "512", SpawnStrategy.PREFERRED_NATURAL_BIOME
+            "minecraft:desert", "minecraft:plains", "512", SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false
         );
 
         assertEquals("minecraft:desert", customization.landBiome());
         assertEquals("minecraft:plains", customization.starterBiome());
         assertEquals(512, customization.starterRadiusBlocks());
         assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, customization.spawnStrategy());
+        assertTrue(customization.allowRivers());
+        assertFalse(customization.allowOceans());
     }
 
     @Test
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> SingleBiomeCustomization.fromText(
-            "minecraft:plains", "", "not-a-number", SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "", "not-a-number", SpawnStrategy.STARTER_AT_ORIGIN, false, false
         ));
     }
 
     @Test
     void allowedBiomeIdsIsJustLandBiomeWhenStarterIsUnsetOrTheSame() {
         SingleBiomeCustomization unset = new SingleBiomeCustomization(
-            "minecraft:plains", "", 256, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
         assertEquals(List.of("minecraft:plains"), unset.allowedBiomeIds());
 
         SingleBiomeCustomization same = new SingleBiomeCustomization(
-            "minecraft:plains", "minecraft:plains", 256, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:plains", "minecraft:plains", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
         assertEquals(List.of("minecraft:plains"), same.allowedBiomeIds());
     }
@@ -86,7 +103,7 @@ class SingleBiomeCustomizationTest {
     @Test
     void allowedBiomeIdsIncludesADifferentStarterBiome() {
         SingleBiomeCustomization customization = new SingleBiomeCustomization(
-            "minecraft:desert", "minecraft:plains", 256, SpawnStrategy.STARTER_AT_ORIGIN
+            "minecraft:desert", "minecraft:plains", 256, SpawnStrategy.STARTER_AT_ORIGIN, false, false
         );
 
         assertTrue(customization.allowedBiomeIds().containsAll(List.of("minecraft:desert", "minecraft:plains")));

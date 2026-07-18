@@ -101,10 +101,17 @@ spawn:
 # everywhere already, via layout mode single_biome); starterRadiusBlocks
 # only matters when starterBiome is set; spawn.strategy accepts the same
 # values as the shared spawn section above (preferred_natural_biome
-# searches for starterBiome using the real seed).
+# searches for starterBiome using the real seed). allowRivers/allowOceans
+# let vanilla's own river/ocean biomes generate naturally wherever vanilla
+# would place one, instead of the single biome applying everywhere;
+# allowOceans is additive over allowRivers (both stay on together).
+# Terrain is untouched either way -- coastlines/channels are exactly
+# vanilla's, outside the guaranteed-land starter zone.
 singleBiome:
   landBiome: 'minecraft:plains'
   starterBiome: ''
   starterRadiusBlocks: 256
   spawn:
     strategy: starter_at_origin
+  allowRivers: false
+  allowOceans: false

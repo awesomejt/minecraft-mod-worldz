@@ -5,6 +5,8 @@
   "jlt_worldz.single_biome.land_biome": "Land biome (fills the whole world)",
   "jlt_worldz.single_biome.starter_biome": "Starter biome (empty = same as land biome)",
   "jlt_worldz.single_biome.starter_radius": "Starter radius in blocks (64–4096)",
+  "jlt_worldz.single_biome.allow_rivers": "Allow natural rivers to generate",
+  "jlt_worldz.single_biome.allow_oceans": "Allow natural rivers and oceans to generate",
   "jlt_worldz.customize.title": "Customize Worldz",
   "jlt_worldz.customize.allowed_biomes": "Allowed biomes or #tags (one per line or comma-separated)",
   "jlt_worldz.customize.allowed_biomes.hint": "minecraft:plains\n#minecraft:is_overworld",

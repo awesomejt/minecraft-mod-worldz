@@ -25,6 +25,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
@@ -56,6 +57,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         LayoutCodecs.PLAN_CODEC.optionalFieldOf("world_layout").forGetter(source -> Optional.of(source.worldLayoutPlan)),
         Codec.STRING.optionalFieldOf("spawn_strategy")
             .forGetter(source -> Optional.of(source.spawnStrategy.serializedName())),
+        Codec.BOOL.optionalFieldOf("allow_rivers").forGetter(source -> Optional.of(source.allowRivers)),
+        Codec.BOOL.optionalFieldOf("allow_oceans").forGetter(source -> Optional.of(source.allowOceans)),
         Codec.STRING.optionalFieldOf("world_type").forGetter(source -> Optional.<String>empty()),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
@@ -67,6 +70,8 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final ExteriorPlan exteriorPlan;
     private final WorldLayoutPlan worldLayoutPlan;
     private final SpawnStrategy spawnStrategy;
+    private final boolean allowRivers;
+    private final boolean allowOceans;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
@@ -83,6 +88,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         ExteriorPlan exteriorPlan,
         WorldLayoutPlan worldLayoutPlan,
         SpawnStrategy spawnStrategy,
+        boolean allowRivers,
+        boolean allowOceans,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -94,6 +101,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.worldLayoutPlan = worldLayoutPlan;
         this.effectiveLayoutPlan = worldLayoutPlan;
         this.spawnStrategy = spawnStrategy;
+        this.allowRivers = allowRivers;
+        this.allowOceans = allowOceans;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -102,7 +111,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
         // asks this biome source for its possible biomes or an actual biome.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
-            allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan, biomeGetter
+            allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan,
+            allowRivers, allowOceans, biomeGetter
         ));
     }
 
@@ -115,6 +125,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<ExteriorPlan> encodedExteriorPlan,
         Optional<WorldLayoutPlan> encodedWorldLayout,
         Optional<String> encodedSpawnStrategy,
+        Optional<Boolean> encodedAllowRivers,
+        Optional<Boolean> encodedAllowOceans,
         Optional<String> encodedWorldType,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -167,10 +179,14 @@ public final class LimitedBiomeSource extends BiomeSource {
             : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> singleBiomeDefaults
                 ? config.singleBiome.spawn.strategy
                 : config.spawn.strategy);
+        // allow_rivers/allow_oceans only ever come from the singleBiome: config section (GOALS
+        // 13/14 are single_biome-only, DESIGN §20.5); every other fieldless preset defaults false.
+        boolean allowRivers = encodedAllowRivers.orElseGet(() -> singleBiomeDefaults && config.singleBiome.allowRivers);
+        boolean allowOceans = encodedAllowOceans.orElseGet(() -> singleBiomeDefaults && config.singleBiome.allowOceans);
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
-            encodedStarterRadius.isEmpty(), biomeGetter
+            allowRivers, allowOceans, encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -185,6 +201,8 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @param exteriorPlan persisted exterior-terrain plan
      * @param worldLayoutPlan persisted coordinated-layout plan
      * @param spawnStrategy persisted layout-origin and spawn strategy
+     * @param allowRivers let vanilla's own river biomes generate naturally (single_biome only, GOALS 13)
+     * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally (single_biome only, GOALS 14)
      * @param biomeGetter biome registry lookup used for vanilla climate parameters
      * @return a fully explicit source independent of later YAML changes
      */
@@ -197,6 +215,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         ExteriorPlan exteriorPlan,
         WorldLayoutPlan worldLayoutPlan,
         SpawnStrategy spawnStrategy,
+        boolean allowRivers,
+        boolean allowOceans,
         HolderGetter<Biome> biomeGetter
     ) {
         return new LimitedBiomeSource(
@@ -208,6 +228,8 @@ public final class LimitedBiomeSource extends BiomeSource {
             exteriorPlan,
             worldLayoutPlan,
             spawnStrategy,
+            allowRivers,
+            allowOceans,
             false,
             biomeGetter
         );
@@ -218,6 +240,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> starterBiome,
         Optional<Holder<Biome>> oceanBiome,
         WorldLayoutPlan worldLayoutPlan,
+        boolean allowRivers,
+        boolean allowOceans,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -261,7 +285,24 @@ public final class LimitedBiomeSource extends BiomeSource {
         if (worldLayoutPlan.mode() != LayoutMode.LEGACY) {
             possible.addAll(layoutBiomes.values());
         }
-        return new Resolution(HolderSet.direct(List.copyOf(allowedSet)), delegate, Set.copyOf(possible), layoutBiomes);
+
+        // DESIGN §20.5: single_biome's vanilla pass-through (GOALS 13/14) needs the full,
+        // unfiltered overworld source -- the Worldz-restricted `delegate` above essentially
+        // never contains river/ocean biomes, so sampling it would defeat the whole feature.
+        Optional<MultiNoiseBiomeSource> naturalDelegate = Optional.empty();
+        if (worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME && (allowRivers || allowOceans)) {
+            naturalDelegate = Optional.of(MultiNoiseBiomeSource.createFromList(overworld));
+            if (allowRivers) {
+                biomeGetter.get(BiomeTags.IS_RIVER).ifPresent(holders -> holders.stream().forEach(possible::add));
+            }
+            if (allowOceans) {
+                biomeGetter.get(BiomeTags.IS_OCEAN).ifPresent(holders -> holders.stream().forEach(possible::add));
+            }
+        }
+
+        return new Resolution(
+            HolderSet.direct(List.copyOf(allowedSet)), delegate, naturalDelegate, Set.copyOf(possible), layoutBiomes
+        );
     }
 
     private static Map<String, Holder<Biome>> resolveLayoutBiomes(WorldLayoutPlan plan, HolderGetter<Biome> biomeGetter) {
@@ -464,6 +505,26 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
+     * Returns whether vanilla's own river biomes are allowed to pass through (GOALS 13,
+     * {@code single_biome} only).
+     *
+     * @return true when the pass-through applies to rivers
+     */
+    public boolean allowRivers() {
+        return this.allowRivers;
+    }
+
+    /**
+     * Returns whether vanilla's own river/ocean-family biomes are allowed to pass through
+     * (GOALS 14, {@code single_biome} only).
+     *
+     * @return true when the pass-through applies to oceans (and rivers)
+     */
+    public boolean allowOceans() {
+        return this.allowOceans;
+    }
+
+    /**
      * Returns the current layout origin's X coordinate. Always {@code 0} unless
      * {@link #setOrigin(int, int)} has been called (see {@code SpawnOriginManager}).
      *
@@ -566,6 +627,16 @@ public final class LimitedBiomeSource extends BiomeSource {
         if (isInStarterZone(quartX, quartZ)) {
             return this.starterBiome.orElseThrow();
         }
+        Optional<MultiNoiseBiomeSource> naturalDelegate = this.resolution.get().naturalDelegate();
+        if (naturalDelegate.isPresent()) {
+            Holder<Biome> natural = naturalDelegate.get().getNoiseBiome(quartX, quartY, quartZ, sampler);
+            if (this.allowRivers && natural.is(BiomeTags.IS_RIVER)) {
+                return natural;
+            }
+            if (this.allowOceans && natural.is(BiomeTags.IS_OCEAN)) {
+                return natural;
+            }
+        }
         if (this.worldLayoutPlan.mode() != LayoutMode.LEGACY) {
             WorldLayoutPlan layoutPlan = this.effectiveLayoutPlan;
             if (isInStarterTransitionRing(quartX, quartZ)) {
@@ -587,6 +658,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private record Resolution(
         HolderSet<Biome> allowedBiomes,
         MultiNoiseBiomeSource delegate,
+        Optional<MultiNoiseBiomeSource> naturalDelegate,
         Set<Holder<Biome>> possibleBiomes,
         Map<String, Holder<Biome>> layoutBiomes
     ) {

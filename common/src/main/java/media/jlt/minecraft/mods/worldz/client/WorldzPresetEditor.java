@@ -83,6 +83,10 @@ public final class WorldzPresetEditor implements PresetEditor {
             customization.exteriorPlan(),
             customization.worldLayoutPlan(new Random().nextLong()),
             customization.spawnStrategy(),
+            // Vanilla pass-through (GOALS 13/14, DESIGN §20.5) is single_biome-only; the
+            // generic Worldz preset has no equivalent Customize toggle.
+            false,
+            false,
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());

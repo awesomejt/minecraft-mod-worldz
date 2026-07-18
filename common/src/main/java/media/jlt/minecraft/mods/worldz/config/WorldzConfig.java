@@ -445,6 +445,12 @@ public final class WorldzConfig {
         if (map.containsKey("spawn")) {
             config.spawn = readSpawnConfig(map.get("spawn"), name + ".spawn");
         }
+        if (map.containsKey("allowRivers")) {
+            config.allowRivers = readBoolean(map.get("allowRivers"), name + ".allowRivers");
+        }
+        if (map.containsKey("allowOceans")) {
+            config.allowOceans = readBoolean(map.get("allowOceans"), name + ".allowOceans");
+        }
         return config;
     }
 
@@ -664,6 +670,8 @@ public final class WorldzConfig {
         values.put("starterBiome", config.starterBiome);
         values.put("starterRadiusBlocks", config.starterRadiusBlocks);
         values.put("spawn", spawnMap(config.spawn));
+        values.put("allowRivers", config.allowRivers);
+        values.put("allowOceans", config.allowOceans);
         return values;
     }
 
@@ -694,7 +702,9 @@ public final class WorldzConfig {
         return "landBiome=" + config.landBiome
             + ", starterBiome=" + (config.starterBiome.isEmpty() ? "<none>" : config.starterBiome)
             + ", starterRadiusBlocks=" + config.starterRadiusBlocks
-            + ", spawn=" + config.spawn.strategy.serializedName();
+            + ", spawn=" + config.spawn.strategy.serializedName()
+            + ", allowRivers=" + config.allowRivers
+            + ", allowOceans=" + config.allowOceans;
     }
 
     private static String layoutSummary(LayoutConfig config) {

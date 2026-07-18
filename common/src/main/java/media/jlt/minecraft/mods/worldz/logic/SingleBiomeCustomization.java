@@ -14,12 +14,16 @@ import java.util.List;
  * @param starterBiome optional different biome forced around spawn, or empty (GOALS 11)
  * @param starterRadiusBlocks starter-zone radius, meaningful only when {@code starterBiome} is set
  * @param spawnStrategy layout-origin and initial-spawn strategy (GOALS 12 uses {@code preferred_natural_biome})
+ * @param allowRivers let vanilla's own river biomes generate naturally (GOALS 13)
+ * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally (GOALS 14, additive over {@code allowRivers})
  */
 public record SingleBiomeCustomization(
     String landBiome,
     String starterBiome,
     int starterRadiusBlocks,
-    SpawnStrategy spawnStrategy
+    SpawnStrategy spawnStrategy,
+    boolean allowRivers,
+    boolean allowOceans
 ) {
     /** Validates and canonicalizes customization values. */
     public SingleBiomeCustomization {
@@ -53,7 +57,9 @@ public record SingleBiomeCustomization(
             config.singleBiome.landBiome,
             config.singleBiome.starterBiome,
             config.singleBiome.starterRadiusBlocks,
-            config.singleBiome.spawn.strategy
+            config.singleBiome.spawn.strategy,
+            config.singleBiome.allowRivers,
+            config.singleBiome.allowOceans
         );
     }
 
@@ -64,15 +70,21 @@ public record SingleBiomeCustomization(
      * @param starterBiome optional different biome forced around spawn, or empty
      * @param starterRadiusBlocks decimal starter radius
      * @param spawnStrategy layout-origin and spawn strategy
+     * @param allowRivers let vanilla's own river biomes generate naturally
+     * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
      * @return canonical immutable customization values
      */
     public static SingleBiomeCustomization fromText(
         String landBiome,
         String starterBiome,
         String starterRadiusBlocks,
-        SpawnStrategy spawnStrategy
+        SpawnStrategy spawnStrategy,
+        boolean allowRivers,
+        boolean allowOceans
     ) {
-        return new SingleBiomeCustomization(landBiome, starterBiome, parseInteger(starterRadiusBlocks), spawnStrategy);
+        return new SingleBiomeCustomization(
+            landBiome, starterBiome, parseInteger(starterRadiusBlocks), spawnStrategy, allowRivers, allowOceans
+        );
     }
 
     /**

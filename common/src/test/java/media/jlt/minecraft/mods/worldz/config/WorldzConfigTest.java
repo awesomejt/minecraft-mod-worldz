@@ -453,7 +453,8 @@ class WorldzConfigTest {
                 + ", layout=<legacy>"
                 + ", spawn=starter_at_origin"
                 + ", singleBiome=landBiome=minecraft:plains, starterBiome=<none>"
-                + ", starterRadiusBlocks=256, spawn=starter_at_origin",
+                + ", starterRadiusBlocks=256, spawn=starter_at_origin"
+                + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
     }
@@ -467,12 +468,24 @@ class WorldzConfigTest {
               starterRadiusBlocks: 512
               spawn:
                 strategy: preferred_natural_biome
+              allowRivers: true
+              allowOceans: true
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:desert", config.singleBiome.landBiome);
         assertEquals("minecraft:plains", config.singleBiome.starterBiome);
         assertEquals(512, config.singleBiome.starterRadiusBlocks);
         assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, config.singleBiome.spawn.strategy);
+        assertTrue(config.singleBiome.allowRivers);
+        assertTrue(config.singleBiome.allowOceans);
+    }
+
+    @Test
+    void singleBiomeAllowRiversAndOceansDefaultFalse() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.singleBiome.allowRivers);
+        assertFalse(config.singleBiome.allowOceans);
     }
 
     @Test

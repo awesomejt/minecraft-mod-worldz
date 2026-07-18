@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.SingleBiomeCustomization;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.ScrollableLayout;
@@ -33,6 +34,8 @@ final class SingleBiomeCustomizeScreen extends Screen {
     private String landBiomeText;
     private String starterBiomeText;
     private String starterRadiusText;
+    private boolean allowRivers;
+    private boolean allowOceans;
 
     SingleBiomeCustomizeScreen(CreateWorldScreen parent, SingleBiomeCustomization initial) {
         super(TITLE);
@@ -41,6 +44,8 @@ final class SingleBiomeCustomizeScreen extends Screen {
         this.landBiomeText = initial.landBiome();
         this.starterBiomeText = initial.starterBiome();
         this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
+        this.allowRivers = initial.allowRivers();
+        this.allowOceans = initial.allowOceans();
     }
 
     @Override
@@ -72,6 +77,18 @@ final class SingleBiomeCustomizeScreen extends Screen {
             .width(FORM_WIDTH)
             .build();
         form.addChild(this.spawnStrategyButton);
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.single_biome.allow_rivers"), this.font)
+            .selected(this.allowRivers)
+            .onValueChange((checkbox, selected) -> this.allowRivers = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.single_biome.allow_oceans"), this.font)
+            .selected(this.allowOceans)
+            .onValueChange((checkbox, selected) -> this.allowOceans = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
 
         this.errorMessage = new MultiLineTextWidget(CommonComponents.EMPTY, this.font).setMaxWidth(FORM_WIDTH).setMaxRows(2).setCentered(true);
         form.addChild(this.errorMessage);
@@ -107,7 +124,9 @@ final class SingleBiomeCustomizeScreen extends Screen {
                 this.landBiome.getValue(),
                 this.starterBiome.getValue(),
                 this.starterRadius.getValue(),
-                this.spawnStrategy
+                this.spawnStrategy,
+                this.allowRivers,
+                this.allowOceans
             );
             this.parent.getUiState().updateDimensions(
                 (registries, dimensions) -> SingleBiomePresetEditor.apply(registries, dimensions, customization)

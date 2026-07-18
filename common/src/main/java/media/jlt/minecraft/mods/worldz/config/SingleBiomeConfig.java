@@ -14,6 +14,10 @@ public final class SingleBiomeConfig {
     public int starterRadiusBlocks = 256;
     /** Layout-origin and initial-spawn strategy (GOALS 12 uses {@code preferred_natural_biome}). */
     public SpawnConfig spawn = new SpawnConfig();
+    /** Let vanilla's own river biomes generate where vanilla would place one (GOALS 13). */
+    public boolean allowRivers = false;
+    /** Let vanilla's own river/ocean-family biomes generate naturally (GOALS 14, additive over {@link #allowRivers}). */
+    public boolean allowOceans = false;
 
     /** Creates a config populated with defaults. */
     public SingleBiomeConfig() {

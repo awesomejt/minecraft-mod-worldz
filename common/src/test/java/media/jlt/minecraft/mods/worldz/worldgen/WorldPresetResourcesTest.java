@@ -102,6 +102,8 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.customize.nether_exterior.title"));
         assertTrue(language.has("jlt_worldz.customize.exterior.mode.ocean"));
         assertTrue(language.has("jlt_worldz.customize.exterior.mode.void"));
+        assertTrue(language.has("jlt_worldz.single_biome.allow_rivers"));
+        assertTrue(language.has("jlt_worldz.single_biome.allow_oceans"));
     }
 
     private static JsonObject resource(String path) throws IOException {

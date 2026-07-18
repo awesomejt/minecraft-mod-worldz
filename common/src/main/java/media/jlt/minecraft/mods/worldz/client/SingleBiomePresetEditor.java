@@ -91,6 +91,8 @@ public final class SingleBiomePresetEditor implements PresetEditor {
             ExteriorPlan.fromConfig(sharedConfig),
             layoutPlan,
             customization.spawnStrategy(),
+            customization.allowRivers(),
+            customization.allowOceans(),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
@@ -122,7 +124,10 @@ public final class SingleBiomePresetEditor implements PresetEditor {
 
         String landBiome = source.worldLayoutPlan().singleBiome().orElseGet(() -> WorldzCommon.config().singleBiome.landBiome);
         String starter = source.starterBiome().map(SingleBiomePresetEditor::registeredName).orElse("");
-        return new SingleBiomeCustomization(landBiome, starter, source.starterRadiusBlocks(), source.spawnStrategy());
+        return new SingleBiomeCustomization(
+            landBiome, starter, source.starterRadiusBlocks(), source.spawnStrategy(),
+            source.allowRivers(), source.allowOceans()
+        );
     }
 
     private static ChunkGenerator unwrap(ChunkGenerator generator) {
