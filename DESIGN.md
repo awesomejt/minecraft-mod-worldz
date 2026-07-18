@@ -1420,6 +1420,73 @@ resizing (§15) already uses, and they compose with any world type:
   region size; compose with the vanilla pass-through (§20.5) so natural
   rivers/oceans can stay. No height adjustment anywhere → the removed
   coastline defect class cannot apply.
+
+  **Phase 4.1 implementation decisions (2026-07-18):**
+
+  - **A new `LayoutMode.CHAOS` value, not a `single_biome` variant** — it
+    reuses the *generic* `WorldLayoutPlan`/`LayoutMode` machinery directly
+    (the "kept per-cell weighted selection machinery" is `sampleUniform`,
+    already exercised by `OCEAN` mode; `CHAOS` adds the missing `LAND`-role
+    case: `sampleUniform(BiomeRole.LAND, landBiomes, x, z, "biome_land")`).
+    Every configured biome (desert, jungle, ice_spikes, ...) classifies as
+    `LAND` automatically via `BiomeRoles.defaultRole` with no new role
+    concept needed. `WorldLayoutPlan`'s constructor gains the same
+    "requires at least one candidate" guard `OCEAN` already has, requiring
+    `landBiomes` non-empty for `CHAOS`.
+  - **Own dedicated typed preset**, `jlt_worldz:chaos_biomes`, mirroring
+    `single_biome`'s shape exactly (own small Customize screen, own
+    `chaosBiomes:` config section, own `world_type` codec hint) rather than
+    only being reachable through the generic `Worldz` preset's advanced
+    layout screen — matches every other challenge family's discoverability
+    in the World Type dropdown. The generic `Worldz` preset's
+    `WorldzLayoutScreen` is deliberately *not* extended to include `CHAOS`
+    in its mode cycle button (scope control — it doesn't fully support
+    `SINGLE_BIOME`'s `allowRivers`/`allowOceans` either, an existing,
+    accepted gap); YAML power users can still set `layout.mode: chaos`
+    directly on the generic preset if they want, since `LayoutMode.parse`
+    and `WorldLayoutPlan.fromConfig` are generic and need no chaos-specific
+    changes for that path.
+  - **Terrain is completely untouched** — `CHAOS` joins `LEGACY`/`VOID` in
+    `EnvelopedChunkGenerator.resolveLayout`'s skip list, so no
+    `LayoutContext` is built and `applyTerrainAdjustments`'s layout pass
+    never runs for a chaos world. This is different from `SINGLE_BIOME`
+    (which *does* raise columns toward guaranteed land) and is exactly what
+    GOALS 33 asks for ("terrain shape stays vanilla") — natural hills,
+    valleys, and (without the pass-through option) vanilla water bodies all
+    stand exactly as the seed generated them, just relabeled.
+  - **Vanilla pass-through (§20.5) generalized to `CHAOS` too**: the
+    `LimitedBiomeSource` gate that was `mode() == SINGLE_BIOME &&
+    (allowRivers || allowOceans)` becomes `(mode() == SINGLE_BIOME ||
+    mode() == CHAOS) && (allowRivers || allowOceans)`. Reuses the exact
+    same `allowRivers`/`allowOceans` fields and `naturalPassThroughBiome`
+    check — a chaos world's river/ocean columns behave identically to a
+    single-biome world's.
+  - **Starter zone is optional, default off** — reuses
+    `LimitedBiomeSource`'s existing, fully generic starter-biome/radius
+    mechanism (already independent of `single_biome`) rather than inventing
+    new scope. Default `starterBiome: ''` matches GOALS 33's literal
+    reading (chaos from the very first block); setting a `starterBiome`
+    gives a safe, guaranteed-land starting patch exactly like
+    `single_biome`'s, for anyone who wants one. Not a scope expansion:
+    the field already exists and already defaults to disabled.
+  - **Config shape** (`chaosBiomes:` section, mirroring `singleBiome:`):
+    `biomes` (weighted entries, `id` or `id@weight`, reusing
+    `WeightedBiomeListSpec` — same syntax as the generic `layout.biomes`
+    field), `regionScaleBlocks` (default `512`, same bounds as the generic
+    field), `starterBiome`/`starterRadiusBlocks`/`spawn.strategy` (mirror
+    `singleBiome:` exactly), `allowRivers`/`allowOceans` (default `false`,
+    mirror `singleBiome:` exactly). `WorldzConfig.sanitizeLayout`'s
+    existing per-mode "unsupported → fall back to legacy" switch gains a
+    `CHAOS -> <no LAND-role biome>` arm alongside `OCEAN`'s equivalent
+    check (only relevant to the generic preset's YAML path, since
+    `chaosBiomes:` is sanitized independently, mirroring `singleBiome:`'s
+    own sanitizer).
+  - **Default biome list**: five visually distinct land biomes chosen to
+    make "chaos" immediately obvious in-game — `minecraft:desert`,
+    `minecraft:jungle`, `minecraft:ice_spikes`, `minecraft:badlands`,
+    `minecraft:taiga` — equal weight. Easily overridden; not a GOALS
+    requirement, just a sensible out-of-the-box default (same spirit as
+    `single_biome`'s `minecraft:plains` default).
 - **End start (34):** shares the Phase 14.1 non-Overworld-spawn spike. The
   hard design question is respawn (beds explode in the End, no anchors);
   must be hardcore-beatable with the starter chest tuned for a genuine but
