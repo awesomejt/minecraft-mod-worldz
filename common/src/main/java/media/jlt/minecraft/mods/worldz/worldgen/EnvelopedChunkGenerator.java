@@ -48,7 +48,9 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Delegates vanilla generation, then replaces columns outside a persisted square envelope. */
 public final class EnvelopedChunkGenerator extends ChunkGenerator {
@@ -74,6 +76,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private final Optional<StarterLandContext> starterLand;
     private final Optional<LayoutContext> layout;
     private final Optional<LimitedBiomeSource> originSource;
+    // TEMPORARY DIAGNOSTIC (2026-07-17, remove after the floating-structure investigation
+    // concludes): tracks every distinct RandomState object identity this generator instance
+    // has ever seen height queries called with. If everything is consistent this logs at
+    // most once per dimension per world; more than that means different call sites/threads
+    // are observing different RandomState instances, which would explain floating structures
+    // that don't correlate with distance.
+    private final Set<Integer> jltWorldzDiag$seenRandomStates = ConcurrentHashMap.newKeySet();
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -195,6 +204,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureManager structureManager,
         ChunkAccess chunk
     ) {
+        jltWorldzDiag$trackRandomState("applyCarvers", chunk.getPos().x(), chunk.getPos().z(), randomState);
         this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
         applyTerrainAdjustments(chunk, randomState, true);
         applyEnvelope(chunk);
@@ -235,6 +245,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureTemplateManager structureTemplateManager,
         ResourceKey<Level> level
     ) {
+        jltWorldzDiag$trackRandomState(
+            "createStructures(" + level.identifier() + ")", centerChunk.getPos().x(), centerChunk.getPos().z(), state.randomState()
+        );
         if (!isEntirelyExterior(centerChunk.getPos())) {
             super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
         }
@@ -247,6 +260,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureManager structureManager,
         ChunkAccess centerChunk
     ) {
+        jltWorldzDiag$trackRandomState("fillFromNoise", centerChunk.getPos().x(), centerChunk.getPos().z(), randomState);
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
                 applyTerrainAdjustments(chunk, randomState, false);
@@ -540,7 +554,25 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         LevelHeightAccessor heightAccessor,
         RandomState randomState
     ) {
+        jltWorldzDiag$trackRandomState("naturalOceanFloorHeight", x, z, randomState);
         return this.delegate.getBaseHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, heightAccessor, randomState);
+    }
+
+    // TEMPORARY DIAGNOSTIC (2026-07-17, remove after the floating-structure investigation
+    // concludes): logs the first time -- and only the first time -- a given RandomState
+    // object identity is observed at a given call site, so the log stays small regardless of
+    // how many chunks generate. More than one distinct identity for the same dimension over
+    // one world's lifetime means different call sites/threads disagree about which
+    // RandomState is active, which would explain floating structures that don't correlate
+    // with distance from spawn.
+    private void jltWorldzDiag$trackRandomState(String site, int x, int z, RandomState randomState) {
+        if (this.jltWorldzDiag$seenRandomStates.add(System.identityHashCode(randomState))) {
+            WorldzCommon.LOGGER.warn(
+                "[DIAG] New RandomState identity at {} (dimension={}): identity={}, thread={}, x={}, z={}, totalDistinctSeen={}",
+                site, this.dimension, System.identityHashCode(randomState), Thread.currentThread().getName(),
+                x, z, this.jltWorldzDiag$seenRandomStates.size()
+            );
+        }
     }
 
     private static void fillStarterColumn(
