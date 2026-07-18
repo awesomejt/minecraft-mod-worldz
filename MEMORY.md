@@ -619,6 +619,48 @@ Durable decisions, verified API notes, and rationale that should survive across 
   hypothesis, which diagnostic logging already conclusively disproved (one
   `RandomState` identity observed across an entire session, all call sites,
   both threads). See TODO.md's "Questions for Jason" for the same note.
+- 2026-07-17 — **Phase 3.1's pass-through fix was incomplete; found and
+  fixed the terrain half (0.2.7).** Jason's first acceptance check on
+  config 14 (world `Worldz-14`) found F3 correctly reporting the River
+  biome at a known vanilla river location, but the terrain rendered as
+  flat plains — no water except small cave pools, trees growing where a
+  riverbed should be. Root cause: `getNoiseBiome`'s pass-through (0.2.6)
+  only fixed biome *selection*; `EnvelopedChunkGenerator`'s layout terrain
+  raise never learned about it. `WorldLayoutPlan.sampleAt` always reports
+  `landFactor=1.0` for `SINGLE_BIOME` mode (it has no concept of the
+  pass-through at all — that check lives entirely in `LimitedBiomeSource`,
+  a separate class), so `LayoutTerrainProfile.targetHeight` raised *every*
+  column — including a real river's natural depression, which the
+  delegate's own unmodified vanilla noise had already correctly carved —
+  up to at least sea level + 2. The biome label was right; the ground
+  under it had already been flattened by a completely separate pass.
+  Fixed by adding `LimitedBiomeSource.isNaturalPassThroughAt(blockX,
+  blockY, blockZ, sampler)`, refactored to share its actual check
+  (`naturalPassThroughBiome`) with `getNoiseBiome` so the two can never
+  disagree, then having `EnvelopedChunkGenerator.layoutFloorFor` consult
+  it (using the already-computed natural floor as the representative Y —
+  standard overworld biome climate parameters aren't meaningfully
+  Y-sensitive this close to the surface, so this is a reasonable
+  approximation rather than trying to replicate vanilla's exact per-cell
+  Y sampling) and return the natural floor untouched when it applies,
+  before the `landFactor` blend ever runs — exactly like a `VOID`/`LEGACY`
+  column.
+  **Also found: I forgot to redeploy the jar after 0.2.6.** Jason's
+  *first* config-14/15 test round (before this fix) reported "no rivers/
+  oceans anywhere" — that turned out to be entirely because the Prism
+  instance was still running the pre-3.1 0.2.5 jar (I built 0.2.6 but
+  never ran `:fabric:deployToPrism`). Lesson for every future phase:
+  **deploy the fresh jar to the active Prism instance(s) as the literal
+  last step before telling Jason a phase is ready to test** — a clean
+  `./gradlew build` is not sufficient, and forgetting it produces a false
+  "feature doesn't work" report that costs a full test round-trip. Also
+  worth remembering generally: because `starter_radius` is always encoded
+  once a world is actually saved, *any* world created under an older jar
+  missing a new optional codec field permanently decodes that field as
+  absent/default on every future load, even after the jar is updated —
+  new-worlds-only applies per-field, not just per-mod-version. A world
+  tested against a bug fix must always be freshly created *after* the
+  fixed jar is deployed, never just reopened.
 - 2026-07-17 — GOALS 15 (cave-biome pass-through) moved out of Phase 3 into
   a new TODO "Backlog" section rather than kept as draft task 3.3. GOALS.md
   already calls it "scope for a later phase" and it needs a materially

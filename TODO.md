@@ -130,8 +130,13 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       `allowOceans`. **Done (0.2.6).**
 - [x] 3.2 Test configs for 13 and 14 (`config/tests/14`-`15`); docs
       (`MANUAL_TESTING.md`'s "Phase 3 acceptance", README, snapshot fields).
-      **[Jason] acceptance still outstanding** — see MANUAL_TESTING.md for
-      the exact steps.
+      **[Jason] acceptance in progress (2026-07-17):** first pass on config
+      14 found a real defect — biome selection was correct (F3 showed
+      River) but terrain was flattened to dry land. **Fixed (0.2.7)**, see
+      MEMORY.md. Deployed to Worldz-Test. Still needs: fresh worlds for
+      both configs 14 and 15 recreated under 0.2.7 (the worlds tested so
+      far were all built under earlier jars missing one fix or the other —
+      see MEMORY.md for exactly which).
 
 ## Phase 4 — Chaos biomes (GOALS 33)
 
