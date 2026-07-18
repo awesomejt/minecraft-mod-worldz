@@ -2,6 +2,7 @@
   "replace": false,
   "values": [
     "jlt_worldz:worldz",
-    "jlt_worldz:single_biome"
+    "jlt_worldz:single_biome",
+    "jlt_worldz:chaos_biomes"
   ]
 }

@@ -87,6 +87,12 @@ public final class WorldzConfig {
     public SpawnConfig spawn = new SpawnConfig();
     /** Defaults for the {@code jlt_worldz:single_biome} typed preset (DESIGN §20.2). */
     public SingleBiomeConfig singleBiome = new SingleBiomeConfig();
+    /** Defaults for the {@code jlt_worldz:chaos_biomes} typed preset (DESIGN §20.11). */
+    public ChaosBiomesConfig chaosBiomes = new ChaosBiomesConfig();
+    /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
+    public boolean allowRivers = false;
+    /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
+    public boolean allowOceans = false;
 
     /** Creates a config populated with defaults. */
     public WorldzConfig() {
@@ -173,6 +179,15 @@ public final class WorldzConfig {
         if (object.containsKey("singleBiome")) {
             config.singleBiome = readSingleBiomeConfig(object.get("singleBiome"), "singleBiome");
         }
+        if (object.containsKey("chaosBiomes")) {
+            config.chaosBiomes = readChaosBiomesConfig(object.get("chaosBiomes"), "chaosBiomes", logger);
+        }
+        if (object.containsKey("allowRivers")) {
+            config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
+        }
+        if (object.containsKey("allowOceans")) {
+            config.allowOceans = readBoolean(object.get("allowOceans"), "allowOceans");
+        }
         return config;
     }
 
@@ -218,6 +233,7 @@ public final class WorldzConfig {
             spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
         }
         singleBiome = sanitizeSingleBiome(singleBiome, logger);
+        chaosBiomes = sanitizeChaosBiomes(chaosBiomes, logger);
         return this;
     }
 
@@ -238,6 +254,43 @@ public final class WorldzConfig {
         );
         if (sanitized.starterRadiusBlocks != originalRadius) {
             logger.warn("Clamped singleBiome.starterRadiusBlocks from {} to {}.", originalRadius, sanitized.starterRadiusBlocks);
+        }
+
+        sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
+        if (sanitized.spawn.strategy == null) {
+            sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
+        }
+        return sanitized;
+    }
+
+    private static ChaosBiomesConfig sanitizeChaosBiomes(ChaosBiomesConfig config, Logger logger) {
+        ChaosBiomesConfig sanitized = config == null ? new ChaosBiomesConfig() : config;
+
+        WeightedBiomeListSpec biomeSpec = WeightedBiomeListSpec.parse(sanitized.biomes);
+        for (String invalid : biomeSpec.invalidEntries()) {
+            logger.warn("Ignoring invalid chaosBiomes biome '{}'.", invalid);
+        }
+        sanitized.biomes = new ArrayList<>(
+            biomeSpec.entries().stream().map(WeightedBiomeListSpec.Entry::configValue).toList()
+        );
+        if (sanitized.biomes.isEmpty()) {
+            logger.warn("chaosBiomes.biomes has no usable entries; using the default biome list instead.");
+            sanitized.biomes = new ChaosBiomesConfig().biomes;
+        }
+
+        sanitized.regionScaleBlocks = clampWithWarning(
+            sanitized.regionScaleBlocks, MIN_LAYOUT_REGION_SCALE_BLOCKS, MAX_LAYOUT_REGION_SCALE_BLOCKS,
+            "chaosBiomes.regionScaleBlocks", logger
+        );
+
+        sanitized.starterBiome = sanitizeSingleBiomeId(sanitized.starterBiome, "chaosBiomes.starterBiome", logger);
+
+        int originalRadius = sanitized.starterRadiusBlocks;
+        sanitized.starterRadiusBlocks = Math.clamp(
+            sanitized.starterRadiusBlocks, MIN_STARTER_RADIUS_BLOCKS, MAX_STARTER_RADIUS_BLOCKS
+        );
+        if (sanitized.starterRadiusBlocks != originalRadius) {
+            logger.warn("Clamped chaosBiomes.starterRadiusBlocks from {} to {}.", originalRadius, sanitized.starterRadiusBlocks);
         }
 
         sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
@@ -278,7 +331,10 @@ public final class WorldzConfig {
             + ", netherExterior=" + exteriorSummary(netherExterior)
             + ", layout=" + layoutSummary(layout)
             + ", spawn=" + spawn.strategy.serializedName()
-            + ", singleBiome=" + singleBiomeSummary(singleBiome);
+            + ", singleBiome=" + singleBiomeSummary(singleBiome)
+            + ", chaosBiomes=" + chaosBiomesSummary(chaosBiomes)
+            + ", allowRivers=" + allowRivers
+            + ", allowOceans=" + allowOceans;
     }
 
     String toYaml() {
@@ -296,6 +352,9 @@ public final class WorldzConfig {
         values.put("layout", layoutMap(layout));
         values.put("spawn", spawnMap(spawn));
         values.put("singleBiome", singleBiomeMap(singleBiome));
+        values.put("chaosBiomes", chaosBiomesMap(chaosBiomes));
+        values.put("allowRivers", allowRivers);
+        values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
     }
 
@@ -435,6 +494,35 @@ public final class WorldzConfig {
         SingleBiomeConfig config = new SingleBiomeConfig();
         if (map.containsKey("landBiome")) {
             config.landBiome = readString(map.get("landBiome"), name + ".landBiome");
+        }
+        if (map.containsKey("starterBiome")) {
+            config.starterBiome = readString(map.get("starterBiome"), name + ".starterBiome");
+        }
+        if (map.containsKey("starterRadiusBlocks")) {
+            config.starterRadiusBlocks = readInt(map.get("starterRadiusBlocks"), name + ".starterRadiusBlocks");
+        }
+        if (map.containsKey("spawn")) {
+            config.spawn = readSpawnConfig(map.get("spawn"), name + ".spawn");
+        }
+        if (map.containsKey("allowRivers")) {
+            config.allowRivers = readBoolean(map.get("allowRivers"), name + ".allowRivers");
+        }
+        if (map.containsKey("allowOceans")) {
+            config.allowOceans = readBoolean(map.get("allowOceans"), name + ".allowOceans");
+        }
+        return config;
+    }
+
+    private static ChaosBiomesConfig readChaosBiomesConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        ChaosBiomesConfig config = new ChaosBiomesConfig();
+        if (map.containsKey("biomes")) {
+            config.biomes = readStringList(map.get("biomes"), name + ".biomes", logger);
+        }
+        if (map.containsKey("regionScaleBlocks")) {
+            config.regionScaleBlocks = readInt(map.get("regionScaleBlocks"), name + ".regionScaleBlocks");
         }
         if (map.containsKey("starterBiome")) {
             config.starterBiome = readString(map.get("starterBiome"), name + ".starterBiome");
@@ -599,9 +687,12 @@ public final class WorldzConfig {
         sanitized.roleOverrides.forEach((id, role) -> overrides.put(id, BiomeRole.parse(role)));
         boolean hasOcean = sanitized.biomes.stream()
             .anyMatch(entry -> BiomeRoles.resolve(stripWeight(entry), overrides) == BiomeRole.OCEAN);
+        boolean hasLand = sanitized.biomes.stream()
+            .anyMatch(entry -> BiomeRoles.resolve(stripWeight(entry), overrides) == BiomeRole.LAND);
         boolean unsupported = switch (sanitized.mode) {
             case OCEAN -> !hasOcean;
             case SINGLE_BIOME -> sanitized.singleBiome.isEmpty();
+            case CHAOS -> !hasLand;
             case VOID, LEGACY -> false;
         };
         if (unsupported) {
@@ -675,6 +766,18 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> chaosBiomesMap(ChaosBiomesConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("biomes", config.biomes);
+        values.put("regionScaleBlocks", config.regionScaleBlocks);
+        values.put("starterBiome", config.starterBiome);
+        values.put("starterRadiusBlocks", config.starterRadiusBlocks);
+        values.put("spawn", spawnMap(config.spawn));
+        values.put("allowRivers", config.allowRivers);
+        values.put("allowOceans", config.allowOceans);
+        return values;
+    }
+
     private static String borderSummary(BorderConfig config, String objectiveName) {
         if (!config.enabled) {
             return "<disabled>";
@@ -700,6 +803,16 @@ public final class WorldzConfig {
 
     private static String singleBiomeSummary(SingleBiomeConfig config) {
         return "landBiome=" + config.landBiome
+            + ", starterBiome=" + (config.starterBiome.isEmpty() ? "<none>" : config.starterBiome)
+            + ", starterRadiusBlocks=" + config.starterRadiusBlocks
+            + ", spawn=" + config.spawn.strategy.serializedName()
+            + ", allowRivers=" + config.allowRivers
+            + ", allowOceans=" + config.allowOceans;
+    }
+
+    private static String chaosBiomesSummary(ChaosBiomesConfig config) {
+        return "biomes=" + config.biomes
+            + ", regionScaleBlocks=" + config.regionScaleBlocks
             + ", starterBiome=" + (config.starterBiome.isEmpty() ? "<none>" : config.starterBiome)
             + ", starterRadiusBlocks=" + config.starterRadiusBlocks
             + ", spawn=" + config.spawn.strategy.serializedName()

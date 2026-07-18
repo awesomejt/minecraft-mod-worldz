@@ -60,6 +60,16 @@ class WorldzConfigTest {
         assertEquals("", config.singleBiome.starterBiome);
         assertEquals(256, config.singleBiome.starterRadiusBlocks);
         assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.singleBiome.spawn.strategy);
+        assertEquals(
+            List.of("minecraft:desert", "minecraft:jungle", "minecraft:ice_spikes", "minecraft:badlands", "minecraft:taiga"),
+            config.chaosBiomes.biomes
+        );
+        assertEquals(512, config.chaosBiomes.regionScaleBlocks);
+        assertEquals("", config.chaosBiomes.starterBiome);
+        assertEquals(256, config.chaosBiomes.starterRadiusBlocks);
+        assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.chaosBiomes.spawn.strategy);
+        assertFalse(config.allowRivers);
+        assertFalse(config.allowOceans);
         assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.yaml")));
     }
 
@@ -454,6 +464,10 @@ class WorldzConfigTest {
                 + ", spawn=starter_at_origin"
                 + ", singleBiome=landBiome=minecraft:plains, starterBiome=<none>"
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin"
+                + ", allowRivers=false, allowOceans=false"
+                + ", chaosBiomes=biomes=[minecraft:desert, minecraft:jungle, minecraft:ice_spikes,"
+                + " minecraft:badlands, minecraft:taiga], regionScaleBlocks=512, starterBiome=<none>"
+                + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -526,6 +540,93 @@ class WorldzConfigTest {
 
         assertEquals(WorldzConfig.MIN_STARTER_RADIUS_BLOCKS, tooSmall.singleBiome.starterRadiusBlocks);
         assertEquals(WorldzConfig.MAX_STARTER_RADIUS_BLOCKS, tooLarge.singleBiome.starterRadiusBlocks);
+    }
+
+    @Test
+    void chaosBiomesSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            chaosBiomes:
+              biomes:
+                - minecraft:plains@3
+                - minecraft:desert
+              regionScaleBlocks: 256
+              starterBiome: plains
+              starterRadiusBlocks: 512
+              spawn:
+                strategy: preferred_natural_biome
+              allowRivers: true
+              allowOceans: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:plains@3.0", "minecraft:desert"), config.chaosBiomes.biomes);
+        assertEquals(256, config.chaosBiomes.regionScaleBlocks);
+        assertEquals("minecraft:plains", config.chaosBiomes.starterBiome);
+        assertEquals(512, config.chaosBiomes.starterRadiusBlocks);
+        assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, config.chaosBiomes.spawn.strategy);
+        assertTrue(config.chaosBiomes.allowRivers);
+        assertTrue(config.chaosBiomes.allowOceans);
+    }
+
+    @Test
+    void chaosBiomesEmptyListFallsBackToDefaultBiomes() {
+        WorldzConfig config = WorldzConfig.parse("""
+            chaosBiomes:
+              biomes: []
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(new ChaosBiomesConfig().biomes, config.chaosBiomes.biomes);
+    }
+
+    @Test
+    void chaosBiomesInvalidEntriesAreDroppedIndividually() {
+        WorldzConfig config = WorldzConfig.parse("""
+            chaosBiomes:
+              biomes:
+                - minecraft:desert
+                - '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:desert"), config.chaosBiomes.biomes);
+    }
+
+    @Test
+    void chaosBiomesRegionScaleIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            chaosBiomes:
+              regionScaleBlocks: 1
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            chaosBiomes:
+              regionScaleBlocks: 999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, tooSmall.chaosBiomes.regionScaleBlocks);
+        assertEquals(WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS, tooLarge.chaosBiomes.regionScaleBlocks);
+    }
+
+    @Test
+    void genericPresetAllowRiversAndOceansLoadIndependentlyOfSingleBiomeAndChaosBiomes() {
+        WorldzConfig config = WorldzConfig.parse("""
+            allowRivers: true
+            allowOceans: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.allowRivers);
+        assertTrue(config.allowOceans);
+        assertFalse(config.singleBiome.allowRivers);
+        assertFalse(config.chaosBiomes.allowRivers);
+    }
+
+    @Test
+    void chaosLayoutModeWithNoLandBiomeFallsBackToLegacy() {
+        WorldzConfig config = WorldzConfig.parse("""
+            layout:
+              mode: chaos
+              biomes:
+                - minecraft:ocean
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(LayoutMode.LEGACY, config.layout.mode);
     }
 
 }

@@ -11,7 +11,9 @@ public enum LayoutMode {
     /** One selected biome fills the generated world. */
     SINGLE_BIOME,
     /** A starter island floating in an otherwise infinite sky void. */
-    VOID;
+    VOID,
+    /** Seed-shuffled land biome regions over completely untouched vanilla terrain. */
+    CHAOS;
 
     /**
      * Parses the stable lowercase configuration name.

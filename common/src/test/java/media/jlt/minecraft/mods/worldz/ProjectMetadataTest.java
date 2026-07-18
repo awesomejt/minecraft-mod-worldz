@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.7", properties.getProperty("version"));
+        assertEquals("0.2.8", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -109,6 +109,46 @@ class ProjectMetadataTest {
             ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
         )).getAsJsonObject();
         assertEquals("Worldz: Single Biome", lang.get("generator.jlt_worldz.single_biome").getAsString());
+    }
+
+    @Test
+    void chaosBiomesTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("ChaosBiomesPresetEditor.CHAOS_BIOMES_PRESET"));
+        assertTrue(fabricMixin.contains("ChaosBiomesPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(ChaosBiomesPresetEditor.CHAOS_BIOMES_PRESET, ChaosBiomesPresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Chaos Biomes", lang.get("generator.jlt_worldz.chaos_biomes").getAsString());
+    }
+
+    @Test
+    void chaosModeIsExcludedFromTerrainAdjustmentAndSharesThePassThroughGate() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        // GOALS 33: terrain shape stays exactly vanilla for chaos worlds -- CHAOS joins
+        // LEGACY/VOID in the terrain-adjustment skip list rather than SINGLE_BIOME's
+        // guaranteed-land raise.
+        assertTrue(generator.contains(
+            "if (mode == LayoutMode.LEGACY || mode == LayoutMode.VOID || mode == LayoutMode.CHAOS) {"
+        ));
+        assertTrue(source.contains(
+            "boolean supportsPassThrough = worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME\n"
+                + "            || worldLayoutPlan.mode() == LayoutMode.CHAOS;"
+        ));
     }
 
     @Test
@@ -361,9 +401,11 @@ class ProjectMetadataTest {
         assertTrue(source.contains(
             "SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()\n"
                 + "            ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)\n"
-                + "            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> singleBiomeDefaults\n"
-                + "                ? config.singleBiome.spawn.strategy\n"
-                + "                : config.spawn.strategy);"
+                + "            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> chaosBiomesDefaults\n"
+                + "                ? config.chaosBiomes.spawn.strategy\n"
+                + "                : singleBiomeDefaults\n"
+                + "                    ? config.singleBiome.spawn.strategy\n"
+                + "                    : config.spawn.strategy);"
         ));
         assertTrue(source.contains("Codec.STRING.optionalFieldOf(\"world_type\").forGetter(source -> Optional.<String>empty())"));
     }

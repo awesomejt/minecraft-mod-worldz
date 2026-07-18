@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.mixin.client;
 
+import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
 import net.minecraft.client.gui.screens.worldselection.PresetEditor;
@@ -25,6 +26,8 @@ abstract class WorldCreationUiStateMixin {
             callback.setReturnValue(WorldzPresetEditor.INSTANCE);
         } else if (preset.unwrapKey().filter(SingleBiomePresetEditor.SINGLE_BIOME_PRESET::equals).isPresent()) {
             callback.setReturnValue(SingleBiomePresetEditor.INSTANCE);
+        } else if (preset.unwrapKey().filter(ChaosBiomesPresetEditor.CHAOS_BIOMES_PRESET::equals).isPresent()) {
+            callback.setReturnValue(ChaosBiomesPresetEditor.INSTANCE);
         }
     }
 }

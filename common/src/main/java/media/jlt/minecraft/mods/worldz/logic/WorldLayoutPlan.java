@@ -78,6 +78,9 @@ public record WorldLayoutPlan(
         if (mode == LayoutMode.OCEAN && oceanBiomes.isEmpty()) {
             throw new IllegalArgumentException("Ocean layouts require at least one ocean biome.");
         }
+        if (mode == LayoutMode.CHAOS && landBiomes.isEmpty()) {
+            throw new IllegalArgumentException("Chaos layouts require at least one land biome.");
+        }
     }
 
     private static List<BiomeWeight> validateWeights(List<BiomeWeight> weights, String roleName) {
@@ -207,6 +210,7 @@ public record WorldLayoutPlan(
                 yield new LayoutSample(role, singleBiome, roleFactor(role));
             }
             case VOID -> new LayoutSample(BiomeRole.LAND, Optional.empty(), 1.0);
+            case CHAOS -> sampleUniform(BiomeRole.LAND, landBiomes, blockX, blockZ, "biome_land");
         };
     }
 

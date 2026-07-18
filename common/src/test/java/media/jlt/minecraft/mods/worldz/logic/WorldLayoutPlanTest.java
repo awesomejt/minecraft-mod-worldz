@@ -251,6 +251,45 @@ class WorldLayoutPlanTest {
             LayoutMode.SINGLE_BIOME, 1L, 512, List.of(), List.of(), List.of(),
             Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
         ));
+        assertThrows(IllegalArgumentException.class, () -> new WorldLayoutPlan(
+            LayoutMode.CHAOS, 1L, 512, List.of(), List.of(), List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        ));
+    }
+
+    @Test
+    void chaosModeAlwaysSamplesLandRoleAndOnlyConfiguredLandBiomes() {
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.CHAOS, 7L, 256, LAND, List.of(), List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+        Set<String> allowed = Set.of("minecraft:plains", "minecraft:desert");
+
+        for (int cell = 0; cell < 100; cell++) {
+            WorldLayoutPlan.LayoutSample sample = plan.sampleAt(cell * 256 + 10, -cell * 256 - 10);
+            assertEquals(BiomeRole.LAND, sample.role());
+            assertEquals(1.0, sample.landFactor());
+            assertTrue(allowed.contains(sample.biomeId().orElseThrow()));
+        }
+    }
+
+    @Test
+    void chaosModeVariesBiomeAcrossRegionsUnlikeSingleBiome() {
+        // GOALS 33's whole point: unlike SINGLE_BIOME (always one answer), CHAOS shuffles
+        // between the configured land biomes region by region.
+        WorldLayoutPlan plan = new WorldLayoutPlan(
+            LayoutMode.CHAOS, 3L, 64, LAND, List.of(), List.of(),
+            Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        boolean sawPlains = false;
+        boolean sawDesert = false;
+        for (int cell = 0; cell < 200; cell++) {
+            String biome = plan.sampleAt(cell * 64 + 1, cell * 64 + 1).biomeId().orElseThrow();
+            sawPlains |= biome.equals("minecraft:plains");
+            sawDesert |= biome.equals("minecraft:desert");
+        }
+        assertTrue(sawPlains && sawDesert, "expected both configured land biomes to appear across regions");
     }
 
     @Test

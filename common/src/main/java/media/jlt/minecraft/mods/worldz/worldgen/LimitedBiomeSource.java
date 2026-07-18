@@ -16,6 +16,7 @@ import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
+import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
@@ -137,22 +138,29 @@ public final class LimitedBiomeSource extends BiomeSource {
         // (Customize screen "Done"), it is meaningless and ignored.
         boolean singleBiomeDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("single_biome"::equals).orElse(false);
+        boolean chaosBiomesDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("chaos_biomes"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
-            .orElseGet(() -> singleBiomeDefaults
-                ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                : () -> resolveConfiguredBiomes(config, biomeGetter));
+            .orElseGet(() -> chaosBiomesDefaults
+                ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
+                : singleBiomeDefaults
+                    ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
+                    : () -> resolveConfiguredBiomes(config, biomeGetter));
 
         // Every encoded instance has starter_radius. Its presence distinguishes a
         // persisted "no starter biome" from the fieldless preset that consults config.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : encodedStarterBiome.or(() -> singleBiomeDefaults
-                ? resolveSingleBiomeStarter(config, biomeGetter)
-                : resolveConfiguredStarter(config, biomeGetter));
+            : encodedStarterBiome.or(() -> chaosBiomesDefaults
+                ? resolveChaosBiomesStarter(config, biomeGetter)
+                : singleBiomeDefaults
+                    ? resolveSingleBiomeStarter(config, biomeGetter)
+                    : resolveConfiguredStarter(config, biomeGetter));
         int radius = encodedStarterRadius.orElse(
-            singleBiomeDefaults ? config.singleBiome.starterRadiusBlocks : config.starterRadiusBlocks
+            chaosBiomesDefaults ? config.chaosBiomes.starterRadiusBlocks
+                : singleBiomeDefaults ? config.singleBiome.starterRadiusBlocks : config.starterRadiusBlocks
         );
         StarterLandPlan starterLand = encodedStarterRadius.isPresent()
             ? encodedStarterLand.orElseGet(StarterLandPlan::disabled)
@@ -168,21 +176,31 @@ public final class LimitedBiomeSource extends BiomeSource {
         // (DESIGN §20.4) -- this placeholder never reaches actual sampling.
         WorldLayoutPlan worldLayout = encodedStarterRadius.isPresent()
             ? encodedWorldLayout.orElseGet(WorldLayoutPlan::legacy)
-            : encodedWorldLayout.orElseGet(() -> singleBiomeDefaults
+            : encodedWorldLayout.orElseGet(() -> chaosBiomesDefaults
                 ? WorldLayoutPlan.resolve(
-                    LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
-                    WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
+                    LayoutMode.CHAOS, config.chaosBiomes.biomes, Map.of(),
+                    config.chaosBiomes.regionScaleBlocks, null, new Random().nextLong()
                 )
-                : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
+                : singleBiomeDefaults
+                    ? WorldLayoutPlan.resolve(
+                        LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
+                        WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
+                    )
+                    : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
         SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()
             ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)
-            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> singleBiomeDefaults
-                ? config.singleBiome.spawn.strategy
-                : config.spawn.strategy);
-        // allow_rivers/allow_oceans only ever come from the singleBiome: config section (GOALS
-        // 13/14 are single_biome-only, DESIGN §20.5); every other fieldless preset defaults false.
-        boolean allowRivers = encodedAllowRivers.orElseGet(() -> singleBiomeDefaults && config.singleBiome.allowRivers);
-        boolean allowOceans = encodedAllowOceans.orElseGet(() -> singleBiomeDefaults && config.singleBiome.allowOceans);
+            : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> chaosBiomesDefaults
+                ? config.chaosBiomes.spawn.strategy
+                : singleBiomeDefaults
+                    ? config.singleBiome.spawn.strategy
+                    : config.spawn.strategy);
+        // allow_rivers/allow_oceans come from whichever typed-preset config section is in
+        // play (GOALS 13/14, DESIGN §20.5, generalized to CHAOS in Phase 4.1); the generic
+        // fieldless preset falls back to its own top-level fields (default false either way).
+        boolean allowRivers = encodedAllowRivers.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowRivers
+            : singleBiomeDefaults ? config.singleBiome.allowRivers : config.allowRivers);
+        boolean allowOceans = encodedAllowOceans.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowOceans
+            : singleBiomeDefaults ? config.singleBiome.allowOceans : config.allowOceans);
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
@@ -286,11 +304,14 @@ public final class LimitedBiomeSource extends BiomeSource {
             possible.addAll(layoutBiomes.values());
         }
 
-        // DESIGN §20.5: single_biome's vanilla pass-through (GOALS 13/14) needs the full,
-        // unfiltered overworld source -- the Worldz-restricted `delegate` above essentially
-        // never contains river/ocean biomes, so sampling it would defeat the whole feature.
+        // DESIGN §20.5: the vanilla pass-through (GOALS 13/14, generalized to CHAOS in
+        // Phase 4.1) needs the full, unfiltered overworld source -- the Worldz-restricted
+        // `delegate` above essentially never contains river/ocean biomes, so sampling it
+        // would defeat the whole feature.
         Optional<MultiNoiseBiomeSource> naturalDelegate = Optional.empty();
-        if (worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME && (allowRivers || allowOceans)) {
+        boolean supportsPassThrough = worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME
+            || worldLayoutPlan.mode() == LayoutMode.CHAOS;
+        if (supportsPassThrough && (allowRivers || allowOceans)) {
             naturalDelegate = Optional.of(MultiNoiseBiomeSource.createFromList(overworld));
             if (allowRivers) {
                 biomeGetter.get(BiomeTags.IS_RIVER).ifPresent(holders -> holders.stream().forEach(possible::add));
@@ -388,6 +409,34 @@ public final class LimitedBiomeSource extends BiomeSource {
     private static Optional<Holder<Biome>> resolveSingleBiomeHolder(String id, HolderGetter<Biome> biomeGetter) {
         ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(id));
         return biomeGetter.get(key).map(value -> value);
+    }
+
+    private static HolderSet<Biome> resolveChaosBiomesAllowed(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
+        Set<Holder<Biome>> resolved = new LinkedHashSet<>();
+        for (WeightedBiomeListSpec.Entry entry : WeightedBiomeListSpec.parse(config.chaosBiomes.biomes).entries()) {
+            resolveSingleBiomeHolder(entry.id(), biomeGetter)
+                .ifPresentOrElse(
+                    resolved::add,
+                    () -> WorldzCommon.LOGGER.warn("Unknown chaosBiomes.biomes entry '{}'.", entry.id())
+                );
+        }
+        if (!config.chaosBiomes.starterBiome.isEmpty()) {
+            resolveSingleBiomeHolder(config.chaosBiomes.starterBiome, biomeGetter).ifPresent(resolved::add);
+        }
+        return HolderSet.direct(List.copyOf(resolved));
+    }
+
+    private static Optional<Holder<Biome>> resolveChaosBiomesStarter(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
+        if (config.chaosBiomes.starterBiome.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<Holder<Biome>> holder = resolveSingleBiomeHolder(config.chaosBiomes.starterBiome, biomeGetter);
+        if (holder.isEmpty()) {
+            WorldzCommon.LOGGER.warn(
+                "Unknown chaosBiomes.starterBiome '{}'; starter zone disabled.", config.chaosBiomes.starterBiome
+            );
+        }
+        return holder;
     }
 
     private static Optional<Holder<Biome>> resolveConfiguredStarter(WorldzConfig config, HolderGetter<Biome> biomeGetter) {

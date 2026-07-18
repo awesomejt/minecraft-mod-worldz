@@ -76,9 +76,28 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(2, tag.getAsJsonArray("values").size());
+        assertEquals(3, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
         assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
+        assertEquals("jlt_worldz:chaos_biomes", tag.getAsJsonArray("values").get(2).getAsString());
+    }
+
+    @Test
+    void chaosBiomesPresetMirrorsWorldzButFlagsWorldType() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/chaos_biomes.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject biomeSource = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator")
+            .getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("chaos_biomes", biomeSource.get("world_type").getAsString());
+
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
     }
 
     @Test
@@ -104,6 +123,14 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.customize.exterior.mode.void"));
         assertTrue(language.has("jlt_worldz.single_biome.allow_rivers"));
         assertTrue(language.has("jlt_worldz.single_biome.allow_oceans"));
+        assertEquals("Worldz: Chaos Biomes", language.get("generator.jlt_worldz.chaos_biomes").getAsString());
+        assertTrue(language.has("jlt_worldz.chaos_biomes.title"));
+        assertTrue(language.has("jlt_worldz.chaos_biomes.biomes"));
+        assertTrue(language.has("jlt_worldz.chaos_biomes.region_scale"));
+        assertTrue(language.has("jlt_worldz.chaos_biomes.starter_biome"));
+        assertTrue(language.has("jlt_worldz.chaos_biomes.starter_radius"));
+        assertTrue(language.has("jlt_worldz.chaos_biomes.allow_rivers"));
+        assertTrue(language.has("jlt_worldz.chaos_biomes.allow_oceans"));
     }
 
     private static JsonObject resource(String path) throws IOException {
