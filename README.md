@@ -32,8 +32,9 @@ challenge family, each with its own small Customize screen:
 
 | World Type | Covers | Customize screen |
 |---|---|---|
-| **Worldz** | The original flexible preset: allowed-biome list, coordinated `ocean`/`single_biome`/`void`/`legacy` layouts, borders, exteriors, starter land. See [Using Worldz](#using-worldz) below. | Full screen: biomes, starter zone, borders, exteriors, layout, spawn strategy. |
-| **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy only. |
+| **Worldz** | The original flexible preset: allowed-biome list, coordinated `ocean`/`single_biome`/`void`/`chaos`/`legacy` layouts, borders, exteriors, starter land. See [Using Worldz](#using-worldz) below. | Full screen: biomes, starter zone, borders, exteriors, layout, spawn strategy. |
+| **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location; optional natural rivers/oceans. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
+| **Worldz: Chaos Biomes** | Seed-shuffled land biome regions over completely untouched vanilla terrain — deserts beside ice spikes beside jungles; configurable region size; optional starter zone; optional natural rivers/oceans. See [Chaos biomes challenge](#chaos-biomes-challenge) below. | Small screen: weighted biome list, region size, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 
 ## Supported loaders
 
@@ -79,6 +80,8 @@ level-type=jlt_worldz:worldz
 
 For the single-biome challenge instead, use `level-type=jlt_worldz:single_biome`
 and the `singleBiome:` config section (see [Single-biome challenge](#single-biome-challenge)).
+For the chaos biomes challenge, use `level-type=jlt_worldz:chaos_biomes` and the
+`chaosBiomes:` config section (see [Chaos biomes challenge](#chaos-biomes-challenge)).
 
 Delete or rename an existing `level-name` world only when you intentionally want
 the server to create a new one. Worldz never converts an existing world.
@@ -125,6 +128,49 @@ in sync by hand for this type. When `allowRivers`/`allowOceans` are on, the
 matching vanilla biome tags (`#minecraft:is_river`, `#minecraft:is_ocean`)
 are folded in too, so structure/feature placement knows those biomes can
 occur.
+
+## Chaos biomes challenge
+
+Select **Worldz: Chaos Biomes** under **World Type** for a world where a
+list of land biomes is shuffled, seed-based, across regions of the map —
+desert beside ice spikes beside jungle, changing every `regionScaleBlocks`
+or so. Unlike **Worldz: Single Biome**, terrain shape is *always* completely
+untouched vanilla terrain everywhere (hills, mountains, ravines, natural
+water bodies stand exactly as the seed generated them) — chaos only ever
+relabels biome identity, never height.
+
+Configure its defaults with a `chaosBiomes:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+chaosBiomes:
+  biomes:
+    - 'minecraft:desert'
+    - 'minecraft:jungle'
+    - 'minecraft:ice_spikes'
+    - 'minecraft:badlands'
+    - 'minecraft:taiga'
+  regionScaleBlocks: 512
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin
+  allowRivers: false
+  allowOceans: false
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `biomes` | desert/jungle/ice_spikes/badlands/taiga | Weighted land biome entries (`id` or `id@weight`, same syntax as the generic preset's `layout.biomes`), shuffled per region. At least one is required. |
+| `regionScaleBlocks` | `512` | Grid-cell edge length in blocks; smaller means more frequent biome changes. Clamped to `16..8192`. |
+| `starterBiome` | `""` | Optional biome forced in a circular zone around spawn; empty means chaos starts immediately at spawn (GOALS 33's literal reading). Setting one gives a safe, guaranteed-land starting patch, exactly like `single_biome`'s. |
+| `starterRadiusBlocks` | `256` | Starter-zone radius, only meaningful when `starterBiome` is set; clamped to `64..4096`. |
+| `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
+| `allowRivers` | `false` | Same mechanism as `single_biome`'s `allowRivers` — vanilla's own river biomes pass through, terrain untouched. |
+| `allowOceans` | `false` | Same mechanism as `single_biome`'s `allowOceans` — additive over `allowRivers`. |
+
+`allowedBiomes` derives automatically from `biomes` plus `starterBiome`, the
+same way `single_biome`'s does.
 
 ## Configuration
 

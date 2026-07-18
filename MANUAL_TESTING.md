@@ -208,6 +208,42 @@ coordinates to fly to before checking the same spot in Worldz.
    confirm it now includes `allowRivers`/`allowOceans` matching what the
    config file set.
 
+## Phase 4 acceptance (2026-07-18 challenge-world replan, TODO 4.2)
+
+Uses configs `16`-`19` (see [`config/tests/README.md`](config/tests/README.md)).
+All four need **"Worldz: Chaos Biomes"** on the creation screen.
+
+1. **Default regions (GOALS 33)**, `16-chaos-biomes-default.yaml`. Fly
+   around and confirm: (a) multiple different biomes appear (desert,
+   jungle, ice_spikes, badlands, taiga) in distinct regions, not one biome
+   everywhere; (b) terrain shape is completely ordinary vanilla — hills,
+   mountains, ravines, natural water bodies all look exactly like a normal
+   vanilla world, just with an unusual biome label on top (e.g. a jungle
+   region can still have a natural lake or a snowy-looking valley if
+   that's what the terrain naturally does there — the biome doesn't match
+   the terrain the way vanilla normally correlates them, and that's
+   expected for this config since rivers/oceans pass-through is off); (c)
+   normal structures/caves/features generate.
+2. **Tiny regions**, `17-chaos-biomes-tiny-regions.yaml`. Confirm biome
+   changes noticeably more often while flying in a straight line than
+   config 16 — regions should feel small and frequent.
+3. **Huge regions**, `18-chaos-biomes-huge-regions.yaml`. Confirm the
+   opposite — long, uninterrupted stretches of one biome before it changes.
+4. **Pass-through + starter zone**, `19-chaos-biomes-pass-through-and-starter.yaml`.
+   Confirm spawn is inside a ~256-block plains circle (the starter zone),
+   with chaos biomes starting beyond it. Using the same vanilla-first
+   coordinate-finding approach as Phase 3's rivers/oceans check, confirm a
+   known vanilla river or ocean location (outside the starter zone) still
+   generates as a real river/ocean here too, with natural terrain — not
+   flattened, not replaced by one of the configured land biomes (same
+   mechanism as Phase 3.1, just confirming it composes correctly with
+   `chaos_biomes`).
+5. **Customize-screen sanity.** Open "Worldz: Chaos Biomes"'s Customize
+   screen before creating a world: confirm it shows the weighted biomes
+   list, region size, starter biome/radius, spawn strategy, and
+   allowRivers/allowOceans checkboxes — nothing from the full "Worldz"
+   preset's allowed-biomes list, border, exterior, or layout-mode controls.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

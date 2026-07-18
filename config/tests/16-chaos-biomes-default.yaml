@@ -1,0 +1,21 @@
+# GOALS 33: seed-shuffled land biome regions over completely untouched
+# vanilla terrain -- deserts beside ice spikes beside jungles. Default
+# region size (512 blocks) and default biome list. Select "Worldz: Chaos
+# Biomes" (NOT plain "Worldz") on the creation screen. Terrain should look
+# exactly like natural vanilla terrain everywhere -- hills, valleys, and
+# (since allowRivers/allowOceans are off here) vanilla water bodies all
+# just get relabeled with one of the configured land biomes.
+chaosBiomes:
+  biomes:
+    - 'minecraft:desert'
+    - 'minecraft:jungle'
+    - 'minecraft:ice_spikes'
+    - 'minecraft:badlands'
+    - 'minecraft:taiga'
+  regionScaleBlocks: 512
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin
+  allowRivers: false
+  allowOceans: false

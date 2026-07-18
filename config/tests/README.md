@@ -27,11 +27,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 2, the World Type dropdown has **two** Worldz
+   new world. Since Phase 2, the World Type dropdown has **three** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`) reads the flat top-level config fields; "Worldz: Single
    Biome" (files `10`-`12`, `14`-`15`) reads only the `singleBiome:`
-   section and ignores everything else.
+   section; "Worldz: Chaos Biomes" (files `16`-`19`) reads only the
+   `chaosBiomes:` section. Each ignores every other section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -55,6 +56,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `13-vanilla-limited-baseline.yaml` | Control run for Phase 2: plain "Worldz" preset, legacy layout, a modest border — confirms the shared border/limit path Phase 2 didn't touch still works through the `LimitedBiomeSource.resolve()` branch it now shares with `singleBiome:`. |
 | `14-single-biome-allow-rivers.yaml` | GOALS 13: `allowRivers: true` — vanilla's own rivers pass through wherever vanilla would naturally place one, everywhere else stays desert. |
 | `15-single-biome-allow-oceans.yaml` | GOALS 14: `allowRivers: true` + `allowOceans: true` — vanilla's own rivers and oceans (every depth/temperature) both pass through; coastlines should look exactly like natural vanilla terrain, no straight edges. |
+| `16-chaos-biomes-default.yaml` | GOALS 33, default `regionScaleBlocks` (512) and biome list (desert/jungle/ice_spikes/badlands/taiga) — confirms regions of different biomes appear over completely untouched vanilla terrain (hills/valleys unaffected). |
+| `17-chaos-biomes-tiny-regions.yaml` | Same as 16 but `regionScaleBlocks: 64` — biome should change much more often while traveling. |
+| `18-chaos-biomes-huge-regions.yaml` | Same as 16 but `regionScaleBlocks: 4096` — expect long uninterrupted stretches of one biome. |
+| `19-chaos-biomes-pass-through-and-starter.yaml` | GOALS 33's rivers/oceans option (`allowRivers`/`allowOceans: true`, same Phase 3.1 mechanism as `singleBiome`'s) plus a `starterBiome: minecraft:plains` safe zone at spawn instead of chaos starting immediately. |
 
 ### Why `01` showed ocean labeled as river
 
