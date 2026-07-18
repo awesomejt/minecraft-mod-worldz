@@ -680,6 +680,13 @@ Durable decisions, verified API notes, and rationale that should survive across 
   needs revisiting, a coast-blend-style transition width at the
   pass-through boundary (mirroring the removed grid modes' mechanism, but
   scoped to just this boundary) is the likely fix shape.
+  **Update, same day:** config 15 (`allowOceans`) retested fresh under
+  0.2.7 too — every vanilla ocean biome variant generates correctly with a
+  natural coastline shape, and the same abrupt-transition cosmetic issue
+  appears at the shore (confirmed via screenshot: desert meeting a sharp
+  vertical wall of deep/frozen ocean, no beach gradient). Same root cause
+  as the river case, same deferred status — this is one shared boundary
+  behavior affecting both 13 and 14, not two separate issues.
 - 2026-07-17 — GOALS 15 (cave-biome pass-through) moved out of Phase 3 into
   a new TODO "Backlog" section rather than kept as draft task 3.3. GOALS.md
   already calls it "scope for a later phase" and it needs a materially

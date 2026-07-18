@@ -130,16 +130,14 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       `allowOceans`. **Done (0.2.6).**
 - [x] 3.2 Test configs for 13 and 14 (`config/tests/14`-`15`); docs
       (`MANUAL_TESTING.md`'s "Phase 3 acceptance", README, snapshot fields).
-      **[Jason] acceptance in progress (2026-07-18):** config 14 retested
-      under 0.2.7 — river follows the vanilla path correctly and exits
-      naturally into the ocean (the terrain-raise fix confirmed working).
-      One cosmetic issue noted and **explicitly deferred by Jason, not a
-      blocker**: river banks look abrupt and the channel reads as mostly
-      deep rather than a shallow/deep mix — likely the hard on/off
-      pass-through boundary (no blending, by DESIGN §20.5's original
-      "zero height-adjustment machinery" call) framing a normal-depth
-      vanilla channel between two artificially-raised rims. See MEMORY.md.
-      Config 15 (oceans) still needs a fresh 0.2.7 world.
+      **[Jason] acceptance done (2026-07-18):** both configs retested
+      fresh under 0.2.7. Config 14: river follows the vanilla path and
+      exits naturally into the ocean. Config 15: all the different vanilla
+      ocean biome variants generate, coastline shape is natural. Same
+      cosmetic issue on both — abrupt bank/shore transition, channel/coast
+      reads as mostly deep — **explicitly deferred by Jason, not a
+      blocker**; see MEMORY.md for the working theory (the pass-through's
+      hard on/off boundary, no blending) and likely fix shape if revisited.
 
 ## Phase 4 — Chaos biomes (GOALS 33)
 
