@@ -661,6 +661,25 @@ Durable decisions, verified API notes, and rationale that should survive across 
   new-worlds-only applies per-field, not just per-mod-version. A world
   tested against a bug fix must always be freshly created *after* the
   fixed jar is deployed, never just reopened.
+- 2026-07-18 — **Confirmed working (0.2.7), one cosmetic gap logged, not
+  fixed.** Jason recreated Worldz-14 under 0.2.7 (config 14, `allowRivers`)
+  and confirmed the river follows the exact vanilla path and exits
+  naturally into the ocean — the terrain-raise fix above is doing its job.
+  Separately noted: bank entry looks abrupt, and the channel reads as
+  mostly deep where a natural mix of shallow/deep sections was expected.
+  **Working theory, unconfirmed:** the pass-through is a hard on/off
+  switch with no blending at its boundary (DESIGN §20.5 deliberately
+  specified "zero height-adjustment machinery" for 13/14, unlike the
+  removed `MIXED`/`OCEAN` grid modes' dedicated coast-blend width) — one
+  column outside the vanilla-classified river area, `single_biome`'s
+  `landFactor=1.0` raise applies at full strength with no transition, so
+  the natural riverbed likely sits at a genuine elevation step below the
+  raised desert rim on both sides, which could visually read as a deeper,
+  more abrupt channel even where the underlying vanilla depth is
+  ordinary. **Jason's explicit call: log it, don't fix now** — if this
+  needs revisiting, a coast-blend-style transition width at the
+  pass-through boundary (mirroring the removed grid modes' mechanism, but
+  scoped to just this boundary) is the likely fix shape.
 - 2026-07-17 — GOALS 15 (cave-biome pass-through) moved out of Phase 3 into
   a new TODO "Backlog" section rather than kept as draft task 3.3. GOALS.md
   already calls it "scope for a later phase" and it needs a materially
