@@ -194,10 +194,32 @@ composed with the new world types; plus the one real gap (the End).
       `starter_at_origin`. The "much larger default delay" for contraction
       (GOALS 20) is a recommended-value/docs concern, not a code gap —
       addressed in 5.4's test configs.
-- [ ] 5.2 The End gap (17): option to carry limits into the End with a
+- [x] 5.2 The End gap (17): option to carry limits into the End with a
       minimum-size override so the dragon fight stays winnable; verify the
       existing Nether carry-over and blaze/End-portal guarantees still hold
-      under the world-type restructure.
+      under the world-type restructure. **Done (0.2.10).** Jason's
+      2026-07-18 decision: a simple `endBorder` config (`EndBorderConfig`)
+      with a `carryFromOverworld` toggle + `minimumRadiusBlocks` floor
+      (default 256), not full `BorderConfig` parity — the End border is
+      static (set once at world creation to the Overworld's *final*
+      radius, floored at the minimum) since GOALS 17 only asks to carry a
+      size over, not independently schedule End resizing. Added
+      `WorldLimitPlan.EndLimit` (+ `resolveRadiusBlocks`, JUnit-covered)
+      and a `WorldLimitManager.initializeEndBorder` step alongside the
+      existing Overworld/Nether one, reusing the exact same
+      `level.getWorldBorder()` API already proven for Nether — verified
+      `Level.END` exists via `javap` on the real 26.2 jar. End terrain
+      generation stays fully vanilla (DESIGN §13); only an access-limiting
+      border is added, no exterior masking. Verification (code-reading,
+      no behavior change needed): `WorldLimitManager`/`ProgressionGuarantees`
+      are registered once per loader, not per-preset, and every world
+      type (`single_biome`, `chaos_biomes`, the generic preset) already
+      constructs the same `LimitedBiomeSource` — so Nether border/blaze-
+      access and Overworld End-portal guarantees already apply uniformly
+      across the Phase 2-4 world-type restructure with no code changes
+      needed. Not yet exposed on any Customize screen (config-only for
+      now, consistent with single_biome/chaos_biomes' own border/exterior
+      gap — both close together in 5.3).
 - [ ] 5.3 Limits must compose with every world type (a shared module section
       in each type's config/Customize), not only the `limited` type.
 - [ ] 5.4 Test configs (static small, expanding, collapsing, End carry-over);

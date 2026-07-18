@@ -79,7 +79,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             starter,
             customization.starterRadiusBlocks(),
             customization.starterLandPlan(),
-            customization.worldLimitPlan(),
+            customization.worldLimitPlan(WorldLimitPlan.fromConfig(WorldzCommon.config()).end()),
             customization.exteriorPlan(),
             customization.worldLayoutPlan(new Random().nextLong()),
             customization.spawnStrategy(),

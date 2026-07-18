@@ -10,6 +10,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.border.WorldBorder;
 
+import java.util.OptionalInt;
 import java.util.OptionalLong;
 
 /** Applies the border plan baked into a new Worldz world's biome source. */
@@ -57,6 +58,10 @@ public final class WorldLimitManager {
             // progression objective remain centered at the world origin (0, 0).
             netherStartTick = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether());
+        }
+        ServerLevel end = server.getLevel(Level.END);
+        if (end != null) {
+            initializeEndBorder(end, plan.end(), plan.overworld());
         }
         overworld.getDataStorage().set(
             WorldLimitState.TYPE,
@@ -115,6 +120,21 @@ public final class WorldLimitManager {
         }
         startTransition(level, limit, dimensionName);
         return -1L;
+    }
+
+    private static void initializeEndBorder(ServerLevel end, WorldLimitPlan.EndLimit limit, WorldLimitPlan.DimensionLimit overworld) {
+        OptionalInt radius = limit.resolveRadiusBlocks(overworld);
+        if (radius.isEmpty()) {
+            return;
+        }
+        // Static only -- GOALS 17 asks to carry the Overworld's eventual size into the End, not
+        // to independently animate an End-specific expand/collapse schedule. Vanilla End
+        // generation (main island, obsidian pillars, exit portal) is otherwise left untouched;
+        // this only limits how far a player can fly from it.
+        WorldBorder border = end.getWorldBorder();
+        border.setCenter(0, 0);
+        border.setSize(radius.getAsInt() * 2.0);
+        WorldzCommon.LOGGER.info("Worldz End border: static radius {} (carried from Overworld, floor applied).", radius.getAsInt());
     }
 
     private static void startIfDue(

@@ -77,6 +77,8 @@ public final class WorldzConfig {
     public BorderConfig overworldBorder = new BorderConfig();
     /** Optional Nether border and blaze-access settings. */
     public BorderConfig netherBorder = new BorderConfig();
+    /** Optional End border carried from the Overworld's final radius (GOALS 17). */
+    public EndBorderConfig endBorder = new EndBorderConfig();
     /** Optional Overworld terrain outside a central square. */
     public ExteriorConfig overworldExterior = new ExteriorConfig();
     /** Optional Nether terrain outside a central square. */
@@ -164,6 +166,9 @@ public final class WorldzConfig {
         if (object.containsKey("netherBorder")) {
             config.netherBorder = readBorderConfig(object.get("netherBorder"), "netherBorder", "ensureBlazeAccess");
         }
+        if (object.containsKey("endBorder")) {
+            config.endBorder = readEndBorderConfig(object.get("endBorder"), "endBorder");
+        }
         if (object.containsKey("overworldExterior")) {
             config.overworldExterior = readExteriorConfig(object.get("overworldExterior"), "overworldExterior");
         }
@@ -225,6 +230,7 @@ public final class WorldzConfig {
 
         overworldBorder = sanitizeBorder(overworldBorder, "overworldBorder", logger);
         netherBorder = sanitizeBorder(netherBorder, "netherBorder", logger);
+        endBorder = sanitizeEndBorder(endBorder, logger);
         overworldExterior = sanitizeExterior(overworldExterior, overworldBorder, true, "overworldExterior", logger);
         netherExterior = sanitizeExterior(netherExterior, netherBorder, false, "netherExterior", logger);
         layout = sanitizeLayout(layout, logger);
@@ -327,6 +333,7 @@ public final class WorldzConfig {
                 : "<disabled>")
             + ", overworldBorder=" + borderSummary(overworldBorder, "endPortal")
             + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess")
+            + ", endBorder=" + endBorderSummary(endBorder)
             + ", overworldExterior=" + exteriorSummary(overworldExterior)
             + ", netherExterior=" + exteriorSummary(netherExterior)
             + ", layout=" + layoutSummary(layout)
@@ -347,6 +354,7 @@ public final class WorldzConfig {
         values.put("starterLandFoundationDepthBlocks", starterLandFoundationDepthBlocks);
         values.put("overworldBorder", borderMap(overworldBorder, "ensureEndPortal"));
         values.put("netherBorder", borderMap(netherBorder, "ensureBlazeAccess"));
+        values.put("endBorder", endBorderMap(endBorder));
         values.put("overworldExterior", exteriorMap(overworldExterior));
         values.put("netherExterior", exteriorMap(netherExterior));
         values.put("layout", layoutMap(layout));
@@ -430,6 +438,20 @@ public final class WorldzConfig {
         }
         if (map.containsKey(objectiveKey)) {
             config.ensureObjective = readBoolean(map.get(objectiveKey), name + "." + objectiveKey);
+        }
+        return config;
+    }
+
+    private static EndBorderConfig readEndBorderConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        EndBorderConfig config = new EndBorderConfig();
+        if (map.containsKey("carryFromOverworld")) {
+            config.carryFromOverworld = readBoolean(map.get("carryFromOverworld"), name + ".carryFromOverworld");
+        }
+        if (map.containsKey("minimumRadiusBlocks")) {
+            config.minimumRadiusBlocks = readInt(map.get("minimumRadiusBlocks"), name + ".minimumRadiusBlocks");
         }
         return config;
     }
@@ -602,6 +624,15 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static EndBorderConfig sanitizeEndBorder(EndBorderConfig config, Logger logger) {
+        EndBorderConfig sanitized = config == null ? new EndBorderConfig() : config;
+        sanitized.minimumRadiusBlocks = clampWithWarning(
+            sanitized.minimumRadiusBlocks, MIN_BORDER_RADIUS_BLOCKS, MAX_BORDER_RADIUS_BLOCKS,
+            "endBorder.minimumRadiusBlocks", logger
+        );
+        return sanitized;
+    }
+
     private static ExteriorConfig sanitizeExterior(
         ExteriorConfig config,
         BorderConfig border,
@@ -731,6 +762,13 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> endBorderMap(EndBorderConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("carryFromOverworld", config.carryFromOverworld);
+        values.put("minimumRadiusBlocks", config.minimumRadiusBlocks);
+        return values;
+    }
+
     private static Map<String, Object> exteriorMap(ExteriorConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("mode", config.mode.serializedName());
@@ -790,6 +828,12 @@ public final class WorldzConfig {
                 ? "<total-days>"
                 : config.resizeRateBlocks + " blocks/" + config.resizeRateDays + " days")
             + ", " + objectiveName + "=" + config.ensureObjective;
+    }
+
+    private static String endBorderSummary(EndBorderConfig config) {
+        return config.carryFromOverworld
+            ? "carried, minimum=" + config.minimumRadiusBlocks
+            : "<disabled>";
     }
 
     private static String exteriorSummary(ExteriorConfig config) {

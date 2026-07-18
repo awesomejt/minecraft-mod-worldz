@@ -192,6 +192,7 @@ parts you want into your own `config/jlt_worldz.yaml`.
 | `starterLandFoundationDepthBlocks` | `48` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
 | `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
+| `endBorder` | disabled | Option to carry the Overworld's eventual radius into the End, clamped up to `minimumRadiusBlocks` so the dragon fight stays winnable. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
 | `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
 | `layout` | `legacy` | Coordinated land/ocean/beach terrain layout; `legacy` keeps today's climate-filter-only behavior. See [Coordinated world layouts](#coordinated-world-layouts). |
@@ -295,6 +296,26 @@ at 64 blocks every five Minecraft days. A positive rate pair overrides
 `resizeDays`; leave both rate fields at zero to use the total duration. The last
 partial interval is scaled proportionally, so the border stops exactly at the
 configured final radius.
+
+#### Carrying the border into the End
+
+```yaml
+endBorder:
+  carryFromOverworld: true
+  minimumRadiusBlocks: 256
+```
+
+With `carryFromOverworld: true` and an enabled `overworldBorder`, the End also
+gets a static square border centered at `(0, 0)`, sized to the larger of the
+Overworld's eventual (final) radius and `minimumRadiusBlocks` -- so a very
+small Overworld border does not shrink the End border below a size that keeps
+the main island, every obsidian pillar, and the exit portal reachable and
+intact. The End border does not resize over time and does not respect
+`resizeDelayDays`; it is set once, at world creation, to its eventual size.
+With no Overworld border enabled, or `carryFromOverworld: false`, the End
+stays completely unbordered. End terrain generation itself is always
+untouched vanilla -- this only limits how far a player can fly from the
+main island.
 
 ### Ocean and void exteriors
 

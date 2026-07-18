@@ -192,6 +192,26 @@ class WorldzConfigTest {
     }
 
     @Test
+    void endBorderLoadsAndClampsItsMinimumRadius() {
+        WorldzConfig config = WorldzConfig.parse("""
+            endBorder:
+              carryFromOverworld: true
+              minimumRadiusBlocks: 32
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.endBorder.carryFromOverworld);
+        assertEquals(64, config.endBorder.minimumRadiusBlocks);
+    }
+
+    @Test
+    void endBorderDefaultsToDisabledWithAReasonableFloor() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.endBorder.carryFromOverworld);
+        assertEquals(256, config.endBorder.minimumRadiusBlocks);
+    }
+
+    @Test
     void incompleteBorderRateFallsBackToTotalDuration() {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
@@ -458,7 +478,7 @@ class WorldzConfigTest {
         assertEquals(
             "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
                 + ", starterLand=transition=128, foundation=48"
-                + ", overworldBorder=<disabled>, netherBorder=<disabled>"
+                + ", overworldBorder=<disabled>, netherBorder=<disabled>, endBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
                 + ", layout=<legacy>"
                 + ", spawn=starter_at_origin"

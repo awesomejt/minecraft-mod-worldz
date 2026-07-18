@@ -362,12 +362,15 @@ public record WorldzCustomization(
     }
 
     /**
-     * Converts both border selections to the world-persisted plan.
+     * Converts both border selections to the world-persisted plan. The End's border is not yet
+     * exposed on this preset's Customize screen (GOALS 17 is config-only here; see TODO 5.3 for
+     * per-type Customize wiring), so the caller supplies it from the shared config snapshot.
      *
+     * @param endLimit the End's border plan, taken from the shared config
      * @return immutable codec-backed world-limit plan
      */
-    public WorldLimitPlan worldLimitPlan() {
-        return new WorldLimitPlan(overworldBorder.toPlan(), netherBorder.toPlan());
+    public WorldLimitPlan worldLimitPlan(WorldLimitPlan.EndLimit endLimit) {
+        return new WorldLimitPlan(overworldBorder.toPlan(), netherBorder.toPlan(), endLimit);
     }
 
     /**

@@ -3,6 +3,8 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import org.junit.jupiter.api.Test;
 
+import java.util.OptionalInt;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,6 +40,50 @@ class WorldLimitPlanTest {
         assertFalse(plan.enabled());
         assertFalse(plan.overworld().enabled());
         assertFalse(plan.nether().enabled());
+    }
+
+    @Test
+    void endLimitCarriesTheOverworldsFinalRadiusWhenLargerThanTheFloor() {
+        WorldLimitPlan.EndLimit end = new WorldLimitPlan.EndLimit(true, 256);
+        WorldLimitPlan.DimensionLimit overworld = new WorldLimitPlan.DimensionLimit(true, 512, 2048, 0, true);
+
+        assertEquals(OptionalInt.of(2048), end.resolveRadiusBlocks(overworld));
+    }
+
+    @Test
+    void endLimitFloorsAVerySmallCarriedRadiusSoTheDragonFightStaysWinnable() {
+        WorldLimitPlan.EndLimit end = new WorldLimitPlan.EndLimit(true, 256);
+        WorldLimitPlan.DimensionLimit overworld = new WorldLimitPlan.DimensionLimit(true, 64, 64, 0, true);
+
+        assertEquals(OptionalInt.of(256), end.resolveRadiusBlocks(overworld));
+    }
+
+    @Test
+    void endLimitIsEmptyWhenNotCarrying() {
+        WorldLimitPlan.EndLimit end = new WorldLimitPlan.EndLimit(false, 256);
+        WorldLimitPlan.DimensionLimit overworld = new WorldLimitPlan.DimensionLimit(true, 512, 2048, 0, true);
+
+        assertEquals(OptionalInt.empty(), end.resolveRadiusBlocks(overworld));
+    }
+
+    @Test
+    void endLimitIsEmptyWhenTheOverworldHasNothingToCarry() {
+        WorldLimitPlan.EndLimit end = new WorldLimitPlan.EndLimit(true, 256);
+
+        assertEquals(OptionalInt.empty(), end.resolveRadiusBlocks(WorldLimitPlan.DimensionLimit.disabled()));
+    }
+
+    @Test
+    void endConfigIsSnapshottedIntoThePlan() {
+        WorldzConfig config = new WorldzConfig();
+        config.endBorder.carryFromOverworld = true;
+        config.endBorder.minimumRadiusBlocks = 320;
+
+        WorldLimitPlan plan = WorldLimitPlan.fromConfig(config);
+        config.endBorder.minimumRadiusBlocks = 9999;
+
+        assertTrue(plan.end().carryFromOverworld());
+        assertEquals(320, plan.end().minimumRadiusBlocks());
     }
 
 }

@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
+import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -134,9 +135,9 @@ class WorldzCustomizationTest {
             new WorldzCustomization.BorderSettings(false, 512, 512, 0, false)
         );
 
-        assertTrue(customization.worldLimitPlan().overworld().enabled());
-        assertEquals(2048, customization.worldLimitPlan().overworld().finalRadiusBlocks());
-        assertFalse(customization.worldLimitPlan().nether().enabled());
+        assertTrue(customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().enabled());
+        assertEquals(2048, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().finalRadiusBlocks());
+        assertFalse(customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).nether().enabled());
     }
 
     @Test
@@ -151,7 +152,7 @@ class WorldzCustomizationTest {
             "plains", "", "512", border, border(false), exterior, WorldzCustomization.ExteriorSettings.normal()
         );
 
-        assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
+        assertEquals(128, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeRateBlocks());
         assertEquals(2048, customization.exteriorPlan().overworld().boundaryRadiusBlocks());
         assertEquals(1792, customization.exteriorPlan().overworld().solidRadiusBlocks());
     }
@@ -166,9 +167,9 @@ class WorldzCustomizationTest {
         );
 
         assertEquals(12, border.resizeDelayDays());
-        assertEquals(12, customization.worldLimitPlan().overworld().resizeDelayDays());
-        assertEquals(100, customization.worldLimitPlan().overworld().resizeDays());
-        assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
+        assertEquals(12, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeDelayDays());
+        assertEquals(100, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeDays());
+        assertEquals(128, customization.worldLimitPlan(WorldLimitPlan.EndLimit.disabled()).overworld().resizeRateBlocks());
     }
 
     @Test

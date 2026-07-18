@@ -61,6 +61,15 @@ netherBorder:
   resizeRateDays: 0
   ensureBlazeAccess: true
 
+# Option to carry the Overworld's eventual (final) border radius into the
+# End (GOALS 17), clamped up to minimumRadiusBlocks so the dragon fight
+# stays winnable even at very small Overworld sizes. Only takes effect
+# when the Overworld border above is enabled; the End otherwise stays
+# completely vanilla and unbordered.
+endBorder:
+  carryFromOverworld: false
+  minimumRadiusBlocks: 256
+
 # Terrain beyond a central square: normal, ocean, or void. Boundary 0
 # derives from an enabled border.
 overworldExterior:

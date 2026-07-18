@@ -16,9 +16,15 @@ final class WorldLimitCodecs {
         Codec.BOOL.fieldOf("ensure_objective").forGetter(WorldLimitPlan.DimensionLimit::ensureObjective)
     ).apply(instance, WorldLimitPlan.DimensionLimit::new));
 
+    static final Codec<WorldLimitPlan.EndLimit> END_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+        Codec.BOOL.fieldOf("carry_from_overworld").forGetter(WorldLimitPlan.EndLimit::carryFromOverworld),
+        Codec.INT.fieldOf("minimum_radius").forGetter(WorldLimitPlan.EndLimit::minimumRadiusBlocks)
+    ).apply(instance, WorldLimitPlan.EndLimit::new));
+
     static final Codec<WorldLimitPlan> PLAN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
         DIMENSION_CODEC.fieldOf("overworld").forGetter(WorldLimitPlan::overworld),
-        DIMENSION_CODEC.fieldOf("nether").forGetter(WorldLimitPlan::nether)
+        DIMENSION_CODEC.fieldOf("nether").forGetter(WorldLimitPlan::nether),
+        END_CODEC.optionalFieldOf("end", WorldLimitPlan.EndLimit.disabled()).forGetter(WorldLimitPlan::end)
     ).apply(instance, WorldLimitPlan::new));
 
     private WorldLimitCodecs() {
