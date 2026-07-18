@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.client;
 
+import media.jlt.minecraft.mods.worldz.logic.RadiusUnit;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
@@ -23,6 +24,8 @@ final class WorldzBorderScreen extends Screen {
     private final WorldzCustomization.BorderSettings initial;
     private boolean enabled;
     private boolean ensureObjective;
+    private RadiusUnit unit = RadiusUnit.BLOCKS;
+    private Button unitButton;
     private EditBox initialRadius;
     private EditBox finalRadius;
     private EditBox resizeDays;
@@ -50,6 +53,9 @@ final class WorldzBorderScreen extends Screen {
             .selected(this.enabled)
             .onValueChange((checkbox, selected) -> this.enabled = selected)
             .build());
+
+        this.unitButton = Button.builder(RadiusUnitLabel.of(this.unit), button -> cycleUnit()).width(FORM_WIDTH).build();
+        form.addChild(this.unitButton);
 
         this.initialRadius = numberField(
             Component.translatable("jlt_worldz.customize.border.initial_radius"),
@@ -148,15 +154,24 @@ final class WorldzBorderScreen extends Screen {
         return field;
     }
 
+    private void cycleUnit() {
+        RadiusUnit next = this.unit.next();
+        this.initialRadius.setValue(this.unit.convert(this.initialRadius.getValue(), next));
+        this.finalRadius.setValue(this.unit.convert(this.finalRadius.getValue(), next));
+        this.resizeRateBlocks.setValue(this.unit.convert(this.resizeRateBlocks.getValue(), next));
+        this.unit = next;
+        this.unitButton.setMessage(RadiusUnitLabel.of(this.unit));
+    }
+
     private void apply() {
         try {
             WorldzCustomization.BorderSettings settings = WorldzCustomization.BorderSettings.fromText(
                 this.enabled,
-                this.initialRadius.getValue(),
-                this.finalRadius.getValue(),
+                this.unit.toBlocksText(this.initialRadius.getValue()),
+                this.unit.toBlocksText(this.finalRadius.getValue()),
                 this.resizeDays.getValue(),
                 this.resizeDelayDays.getValue(),
-                this.resizeRateBlocks.getValue(),
+                this.unit.toBlocksText(this.resizeRateBlocks.getValue()),
                 this.resizeRateDays.getValue(),
                 this.ensureObjective
             );

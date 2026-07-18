@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.client;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.RadiusUnit;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
@@ -23,6 +24,8 @@ final class WorldzExteriorScreen extends Screen {
     private final WorldzCustomization.ExteriorSettings initial;
     private ExteriorMode mode;
     private Button modeButton;
+    private RadiusUnit unit = RadiusUnit.BLOCKS;
+    private Button unitButton;
     private EditBox boundaryRadius;
     private EditBox oceanTransitionWidth;
     private MultiLineTextWidget errorMessage;
@@ -50,9 +53,12 @@ final class WorldzExteriorScreen extends Screen {
         this.modeButton = Button.builder(modeLabel(), button -> cycleMode()).width(FORM_WIDTH).build();
         form.addChild(this.modeButton);
 
+        this.unitButton = Button.builder(RadiusUnitLabel.of(this.unit), button -> cycleUnit()).width(FORM_WIDTH).build();
+        form.addChild(this.unitButton);
+
         this.boundaryRadius = textField(
             Component.translatable("jlt_worldz.customize.exterior.boundary_radius"),
-            this.initial.boundaryRadiusBlocks() == 0 ? "auto" : Integer.toString(this.initial.boundaryRadiusBlocks())
+            this.initial.boundaryRadiusBlocks() == 0 ? RadiusUnit.AUTO : Integer.toString(this.initial.boundaryRadiusBlocks())
         );
         form.addChild(CommonLayouts.labeledElement(
             this.font,
@@ -102,6 +108,13 @@ final class WorldzExteriorScreen extends Screen {
         updateOceanField();
     }
 
+    private void cycleUnit() {
+        RadiusUnit next = this.unit.next();
+        this.boundaryRadius.setValue(this.unit.convert(this.boundaryRadius.getValue(), next));
+        this.unit = next;
+        this.unitButton.setMessage(RadiusUnitLabel.of(this.unit));
+    }
+
     private void updateOceanField() {
         this.oceanTransitionWidth.active = this.mode == ExteriorMode.OCEAN;
     }
@@ -117,7 +130,7 @@ final class WorldzExteriorScreen extends Screen {
         try {
             WorldzCustomization.ExteriorSettings settings = WorldzCustomization.ExteriorSettings.fromText(
                 this.mode.serializedName(),
-                this.boundaryRadius.getValue(),
+                this.unit.toBlocksText(this.boundaryRadius.getValue()),
                 this.oceanTransitionWidth.getValue()
             );
             this.parent.setExterior(this.overworld, settings);

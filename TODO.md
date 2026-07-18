@@ -171,11 +171,29 @@ Small phase, placed here because it reuses Phase 2–3 machinery directly.
 Mostly verification of already-built borders/exteriors against GOALS wording,
 composed with the new world types; plus the one real gap (the End).
 
-- [ ] 5.1 Audit existing border + exterior behavior against 17–20: blocks
+- [x] 5.1 Audit existing border + exterior behavior against 17–20: blocks
       and chunks as units (add chunk input if missing), invisible-wall
       (border) vs hard void (exterior) beyond the size (18), expansion rate +
       initial delay (19), contraction with larger default delay, minimum
-      size, and center-safe start (20). Fix deltas only.
+      size, and center-safe start (20). Fix deltas only. **Done (0.2.9):**
+      only real delta was chunks as a unit — nothing accepted chunk input
+      anywhere, every radius field was blocks-only. Added a `RadiusUnit`
+      (`common/logic`, JUnit-covered) and a shared Blocks/Chunks toggle
+      button (`RadiusUnitLabel` + wiring in `WorldzBorderScreen`/
+      `WorldzExteriorScreen`) that converts whatever's currently typed
+      instead of reinterpreting the digits; blocks stays the one
+      persisted/validated unit (YAML, snapshot, internal records) per
+      Jason's 2026-07-18 decision — UI-only conversion, no schema change.
+      Everything else audited as already correct, no code change needed:
+      invisible-wall border vs. hard-void/ocean exterior are already
+      cleanly separate systems (DESIGN §12/§14); expansion rate +
+      `resizeDelayDays` initial delay and the delayed-start mechanism
+      already exist (DESIGN §15); a collapsing border's `finalRadiusBlocks`
+      already *is* its minimum (the schedule never goes past it); spawn
+      already centers on the border/exterior origin via
+      `starter_at_origin`. The "much larger default delay" for contraction
+      (GOALS 20) is a recommended-value/docs concern, not a code gap —
+      addressed in 5.4's test configs.
 - [ ] 5.2 The End gap (17): option to carry limits into the End with a
       minimum-size override so the dragon fight stays winnable; verify the
       existing Nether carry-over and blaze/End-portal guarantees still hold

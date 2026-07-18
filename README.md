@@ -252,6 +252,11 @@ Radius values are the distance from the center to each side, so a radius of
 `512` creates a `1024 × 1024` playable square. Borders affect only newly
 created Worldz worlds.
 
+The config file and internal storage always use blocks. The Customize
+screen's border and exterior editors have a **Radius units** button that
+displays and accepts either blocks or chunks (1 chunk = 16 blocks); switching
+it converts whatever is currently typed instead of reinterpreting the digits.
+
 ```yaml
 overworldBorder:
   enabled: true
