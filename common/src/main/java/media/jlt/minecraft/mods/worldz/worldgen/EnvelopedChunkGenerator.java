@@ -287,7 +287,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-            int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor);
+            int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor, randomState);
             int layoutHeight = naturalHeight + (layoutFloor - naturalFloor);
             return Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
         }
@@ -311,7 +311,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
-            int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor);
+            int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor, randomState);
             BlockState[] states = null;
 
             if (this.layout.isPresent()) {
@@ -442,7 +442,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 int layoutFloor = naturalFloor;
 
                 if (plan != null) {
-                    layoutFloor = layoutFloorFor(plan, x - originX, z - originZ, naturalFloor, seaLevel);
+                    layoutFloor = layoutFloorFor(plan, x, z, originX, originZ, naturalFloor, seaLevel, randomState);
                     if (layoutFloor > naturalFloor) {
                         int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
                         int maxY = repairOnly ? layoutFloor - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : layoutFloor - 1;
@@ -468,16 +468,30 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         }
     }
 
-    /** Computes the layout's target floor height by blending the sampled land/ocean factor. */
-    private static int layoutFloorFor(WorldLayoutPlan plan, int x, int z, int naturalFloor, int seaLevel) {
-        double landFactor = plan.sampleAt(x, z).landFactor();
+    /**
+     * Computes the layout's target floor height by blending the sampled land/ocean factor,
+     * unless the vanilla pass-through (DESIGN §20.5, GOALS 13/14) applies at this column --
+     * then the natural floor is returned untouched, since a passed-through river/ocean is
+     * real, natural vanilla terrain, not something to raise toward guaranteed land.
+     *
+     * @param x absolute block X
+     * @param z absolute block Z
+     */
+    private int layoutFloorFor(
+        WorldLayoutPlan plan, int x, int z, int originX, int originZ, int naturalFloor, int seaLevel, RandomState randomState
+    ) {
+        if (this.originSource.isPresent()
+            && this.originSource.get().isNaturalPassThroughAt(x, naturalFloor, z, randomState.sampler())) {
+            return naturalFloor;
+        }
+        double landFactor = plan.sampleAt(x - originX, z - originZ).landFactor();
         return LayoutTerrainProfile.targetHeight(naturalFloor, landFactor, seaLevel);
     }
 
     /** Returns the layout-adjusted floor, or {@code naturalFloor} unchanged with no active layout. */
-    private int layoutFloorOrNatural(int x, int z, int naturalFloor) {
+    private int layoutFloorOrNatural(int x, int z, int naturalFloor, RandomState randomState) {
         return this.layout.isPresent()
-            ? layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel())
+            ? layoutFloorFor(this.layout.get().plan(), x, z, originX(), originZ(), naturalFloor, getSeaLevel(), randomState)
             : naturalFloor;
     }
 

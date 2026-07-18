@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.6", properties.getProperty("version"));
+        assertEquals("0.2.7", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -226,7 +226,7 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("applyTerrainAdjustments(chunk, randomState, true)"));
         assertTrue(generator.contains("LayoutTerrainProfile.targetHeight"));
         assertTrue(generator.contains("mode == LayoutMode.LEGACY || mode == LayoutMode.VOID"));
-        assertTrue(generator.contains("layoutFloorOrNatural(x, z, naturalFloor)"));
+        assertTrue(generator.contains("layoutFloorOrNatural(x, z, naturalFloor, randomState)"));
         // Both stages now share one merged per-column pass (computes the natural floor once
         // instead of twice -- see MEMORY.md's 2026-07-17 performance entry), so what used to
         // be two distinct calls is now one call per stage; still confirm carvers (repair-only)
@@ -321,9 +321,9 @@ class ProjectMetadataTest {
             "int targetHeight = starterLandTargetHeight(x, z, chunk, randomState, naturalFloor, layoutFloor);"
         ));
         assertTrue(generator.contains(
-            "private int layoutFloorOrNatural(int x, int z, int naturalFloor) {\n"
+            "private int layoutFloorOrNatural(int x, int z, int naturalFloor, RandomState randomState) {\n"
                 + "        return this.layout.isPresent()\n"
-                + "            ? layoutFloorFor(this.layout.get().plan(), x - originX(), z - originZ(), naturalFloor, getSeaLevel())\n"
+                + "            ? layoutFloorFor(this.layout.get().plan(), x, z, originX(), originZ(), naturalFloor, getSeaLevel(), randomState)\n"
                 + "            : naturalFloor;"
         ));
     }
@@ -480,6 +480,32 @@ class ProjectMetadataTest {
             assertTrue(mixin.contains("@Redirect("));
             assertTrue(mixin.contains("return generator.createState(structureSets, this.randomState, legacyLevelSeed);"));
         }
+    }
+
+    @Test
+    void vanillaPassThroughSkipsTheLayoutRaiseSoRiversAndOceansStayCarved() throws IOException {
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        // 2026-07-17: getNoiseBiome correctly returned a passed-through river/ocean, but
+        // EnvelopedChunkGenerator's layout terrain raise never consulted the pass-through --
+        // single_biome's WorldLayoutPlan.sampleAt always reports landFactor=1.0, so every
+        // column (including a real vanilla river's natural depression) was still raised to
+        // guaranteed-land height, leaving a "River" biome label over flattened dry land with
+        // no water. Confirmed in-game (config 14, world Worldz-14): F3 showed the correct
+        // River biome, but the terrain rendered as plains -- trees growing, no water except
+        // small cave pools.
+        assertTrue(source.contains("public boolean isNaturalPassThroughAt(int blockX, int blockY, int blockZ, Climate.Sampler sampler) {"));
+        assertTrue(source.contains("naturalPassThroughBiome(quartX, quartY, quartZ, sampler)"));
+        assertTrue(generator.contains(
+            "if (this.originSource.isPresent()\n"
+                + "            && this.originSource.get().isNaturalPassThroughAt(x, naturalFloor, z, randomState.sampler())) {\n"
+                + "            return naturalFloor;"
+        ));
     }
 
     @Test

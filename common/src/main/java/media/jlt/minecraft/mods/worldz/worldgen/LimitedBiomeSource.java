@@ -597,6 +597,46 @@ public final class LimitedBiomeSource extends BiomeSource {
         );
     }
 
+    /**
+     * Tests whether the vanilla pass-through (DESIGN §20.5, GOALS 13/14) applies at one
+     * column. Used by {@code EnvelopedChunkGenerator}'s terrain adjustment so a passed-
+     * through river/ocean's natural depression is left untouched instead of being raised
+     * toward guaranteed land -- otherwise {@link #getNoiseBiome} would display a river or
+     * ocean biome over terrain that had already been flattened back to dry land.
+     *
+     * @param blockX absolute block X (never origin-relative -- vanilla's own terrain has
+     *     no notion of Worldz's layout origin)
+     * @param blockY representative block Y; the natural, unadjusted floor height at this
+     *     column is a good choice since it is close to where the real surface will be
+     * @param blockZ absolute block Z
+     * @param sampler the real world's climate sampler
+     * @return true when {@link #getNoiseBiome} would return a passed-through vanilla biome here
+     */
+    public boolean isNaturalPassThroughAt(int blockX, int blockY, int blockZ, Climate.Sampler sampler) {
+        return naturalPassThroughBiome(
+            QuartPos.fromBlock(blockX), QuartPos.fromBlock(blockY), QuartPos.fromBlock(blockZ), sampler
+        ).isPresent();
+    }
+
+    /**
+     * Shared by {@link #getNoiseBiome} and {@link #isNaturalPassThroughAt} so the two never
+     * disagree about where the pass-through applies.
+     */
+    private Optional<Holder<Biome>> naturalPassThroughBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
+        Optional<MultiNoiseBiomeSource> naturalDelegate = this.resolution.get().naturalDelegate();
+        if (naturalDelegate.isEmpty()) {
+            return Optional.empty();
+        }
+        Holder<Biome> natural = naturalDelegate.get().getNoiseBiome(quartX, quartY, quartZ, sampler);
+        if (this.allowRivers && natural.is(BiomeTags.IS_RIVER)) {
+            return Optional.of(natural);
+        }
+        if (this.allowOceans && natural.is(BiomeTags.IS_OCEAN)) {
+            return Optional.of(natural);
+        }
+        return Optional.empty();
+    }
+
     private int originQuartX() {
         return QuartPos.fromBlock(this.originBlockX);
     }
@@ -627,15 +667,9 @@ public final class LimitedBiomeSource extends BiomeSource {
         if (isInStarterZone(quartX, quartZ)) {
             return this.starterBiome.orElseThrow();
         }
-        Optional<MultiNoiseBiomeSource> naturalDelegate = this.resolution.get().naturalDelegate();
-        if (naturalDelegate.isPresent()) {
-            Holder<Biome> natural = naturalDelegate.get().getNoiseBiome(quartX, quartY, quartZ, sampler);
-            if (this.allowRivers && natural.is(BiomeTags.IS_RIVER)) {
-                return natural;
-            }
-            if (this.allowOceans && natural.is(BiomeTags.IS_OCEAN)) {
-                return natural;
-            }
+        Optional<Holder<Biome>> passThrough = naturalPassThroughBiome(quartX, quartY, quartZ, sampler);
+        if (passThrough.isPresent()) {
+            return passThrough.get();
         }
         if (this.worldLayoutPlan.mode() != LayoutMode.LEGACY) {
             WorldLayoutPlan layoutPlan = this.effectiveLayoutPlan;
