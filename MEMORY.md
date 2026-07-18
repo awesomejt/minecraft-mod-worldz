@@ -597,6 +597,35 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `WorldzCommon.MOD_VERSION` — avoids needing separate Fabric-`ModContainer`
   vs. NeoForge-`ModList` lookups in loader-neutral `common` code for one
   cosmetic header field. See DESIGN §20.3's Phase 2.4 subsection.
+- 2026-07-17 — **Phase 2.7 acceptance closed; Jason approved Phase 3.** The
+  in-game pass surfaced and fixed three real defects along the way
+  (spawn-area performance, `ChunkGeneratorStructureState`'s stale dummy
+  `RandomState` causing floating structures, `starter_at_origin` deferring
+  to vanilla's climate-blind spawn search) — see the dedicated entries
+  above. One residual item was explicitly *not* chased further at Jason's
+  direction: two floating villages seen in world `Worldz-10`
+  (`(-95, -910)`, `(1427, -1302)`) were never checked against true vanilla
+  at the same seed, unlike every earlier floating-structure report in this
+  investigation (all of which turned out to be either the real bug, now
+  fixed, or an ordinary vanilla terrain-elevation quirk once compared
+  properly). Given the weight of contrary evidence — a 10-village/5-biome
+  comparison at 9/10 flush, and a separate later Worldz-11 check where every
+  vanilla village location was flush regardless of biome — the likely
+  explanation is the latter (seed-specific vanilla quirk, not a Worldz
+  defect), but this is not confirmed. **Decision: log it, don't dig further
+  now.** If floating structures are seen again in a later phase's testing,
+  the correct next step is the same controlled vanilla-vs-Worldz comparison
+  at the exact coordinates — not re-opening the RandomState/threading
+  hypothesis, which diagnostic logging already conclusively disproved (one
+  `RandomState` identity observed across an entire session, all call sites,
+  both threads). See TODO.md's "Questions for Jason" for the same note.
+- 2026-07-17 — GOALS 15 (cave-biome pass-through) moved out of Phase 3 into
+  a new TODO "Backlog" section rather than kept as draft task 3.3. GOALS.md
+  already calls it "scope for a later phase" and it needs a materially
+  different design (depth-aware `WorldLayoutPlan` sampling, not the
+  surface-family pass-through 3.1 implements) — keeping it inside Phase 3's
+  gate would have blocked the phase on a task nobody intended to execute
+  yet. Not scheduled to a specific phase number; revisit with Jason later.
 
 ## Reference Log
 

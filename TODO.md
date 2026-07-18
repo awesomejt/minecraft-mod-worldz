@@ -112,9 +112,13 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       baseline; update MANUAL_TESTING.md scenario table.
 - [x] 2.6 README restructure begins: challenge-type-first presentation,
       **new worlds only** restriction, single-biome section.
-- [ ] 2.7 [Jason] Acceptance: 10 (one biome, normal terrain/caves/structures),
+- [x] 2.7 [Jason] Acceptance: 10 (one biome, normal terrain/caves/structures),
       11 (starter differs), 12 (same seed twice → same placement; spawn in
-      the chosen biome).
+      the chosen biome). **Done 2026-07-17** after an extended defect-fixing
+      cycle (performance, structure-placement, spawn-placement — all fixed,
+      see MEMORY.md and the entries below); Jason approved moving to Phase 3.
+      One residual, low-priority item logged rather than chased further: see
+      "Questions for Jason" below.
 
 ## Phase 3 — Single-biome variations: natural rivers and oceans (GOALS 13–14)
 
@@ -125,16 +129,6 @@ every later phase reuses. Design task first, per DESIGN §20.6.
       grid, no height blending. Config/Customize toggles: `allowRivers`,
       `allowOceans`.
 - [ ] 3.2 Test configs for 13 and 14; docs; **[Jason]** acceptance.
-- [ ] 3.3 (GOALS 15, approved 2026-07-17) Configuration option to let
-      vanilla's own underground cave biomes (dripstone caves, lush caves,
-      deep dark) generate normally in single_biome worlds, instead of the
-      single biome applying uniformly at every depth. Needs a design pass
-      first: `LimitedBiomeSource.getNoiseBiome`'s layout branch currently
-      samples `WorldLayoutPlan` using only `(blockX, blockZ)` — no `quartY`
-      — so this needs genuinely depth-aware sampling, not just the
-      surface-family pass-through 3.1 adds. Decide the depth/threshold rule
-      and how it composes with 3.1's toggles. Test configs; **[Jason]**
-      acceptance.
 
 ## Phase 4 — Chaos biomes (GOALS 33)
 
@@ -393,6 +387,19 @@ pulled earlier if Jason wants a fun quick win.**
 
 ---
 
+## Backlog (approved, not yet scheduled to a phase)
+
+- GOALS 15 (approved 2026-07-17): configuration option to let vanilla's own
+  underground cave biomes (dripstone caves, lush caves, deep dark) generate
+  normally in `single_biome` worlds, instead of the single biome applying
+  uniformly at every depth. GOALS.md's own text calls this "scope for a
+  later phase" — moved out of Phase 3's gate (was briefly drafted there as
+  3.3) since it needs genuinely depth-aware `WorldLayoutPlan` sampling
+  (`getNoiseBiome`'s layout branch only takes `(blockX, blockZ)`, no
+  `quartY`), a materially bigger design than 3.1's surface-family
+  pass-through. Revisit once a later phase's slot is picked with Jason; not
+  part of any current phase's completion gate.
+
 ## Carried-over open risks (from MEMORY.md)
 
 - Dummy-RandomState fix (0.1.15) unverified in-game → Phase 1.1.
@@ -463,6 +470,22 @@ pulled earlier if Jason wants a fun quick win.**
   performance slowness (still ~60s spawn-area prep after the earlier
   de-duplication fix) is unresolved — Jason is adding Spark to both test
   instances to profile it directly next.
+- 2026-07-17 — **Floating-structure fix: watched, not fully closed.** After
+  the `@Redirect` fix (above), evidence is mostly strongly positive: a
+  10-village/5-biome comparison (9/10 flush) and a separate later check
+  (world `Worldz-11`, config 12/`preferred_natural_biome`) where "all the
+  vanilla village locations regardless of vanilla biome" rendered flush.
+  However, world `Worldz-10` showed two floating villages
+  (`(-95, -910)` and `(1427, -1302)`) that were never checked against true
+  vanilla at the same seed/coordinates to rule out an ordinary seed-specific
+  vanilla quirk (the same methodology that resolved every earlier false
+  alarm in this investigation). Jason's call (2026-07-17): not worth
+  digging into further right now. **Logged as a possible open item to
+  revisit only if floating structures are seen again** in later phases'
+  acceptance testing — if so, the first move is the same controlled
+  vanilla-vs-Worldz comparison at the exact coordinates, not re-opening the
+  RandomState/threading investigation (that hypothesis is already
+  conclusively disproven — see MEMORY.md).
 
 ## Deviation log
 
