@@ -122,13 +122,16 @@ every later phase reuses. Design task first, per DESIGN §20.6.
 
 ## Phase 3 — Single-biome variations: natural rivers and oceans (GOALS 13–14)
 
-- [ ] 3.1 Design + implement vanilla pass-through selection (DESIGN §20.5):
+- [x] 3.1 Design + implement vanilla pass-through selection (DESIGN §20.5):
       where vanilla's own biome would be a river (13) or river/ocean family
       (14), keep vanilla's choice; otherwise substitute the single biome.
       Terrain is untouched, so coastlines/rivers are exactly natural — no
       grid, no height blending. Config/Customize toggles: `allowRivers`,
-      `allowOceans`.
-- [ ] 3.2 Test configs for 13 and 14; docs; **[Jason]** acceptance.
+      `allowOceans`. **Done (0.2.6).**
+- [x] 3.2 Test configs for 13 and 14 (`config/tests/14`-`15`); docs
+      (`MANUAL_TESTING.md`'s "Phase 3 acceptance", README, snapshot fields).
+      **[Jason] acceptance still outstanding** — see MANUAL_TESTING.md for
+      the exact steps.
 
 ## Phase 4 — Chaos biomes (GOALS 33)
 
