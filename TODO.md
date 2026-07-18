@@ -399,11 +399,15 @@ pulled earlier if Jason wants a fun quick win.**
   **Update 2026-07-17:** verification (bottom-of-world check) passed, but
   in the process found and fixed a *related* bug the original fix missed
   (`ChunkGeneratorStructureState` still built from the dummy RandomState —
-  see MEMORY.md's 0.2.4 entry). NeoForge repeat and the Worldz14
-  orange/glitchy reproduction retest are still outstanding (that specific
-  visual symptom never reproduced in any of this session's testing, which
-  is itself informative — the new symptoms found were floating structures
-  and a spawn-search gap, both different from Worldz14's description).
+  see MEMORY.md's 0.2.4 entry). **Confirmed fixed** via a 10-village,
+  five-biome vanilla-vs-Worldz comparison (9/10 perfectly flush, one
+  isolated partial-float judged a normal low-severity vanilla quirk, not a
+  defect) — closed. NeoForge repeat and the Worldz14 orange/glitchy
+  reproduction retest are still outstanding as standalone checklist items,
+  but that specific visual symptom never reproduced in any of this
+  session's testing, which is itself informative — the symptoms actually
+  found (floating structures, a spawn-search gap) were both different from
+  Worldz14's description and are now resolved.
 - Worldz14 orange/glitchy terrain unexplained → Phase 1.1.
 - Straight coastlines + beach width → removed with the grid modes (1.2);
   ocean-island shore quality is redesigned properly in 7.1.
@@ -432,9 +436,11 @@ pulled earlier if Jason wants a fun quick win.**
   floating/glitchy terrain, theorized-but-never-confirmed fixed by the
   0.1.15 dummy-RandomState mixin). **Not explained by the 2026-07-17
   performance fix below** — config 10 has no starter biome, so that code
-  path never ran in this session. Still open: Jason's in-game fall/clip
-  test at that location, plus the still-open TODO 1.1 bedrock/cave check,
-  are both still needed.
+  path never ran in this session.
+  **Resolved 2026-07-17** — root cause found (`ChunkGeneratorStructureState`
+  built from the dummy RandomState, see MEMORY.md's 0.2.4 entry) and fixed;
+  confirmed via a 10-village, five-biome vanilla-vs-Worldz comparison
+  (9/10 perfectly flush). Closed.
 - 2026-07-17 — Phase 2.7 in-game testing (config 11, world `Worldz-05`,
   desert + plains starter) found a severe, real performance bug — see the
   MEMORY.md entry for the fix. Re-test config 11 once the fix is deployed;

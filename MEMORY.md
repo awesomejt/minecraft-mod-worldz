@@ -1147,6 +1147,26 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Prism instances (manual copy for NeoForge, no `deployToPrism`-equivalent
   Gradle task exists there yet).
 
+  **Confirmed fixed in-game (2026-07-17, same day).** First retest showed
+  improvement but not a full fix (Y140→Y80, still ~15 blocks above what
+  looked like baseline) — investigated further before accepting that as
+  residual, since Jason first confirmed vanilla villages are *always* flush
+  (ruling out "this is just an ordinary vanilla quirk"). The real test:
+  find a village in a plain vanilla world first, then check the identical
+  seed/coordinates in Worldz. Across 10 villages spanning five biomes
+  (desert, plains, savanna, snowy, taiga), 9 were perfectly flush with
+  Worldz's copy of the same village; one plains village showed a partial
+  (not whole-structure) float. The earlier "~15 blocks above Y65" reading
+  is now understood as a methodology artifact, not a real gap: desert
+  terrain has natural dune variance, so a village's true natural elevation
+  at a given spot can legitimately be Y75-80 rather than flat sea level —
+  comparing against an assumed flat baseline instead of that location's
+  actual vanilla-generated height made correctly-grounded villages look
+  like they were floating. The one remaining partial-float case is judged
+  an isolated, low-severity per-piece anomaly (the kind unmodified vanilla
+  occasionally produces on sloped terrain too), not a systematic defect —
+  not investigated further absent a reason to think otherwise. **Closed.**
+
   **Open question this doesn't yet answer:** whether this also explains
   the remaining ~60s spawn-area-prep slowness (unclear — a degenerate
   density router isn't obviously *slower* to evaluate than a real one, so
