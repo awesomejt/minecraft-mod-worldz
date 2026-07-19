@@ -694,6 +694,31 @@ Durable decisions, verified API notes, and rationale that should survive across 
   surface-family pass-through 3.1 implements) — keeping it inside Phase 3's
   gate would have blocked the phase on a task nobody intended to execute
   yet. Not scheduled to a specific phase number; revisit with Jason later.
+- 2026-07-18 (Phase 5) — Two upfront design calls, both Jason's recommended
+  option: (1) End border is a simple `EndBorderConfig`/`EndLimit` — a
+  `carryFromOverworld` toggle plus a `minimumRadiusBlocks` floor (default
+  256) — not full `BorderConfig` schedule parity, since GOALS 17 only asks
+  to carry the Overworld's eventual size over, not independently animate
+  an End-specific expand/collapse. It's static: resolved once at world
+  creation from the Overworld's *final* radius, floored at the minimum.
+  (2) Chunk-unit input (GOALS 17/18 "blocks... or chunks") is a UI-only
+  `RadiusUnit` toggle in the border/exterior screens that converts
+  whatever's currently typed; blocks stays the one persisted/validated
+  unit everywhere (YAML, snapshot, codecs) — no schema change.
+  Also: 5.1's audit found every other GOALS 17-20 item (invisible-wall vs.
+  void-exterior separation, expansion rate + initial delay, a collapsing
+  border's `finalRadiusBlocks` already being its minimum, center-safe
+  spawn) already correct against the wording — the only real code gap was
+  the chunk-unit input. And: border/exterior/limits already applied
+  uniformly to every world type since Phase 2-4 at the *code* level (each
+  typed preset's editor already read the shared config's plans); 5.3's
+  real gap was Customize-*screen* exposure — `single_biome`/`chaos_biomes`
+  had no in-screen border/exterior controls at all, and the generic
+  preset had no End Border control (5.2 added it config-only, as a
+  documented stop-gap, then 5.3 finished it). This means Phase 4.2's
+  Customize-screen acceptance ("chaos_biomes shows none of the full
+  Worldz preset's border/exterior controls") is now intentionally
+  superseded — logged in TODO.md's Deviation log, not a regression.
 
 ## Reference Log
 
