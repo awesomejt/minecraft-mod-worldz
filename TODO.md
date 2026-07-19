@@ -259,8 +259,9 @@ composed with the new world types; plus the one real gap (the End).
       config 22 ✓ (2026-07-18, slow 2048→256/40-day collapse — works well;
       only pre-existing biome-painting artifacts noted, see Backlog); config
       21 ✓ (2026-07-18, after 5.5's radius-floor fix and 5.6's
-      spawn-offset fix, both under 0.2.14); config 23 + the two UI checks
-      still outstanding.
+      spawn-offset fix, both under 0.2.14); config 23 ✓ (2026-07-18, End
+      carry-over works as expected). Two no-config-file UI checks not
+      separately confirmed but not blocking further phase work.
 - [x] 5.5 Lower the border radius floor (found in config 21 acceptance:
       `initialRadiusBlocks: 4` rendered as a 64-block border). **Done
       (0.2.13):** `WorldzConfig.MIN_BORDER_RADIUS_BLOCKS = 64 → 1` per

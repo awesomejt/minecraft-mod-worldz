@@ -811,6 +811,15 @@ Durable decisions, verified API notes, and rationale that should survive across 
   confirmed config 21 working, 2026-07-18** — both the radius-floor
   (5.5) and spawn-offset (5.6) fixes hold up in-game; config 21 is
   closed out.
+- 2026-07-18 — **Config 23 (End border carry-over) confirmed working**
+  in-game (Jason). Phase 5's config-based acceptance is now fully done
+  (20, 21, 22, 23 all passed); only the two no-config-file UI checks are
+  unconfirmed, not treated as blocking further phase work. Jason then
+  gave the go-ahead to proceed through the rest of the "5-series" (5b,
+  5c, 5d) — implementing them now, one phase at a time with the usual
+  stop-and-test gate at each phase's end; 5c's mandatory spike/go-no-go
+  split (DESIGN §21.2/TODO 5c) still applies regardless of this
+  go-ahead.
 
 ## Reference Log
 
