@@ -737,6 +737,40 @@ Durable decisions, verified API notes, and rationale that should survive across 
   chunk regeneration (pipeline classes confirmed present in 26.2 sources) —
   mandatory spike (5c.1) with a Jason go/no-go before 5c.2 is re-planned
   and executed.
+- 2026-07-18 (post-Phase-5 review, second pass — planning only, no code) —
+  Border presentation & enforcement (GOAL 18 clarification + new GOAL 39,
+  DESIGN §22, TODO Phase 5d). Decisions: (1) border *visual* and
+  *enforcement* are independent axes, both orthogonal to the exterior —
+  `visual: striped | invisible` (+ optional static-only marker ring one
+  block beyond the boundary), `enforcement: wall | damage | none`; Jason's
+  original `borderType: void | barrier` framing was remodeled this way to
+  preserve the standing border-vs-world-size orthogonality. (2) Damage
+  enforcement (GOAL 39): permeable edge, chat warning, time-based grace
+  with **instant reset** on re-entry — deliberately no separate "breath
+  meter": health is the meter, eating is the recovery cost, hunger prices
+  abuse. Screen tint deepens as grace runs out (grace-driven custom
+  overlay recommended over reusing vanilla's distance-based vignette).
+  (3) **No-immunity rule**: nothing may grant 100% protection outside the
+  border — mitigation slows damage / optionally extends grace only;
+  enforced structurally via damage-type tags (`bypasses_armor`,
+  `bypasses_effects` so Resistance V can't immunize, NOT
+  `bypasses_invulnerability` so vanilla Protection works, capped at 80%)
+  plus bounded custom-enchantment values. (4) Enchantments: vanilla
+  Protection reduces border damage for free (verified protection.json's
+  only condition is the bypasses_invulnerability tag's absence); custom
+  data-driven enchantment scoped to our damage type for extra reduction +
+  code-side bounded grace extension. (5) Barrier-block shell wall
+  considered and parked (creative leak, static-only); static soft-void
+  edge needs no new code (border off + void exterior + explicit boundary
+  radius — promote via test config). Feasibility verified in 26.2 sources:
+  `WorldBorderRenderer.render` early-outs at alpha ≤ 0 (one-mixin wall
+  suppression), `Hud.extractVignette` strength is 0 when warning
+  blocks/time are 0 (server-side vignette kill) and clamps to full red
+  outside the border, border collision has a single injection point
+  (`Entity.collectCollidersIgnoringWorldBorder` gated on
+  `isInsideCloseToBorder`), and vanilla border damage lives in
+  `LivingEntity` via `damagePerBlock`/`safeZone` (we zero it and run our
+  own timer in `WorldLimitManager.onServerTick`).
 
 ## Reference Log
 

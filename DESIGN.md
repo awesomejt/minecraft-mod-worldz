@@ -1587,3 +1587,125 @@ edge and fall out of the world. The same `BorderSchedule` drives the
 - **Backfill overwrites** whatever was built in the void ring (Jason,
   2026-07-18): documented challenge rule — the void is unclaimed; build out
   there at your own risk. Thematically the world "reveals itself".
+
+## 22. Border presentation & enforcement (2026-07-18)
+
+Second planning pass from Jason's Phase 5 review (GOAL 18 clarification +
+new GOAL 39). Everything below was feasibility-verified against the real
+26.2 sources/data on 2026-07-18; nothing is implemented yet (TODO Phase 5d).
+Core model: the border's **visual** and its **enforcement** are independent
+axes, both orthogonal to the exterior (per the standing border-vs-world-size
+philosophy) and to the resize schedules (§21.1):
+
+- `visual: striped | invisible` (+ optional marker ring)
+- `enforcement: wall | damage | none`
+
+### 22.1 Visuals
+
+The vanilla border look has three separable layers (all verified):
+
+1. **Physics** — collision/placement limits, in `WorldBorder` itself,
+   independent of rendering. Untouched by visual options.
+2. **Red warning vignette** — `Hud.extractVignette` computes its strength
+   from `warningBlocks`/`warningTime`; with both set to 0 the strength is
+   exactly 0 even during a lerp. Plain server-side setters — killable with
+   **no client code**.
+3. **Striped wall** (`forcefield.png`) — drawn by the dedicated client
+   class `WorldBorderRenderer`, whose `render()` early-outs when
+   `state.alpha <= 0`. A one-line client mixin (force alpha 0 in
+   `extract`) hides the wall entirely, for static *and* moving borders.
+   We already ship client mixins on Fabric and the NeoForge mixin
+   bootstrap, so this is established machinery. Caveat (document): on a
+   dedicated server an unmodded client still sees stripes — fine under
+   the client-first acceptance policy.
+
+**Marker ring** (optional module): a one-block ring on the surface just
+beyond the boundary, marking an invisible edge without a curtain.
+`EnvelopedChunkGenerator` already classifies every column by radius
+(`modeAt`), so placing a marker block on boundary+1 columns at generation
+time is a natural extension. Generation-time ⇒ **static borders only** (a
+scheduled border would sweep past a stale ring — validate/reject the
+combo). Open execution-time choices: marker block id (config, sensible
+default), and behavior where the ring crosses water (seabed vs surface).
+
+An alternative physical wall — a generated shell of `minecraft:barrier`
+blocks — was considered and parked: it is the only option invisible to
+unmodded clients on a server, but it is static-only, forces a wall-height
+decision, and leaks visually in creative. Logged, not scheduled.
+
+### 22.2 Enforcement: `wall | damage | none`
+
+- **`wall`** — today's vanilla collision. Default.
+- **`none`** — no border object; the edge is whatever the exterior does
+  (the soft void edge). Static case needs zero new code: border disabled +
+  void exterior + explicit `boundaryRadiusBlocks` is already expressible
+  (promote via a test config). The *scheduled* version is GOAL 38 /
+  Phase 5c.
+- **`damage`** (GOAL 39) — permeable edge with time-based grace, then
+  damage-over-time. Details below.
+
+### 22.3 Damage enforcement (GOAL 39)
+
+Vanilla precedent: `LivingEntity`'s tick already damages players outside
+the border (`damagePerBlock × distance` beyond a `safeZone` buffer) — but
+its grace is distance-based, silent, and the wall normally prevents
+voluntary exit. We zero `damagePerBlock` and implement the time-based spec
+as per-player logic in the existing `WorldLimitManager.onServerTick`
+(already called every tick on both loaders):
+
+- Crossing the current (scheduled) radius → chat warning with the grace
+  time; grace timer starts. **Instant reset** on re-entry (Jason,
+  2026-07-18) — no separate meter; health is the meter and eating is the
+  recovery cost, so vanilla's regen-drains-hunger loop naturally prices
+  repeated abuse.
+- Grace expiry → periodic damage on a drowning-like cadence (default
+  ~1 heart/s; amount and interval configurable) until back inside, then a
+  short "safe" message. Creative/spectator exempt; mobs unaffected; state
+  cleaned up on death/logout.
+- Permeability: with `visual: invisible` no vanilla border object is
+  needed at all (pure tick logic — no mixins). With `visual: striped`, the
+  border object is kept and one mixin skips its collision shape (verified
+  single injection point: `Entity.collectCollidersIgnoringWorldBorder`,
+  gated on `WorldBorder.isInsideCloseToBorder`).
+- Config sanity: `damage` + void exterior is a nonsense combo (you fall
+  before grace matters) — warn at sanitize time. Sweet spots: natural
+  generation beyond (GOAL 18) or ocean exterior (swim out and race back).
+  Composes with §21.1 schedules for free — the check reads the current
+  scheduled radius.
+
+**Danger tint**: recommended implementation is a small custom overlay
+(per-loader HUD hook; the same one-texture `vignette.png` blit vanilla's
+`Hud` does) driven by *our* grace state — the tint starts at the crossing,
+deepens as the grace runs out, and stays maxed during the damage phase, so
+the tint itself is the countdown display. Cheap fallback (verified): keep
+the vanilla border object and its vignette — `Hud.extractVignette` clamps
+to full red when outside the border — at the cost of it being
+distance-based rather than grace-aware.
+
+**Damage type** (data + a small `DamageSource` holder lookup): own
+`jlt_worldz` damage type JSON ⇒ custom death message lang key. Tag choices
+enforce the design: `bypasses_armor` (armor points don't help —
+drowning-like), `bypasses_effects` (Resistance V cannot grant its 100%
+immunity), and **not** `bypasses_invulnerability` — verified that vanilla
+`protection.json`'s only requirement is that tag's absence, so Protection
+reduces border damage automatically, and vanilla caps
+enchantment-protection stacking at 80%.
+
+**No-immunity rule (Jason, 2026-07-18)**: no combination of armor,
+effects, or enchantments may ever grant 100% protection outside the
+border — mitigation may *slow* damage and *optionally extend* grace,
+never eliminate them. Guaranteed structurally by the tag choices above
+(Protection capped at 80%, Resistance bypassed) plus bounded custom-
+enchantment effects (fixed per-level values with low max levels — e.g.
+a few seconds of grace per level — chosen so damage stays meaningful).
+
+**Enchantments** (26.2 enchantments are fully data-driven — verified):
+vanilla Protection works with zero code (above). A custom enchantment
+("Border Ward"-style) is JSON-only for damage reduction — a
+`minecraft:damage_protection` effect scoped via damage-source predicate to
+our damage-type tag — with availability/exclusivity as ordinary tags. The
+grace-*extension* effect is the one code-side piece: read the enchant
+level from armor in the tick logic and add bounded seconds per level.
+Clean split: Protection = discoverable damage relief; the custom enchant =
+the specialized grace tool you hunt for. Both bounded per the no-immunity
+rule.

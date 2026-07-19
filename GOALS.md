@@ -100,6 +100,34 @@ Client only mod loaders:
 17. Limit world size to certain number of blocks (square radius) or chunks. This is independent of above use cases - so vanilla generation or any of the above cases would still be impacted. Option to force access to blaze rods and end portal so game remains beatable. Option to carry world size to Nether and End - but must be large enough to defeat the game. Thus, really small sizes should be overridden in End to allow access to kill the Ender Dragon.
 18. Option to have world outside defined size to be hard set (no generation/void) or infinate natural generation based on seed - but invisible wall prevents access to world beyond defined size.
 
+   **Clarification (2026-07-18):** the border's *look* and its *enforcement*
+   are independent options (see DESIGN §22). Visuals: the vanilla striped
+   wall, or a truly **invisible border** (no wall texture, no red warning
+   vignette — feasibility verified, small client mixin + existing warning
+   setters), optionally paired with a one-block **marker ring** on the
+   surface just beyond the boundary so the edge is findable without a giant
+   striped curtain (static borders only — generation-time). A static
+   soft-void edge (no border at all, terrain just ends) is already
+   expressible today: border disabled + void exterior with an explicit
+   boundary radius — the static special case of 38.
+
+39. Damage-enforced soft border ("the world hurts you back"): the player
+   *can* walk beyond the world edge — like swimming underwater, minus the
+   meter. Crossing the edge posts a chat warning and starts a grace period;
+   when it expires the player takes periodic damage until they return
+   (grace resets instantly on re-entry — health is the meter, eating is the
+   recovery cost, so hunger naturally prices abuse). A screen tint reddens
+   as the grace runs out and stays red while taking damage, replacing the
+   striped wall as the danger signal. Border damage is its own damage type
+   (custom death message); vanilla Protection reduces it (capped well below
+   100%), and a custom enchantment can slow the damage and optionally
+   extend the grace period — but **no combination may ever grant complete
+   immunity to being outside the border** (Jason, 2026-07-18). Only makes
+   sense with non-void exteriors (natural generation per 18, or ocean —
+   swim out and race back); composes with the expanding/collapsing
+   schedules (19–20), e.g. a collapsing world where lingering outside the
+   shrinking edge hurts. See DESIGN §22.
+
 ### Expanding/Collapsing World:
 
 19. Similar to 16, but world size becomes starting world size. World expands based on number of days in game, after an initial starting delay. Both the rate of expansion, number of blocks radius/chunks, and initial delay are configurable.

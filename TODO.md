@@ -307,6 +307,48 @@ must be re-planned from the spike's findings before execution.
       border (soft mode presumably disables the wall); test configs; docs;
       **[Jason]** acceptance.
 
+## Phase 5d — Border presentation & enforcement (GOALS 18 clarification, 39)
+
+Second scope addition from Jason's 2026-07-18 Phase 5 review. Design fully
+settled in DESIGN §22 (all feasibility claims verified against 26.2
+sources/data that day — renderer suppression point, vignette math, collision
+injection point, protection.json's tag condition); decisions in MEMORY.md.
+Independent of 5b/5c; Jason picks phase order.
+
+- [ ] 5d.1 `visual: striped | invisible` on border configs: config/codec/
+      customization plumbing (default `striped`); invisible = client mixin
+      forcing `WorldBorderRenderer` alpha to 0 (per-loader client mixin,
+      like Fabric's existing `mixin/client/`) + `setWarningBlocks(0)`/
+      `setWarningTime(0)` at border init. Document the dedicated-server/
+      unmodded-client caveat. JUnit for config/plumbing; visual check is
+      manual.
+- [ ] 5d.2 Marker-ring module (static borders only — validate/reject with
+      scheduled resizing): generation-time one-block ring at boundary+1 via
+      the existing `modeAt` column classification; configurable block id
+      (pick a sensible default); decide water behavior (seabed vs surface)
+      during execution and log it.
+- [ ] 5d.3 `enforcement: wall | damage | none` + the damage mode's core:
+      per-player grace/damage state machine in `WorldLimitManager.
+      onServerTick` (chat warning on crossing, instant reset on re-entry,
+      drowning-cadence periodic damage, creative/spectator exempt, death/
+      logout cleanup); custom damage type JSON + death message + tags per
+      DESIGN §22.3 (`bypasses_armor`, `bypasses_effects`, not
+      `bypasses_invulnerability`); vanilla `damagePerBlock` zeroed; sanity
+      warning for damage+void-exterior; collision-permeable mixin only for
+      the striped+damage combo (invisible+damage needs no border object).
+      Timer/threshold math as pure JUnit-tested logic.
+- [ ] 5d.4 Grace-driven danger tint: per-loader HUD overlay blitting the
+      vanilla vignette texture, intensity ramping over the grace window and
+      maxed during damage (DESIGN §22.3's recommended route).
+- [ ] 5d.5 Enchantment integration: custom data-driven enchantment
+      (damage_protection effect scoped to our damage-type tag, JSON-only)
+      + bounded grace-extension read in the tick logic; verify vanilla
+      Protection reduction in-game; enforce the no-immunity rule (bounded
+      levels, Protection's 80% cap, Resistance bypassed). Test configs
+      (incl. one static soft-void combo config and a damage+ocean config),
+      config/tests README + MANUAL_TESTING rows, README docs; **[Jason]**
+      acceptance.
+
 ## Phase 6 — Strip world, 1D Minecraft (GOALS 32)
 
 Right after the limits phase: it is the same access/envelope machinery in a
