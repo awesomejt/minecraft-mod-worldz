@@ -866,6 +866,40 @@ Durable decisions, verified API notes, and rationale that should survive across 
   that config-comment updates (done earlier for 21/22) and the separate
   test-catalog README don't automatically stay in sync with each other.
   0.2.17 deployed to Worldz-Test; Jason still needs to test 24/25.
+- 2026-07-19 — **Jason confirmed configs 24/25 both work as desired.**
+  Phase 5b fully closed out.
+- 2026-07-19 — **Phase 5c.1 spike done (0.2.18), mixed result — full
+  findings in DESIGN §21.2, TODO's 2026-07-19 Deviation log entry, and
+  TODO 5c.1 itself.** Short version: the live-radius half of the spike is
+  real working code (`EnvelopedChunkGenerator.envelope` is now `volatile`
+  with a setter); the "prove single-chunk backfill" half turned out to
+  need far more than a single chunk — `ChunkPyramid` requires an
+  8-chunk-radius neighborhood at `STRUCTURE_STARTS` for most generation
+  stages, meaning hand-driving `ChunkStatusTasks` ourselves would mean
+  reimplementing internal orchestration types
+  (`StaticCache2D<GenerationChunkHolder>`, `WorldGenContext`) that exist
+  to be built by `ChunkMap`'s own pipeline. Did not attempt this blind —
+  wrote up the research instead (this project has zero automated game
+  tests, so a subtly-wrong chunk-generation hack would only surface as a
+  live visual defect Jason discovers, not something catchable in
+  review). One good find: applying already-computed terrain to a live
+  chunk needs no custom relighting/resync code at all — ordinary
+  `Level.setBlock` already handles heightmaps, the light engine, and
+  client packets automatically (verified by reading
+  `LevelChunk.setBlockState`/`Level.setBlock` directly). Recommended,
+  not-yet-attempted alternative: WorldEdit-`//regen`-style chunk
+  invalidation, reusing vanilla's own async pipeline instead of
+  reimplementing its neighbor cascade. **Awaiting Jason's go/no-go** on
+  whether to pursue GOAL 38 further, and if so, how.
+- 2026-07-19 (process note) — mid-session, a shell `cd` silently drifted
+  to `/shared/projects/minecraft/info` (a different, unrelated mod repo)
+  and one `./gradlew build` command ran there by mistake before being
+  caught (harmless — a build is read-mostly, and `git status` confirmed
+  no source files changed, only pre-existing untracked `bin/` dirs).
+  Lesson: when a background reminder reports the shell's cwd was reset,
+  don't assume the next bare command (no explicit `cd`) is still running
+  in the intended repo — check `pwd` or prefix an explicit `cd` before
+  trusting build/test output, especially for commands with side effects.
 
 ## Reference Log
 

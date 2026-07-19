@@ -70,7 +70,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
     private final ChunkGenerator delegate;
     private final Dimension dimension;
-    private final ExteriorPlan.DimensionEnvelope envelope;
+    /**
+     * Not {@code final}: Phase 5c's soft-void border (GOAL 38) needs the boundary radius to
+     * change while the world runs, read from worldgen worker threads. A plain volatile
+     * reference is enough -- every read site already re-reads {@code this.envelope} fresh per
+     * call rather than caching it across a chunk's generation, and swapping in a whole new
+     * immutable {@link ExteriorPlan.DimensionEnvelope} instance is inherently atomic. No
+     * {@code SavedData} reads happen here; {@link #setEnvelope} is called from the main
+     * server thread by whatever schedule driver ends up owning the live radius.
+     */
+    private volatile ExteriorPlan.DimensionEnvelope envelope;
     private final Optional<StarterLandContext> starterLand;
     private final Optional<LayoutContext> layout;
     private final Optional<LimitedBiomeSource> originSource;
@@ -137,12 +146,26 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Returns the persisted envelope.
+     * Returns the currently active envelope (not necessarily what was persisted at world
+     * creation -- see {@link #setEnvelope}).
      *
-     * @return resolved dimension envelope
+     * @return live dimension envelope
      */
     public ExteriorPlan.DimensionEnvelope envelope() {
         return this.envelope;
+    }
+
+    /**
+     * Replaces the live envelope, changing the exterior boundary radius newly generated
+     * chunks will use from this point on. Does not touch chunks that already exist -- see
+     * TODO Phase 5c for the (currently unimplemented, spike-only) sweep/backfill machinery
+     * that would need to run alongside this for already-generated terrain to actually follow
+     * the new radius.
+     *
+     * @param envelope replacement envelope
+     */
+    public void setEnvelope(ExteriorPlan.DimensionEnvelope envelope) {
+        this.envelope = envelope;
     }
 
     private static EnvelopedChunkGenerator resolve(

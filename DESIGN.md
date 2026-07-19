@@ -1563,30 +1563,80 @@ edge and fall out of the world. The same `BorderSchedule` drives the
 
 - Today the exterior envelope is **frozen into `EnvelopedChunkGenerator` at
   world creation** (persisted in the generator codec) and chunks generate
-  exactly once. A scheduled void edge therefore needs the generator to read
-  a **live radius** (a volatile snapshot maintained by the tick driver;
-  chunk generation runs on worker threads, so no direct SavedData reads from
-  the generator).
+  exactly once.
 - **Collapse is the easy direction:** chunks first generated outside the
   shrunken radius are void automatically; terrain already generated outside
   it must be actively cleared to void — an incremental, per-tick-budgeted
   ring sweep (bounded block edits, no regeneration).
 - **Expansion is the hard direction:** chunks the player already caused to
   generate as void (walking near the edge generates chunks well past it)
-  must be **backfilled with real terrain** when the radius grows — i.e.
-  chunk regeneration, WorldEdit-`//regen` style: run the delegate
-  generator's stages into scratch `ProtoChunk`s and copy the result into the
-  live chunks, then rebuild heightmaps/lighting and resync clients. The
-  pipeline classes (`ProtoChunk`, `ChunkStatusTasks`, `WorldGenRegion`)
-  exist in the 26.2 sources and our generator already drives the delegate's
-  stages, so this is possible — but cross-chunk structures/decoration,
-  lighting, thread safety, and performance budgeting make it the heaviest
-  machinery proposed so far. **A spike proving single-chunk backfill in a
-  test world is mandatory before the feature is scheduled for real** (TODO
-  5c.1).
+  must be **backfilled with real terrain** when the radius grows.
 - **Backfill overwrites** whatever was built in the void ring (Jason,
   2026-07-18): documented challenge rule — the void is unclaimed; build out
   there at your own risk. Thematically the world "reveals itself".
+
+**Spike findings (TODO 5c.1, 2026-07-19):**
+
+*Live radius (done, low risk).* `EnvelopedChunkGenerator.envelope` is now a
+plain `volatile` field with a `setEnvelope(ExteriorPlan.DimensionEnvelope)`
+setter (0.2.18). Every read site already re-reads `this.envelope` fresh per
+call rather than caching it across a chunk's generation, and swapping in a
+whole new immutable `DimensionEnvelope` is inherently atomic, so this needed
+no other changes. Not yet wired to anything — no tick driver calls
+`setEnvelope` yet; that is 5c.2's job if greenlit.
+
+*Applying backfilled terrain to an already-loaded chunk (verified easy).*
+Once new terrain exists as ordinary block states, applying it to a chunk a
+player has already seen is completely ordinary: `Level.setBlock` (the same
+API any block placement uses) calls `LevelChunk.setBlockState`, which
+already updates all four heightmaps inline and queues the light engine
+(`ThreadedLevelLightEngine.checkBlock`) whenever light-relevant properties
+change, then `sendBlockUpdated` dispatches the client packet automatically.
+**No custom relighting or client-resync code is needed** — this de-risks
+half of the original 5c.1 task description ("rebuild heightmaps/lighting,
+resync the client"), confirmed by reading `LevelChunk.setBlockState` and
+`Level.setBlock` directly in the 26.2 sources.
+
+*Producing correct backfill terrain (still unresolved, harder than
+assumed).* This is the part that remains genuinely hard, and turns out
+harder than the original "run the delegate's stages into a scratch
+ProtoChunk" framing suggested. Read `ChunkPyramid`'s actual generation
+graph: `STRUCTURE_REFERENCES`, `BIOMES`, `NOISE`, `SURFACE`, and `CARVERS`
+each declare `addRequirement(ChunkStatus.STRUCTURE_STARTS, 8)` — an
+**8-chunk-radius (17×17 chunk) neighborhood** must already have
+structure-starts resolved before a single chunk can correctly reach
+`FEATURES`/`FULL`, because vanilla structures can claim or influence
+chunks far from their own origin. Hand-driving `ChunkStatusTasks`'
+`generateXxx` methods ourselves (the literal reading of the task) would
+mean either reimplementing that whole neighborhood-dependency cascade or
+constructing `StaticCache2D<GenerationChunkHolder>`/`WorldGenContext`
+instances ourselves — internal orchestration types that exist to be built
+by `ChunkMap`'s own async pipeline, not by arbitrary third-party code
+calling in in isolation. High effort, high risk of subtly-wrong output that
+only surfaces as a visual defect in a live client, exactly what this
+project's "no automated game tests, JUnit only" policy has no way to catch
+before Jason manually finds it.
+
+A more promising **candidate direction, not yet attempted**: rather than
+hand-driving generation, invalidate the target chunk (unload it, discard
+its persisted state) and let vanilla's *own* existing async chunk pipeline
+(`ChunkMap`/`ServerChunkCache`) regenerate it exactly as it would for a
+chunk visited for the first time — the same principle WorldEdit's
+`//regen` command uses. This reuses the neighbor-cascade machinery vanilla
+already built and tested, instead of reimplementing it. Real open
+questions this project hasn't yet verified: whether 26.2 exposes a safe
+"invalidate and reload" entry point without reflection into `ChunkMap`
+internals, whether doing this near loaded players/entities is safe, and
+whether a previously-decorated *neighbor* chunk that already placed blocks
+into the target (e.g. part of a tree) survives correctly or conflicts with
+the regenerated result.
+
+**Recommendation:** do not attempt either approach blind. If Jason wants to
+proceed, the next step should be a second, narrower spike specifically
+prototyping chunk invalidation + reload (still throwaway, still needs live
+Prism testing — this project has no way to validate chunk-lifecycle code
+without it) before committing to 5c.2's full scope. **[Jason] go/no-go**
+needed on whether to pursue this at all, and if so, which direction.
 
 ## 22. Border presentation & enforcement (2026-07-18)
 

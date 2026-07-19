@@ -405,8 +405,8 @@ Design is settled; these tasks are execution.
       section (configs 20/21/22/23) as passed with dates, since those
       confirmations happened in conversation but the checklist itself was
       never updated — only the two no-config-file UI checks remain
-      genuinely outstanding, still not blocking. **[Jason] to test 24/25
-      in Prism** (0.2.17 deployed to Worldz-Test).
+      genuinely outstanding, still not blocking. **[Jason] confirmed
+      24/25 both work as desired, 2026-07-19.** Phase 5b closed out.
 
 ## Phase 5c — Soft void border spike (GOAL 38)
 
@@ -417,7 +417,7 @@ overwrite rule in DESIGN §21.2). Spike first; implementation is **not**
 scheduled until the spike proves out — 5c.2 is written assuming success but
 must be re-planned from the spike's findings before execution.
 
-- [ ] 5c.1 Spike (throwaway branch OK): make `EnvelopedChunkGenerator` read
+- [x] 5c.1 Spike (throwaway branch OK): make `EnvelopedChunkGenerator` read
       a live radius (volatile snapshot; worldgen threads — no SavedData
       reads from the generator), then prove single-chunk backfill: run the
       delegate generator's stages into a scratch `ProtoChunk` for an
@@ -425,6 +425,40 @@ must be re-planned from the spike's findings before execution.
       rebuild heightmaps/lighting, resync the client. Report findings
       (structure/decoration neighborhoods, lighting, perf per chunk) and
       re-plan 5c.2 from them. **[Jason]** go/no-go on the results.
+      **Done (0.2.18) — mixed result, full findings in DESIGN §21.2:**
+      the live-radius half is real, working code — `envelope` is now
+      `volatile` with a `setEnvelope()` setter, verified safe by a clean
+      build (nothing calls it yet; that's 5c.2's job). The backfill half
+      was **not implemented** — verifying it against the real
+      `ChunkPyramid` source revealed the literal "hand-drive
+      `ChunkStatusTasks` with a scratch `ProtoChunk`" approach needs an
+      **8-chunk-radius neighborhood** already at `STRUCTURE_STARTS`
+      (every generation stage from structure-references through carvers
+      declares `addRequirement(ChunkStatus.STRUCTURE_STARTS, 8)`), which
+      means either reimplementing vanilla's whole neighbor-dependency
+      cascade or constructing internal orchestration types
+      (`StaticCache2D<GenerationChunkHolder>`, `WorldGenContext`) that
+      exist to be built by `ChunkMap`'s own pipeline, not by us calling
+      in from outside — high effort, high risk of a subtly wrong result
+      this project's JUnit-only testing policy has no way to catch
+      before Jason finds it live. One genuine piece of good news,
+      verified by reading `LevelChunk.setBlockState`/`Level.setBlock`
+      directly: applying already-computed terrain to a live chunk is
+      just ordinary block-placement calls — heightmaps, lighting, and
+      client resync all happen automatically, no custom code needed.
+      **Recommendation, not yet attempted:** a WorldEdit-`//regen`-style
+      approach (invalidate the chunk, let vanilla's own async pipeline
+      regenerate it like a first-ever visit) looks far more promising
+      than hand-driving the pipeline, since it reuses vanilla's own
+      neighbor-cascade machinery instead of reimplementing it — but this
+      project hasn't verified whether 26.2 exposes a safe invalidate-and-
+      reload entry point, or what happens to a neighbor chunk that
+      already decorated into the target. **[Jason] go/no-go needed**: (a)
+      abandon GOAL 38 as not worth the risk/effort, (b) run a second,
+      narrower spike specifically on chunk invalidation/reload before
+      committing to 5c.2, or (c) accept the risk and have 5c.2 attempt an
+      implementation anyway, understanding it may need real iteration
+      against live testing to get right.
 - [ ] 5c.2 (Re-plan after 5c.1.) Implement: schedule-driven envelope radius;
       collapse = budgeted ring sweep to void + void-at-generation outside
       the radius; expand = budgeted backfill of the newly included ring
@@ -872,3 +906,20 @@ pulled earlier if Jason wants a fun quick win.**
   case needs patch-boundary detection, and it would be substantial new
   work). See DESIGN §20.2's Phase 2.1 subsection. Flag if a literal
   patch-size reading was intended.
+- 2026-07-19 (Phase 5c.1 spike) — DESIGN §21.2's original framing ("the
+  pipeline classes exist... so this is possible") turned out optimistic.
+  Verifying the literal "hand-drive `ChunkStatusTasks` with a scratch
+  `ProtoChunk`" approach against the real `ChunkPyramid` source found
+  every generation stage from structure-references through carvers
+  requires an 8-chunk-radius neighborhood already at `STRUCTURE_STARTS` —
+  a materially bigger ask than "single-chunk backfill" suggested, and one
+  that would mean reimplementing internal orchestration
+  (`StaticCache2D<GenerationChunkHolder>`, `WorldGenContext`) that exists
+  to be built by `ChunkMap`'s own async pipeline, not called into from
+  outside. Full findings, the one piece of good news (applying finished
+  terrain to a live chunk is just ordinary block placement — no custom
+  relighting/resync needed), and a recommended alternative direction
+  (WorldEdit-`//regen`-style chunk invalidation, not yet attempted) are in
+  DESIGN §21.2. Only the safe, low-risk half of 5c.1 (the live-radius
+  volatile field) was actually implemented; the backfill half remains a
+  research finding pending Jason's go/no-go, not working code.
