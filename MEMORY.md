@@ -1118,6 +1118,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   path from `LimitedBiomeSource`'s biome-source defaulting, which is
   exactly why Jason's narrower `widthRadiusBlocks: 2` in 29a worked fine
   even though bands didn't. 0.2.27 built and deployed to Worldz-Test.
+- 2026-07-19 — **Phase 6 acceptance confirmed.** Jason re-tested config 29
+  on 0.2.27 (own tweaks: `widthRadiusBlocks: 32`, a different 6-biome band
+  list), world "Worldz-29", "worked pretty well." Combined with his
+  earlier confirmation of configs 26-28, this closes out all of Phase 6
+  (6.1 design, 6.2a core, 6.2b preset, 6.2c docs/configs, 6.3 bands +
+  both follow-up fixes) with no known outstanding defects. Still need
+  Jason's explicit go-ahead before starting Phase 7 (standing phase-gate
+  rule), but nothing left to fix here.
 
 ## Reference Log
 

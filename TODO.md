@@ -671,7 +671,7 @@ rectangular shape.
       `WorldPresetResourcesTest`, `ProjectMetadataTest`; full suite green
       (278 tests); clean build across all modules (fabric + neoforge
       registration compiles and resolves correctly).
-- [ ] 6.2c Test configs (basic strip, narrow width forcing the fallback-
+- [x] 6.2c Test configs (basic strip, narrow width forcing the fallback-
       portal fix to matter, Nether strip on/off); config/tests README +
       MANUAL_TESTING rows; README docs; **[Jason]** acceptance. **Docs and
       configs done (0.2.23):** `config/tests/26`-`28` (basic corridor;
@@ -685,9 +685,10 @@ rectangular shape.
       a full "Strip world challenge" section (table row + config
       example + settings table), cross-linking the shared border/exterior
       docs rather than duplicating them. 0.2.23 built and deployed to
-      Worldz-Test. **[Jason] acceptance still outstanding** — nothing to
-      report yet, this note only covers docs/configs being ready.
-- [ ] 6.3 Biome-sequence strip (36): the strip passes through ordered (or
+      Worldz-Test. **[Jason] acceptance confirmed (2026-07-19):** tested
+      configs 26-29, "everything appears to be working correctly" aside
+      from the biome-mapping issue tracked and resolved under 6.3 below.
+- [x] 6.3 Biome-sequence strip (36): the strip passes through ordered (or
       seed-randomized) biome bands, changing every N chunks, selecting
       biomes over untouched vanilla terrain — Phase 4's selection machinery
       with ordered bands instead of random cells. Config: band width, biome
@@ -836,9 +837,12 @@ rectangular shape.
       fixes in this file. README's "known gap" paragraph removed --
       accurate now. 1 new test; full suite green (302 tests); clean build.
       0.2.27 built and deployed to Worldz-Test.
-      **[Jason] acceptance still outstanding** for the re-test of config 29
-      — everything else in Phase 6 (26-28, and 29's non-biome behavior) is
-      confirmed working; do not start Phase 7 without explicit go-ahead.
+      **[Jason] acceptance confirmed (2026-07-19):** re-tested config 29
+      on 0.2.27 (tweaked to `widthRadiusBlocks: 32` and a different
+      6-biome band list), created world "Worldz-29", "worked pretty
+      well." This completes Phase 6 acceptance (6.1-6.3, GOALS 32/36) --
+      **still need Jason's explicit go-ahead before starting Phase 7**,
+      per the standing phase-gate rule, but no known outstanding defects.
 
 ## Phase 7 — Ocean island challenge, core (GOALS 01, 04)
 

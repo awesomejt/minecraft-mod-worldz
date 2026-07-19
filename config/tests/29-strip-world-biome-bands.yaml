@@ -39,7 +39,7 @@
 #     vanilla biome rather than being relabeled to the current band's biome.
 strip:
   enabled: true
-  widthRadiusBlocks: 64
+  widthRadiusBlocks: 32
   widthMode: void
 overworldBorder:
   enabled: true
@@ -52,10 +52,11 @@ stripWorld:
   bands:
     enabled: true
     biomes:
-      - minecraft:desert
-      - minecraft:jungle
-      - minecraft:ice_spikes
-      - minecraft:badlands
-      - minecraft:taiga
+      - desert
+      - jungle
+      - badlands
+      - taiga
+      - plains
+      - forest
     widthBlocks: 256
     seedRandomOrder: false
