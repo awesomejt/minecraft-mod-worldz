@@ -1617,26 +1617,82 @@ only surfaces as a visual defect in a live client, exactly what this
 project's "no automated game tests, JUnit only" policy has no way to catch
 before Jason manually finds it.
 
-A more promising **candidate direction, not yet attempted**: rather than
-hand-driving generation, invalidate the target chunk (unload it, discard
-its persisted state) and let vanilla's *own* existing async chunk pipeline
-(`ChunkMap`/`ServerChunkCache`) regenerate it exactly as it would for a
-chunk visited for the first time — the same principle WorldEdit's
-`//regen` command uses. This reuses the neighbor-cascade machinery vanilla
-already built and tested, instead of reimplementing it. Real open
-questions this project hasn't yet verified: whether 26.2 exposes a safe
-"invalidate and reload" entry point without reflection into `ChunkMap`
-internals, whether doing this near loaded players/entities is safe, and
-whether a previously-decorated *neighbor* chunk that already placed blocks
-into the target (e.g. part of a tree) survives correctly or conflicts with
-the regenerated result.
+**Second research pass (2026-07-19, Jason: "get more information"), three
+candidate designs now on the table:**
 
-**Recommendation:** do not attempt either approach blind. If Jason wants to
-proceed, the next step should be a second, narrower spike specifically
-prototyping chunk invalidation + reload (still throwaway, still needs live
-Prism testing — this project has no way to validate chunk-lifecycle code
-without it) before committing to 5c.2's full scope. **[Jason] go/no-go**
-needed on whether to pursue this at all, and if so, which direction.
+**B. Delete-and-regenerate** (WorldEdit-`//regen` style) — invalidate the
+target chunk and let vanilla's own async pipeline regenerate it as if
+freshly visited, instead of us reimplementing the neighbor cascade.
+Verified further: `RegionFileStorage.write(pos, null)` calls
+`region.clear(pos)` — deleting a chunk's persisted NBT is a genuine,
+first-class, `public`, reflection-free vanilla operation
+(`SimpleRegionStorage.write`, inherited by `ChunkMap`, reachable as
+`((ServerChunkCache)level.getChunkSource()).chunkMap.write(pos, null)`).
+And `ChunkMap.scheduleChunkLoad`'s `EMPTY`-status handling already falls
+through to `createEmptyChunk` (a brand-new, unpopulated `ProtoChunk`)
+whenever `readChunk` finds nothing persisted — at that point the *rest* of
+the pipeline (structure-starts through full, including the whole 8-chunk
+neighbor cascade) is orchestrated entirely by `ChunkMap`'s own
+`ChunkGenerationTask`/`applyStep`/`StaticCache2D` machinery, exactly as
+for any chunk a player explores into for the first time. **We would not
+need to construct any of that ourselves** — only request the chunk again
+at `FULL` status (a ticket, same as normal exploration). This is much
+smaller and safer than approach A. The genuinely unresolved piece: forcing
+an *already-resident* chunk (a live `LevelChunk` with a `ChunkHolder`
+mid-ticket-lifecycle, likely with a player standing right next to it,
+which is exactly our use case) to actually discard its in-memory state and
+restart from `EMPTY` — deleting the region-file entry alone does nothing
+while the chunk stays resident in memory, since the file is only consulted
+on a fresh load. No public API for "downgrade this specific resident
+chunk" turned up in `ChunkHolder`; this likely needs deeper ticket/promotion
+manipulation, possibly a mixin. Still not attempted.
+
+**C. Mask, don't discard (new, most promising).** Instead of ever
+generating true void and later reconstructing terrain, let the delegate
+generate the **real terrain normally and fully** for chunks in the
+between-current-and-final-radius band (decoration, structures, everything
+— exactly as vanilla would, with full natural neighbor context, since it's
+generating in the normal order the first time it's ever visited). Persist
+a hidden copy of that real terrain for any chunk currently masked as
+void-exterior (a custom side-store, the same pattern this project already
+uses for `WorldLimitState`/`SpawnOriginState`), then show the player void
+by overwriting the *live* chunk with void blocks. "Reveal" later is simply
+copying the cached real blockstates back over the live chunk via ordinary
+`Level.setBlock` calls (already proven above to need zero custom
+lighting/sync code) when the schedule's radius grows to include it — no
+regeneration, no chunk-lifecycle manipulation, no neighbor-radius problem,
+because the real terrain was already correctly generated once, in the
+right order, with full context, at the normal time. Overwriting later with
+cached real blocks matches Jason's already-decided overwrite rule exactly
+(a player who builds on the void in the meantime loses that build when the
+real terrain gets revealed over it).
+
+Tradeoffs: needs new persisted storage for the hidden terrain (bounded to
+the currently-unrevealed area between current and final radius, shrinking
+as the border grows — not the whole theoretical world), and pays the full
+generation cost for that band up front instead of deferring it — but since
+that band is exactly the area the schedule guarantees will eventually
+become real, playable terrain anyway, this isn't wasted work, it's the
+same cost vanilla would pay whenever the player got there regardless. This
+approach should be **scoped only to a border-schedule-driven soft-void
+exterior**, not today's shipped static void exteriors (ocean/sky islands
+etc., which stay void forever and must keep the cheap always-void
+behavior) — a clean boundary, since it only applies to the new feature,
+leaving every existing use case's code path untouched. `isEntirelyExterior`'s
+existing skip of decoration/structures for permanently-void chunks would
+need a schedule-aware carve-out so schedule-driven exterior chunks
+decorate normally instead of being skipped.
+
+**Recommendation:** pursue **C** if greenlit — it is the only one of the
+three that avoids both major risks found so far (the 8-chunk
+neighbor-cascade reimplementation of A, and the resident-chunk-discard
+uncertainty of B), at the cost of a well-understood kind of work (custom
+NBT persistence) this project already does safely elsewhere, rather than
+deep unverified engine surgery. Genuinely new code either way, so it still
+needs live Prism testing to validate — this project has no automated way
+to catch a subtly wrong result before Jason finds it live. **[Jason]
+go/no-go** needed: proceed with C for 5c.2, defer GOAL 38 and move on to
+Phase 6, or ask for something else explored first.
 
 ## 22. Border presentation & enforcement (2026-07-18)
 

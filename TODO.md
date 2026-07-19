@@ -459,6 +459,43 @@ must be re-planned from the spike's findings before execution.
       committing to 5c.2, or (c) accept the risk and have 5c.2 attempt an
       implementation anyway, understanding it may need real iteration
       against live testing to get right.
+- [x] 5c.1b Second research pass (Jason, 2026-07-19: "get more information...
+      if we can't reach a reasonable decision now, defer and move on").
+      **Done, research only, no code — full write-up in DESIGN §21.2.**
+      Pushed further on the delete-and-regenerate direction: confirmed
+      `RegionFileStorage.write(pos, null)` → `region.clear(pos)` is a
+      genuine, `public`, reflection-free vanilla API for deleting a
+      chunk's persisted data (reachable via `ChunkMap.write`, inherited
+      from `SimpleRegionStorage`), and confirmed `ChunkMap.
+      scheduleChunkLoad`'s `EMPTY`-status handling already falls through
+      to a brand-new `ProtoChunk` when nothing's persisted, with the
+      *entire* rest of the pipeline (including the 8-chunk neighbor
+      cascade) owned by `ChunkMap`'s own async machinery — we'd never
+      need to build `StaticCache2D`/`WorldGenContext` ourselves for this
+      approach, a real de-risking finding. Still unresolved: forcing an
+      *already-resident* chunk (the actual use case — a player standing
+      right at the edge) to discard its in-memory state and restart from
+      `EMPTY`; no public API for that surfaced in `ChunkHolder`.
+      **New third approach found, and now the top recommendation: "mask,
+      don't discard."** Let the delegate generate real terrain normally
+      and fully for the currently-unrevealed band (decoration/structures
+      included, exactly as vanilla would on a first visit), persist a
+      hidden copy in a custom side-store (the same pattern as
+      `WorldLimitState`/`SpawnOriginState`), show void by overwriting the
+      live chunk, and "reveal" later by copying the cached real blocks
+      back via ordinary `setBlock` — no regeneration, no chunk-lifecycle
+      risk, no neighbor-radius problem, since the terrain was correctly
+      generated once, in order, with full context, the normal way. Costs:
+      new persisted storage (bounded to the currently-hidden band, not
+      the whole world) and paying generation cost up front for that band
+      — but that band is exactly what the schedule guarantees becomes
+      real terrain anyway, so it isn't wasted work. Scope this to the new
+      schedule-driven soft-void mode only, leaving today's static void
+      exteriors (ocean/sky islands, etc.) on their existing cheap
+      always-void path untouched — zero regression risk to shipped
+      features. **[Jason] go/no-go**: proceed with approach C for 5c.2,
+      defer GOAL 38 to later and move on to Phase 6 (per Jason's own
+      fallback), or ask for something else investigated first.
 - [ ] 5c.2 (Re-plan after 5c.1.) Implement: schedule-driven envelope radius;
       collapse = budgeted ring sweep to void + void-at-generation outside
       the radius; expand = budgeted backfill of the newly included ring
@@ -923,3 +960,18 @@ pulled earlier if Jason wants a fun quick win.**
   DESIGN §21.2. Only the safe, low-risk half of 5c.1 (the live-radius
   volatile field) was actually implemented; the backfill half remains a
   research finding pending Jason's go/no-go, not working code.
+- 2026-07-19 (Phase 5c.1b, second research pass) — Same caveat extended:
+  the delete-and-regenerate direction recommended in the entry above
+  turned out to have its own hidden gap once checked further (forcing an
+  already-*resident* chunk to discard and restart from `EMPTY` has no
+  obvious public API), though the region-file-deletion half of it checked
+  out as a genuine, clean, public vanilla capability
+  (`RegionFileStorage.write(pos, null)`). Found a third, better-looking
+  approach instead ("mask, don't discard" — generate real terrain
+  normally, cache it, reveal later via ordinary block placement) that
+  sidesteps both risks found so far. Recorded as the new top
+  recommendation in DESIGN §21.2 and TODO 5c.1b; still unimplemented,
+  still pending Jason's go/no-go — two research passes in a row have
+  each surfaced a real problem with the previous round's leading idea, so
+  treat any *specific* approach here as provisional until one is actually
+  built and tested live, not just read from source.

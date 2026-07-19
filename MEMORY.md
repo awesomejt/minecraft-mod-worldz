@@ -900,6 +900,28 @@ Durable decisions, verified API notes, and rationale that should survive across 
   don't assume the next bare command (no explicit `cd`) is still running
   in the intended repo — check `pwd` or prefix an explicit `cd` before
   trusting build/test output, especially for commands with side effects.
+- 2026-07-19 (Phase 5c.1b, second research pass, 0.2.19, no code) — Jason
+  asked to push the chunk-invalidation direction further rather than stop
+  at the first spike's open questions. Confirmed
+  `RegionFileStorage.write(pos, null)` → `region.clear(pos)` is a genuine
+  public vanilla API for deleting a chunk's persisted data, and that
+  `ChunkMap`'s own async pipeline (not anything we'd build) handles the
+  entire neighbor cascade once a chunk falls through to a fresh
+  `ProtoChunk` — real progress. But the actual blocker turned out to be
+  forcing an *already-resident* chunk to discard and restart, which has
+  no obvious public API — a new gap the first pass hadn't found yet.
+  Found a better third approach instead: generate real terrain normally
+  for the soon-to-be-revealed band, cache it, mask it with void, and
+  reveal later by copying cached blocks back — sidesteps both the
+  neighbor-cascade problem and the resident-chunk-discard problem
+  entirely. Full writeup in worldz/DESIGN.md §21.2. **Pattern worth
+  remembering**: two research passes in a row each found the previous
+  round's recommended approach had a real, non-obvious gap once checked
+  further — treat any *specific* proposed implementation approach here as
+  provisional until something is actually built and tested live, not just
+  read from source; reading source correctly answers "does this class/
+  method exist and do what I think" but not "does this whole approach
+  actually work end-to-end."
 
 ## Reference Log
 
