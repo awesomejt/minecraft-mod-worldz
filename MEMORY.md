@@ -719,6 +719,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Customize-screen acceptance ("chaos_biomes shows none of the full
   Worldz preset's border/exterior controls") is now intentionally
   superseded — logged in TODO.md's Deviation log, not a regression.
+- 2026-07-18 (post-Phase-5 review, planning only — no code yet) — Jason
+  clarified GOALS 19-20 and added GOAL 38 after testing configs 20-21; four
+  decisions, all the recommended option (full design in DESIGN §21, tasks in
+  TODO Phases 5b/5c): (1) keep the shipped *continuous* resize style (it
+  wasn't his original intent, but he likes it — especially for collapsing)
+  AND add a *stepped* style — abrupt jumps of X blocks every Y days — via a
+  new `resizeStyle: continuous | stepped` field reusing the existing
+  `resizeRateBlocks`/`resizeRateDays` (default `continuous`, back-compatible);
+  (2) steps snap instantly (`setSize`), no mini-lerp; (3) easing curves
+  (`resizeCurve`, rate slowing near the final size) are approved future
+  scope but deferred, unscheduled; (4) GOAL 38 soft void border — no wall,
+  terrain just ends, player can fall off; expansion backfills void chunks
+  with real terrain and **overwrites** anything built in the void ring
+  (documented challenge rule). Feasibility verified: collapse direction is
+  easy (budgeted clearing), expansion requires WorldEdit-`//regen`-style
+  chunk regeneration (pipeline classes confirmed present in 26.2 sources) —
+  mandatory spike (5c.1) with a Jason go/no-go before 5c.2 is re-planned
+  and executed.
 
 ## Reference Log
 

@@ -105,6 +105,29 @@ Client only mod loaders:
 19. Similar to 16, but world size becomes starting world size. World expands based on number of days in game, after an initial starting delay. Both the rate of expansion, number of blocks radius/chunks, and initial delay are configurable.
 20. World contracts - similar to 19, but in reverse. Default should be a much larger delay to allow exploration of world before the collapsing begins. There should be a minimum size (blocks or chunks) of the world. The starting location should be the center of the world - so any build there should be safe.
 
+   **Clarification (2026-07-18):** 19–20 cover two resize styles, both wanted.
+   *Continuous* — the border slides smoothly at the configured rate until the
+   final size (what Phase 5 shipped; Jason confirmed keeping it — compelling
+   for the collapsing challenge). *Stepped* — the border jumps abruptly by X
+   blocks/chunks every Y days (e.g. spawn in an 8-block radius, then +1
+   block/day up to 1024; or 1024 shrinking −2 blocks/day down to 32). Chosen
+   per schedule via a `resizeStyle: continuous | stepped` field reusing the
+   existing rate fields; steps snap instantly. A future `resizeCurve` option
+   (rate easing off near the final size) is approved future scope, deferred —
+   see DESIGN §21.
+
+38. Soft border via the void: instead of the invisible-wall border, the
+   expanding/collapsing edge is represented by terrain simply ending — void
+   beyond the current size, nothing physically stopping the player from
+   walking off the edge and falling out of the world. As the world expands,
+   real terrain backfills the previously-void ring (the world is "revealed"
+   over time); as it collapses, terrain outside the shrinking edge falls away
+   to void. Backfill overwrites anything built in the void ring (documented
+   challenge rule: the void is unclaimed). Feasibility verified 2026-07-18 —
+   possible, but expansion requires chunk-regeneration backfill (the hardest
+   machinery proposed so far); a design/prototype spike is mandatory before
+   implementation. See DESIGN §21.
+
 ### Structure Options:
 
 21. Default should be for structure to generate in natural locations and Y levels.

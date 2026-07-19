@@ -1511,3 +1511,79 @@ resizing (§15) already uses, and they compose with any world type:
   amethyst geodes, structure chunks). Whether specific features can be
   *targeted* per island (seed-search vs forced placement) is a TODO Phase
   12.2 design question.
+
+## 21. Border resize styles + soft void border (2026-07-18)
+
+Jason's Phase 5 review clarified GOALS 19–20 and added GOAL 38. Decisions
+recorded 2026-07-18; all four were the recommended options. Planned as TODO
+Phases 5b (stepped) and 5c (soft void border); nothing here is implemented yet.
+
+### 21.1 Resize styles: continuous and stepped
+
+Two styles per border schedule, selected by a new `resizeStyle` field
+(`continuous` default — existing configs and saves keep today's behavior):
+
+- **Continuous** (shipped): one smooth vanilla `lerpSizeBetween` across the
+  whole transition. Keep as-is; Jason explicitly confirmed it (compelling for
+  the collapsing challenge).
+- **Stepped** (new): the border jumps abruptly by `resizeRateBlocks` every
+  `resizeRateDays`, reusing the existing rate fields — in continuous style
+  they mean "average speed", in stepped style "jump size / interval". Steps
+  snap instantly via `WorldBorder.setSize` (no mini-lerp — the abruptness is
+  the point; vanilla's border warning visuals still telegraph it). Chunks
+  remain a UI-only unit (RadiusUnit), blocks the persisted unit, as
+  everywhere else.
+
+Mechanics: `BorderSchedule.radiusAtTick` gains the stepped curve —
+`initial ± floor((elapsed − delay) / intervalTicks) × rateBlocks`, clamped at
+`finalRadiusBlocks` — pure and JUnit-testable like the existing math. The
+driver extends the existing machinery, not new plumbing: both loaders already
+call `WorldLimitManager.onServerTick` every server tick; today it only starts
+due transitions, for stepped schedules it also applies the next due step and
+persists the next step tick in `WorldLimitState` (alongside the existing
+pending-start tick). All timing reads the per-dimension clock
+(`getDefaultClockTime` — see the 26.2 `getGameTime` deviation in MEMORY.md).
+Because the stepped radius is a pure function of elapsed clock ticks, resume
+after server restart is a recompute, not persisted lerp state — steps missed
+while the schedule was due are applied on the next tick.
+
+**Deferred (approved future scope):** `resizeCurve: linear | ease_out` — the
+rate slows as the border approaches its final size. Continuous style
+currently rides one vanilla lerp, which is linear-only; easing needs our own
+per-tick driver, which the stepped work incidentally builds, so this gets
+cheap afterwards. Not scheduled to a phase.
+
+### 21.2 Soft void border (GOAL 38)
+
+A "soft" edge: no invisible wall at all — terrain simply ends at the current
+scheduled radius, void beyond, and the player can physically walk off the
+edge and fall out of the world. The same `BorderSchedule` drives the
+*envelope* radius over time instead of (or alongside) the vanilla
+`WorldBorder`. Feasibility verified 2026-07-18 against the real 26.2 setup:
+
+- Today the exterior envelope is **frozen into `EnvelopedChunkGenerator` at
+  world creation** (persisted in the generator codec) and chunks generate
+  exactly once. A scheduled void edge therefore needs the generator to read
+  a **live radius** (a volatile snapshot maintained by the tick driver;
+  chunk generation runs on worker threads, so no direct SavedData reads from
+  the generator).
+- **Collapse is the easy direction:** chunks first generated outside the
+  shrunken radius are void automatically; terrain already generated outside
+  it must be actively cleared to void — an incremental, per-tick-budgeted
+  ring sweep (bounded block edits, no regeneration).
+- **Expansion is the hard direction:** chunks the player already caused to
+  generate as void (walking near the edge generates chunks well past it)
+  must be **backfilled with real terrain** when the radius grows — i.e.
+  chunk regeneration, WorldEdit-`//regen` style: run the delegate
+  generator's stages into scratch `ProtoChunk`s and copy the result into the
+  live chunks, then rebuild heightmaps/lighting and resync clients. The
+  pipeline classes (`ProtoChunk`, `ChunkStatusTasks`, `WorldGenRegion`)
+  exist in the 26.2 sources and our generator already drives the delegate's
+  stages, so this is possible — but cross-chunk structures/decoration,
+  lighting, thread safety, and performance budgeting make it the heaviest
+  machinery proposed so far. **A spike proving single-chunk backfill in a
+  test world is mandatory before the feature is scheduled for real** (TODO
+  5c.1).
+- **Backfill overwrites** whatever was built in the void ring (Jason,
+  2026-07-18): documented challenge rule — the void is unclaimed; build out
+  there at your own risk. Thematically the world "reveals itself".

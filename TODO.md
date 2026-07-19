@@ -257,6 +257,56 @@ composed with the new world types; plus the one real gap (the End).
       Biome/Chaos Biomes' new Customize-screen border wiring actually
       applying in-game). **[Jason] acceptance outstanding.**
 
+## Phase 5b — Stepped border resizing (GOALS 19–20 clarification)
+
+Scope added from Jason's 2026-07-18 Phase 5 review: keep the shipped
+continuous style, add an abrupt stepped style (jump X blocks every Y days).
+Decisions already made (see DESIGN §21.1 and MEMORY.md — resizeStyle field
+reusing the rate fields, instant snap per step, easing curve deferred).
+Design is settled; these tasks are execution.
+
+- [ ] 5b.1 `resizeStyle: continuous | stepped` through the stack: schedule
+      math first (`BorderSchedule.radiusAtTick` stepped curve — pure,
+      JUnit-covered, including delay interaction, clamping at final, and
+      collapse direction), then config/codec/customization plumbing
+      (`BorderConfig`, `WorldLimitCodecs`, `WorldzCustomization` +
+      single-biome/chaos variants, border screen toggle), default
+      `continuous` so existing configs/saves are untouched.
+- [ ] 5b.2 Step driver in `WorldLimitManager.onServerTick`: apply due steps
+      via `WorldBorder.setSize` (instant snap), persist next-step tick in
+      `WorldLimitState`, recompute-on-restart semantics (radius is a pure
+      function of the per-dimension clock — use `getDefaultClockTime`, see
+      the Deviation log; never `getGameTime`). Missed steps while the server
+      was closed apply on the next tick.
+- [ ] 5b.3 Test configs mirroring Jason's two scenarios (8-radius start,
+      +1 block/day to 1024; 1024 start, 10-day delay, −2 blocks/day to 32);
+      config/tests README + MANUAL_TESTING rows with `/tick step` math;
+      README docs; **[Jason]** acceptance.
+
+## Phase 5c — Soft void border spike (GOAL 38)
+
+The void as the visible edge of an expanding/collapsing world — no wall, the
+player can fall off. Feasible but expansion needs chunk-regeneration
+backfill, the heaviest machinery proposed so far (full findings + decided
+overwrite rule in DESIGN §21.2). Spike first; implementation is **not**
+scheduled until the spike proves out — 5c.2 is written assuming success but
+must be re-planned from the spike's findings before execution.
+
+- [ ] 5c.1 Spike (throwaway branch OK): make `EnvelopedChunkGenerator` read
+      a live radius (volatile snapshot; worldgen threads — no SavedData
+      reads from the generator), then prove single-chunk backfill: run the
+      delegate generator's stages into a scratch `ProtoChunk` for an
+      already-generated void chunk, copy sections into the live chunk,
+      rebuild heightmaps/lighting, resync the client. Report findings
+      (structure/decoration neighborhoods, lighting, perf per chunk) and
+      re-plan 5c.2 from them. **[Jason]** go/no-go on the results.
+- [ ] 5c.2 (Re-plan after 5c.1.) Implement: schedule-driven envelope radius;
+      collapse = budgeted ring sweep to void + void-at-generation outside
+      the radius; expand = budgeted backfill of the newly included ring
+      (overwrite rule per DESIGN §21.2); interaction with the vanilla
+      border (soft mode presumably disables the wall); test configs; docs;
+      **[Jason]** acceptance.
+
 ## Phase 6 — Strip world, 1D Minecraft (GOALS 32)
 
 Right after the limits phase: it is the same access/envelope machinery in a
