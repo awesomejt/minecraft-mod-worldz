@@ -27,12 +27,15 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 2, the World Type dropdown has **three** Worldz
+   new world. Since Phase 6, the World Type dropdown has **four** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
-   `01`-`09`, `13`) reads the flat top-level config fields; "Worldz: Single
-   Biome" (files `10`-`12`, `14`-`15`) reads only the `singleBiome:`
-   section; "Worldz: Chaos Biomes" (files `16`-`19`) reads only the
-   `chaosBiomes:` section. Each ignores every other section.
+   `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
+   "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
+   `singleBiome:` section; "Worldz: Chaos Biomes" (files `16`-`19`) reads
+   only the `chaosBiomes:` section; "Worldz: Strip World" (files `26`-`28`)
+   reads the shared top-level `strip:` section (corridor width, same as
+   any other Worldz preset) plus its own `stripWorld:` section (currently
+   just spawn strategy). Each ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -66,6 +69,9 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `23-end-border-carry-over.yaml` | GOALS 17: Overworld border pinned to the 64-block minimum, `endBorder.carryFromOverworld: true` with `minimumRadiusBlocks: 256` — confirms the floor overrides the tiny carried radius so the End border is 256, not 64, keeping the dragon fight winnable. |
 | `24-border-stepped-expanding.yaml` | GOALS 19, **stepped** style (Phase 5b, DESIGN §21.1): border holds at 8 for a 2-day delay, then jumps abruptly by 1 block/day up to 1024 — snaps, not a creep. Requires 0.2.16+. |
 | `25-border-stepped-collapsing.yaml` | GOALS 20, **stepped** style: border holds at 1024 for a 10-day delay, then jumps abruptly by 2 blocks/day down to a 32 minimum — snaps, not a creep; spawn stays centered so it's always safe. Requires 0.2.16+. |
+| `26-strip-world-basic.yaml` | GOALS 32 (Phase 6.2): a narrow strip world — corridor width (Z axis, void beyond) is new strip machinery; corridor length (X axis) is the ordinary square border, unmodified. **Select "Worldz: Strip World"**, not plain "Worldz". Requires 0.2.22+. |
+| `27-strip-world-narrow-fallback-portal.yaml` | GOALS 32: a deliberately narrow corridor (32-block width radius) exercising the fallback End-portal Z-candidate fix found during 6.1's spike — confirms the compact portal lands inside the corridor, not at a Z candidate the border's own (larger) radius would have wrongly allowed. **Select "Worldz: Strip World"**. |
+| `28-strip-world-nether-corridor.yaml` | GOALS 32's optional Nether strip: `strip.applyToNether: true` mirrors the same corridor width into the Nether, with its own independent length border and a compact fallback blaze site. **Select "Worldz: Strip World"**. |
 
 ### Why `01` showed ocean labeled as river
 

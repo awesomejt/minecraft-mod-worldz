@@ -1,0 +1,34 @@
+# GOALS 32: a narrow strip world -- everything happens in a corridor along the
+# X axis. **Select "Worldz: Strip World" on the creation screen**, not plain
+# "Worldz" -- this config supplies its defaults (DESIGN §23, TODO 6.2).
+#
+# The corridor's WIDTH (Z axis, this file's `strip:` section) is new
+# strip-specific machinery: void beyond it, no collision -- a soft edge you
+# can walk/fall off, same philosophy as GOAL 38. The corridor's LENGTH (X
+# axis, the ordinary `overworldBorder:` below) is the ordinary square border
+# unmodified -- ordinary collision, warning vignette, and (if configured)
+# expanding/collapsing schedules all apply exactly as they do for every
+# other world type.
+#
+# Steps once in-game:
+#  1. Confirm ordinary vanilla terrain and biome variety (this preset does
+#     not restrict biomes at all, unlike single_biome/chaos_biomes).
+#  2. Walk along Z (the narrow axis) from spawn: confirm the terrain ends
+#     into void at approximately 64 blocks out (the corridor is twice the
+#     configured `widthRadiusBlocks`), and nothing stops you physically --
+#     you can walk past the edge and fall.
+#  3. Walk along X (the long axis) from spawn: confirm the *border* stops
+#     you (vanilla's invisible-wall push-back) at 2048 blocks, not void.
+#  4. Confirm a compact fallback End portal exists (or the natural
+#     stronghold, if one happens to fit) and the dragon fight is winnable.
+strip:
+  enabled: true
+  widthRadiusBlocks: 64
+  widthMode: void
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 2048
+  finalRadiusBlocks: 2048
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin

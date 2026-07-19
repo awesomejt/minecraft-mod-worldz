@@ -673,7 +673,20 @@ rectangular shape.
       registration compiles and resolves correctly).
 - [ ] 6.2c Test configs (basic strip, narrow width forcing the fallback-
       portal fix to matter, Nether strip on/off); config/tests README +
-      MANUAL_TESTING rows; README docs; **[Jason]** acceptance.
+      MANUAL_TESTING rows; README docs; **[Jason]** acceptance. **Docs and
+      configs done (0.2.23):** `config/tests/26`-`28` (basic corridor;
+      a deliberately narrow one specifically exercising 6.1's
+      fallback-portal fix, with the math worked out — a 32-block width
+      radius makes the old single-radius bug's Z candidates ±64/±128
+      wrongly acceptable, while `narrowForStrip` correctly rejects them
+      down to Z=0; Nether corridor via `applyToNether`); new "Phase 6
+      acceptance" section in MANUAL_TESTING.md; `config/tests/README.md`'s
+      intro updated for the new fourth World Type entry; README.md gained
+      a full "Strip world challenge" section (table row + config
+      example + settings table), cross-linking the shared border/exterior
+      docs rather than duplicating them. 0.2.23 built and deployed to
+      Worldz-Test. **[Jason] acceptance still outstanding** — nothing to
+      report yet, this note only covers docs/configs being ready.
 - [ ] 6.3 Biome-sequence strip (36): the strip passes through ordered (or
       seed-randomized) biome bands, changing every N chunks, selecting
       biomes over untouched vanilla terrain — Phase 4's selection machinery

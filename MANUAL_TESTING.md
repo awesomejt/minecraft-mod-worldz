@@ -335,6 +335,37 @@ Requires 0.2.16+ (the `resizeStyle`/stepped driver did not exist before it).
    smoothly tick by tick, stepped borders hold perfectly still and then
    snap.
 
+## Phase 6 acceptance (strip world, GOALS 32, TODO 6.2c)
+
+Uses configs `26`-`28` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Strip World"** on the creation screen for all three, not
+plain "Worldz". Requires 0.2.22+ (the dedicated preset did not exist before
+it).
+
+1. **Basic strip**, `26-strip-world-basic.yaml`. Confirm: ordinary vanilla
+   terrain and full biome variety (this preset does not restrict biomes);
+   walking along Z (the narrow axis) the terrain ends into void at roughly
+   64 blocks out with no collision (you can walk off the edge and fall);
+   walking along X (the long axis) the ordinary square border stops you at
+   2048 blocks with vanilla's usual invisible-wall push-back; a compact
+   fallback End portal exists and the dragon fight is winnable.
+2. **Narrow strip, fallback-portal fix**, `27-strip-world-narrow-fallback-portal.yaml`.
+   Confirm the corridor is narrow (~32 blocks either side of center) and
+   the compact fallback End portal sits inside it (roughly Z=0), not at one
+   of the wider candidate offsets (64/-64/128/-128) the border's own
+   radius alone would have wrongly allowed pre-fix. Confirm the dragon
+   fight is winnable.
+3. **Nether corridor**, `28-strip-world-nether-corridor.yaml`. Confirm the
+   Overworld corridor as in test 1, then confirm the Nether is *also* a
+   narrow corridor (void beyond ~64 blocks in Z) with its own independent
+   length border (512 blocks) and a compact fallback blaze site reachable
+   inside it.
+4. **Customize screen sanity.** Open "Worldz: Strip World"'s Customize
+   screen: confirm the Blocks/Chunks radius-unit toggle, the Void/Ocean
+   width-mode toggle, the Nether checkbox, spawn strategy, and the Border/
+   End Border/Exterior buttons all work and a customized world reflects
+   the chosen values in-game.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

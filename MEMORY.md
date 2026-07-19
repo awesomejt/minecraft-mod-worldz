@@ -986,6 +986,16 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `EnvelopedChunkGenerator`'s own codec. Deliberately not touched:
   `LimitedBiomeSource.resolve()` is large, heavily tested, and already
   serves three other presets — not worth the risk for a cosmetic gap.
+- 2026-07-19 (Phase 6.2c, 0.2.23) — Strip world test configs and docs.
+  Config 27 (the narrow-corridor fallback-portal test) needed the actual
+  arithmetic worked out by hand to prove it exercises 6.1's fix rather
+  than just asserting it does: a 128-block border with a 32-block strip
+  width radius makes `fallbackX(128) = 32`, and the old single-radius
+  bug would have accepted Z candidates 64/-64/128/-128 (all within the
+  border's own 128 radius) even though they sit far outside a 32-wide
+  corridor; `ObjectiveSite.narrowForStrip` correctly clamps the Z bound
+  down to the strip's own width first, so only Z=0 survives. 0.2.23
+  built and deployed to Worldz-Test — Jason acceptance still outstanding.
 
 ## Reference Log
 

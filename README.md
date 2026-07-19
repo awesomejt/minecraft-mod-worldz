@@ -35,6 +35,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz** | The original flexible preset: allowed-biome list, coordinated `ocean`/`single_biome`/`void`/`chaos`/`legacy` layouts, borders, exteriors, starter land. See [Using Worldz](#using-worldz) below. | Full screen: biomes, starter zone, borders, exteriors, layout, spawn strategy. |
 | **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location; optional natural rivers/oceans. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Chaos Biomes** | Seed-shuffled land biome regions over completely untouched vanilla terrain — deserts beside ice spikes beside jungles; configurable region size; optional starter zone; optional natural rivers/oceans. See [Chaos biomes challenge](#chaos-biomes-challenge) below. | Small screen: weighted biome list, region size, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
+| **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, spawn strategy, borders, exteriors. |
 
 ## Supported loaders
 
@@ -176,6 +177,52 @@ chaosBiomes:
 
 `allowedBiomes` derives automatically from `biomes` plus `starterBiome`, the
 same way `single_biome`'s does.
+
+## Strip world challenge
+
+Select **Worldz: Strip World** under **World Type** for a world that is a
+narrow corridor along one fixed axis — everything happens in that strip.
+Unlike `single_biome`/`chaos_biomes`, this preset does not restrict biomes
+at all: ordinary vanilla terrain and full biome variety generate, just
+shaped into a corridor.
+
+The corridor has two independent parts. Its **length** (the long axis) uses
+the ordinary square border unmodified — the same [limited-world
+borders](#limited-world-borders) every other world type has, including
+resize schedules and the invisible-wall push-back. Its **width** (the short
+axis) is new: a soft edge with no collision at all — terrain simply ends
+into void (or ocean) beyond the configured width, and you can walk or fall
+past it, the same philosophy as a [void exterior](#ocean-and-void-exteriors).
+
+Configure it with the shared top-level `strip:` section (the corridor width
+applies the same way regardless of which Worldz preset reads it — see
+[Limited-world borders](#limited-world-borders) for how `overworldBorder`/
+`netherBorder` supply the corridor's length) plus a `stripWorld:` section
+for this preset's own defaults:
+
+```yaml
+strip:
+  enabled: true
+  widthRadiusBlocks: 64
+  widthMode: void
+  applyToNether: false
+stripWorld:
+  spawn:
+    strategy: starter_at_origin
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `strip.enabled` | `false` | Whether the corridor's width constraint applies. |
+| `strip.widthRadiusBlocks` | `32` | Half-width from the origin; the corridor is twice this wide. Clamped to `1..14999992`. |
+| `strip.widthMode` | `void` | Terrain generated beyond the width: `void` or `ocean` (never `normal`). |
+| `strip.applyToNether` | `false` | Whether the same corridor width also applies to the Nether — one shared width, not two independently configurable ones. |
+| `stripWorld.spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
+
+The corridor's length, End border, and exteriors all use the same shared
+`overworldBorder`/`netherBorder`/`endBorder`/`overworldExterior`/
+`netherExterior` sections every other world type reads, and are also
+available on this preset's Customize screen.
 
 ## Configuration
 
