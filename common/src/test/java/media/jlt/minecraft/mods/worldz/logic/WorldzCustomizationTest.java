@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
+import media.jlt.minecraft.mods.worldz.config.BorderConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import org.junit.jupiter.api.Test;
 
@@ -170,6 +171,38 @@ class WorldzCustomizationTest {
         assertEquals(12, customization.worldLimitPlan().overworld().resizeDelayDays());
         assertEquals(100, customization.worldLimitPlan().overworld().resizeDays());
         assertEquals(128, customization.worldLimitPlan().overworld().resizeRateBlocks());
+    }
+
+    @Test
+    void resizeStyleDefaultsToContinuousAndCanBeParsedAsStepped() {
+        WorldzCustomization.BorderSettings continuous = WorldzCustomization.BorderSettings.fromText(
+            true, "8", "1024", "0", "0", "1", "1", true
+        );
+        WorldzCustomization.BorderSettings stepped = WorldzCustomization.BorderSettings.fromText(
+            true, "8", "1024", "0", "0", "1", "1", true, "stepped"
+        );
+
+        assertEquals(ResizeStyle.CONTINUOUS, continuous.resizeStyle());
+        assertEquals(ResizeStyle.CONTINUOUS, continuous.toPlan().resizeStyle());
+        assertEquals(ResizeStyle.STEPPED, stepped.resizeStyle());
+        assertEquals(ResizeStyle.STEPPED, stepped.toPlan().resizeStyle());
+    }
+
+    @Test
+    void steppedResizeStyleWithoutARateIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> WorldzCustomization.BorderSettings.fromText(
+            true, "8", "1024", "0", "0", "0", "0", true, "stepped"
+        ));
+    }
+
+    @Test
+    void fromConfigCopiesTheResizeStyle() {
+        BorderConfig config = new BorderConfig();
+        config.resizeRateBlocks = 1;
+        config.resizeRateDays = 1;
+        config.resizeStyle = ResizeStyle.STEPPED;
+
+        assertEquals(ResizeStyle.STEPPED, WorldzCustomization.BorderSettings.fromConfig(config).resizeStyle());
     }
 
     @Test

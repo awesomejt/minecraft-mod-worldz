@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.client;
 
 import media.jlt.minecraft.mods.worldz.logic.RadiusUnit;
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
@@ -32,6 +33,8 @@ final class WorldzBorderScreen extends Screen {
     private EditBox resizeDelayDays;
     private EditBox resizeRateBlocks;
     private EditBox resizeRateDays;
+    private ResizeStyle resizeStyle;
+    private Button resizeStyleButton;
     private MultiLineTextWidget errorMessage;
 
     WorldzBorderScreen(LimitEditorHosts.BorderEditorHost parent, boolean overworld, WorldzCustomization.BorderSettings initial) {
@@ -41,6 +44,7 @@ final class WorldzBorderScreen extends Screen {
         this.initial = initial;
         this.enabled = initial.enabled();
         this.ensureObjective = initial.ensureObjective();
+        this.resizeStyle = initial.resizeStyle();
     }
 
     @Override
@@ -126,6 +130,12 @@ final class WorldzBorderScreen extends Screen {
         ));
         form.addChild(rateFields);
 
+        this.resizeStyleButton = Button.builder(
+            ResizeStyleLabel.of(this.resizeStyle),
+            button -> cycleResizeStyle()
+        ).width(FORM_WIDTH).build();
+        form.addChild(this.resizeStyleButton);
+
         form.addChild(Checkbox.builder(
             Component.translatable(
                 this.overworld ? "jlt_worldz.customize.ensure_end_portal" : "jlt_worldz.customize.ensure_blaze_access"
@@ -163,6 +173,11 @@ final class WorldzBorderScreen extends Screen {
         this.unitButton.setMessage(RadiusUnitLabel.of(this.unit));
     }
 
+    private void cycleResizeStyle() {
+        this.resizeStyle = this.resizeStyle.next();
+        this.resizeStyleButton.setMessage(ResizeStyleLabel.of(this.resizeStyle));
+    }
+
     private void apply() {
         try {
             WorldzCustomization.BorderSettings settings = WorldzCustomization.BorderSettings.fromText(
@@ -173,7 +188,8 @@ final class WorldzBorderScreen extends Screen {
                 this.resizeDelayDays.getValue(),
                 this.unit.toBlocksText(this.resizeRateBlocks.getValue()),
                 this.resizeRateDays.getValue(),
-                this.ensureObjective
+                this.ensureObjective,
+                this.resizeStyle.serializedName()
             );
             this.parent.setBorder(this.overworld, settings);
             this.onClose();

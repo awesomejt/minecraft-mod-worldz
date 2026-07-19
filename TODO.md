@@ -321,13 +321,42 @@ Decisions already made (see DESIGN §21.1 and MEMORY.md — resizeStyle field
 reusing the rate fields, instant snap per step, easing curve deferred).
 Design is settled; these tasks are execution.
 
-- [ ] 5b.1 `resizeStyle: continuous | stepped` through the stack: schedule
+- [x] 5b.1 `resizeStyle: continuous | stepped` through the stack: schedule
       math first (`BorderSchedule.radiusAtTick` stepped curve — pure,
       JUnit-covered, including delay interaction, clamping at final, and
       collapse direction), then config/codec/customization plumbing
       (`BorderConfig`, `WorldLimitCodecs`, `WorldzCustomization` +
       single-biome/chaos variants, border screen toggle), default
-      `continuous` so existing configs/saves are untouched.
+      `continuous` so existing configs/saves are untouched. **Done
+      (0.2.15):** new `logic.ResizeStyle` enum (`CONTINUOUS`/`STEPPED`,
+      same `parse`/`serializedName` shape as `ExteriorMode`); added as a
+      new trailing component to `BorderSchedule` (all pre-existing
+      constructor overloads kept their exact external signatures,
+      defaulting to `CONTINUOUS` internally — zero call-site changes
+      needed anywhere) with a `steppedRadiusAtTick` branch in
+      `radiusAtTick` (jumps by `resizeRateBlocks` every `resizeRateDays`,
+      clamped at `finalRadiusBlocks`, both directions); stepped without a
+      rate throws in the compact constructor (fail-fast for interactive
+      callers). Same additive-field treatment on
+      `WorldLimitPlan.DimensionLimit` (persisted plan) and
+      `WorldzCustomization.BorderSettings` (customize-screen model, one
+      new fullest `fromText` overload taking an explicit style string) —
+      **no changes needed** in `SingleBiomeCustomization`/
+      `ChaosBiomesCustomization` since they only ever held a
+      `BorderSettings` object, never its individual fields. `BorderConfig`
+      gained the YAML field (default `continuous`); `WorldzConfig`
+      parses/serializes it and falls back stepped-without-a-rate to
+      continuous with a logged warning (config path never throws, unlike
+      the interactive screen). `WorldLimitCodecs.DIMENSION_CODEC` gained
+      `resize_style` (optional, defaults `continuous`, so it doesn't
+      matter that new-worlds-only means no real back-compat need existed
+      anyway). `WorldzBorderScreen` gained a **Resize style** toggle
+      button (`ResizeStyleLabel`, mirroring `RadiusUnitLabel`'s pattern).
+      11 new tests across `BorderScheduleTest`, `WorldLimitPlanTest`,
+      `WorldzConfigTest`, `WorldzCustomizationTest`; full suite green
+      (255 tests). Driver (5b.2) and test configs (5b.3) still to come —
+      this task is data model + config + UI only, nothing actually
+      resizes in a stepped way yet.
 - [ ] 5b.2 Step driver in `WorldLimitManager.onServerTick`: apply due steps
       via `WorldBorder.setSize` (instant snap), persist next-step tick in
       `WorldLimitState`, recompute-on-restart semantics (radius is a pure

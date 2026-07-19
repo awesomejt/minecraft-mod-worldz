@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.config.BorderConfig;
 import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 
 import java.util.OptionalInt;
 
@@ -58,6 +59,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
      * @param resizeRateBlocks radius blocks per rate interval
      * @param resizeRateDays Minecraft days per rate interval
      * @param ensureObjective whether the progression objective is guaranteed
+     * @param resizeStyle whether the rate fields drive one smooth lerp or abrupt jumps
      */
     public record DimensionLimit(
         boolean enabled,
@@ -67,7 +69,8 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
         int resizeDelayDays,
         int resizeRateBlocks,
         int resizeRateDays,
-        boolean ensureObjective
+        boolean ensureObjective,
+        ResizeStyle resizeStyle
     ) {
         /** Validates persisted values before they reach vanilla's border API. */
         public DimensionLimit {
@@ -75,6 +78,9 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
                 || resizeRateBlocks < 0 || resizeRateDays < 0
                 || ((resizeRateBlocks == 0) != (resizeRateDays == 0))) {
                 throw new IllegalArgumentException("invalid persisted world-limit values");
+            }
+            if (resizeStyle == ResizeStyle.STEPPED && resizeRateBlocks == 0) {
+                throw new IllegalArgumentException("stepped resize requires resizeRateBlocks and resizeRateDays");
             }
         }
 
@@ -94,7 +100,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
             int resizeDays,
             boolean ensureObjective
         ) {
-            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0, ensureObjective);
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0, ensureObjective, ResizeStyle.CONTINUOUS);
         }
 
         /**
@@ -117,7 +123,32 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
             int resizeRateDays,
             boolean ensureObjective
         ) {
-            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays, ensureObjective);
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays, ensureObjective, ResizeStyle.CONTINUOUS);
+        }
+
+        /**
+         * Creates continuous-style values with an initial delay.
+         *
+         * @param enabled whether the border is managed
+         * @param initialRadiusBlocks initial center-to-side distance
+         * @param finalRadiusBlocks final center-to-side distance
+         * @param resizeDays legacy total transition duration
+         * @param resizeDelayDays wait at the initial radius before resizing
+         * @param resizeRateBlocks radius blocks per rate interval
+         * @param resizeRateDays Minecraft days per rate interval
+         * @param ensureObjective whether the progression objective is guaranteed
+         */
+        public DimensionLimit(
+            boolean enabled,
+            int initialRadiusBlocks,
+            int finalRadiusBlocks,
+            int resizeDays,
+            int resizeDelayDays,
+            int resizeRateBlocks,
+            int resizeRateDays,
+            boolean ensureObjective
+        ) {
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, resizeDelayDays, resizeRateBlocks, resizeRateDays, ensureObjective, ResizeStyle.CONTINUOUS);
         }
 
         /**
@@ -126,7 +157,7 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
          * @return disabled dimension plan
          */
         public static DimensionLimit disabled() {
-            return new DimensionLimit(false, 512, 512, 0, 0, 0, 0, false);
+            return new DimensionLimit(false, 512, 512, 0, 0, 0, 0, false, ResizeStyle.CONTINUOUS);
         }
 
         private static DimensionLimit fromConfig(BorderConfig config) {
@@ -138,7 +169,8 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
                 config.resizeDelayDays,
                 config.resizeRateBlocks,
                 config.resizeRateDays,
-                config.ensureObjective
+                config.ensureObjective,
+                config.resizeStyle
             );
         }
 
@@ -154,7 +186,8 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
                 resizeDays,
                 resizeDelayDays,
                 resizeRateBlocks,
-                resizeRateDays
+                resizeRateDays,
+                resizeStyle
             );
         }
 

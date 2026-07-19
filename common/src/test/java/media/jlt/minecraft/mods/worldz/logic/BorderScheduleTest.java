@@ -98,4 +98,51 @@ class BorderScheduleTest {
         assertEquals(168_000L, schedule.delayTicks());
         assertEquals(288_000L, schedule.totalDurationTicks());
     }
+
+    @Test
+    void steppedScheduleHoldsUntilEachIntervalFullyElapses() {
+        BorderSchedule schedule = new BorderSchedule(8, 1024, 0, 0, 1, 1, ResizeStyle.STEPPED);
+
+        assertEquals(8.0, schedule.radiusAtTick(0));
+        assertEquals(8.0, schedule.radiusAtTick(23_999L));
+        assertEquals(9.0, schedule.radiusAtTick(24_000L));
+        assertEquals(9.0, schedule.radiusAtTick(47_999L));
+        assertEquals(10.0, schedule.radiusAtTick(48_000L));
+    }
+
+    @Test
+    void steppedScheduleAppliesMultipleStepsAtOnceAndClampsAtFinal() {
+        BorderSchedule schedule = new BorderSchedule(8, 1024, 0, 0, 8, 1, ResizeStyle.STEPPED);
+
+        assertEquals(88.0, schedule.radiusAtTick(240_000L));
+        assertEquals(1024.0, schedule.radiusAtTick(schedule.totalDurationTicks()));
+        assertEquals(1024.0, schedule.radiusAtTick(Long.MAX_VALUE));
+    }
+
+    @Test
+    void steppedScheduleCollapsesInTheOtherDirection() {
+        BorderSchedule schedule = new BorderSchedule(1024, 32, 0, 0, 2, 1, ResizeStyle.STEPPED);
+
+        assertEquals(1024.0, schedule.radiusAtTick(0));
+        assertEquals(1022.0, schedule.radiusAtTick(24_000L));
+        assertEquals(32.0, schedule.radiusAtTick(schedule.totalDurationTicks()));
+    }
+
+    @Test
+    void steppedScheduleRespectsAnInitialDelay() {
+        BorderSchedule schedule = new BorderSchedule(8, 1024, 0, 5, 1, 1, ResizeStyle.STEPPED);
+
+        assertEquals(120_000L, schedule.delayTicks());
+        assertEquals(8.0, schedule.radiusAtTick(119_999L));
+        assertEquals(8.0, schedule.radiusAtTick(120_000L));
+        assertEquals(9.0, schedule.radiusAtTick(144_000L));
+    }
+
+    @Test
+    void steppedScheduleWithoutARateIsRejected() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new BorderSchedule(8, 1024, 0, 0, 0, 0, ResizeStyle.STEPPED)
+        );
+    }
 }

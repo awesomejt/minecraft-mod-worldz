@@ -820,6 +820,23 @@ Durable decisions, verified API notes, and rationale that should survive across 
   stop-and-test gate at each phase's end; 5c's mandatory spike/go-no-go
   split (DESIGN §21.2/TODO 5c) still applies regardless of this
   go-ahead.
+- 2026-07-18 — **Phase 5b.1 done (0.2.15):** `resizeStyle: continuous |
+  stepped` data model/config/codec/UI plumbing. Reused the exact
+  additive-field technique from Phase 5.2/5.3 (every existing constructor
+  overload keeps its old external signature, defaulting the new field
+  internally) across `BorderSchedule`, `WorldLimitPlan.DimensionLimit`,
+  and `WorldzCustomization.BorderSettings` — zero call-site breakage,
+  confirmed by a clean compile before any test file needed touching.
+  Notable: `SingleBiomeCustomization`/`ChaosBiomesCustomization` needed
+  **no changes at all**, unlike the End-border addition — they only ever
+  held a `BorderSettings` object as a field, never its individual values,
+  so a field added inside `BorderSettings` doesn't ripple outward the way
+  a whole new sibling field did in Phase 5.3. Stepped math
+  (`BorderSchedule.steppedRadiusAtTick`) reuses the same rate-based
+  ceiling-division formula `durationTicks()` already had for continuous's
+  rate mode — no separate "how long will this take" calculation needed.
+  This task is model/config/UI only; nothing resizes in a stepped way in
+  a live world yet (that's 5b.2's tick driver).
 
 ## Reference Log
 

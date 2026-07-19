@@ -1,12 +1,14 @@
 package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import org.junit.jupiter.api.Test;
 
 import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorldLimitPlanTest {
@@ -20,6 +22,7 @@ class WorldLimitPlanTest {
         config.overworldBorder.resizeDelayDays = 9;
         config.overworldBorder.resizeRateBlocks = 128;
         config.overworldBorder.resizeRateDays = 4;
+        config.overworldBorder.resizeStyle = ResizeStyle.STEPPED;
         config.netherBorder.enabled = true;
         config.netherBorder.finalRadiusBlocks = 256;
         WorldLimitPlan plan = WorldLimitPlan.fromConfig(config);
@@ -30,7 +33,10 @@ class WorldLimitPlanTest {
         assertEquals(1_152_000L, plan.overworld().schedule().durationTicks());
         assertEquals(216_000L, plan.overworld().schedule().delayTicks());
         assertTrue(plan.overworld().schedule().usesRate());
+        assertEquals(ResizeStyle.STEPPED, plan.overworld().resizeStyle());
+        assertEquals(ResizeStyle.STEPPED, plan.overworld().schedule().style());
         assertEquals(256, plan.nether().finalRadiusBlocks());
+        assertEquals(ResizeStyle.CONTINUOUS, plan.nether().resizeStyle());
     }
 
     @Test
@@ -110,6 +116,20 @@ class WorldLimitPlanTest {
         WorldLimitPlan.DimensionLimit limit = new WorldLimitPlan.DimensionLimit(true, 1, 1, 0, false);
 
         assertEquals(0, limit.safeSpawnOffsetBlocks());
+    }
+
+    @Test
+    void legacyConstructorsDefaultToContinuousResizeStyle() {
+        assertEquals(ResizeStyle.CONTINUOUS, new WorldLimitPlan.DimensionLimit(true, 512, 2048, 0, true).resizeStyle());
+        assertEquals(ResizeStyle.CONTINUOUS, WorldLimitPlan.DimensionLimit.disabled().resizeStyle());
+    }
+
+    @Test
+    void steppedDimensionLimitWithoutARateIsRejected() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new WorldLimitPlan.DimensionLimit(true, 8, 1024, 0, 0, 0, 0, true, ResizeStyle.STEPPED)
+        );
     }
 
 }

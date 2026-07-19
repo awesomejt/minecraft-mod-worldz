@@ -302,6 +302,15 @@ at 64 blocks every five Minecraft days. A positive rate pair overrides
 partial interval is scaled proportionally, so the border stops exactly at the
 configured final radius.
 
+`resizeStyle` picks how the rate fields are applied: `continuous` (the
+default) smooths the same distance into one gradual lerp, as above. `stepped`
+instead jumps abruptly by `resizeRateBlocks` every `resizeRateDays`, with the
+border holding still in between -- for example `resizeRateBlocks: 1` and
+`resizeRateDays: 1` reveals one more block of radius each day. `stepped`
+requires a positive rate pair; without one it's ignored and treated as
+`continuous`. The Customize screen's border editor has a **Resize style**
+button that toggles between the two.
+
 #### Carrying the border into the End
 
 ```yaml

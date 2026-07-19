@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import org.slf4j.Logger;
@@ -445,6 +446,9 @@ public final class WorldzConfig {
         if (map.containsKey(objectiveKey)) {
             config.ensureObjective = readBoolean(map.get(objectiveKey), name + "." + objectiveKey);
         }
+        if (map.containsKey("resizeStyle")) {
+            config.resizeStyle = ResizeStyle.parse(readString(map.get("resizeStyle"), name + ".resizeStyle"));
+        }
         return config;
     }
 
@@ -627,6 +631,11 @@ public final class WorldzConfig {
             sanitized.resizeRateBlocks = 0;
             sanitized.resizeRateDays = 0;
         }
+        sanitized.resizeStyle = sanitized.resizeStyle == null ? ResizeStyle.CONTINUOUS : sanitized.resizeStyle;
+        if (sanitized.resizeStyle == ResizeStyle.STEPPED && sanitized.resizeRateBlocks == 0) {
+            logger.warn("{} resizeStyle 'stepped' needs resizeRateBlocks/resizeRateDays; using 'continuous' instead.", name);
+            sanitized.resizeStyle = ResizeStyle.CONTINUOUS;
+        }
         return sanitized;
     }
 
@@ -765,6 +774,7 @@ public final class WorldzConfig {
         values.put("resizeRateBlocks", config.resizeRateBlocks);
         values.put("resizeRateDays", config.resizeRateDays);
         values.put(objectiveKey, config.ensureObjective);
+        values.put("resizeStyle", config.resizeStyle.serializedName());
         return values;
     }
 
@@ -833,6 +843,7 @@ public final class WorldzConfig {
             + ", rate=" + (config.resizeRateBlocks == 0
                 ? "<total-days>"
                 : config.resizeRateBlocks + " blocks/" + config.resizeRateDays + " days")
+            + ", style=" + config.resizeStyle.serializedName()
             + ", " + objectiveName + "=" + config.ensureObjective;
     }
 

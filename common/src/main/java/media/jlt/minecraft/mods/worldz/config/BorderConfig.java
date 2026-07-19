@@ -1,5 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
+
 /** Configuration for one dimension's square, origin-centered world border. */
 public final class BorderConfig {
     /** Whether this dimension receives a limited border. */
@@ -18,6 +20,8 @@ public final class BorderConfig {
     public int resizeRateDays;
     /** Whether the dimension's progression objective must be reachable inside the final border. */
     public boolean ensureObjective = true;
+    /** Whether the rate fields drive one smooth lerp or abrupt jumps. */
+    public ResizeStyle resizeStyle = ResizeStyle.CONTINUOUS;
 
     /** Creates the disabled, static default configuration. */
     public BorderConfig() {

@@ -459,6 +459,7 @@ public record WorldzCustomization(
      * @param resizeRateBlocks radius blocks traversed per rate interval
      * @param resizeRateDays days per rate interval
      * @param ensureObjective whether progression access is guaranteed
+     * @param resizeStyle whether the rate fields drive one smooth lerp or abrupt jumps
      */
     public record BorderSettings(
         boolean enabled,
@@ -468,7 +469,8 @@ public record WorldzCustomization(
         int resizeDelayDays,
         int resizeRateBlocks,
         int resizeRateDays,
-        boolean ensureObjective
+        boolean ensureObjective,
+        ResizeStyle resizeStyle
     ) {
         /** Validates border values even while the border is disabled. */
         public BorderSettings {
@@ -491,6 +493,12 @@ public record WorldzCustomization(
             if ((resizeRateBlocks == 0) != (resizeRateDays == 0)) {
                 throw new IllegalArgumentException("Both resize rate fields must be zero or positive.");
             }
+            if (resizeStyle == null) {
+                throw new IllegalArgumentException("Resize style is required.");
+            }
+            if (resizeStyle == ResizeStyle.STEPPED && resizeRateBlocks == 0) {
+                throw new IllegalArgumentException("Stepped resize needs a resize rate.");
+            }
         }
 
         /**
@@ -509,7 +517,7 @@ public record WorldzCustomization(
             int resizeDays,
             boolean ensureObjective
         ) {
-            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0, ensureObjective);
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, 0, 0, ensureObjective, ResizeStyle.CONTINUOUS);
         }
 
         /**
@@ -532,7 +540,32 @@ public record WorldzCustomization(
             int resizeRateDays,
             boolean ensureObjective
         ) {
-            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays, ensureObjective);
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, 0, resizeRateBlocks, resizeRateDays, ensureObjective, ResizeStyle.CONTINUOUS);
+        }
+
+        /**
+         * Creates continuous-style values with an initial delay.
+         *
+         * @param enabled whether this dimension is limited
+         * @param initialRadiusBlocks border half-width at creation
+         * @param finalRadiusBlocks border half-width after resizing
+         * @param resizeDays legacy total transition duration
+         * @param resizeDelayDays wait before resizing
+         * @param resizeRateBlocks radius blocks per interval
+         * @param resizeRateDays Minecraft days per interval
+         * @param ensureObjective whether progression access is guaranteed
+         */
+        public BorderSettings(
+            boolean enabled,
+            int initialRadiusBlocks,
+            int finalRadiusBlocks,
+            int resizeDays,
+            int resizeDelayDays,
+            int resizeRateBlocks,
+            int resizeRateDays,
+            boolean ensureObjective
+        ) {
+            this(enabled, initialRadiusBlocks, finalRadiusBlocks, resizeDays, resizeDelayDays, resizeRateBlocks, resizeRateDays, ensureObjective, ResizeStyle.CONTINUOUS);
         }
 
         /**
@@ -550,7 +583,8 @@ public record WorldzCustomization(
                 config.resizeDelayDays,
                 config.resizeRateBlocks,
                 config.resizeRateDays,
-                config.ensureObjective
+                config.ensureObjective,
+                config.resizeStyle
             );
         }
 
@@ -617,7 +651,8 @@ public record WorldzCustomization(
         }
 
         /**
-         * Parses total-duration, initial delay, and optional rate fields.
+         * Parses total-duration, initial delay, and optional rate fields. Style defaults to
+         * continuous.
          *
          * @param enabled whether this dimension is limited
          * @param initialRadiusBlocks decimal initial radius
@@ -639,6 +674,45 @@ public record WorldzCustomization(
             String resizeRateDays,
             boolean ensureObjective
         ) {
+            return fromText(
+                enabled,
+                initialRadiusBlocks,
+                finalRadiusBlocks,
+                resizeDays,
+                resizeDelayDays,
+                resizeRateBlocks,
+                resizeRateDays,
+                ensureObjective,
+                ResizeStyle.CONTINUOUS.serializedName()
+            );
+        }
+
+        /**
+         * Parses total-duration, initial delay, rate, and resize-style fields from the client
+         * screen.
+         *
+         * @param enabled whether this dimension is limited
+         * @param initialRadiusBlocks decimal initial radius
+         * @param finalRadiusBlocks decimal final radius
+         * @param resizeDays decimal total transition duration
+         * @param resizeDelayDays decimal wait before resizing
+         * @param resizeRateBlocks decimal radius blocks per interval
+         * @param resizeRateDays decimal Minecraft days per interval
+         * @param ensureObjective whether progression access is guaranteed
+         * @param resizeStyle continuous or stepped
+         * @return validated immutable border values
+         */
+        public static BorderSettings fromText(
+            boolean enabled,
+            String initialRadiusBlocks,
+            String finalRadiusBlocks,
+            String resizeDays,
+            String resizeDelayDays,
+            String resizeRateBlocks,
+            String resizeRateDays,
+            boolean ensureObjective,
+            String resizeStyle
+        ) {
             return new BorderSettings(
                 enabled,
                 parseInteger(initialRadiusBlocks, "Initial border radius"),
@@ -647,7 +721,8 @@ public record WorldzCustomization(
                 parseInteger(resizeDelayDays, "Resize delay days"),
                 parseInteger(resizeRateBlocks, "Resize rate blocks"),
                 parseInteger(resizeRateDays, "Resize rate days"),
-                ensureObjective
+                ensureObjective,
+                ResizeStyle.parse(resizeStyle)
             );
         }
 
@@ -660,7 +735,8 @@ public record WorldzCustomization(
                 resizeDelayDays,
                 resizeRateBlocks,
                 resizeRateDays,
-                ensureObjective
+                ensureObjective,
+                resizeStyle
             );
         }
     }

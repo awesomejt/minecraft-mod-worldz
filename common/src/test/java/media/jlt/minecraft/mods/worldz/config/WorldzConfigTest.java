@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -167,6 +168,7 @@ class WorldzConfigTest {
               resizeDelayDays: 12
               resizeRateBlocks: 128
               resizeRateDays: 5
+              resizeStyle: stepped
               ensureEndPortal: false
             netherBorder:
               enabled: true
@@ -184,11 +186,26 @@ class WorldzConfigTest {
         assertEquals(128, config.overworldBorder.resizeRateBlocks);
         assertEquals(5, config.overworldBorder.resizeRateDays);
         assertFalse(config.overworldBorder.ensureObjective);
+        assertEquals(ResizeStyle.STEPPED, config.overworldBorder.resizeStyle);
         assertTrue(config.netherBorder.enabled);
         assertEquals(256, config.netherBorder.initialRadiusBlocks);
         assertEquals(128, config.netherBorder.finalRadiusBlocks);
         assertEquals(25, config.netherBorder.resizeDays);
         assertTrue(config.netherBorder.ensureObjective);
+        assertEquals(ResizeStyle.CONTINUOUS, config.netherBorder.resizeStyle);
+    }
+
+    @Test
+    void steppedResizeStyleWithoutARateFallsBackToContinuous() {
+        WorldzConfig config = WorldzConfig.parse("""
+            overworldBorder:
+              enabled: true
+              initialRadiusBlocks: 8
+              finalRadiusBlocks: 1024
+              resizeStyle: stepped
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(ResizeStyle.CONTINUOUS, config.overworldBorder.resizeStyle);
     }
 
     @Test
