@@ -194,6 +194,13 @@ composed with the new world types; plus the one real gap (the End).
       `starter_at_origin`. The "much larger default delay" for contraction
       (GOALS 20) is a recommended-value/docs concern, not a code gap —
       addressed in 5.4's test configs.
+      **Correction (2026-07-18, found via Jason's config 21 test, fixed
+      0.2.12):** "the delayed-start mechanism already exists" was true of
+      the code shape but not verified end-to-end in-game, and it was
+      actually broken — see the Deviation log's `getDefaultClockTime()`
+      entry. A code-reading audit isn't a substitute for actually running
+      the scenario; the delayed/expanding/collapsing border path had
+      never been exercised live before Phase 5.4.
 - [x] 5.2 The End gap (17): option to carry limits into the End with a
       minimum-size override so the dragon fight stays winnable; verify the
       existing Nether carry-over and blaze/End-portal guarantees still hold
@@ -595,6 +602,37 @@ pulled earlier if Jason wants a fun quick win.**
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-18 (Phase 5.4 acceptance, fixed 0.2.12) — **Delayed/expanding/
+  collapsing borders never actually started**, found via Jason's config
+  21 in-game test: border held at its initial size indefinitely, no
+  matter how far `/tick step` advanced. Root cause, confirmed by decoding
+  the world's own persisted NBT directly (`world_limits.dat`,
+  `world_border.dat`, `data/minecraft/world_clocks.dat`): 26.2 moved the
+  authoritative "how many ticks has this dimension actually experienced"
+  counter to a new per-dimension `WorldClock` system (`Level.
+  getDefaultClockTime()`, persisted as `total_ticks` per dimension in
+  `world_clocks.dat`) — `ServerLevel.getGameTime()` (the classic
+  `LevelData` field `WorldLimitManager` was built against, and still the
+  field the decompiled/generated 26.2 sources document as "the" game
+  time) is no longer kept in sync with real play time in this snapshot.
+  Confirmed directly: the test world's `world_clocks.dat` showed
+  `minecraft:overworld` at 1,146,062 real elapsed ticks (far past the
+  120,000-tick delay Jason had configured), while `world_limits.dat`'s
+  pending-start tick was still sitting uncleared at 120000 and
+  `world_border.dat` was still static at the initial size — the
+  delay-expiry check was comparing against a clock that had barely moved.
+  (The interpolation mechanics themselves, once started, are unaffected —
+  `WorldBorder.MovingBorderExtent.update()` just decrements a per-tick
+  counter on every `WorldBorder.tick()` call, not tied to either clock —
+  so this only ever blocked the *start* of a transition, not its
+  progress.) Fixed by switching `WorldLimitManager`'s three
+  `getGameTime()` call sites to a new `dimensionTicks(ServerLevel)`
+  helper wrapping `getDefaultClockTime()`. Static borders (no delay) were
+  never affected — config 20's acceptance already confirmed those work.
+  Configs 21 and 22 (both delay-based) need a fresh world and a retest
+  under 0.2.12; the old Worldz-21 save is stuck by design (new-worlds-only
+  policy, disposable test saves) and isn't worth trying to repair.
 
 - 2026-07-18 (Phase 5.3) — Supersedes Phase 4.2's acceptance item 5
   ("Chaos Biomes Customize screen shows... nothing from the full Worldz

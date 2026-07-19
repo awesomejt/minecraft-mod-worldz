@@ -114,7 +114,7 @@ public final class WorldLimitManager {
         }
         if (schedule.delayTicks() > 0L) {
             border.setSize(schedule.initialDiameterBlocks());
-            long startTick = Math.addExact(level.getGameTime(), schedule.delayTicks());
+            long startTick = Math.addExact(dimensionTicks(level), schedule.delayTicks());
             logSchedule(dimensionName, limit, schedule, "waiting until game tick " + startTick);
             return startTick;
         }
@@ -145,7 +145,7 @@ public final class WorldLimitManager {
         String dimensionName
     ) {
         OptionalLong pending = state.pendingStartTick(overworld);
-        if (pending.isEmpty() || level.getGameTime() < pending.getAsLong()) {
+        if (pending.isEmpty() || dimensionTicks(level) < pending.getAsLong()) {
             return;
         }
         startTransition(level, limit, dimensionName);
@@ -166,10 +166,23 @@ public final class WorldLimitManager {
                 schedule.initialDiameterBlocks(),
                 schedule.finalDiameterBlocks(),
                 schedule.durationTicks(),
-                level.getGameTime()
+                dimensionTicks(level)
             );
         }
         logSchedule(dimensionName, limit, schedule, "started");
+    }
+
+    /**
+     * Returns this dimension's own real elapsed-tick counter. 26.2 moved authoritative elapsed
+     * time to a per-dimension {@code WorldClock} ({@code Level.getDefaultClockTime()}, backed by
+     * {@code data/minecraft/world_clocks.dat}'s per-dimension {@code total_ticks}) --
+     * {@code ServerLevel.getGameTime()} (the legacy {@code LevelData} field) is no longer kept in
+     * sync with real play time in this snapshot, which silently stalled every delayed border
+     * transition (confirmed in-game: `world_limits.dat`'s pending start tick never cleared even
+     * after `world_clocks.dat` showed over a million elapsed overworld ticks).
+     */
+    private static long dimensionTicks(ServerLevel level) {
+        return level.getDefaultClockTime();
     }
 
     private static void logSchedule(

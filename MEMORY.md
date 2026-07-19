@@ -1344,3 +1344,18 @@ Durable decisions, verified API notes, and rationale that should survive across 
 - Loader jars use the reseed naming convention rather than a single root
   `mod-worldz` archive because Fabric and NeoForge require distinct artifacts.
 - See the starter-radius resolved marker and fail-safe possible-biome decisions above.
+- **`ServerLevel.getGameTime()` (`LevelData`'s classic field) is not kept in
+  sync with real elapsed play time in this 26.2 snapshot.** Authoritative
+  per-dimension elapsed ticks now live in a new `WorldClock` system —
+  `Level.getDefaultClockTime()`, persisted as `total_ticks` per dimension
+  in `data/minecraft/world_clocks.dat` — confirmed by decoding a real
+  world's saved NBT directly (not just reading decompiled sources) after
+  it silently broke `WorldLimitManager`'s delayed border transitions (see
+  worldz/TODO.md's 2026-07-18 Deviation log entry for the full
+  diagnosis). Any future code that needs "how much time has actually
+  passed in this dimension" must use `getDefaultClockTime()`, not
+  `getGameTime()` — the generated/decompiled sources still document
+  `getGameTime()` as if it were authoritative, so this is easy to miss on
+  a read-only source review; it only surfaced by decoding the actual
+  persisted save files of a world that had visibly stopped behaving
+  correctly.

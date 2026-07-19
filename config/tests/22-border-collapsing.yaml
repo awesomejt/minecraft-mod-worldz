@@ -5,6 +5,9 @@
 # border fully collapses. Use `/tick step <ticks>` to skip through the
 # delay and resize period (see config 21's note).
 #
+# Requires 0.2.12+ (see config 21's note) -- earlier versions never
+# actually started the collapse either.
+#
 # Steps once in-game:
 #  1. Confirm the border starts at 2048 (radius) and does not move yet.
 #  2. `/tick step 120000` (5 days) -- confirm it still hasn't started
