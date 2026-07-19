@@ -20,12 +20,18 @@
 # Deviation log entry. Delete any world created with an older jar and
 # start fresh; its stuck state isn't fixable in place.
 #
+# Requires 0.2.13+ for the tiny initialRadiusBlocks below: earlier versions
+# clamped any border radius up to a 64-block floor
+# (WorldzConfig.MIN_BORDER_RADIUS_BLOCKS), so a 2-block start silently
+# became 64. 0.2.13 lowers that floor to 1 -- beatability at very small
+# sizes is the user's own responsibility, not something the floor enforces.
+#
 # This file's resizeDelayDays/resizeDays (2 and 98) make a deliberately
-# slow reveal: after the delay the border creeps from 64 to 1024 over 98
+# slow reveal: after the delay the border creeps from 2 to 1024 over 98
 # days, roughly 10 radius-blocks per day. Steps once in-game (adjust the
 # tick counts if you change the values above):
-#  1. Confirm the border starts at 64 (radius, clamped up from
-#     initialRadiusBlocks: 4) and does not move yet.
+#  1. Confirm the border starts at exactly 2 (radius -- not clamped up)
+#     and does not move yet.
 #  2. `/time add 2d` (or `/tick step 48000`) -- the delay expires; within
 #     a second or two the expansion should begin.
 #  3. `/tick step 24000` (1 day) -- confirm the border is ~10 blocks
@@ -37,7 +43,7 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 4
+  initialRadiusBlocks: 2
   finalRadiusBlocks: 1024
   resizeDelayDays: 2
   resizeDays: 98

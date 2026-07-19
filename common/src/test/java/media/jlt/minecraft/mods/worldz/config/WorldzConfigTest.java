@@ -161,7 +161,7 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
               enabled: true
-              initialRadiusBlocks: 32
+              initialRadiusBlocks: 0
               finalRadiusBlocks: 2000
               resizeDays: 100
               resizeDelayDays: 12
@@ -177,7 +177,7 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.overworldBorder.enabled);
-        assertEquals(64, config.overworldBorder.initialRadiusBlocks);
+        assertEquals(1, config.overworldBorder.initialRadiusBlocks);
         assertEquals(2000, config.overworldBorder.finalRadiusBlocks);
         assertEquals(100, config.overworldBorder.resizeDays);
         assertEquals(12, config.overworldBorder.resizeDelayDays);
@@ -196,11 +196,11 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             endBorder:
               carryFromOverworld: true
-              minimumRadiusBlocks: 32
+              minimumRadiusBlocks: 0
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.endBorder.carryFromOverworld);
-        assertEquals(64, config.endBorder.minimumRadiusBlocks);
+        assertEquals(1, config.endBorder.minimumRadiusBlocks);
     }
 
     @Test

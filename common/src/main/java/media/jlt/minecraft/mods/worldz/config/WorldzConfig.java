@@ -35,8 +35,14 @@ public final class WorldzConfig {
     public static final int MAX_STARTER_LAND_TRANSITION_BLOCKS = 4096;
     /** Largest supported repair depth beneath the natural ocean floor. */
     public static final int MAX_STARTER_LAND_FOUNDATION_DEPTH_BLOCKS = 384;
-    /** Smallest supported world-border half-width. */
-    public static final int MIN_BORDER_RADIUS_BLOCKS = 64;
+    /**
+     * Smallest supported world-border half-width. Deliberately {@code 1}, not a
+     * larger "safe" floor (Jason, 2026-07-18): a very small starting/final/End
+     * radius is allowed on purpose for the expanding/collapsing challenges
+     * (GOALS 19-20), and keeping the world beatable at that size is the user's
+     * responsibility, not something this floor should enforce.
+     */
+    public static final int MIN_BORDER_RADIUS_BLOCKS = 1;
     /** Largest half-width accepted by vanilla's world border. */
     public static final int MAX_BORDER_RADIUS_BLOCKS = 14_999_992;
     /** Longest supported border transition in in-game days. */

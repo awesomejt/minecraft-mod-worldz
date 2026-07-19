@@ -258,24 +258,27 @@ composed with the new world types; plus the one real gap (the End).
       applying in-game). **[Jason] acceptance:** config 20 ✓ (2026-07-18),
       config 22 ✓ (2026-07-18, slow 2048→256/40-day collapse — works well;
       only pre-existing biome-painting artifacts noted, see Backlog); config
-      21 blocked on 5.5 (radius floor), configs 21/23 + the two UI checks
-      still outstanding.
-- [ ] 5.5 Lower the border radius floor (found in config 21 acceptance:
-      `initialRadiusBlocks: 4` rendered as a 64-block border). Jason's
-      2026-07-18 decision: **global floor of 1** — set
-      `WorldzConfig.MIN_BORDER_RADIUS_BLOCKS = 64 → 1` so a tiny start
-      (1–2 blocks), a collapse-to-almost-nothing final radius, and a
-      low End minimum are all allowed; beatability becomes the user's
-      responsibility (the End carry-over override and progression
-      guarantees still function). Nothing structural needs 64 —
-      `BorderSchedule`'s compact constructor already only requires radii
-      `> 0`, and vanilla `WorldBorder.setSize` accepts small diameters; the
-      floor is purely the config sanitizer's (`sanitizeBorder`/
-      `sanitizeEndBorder`, three clamp sites). Update
-      `MIN_BORDER_RADIUS_BLOCKS`'s javadoc, the README's documented minimum,
-      any test asserting the 64 floor, and version-bump; then Jason
-      re-tests config 21 with a 1–2 block start. (Independent of the
-      Phase 5b/5c/5d additions.)
+      21 was blocked on the radius floor, fixed in 5.5 (0.2.13) — needs
+      retest; configs 21/23 + the two UI checks still outstanding.
+- [x] 5.5 Lower the border radius floor (found in config 21 acceptance:
+      `initialRadiusBlocks: 4` rendered as a 64-block border). **Done
+      (0.2.13):** `WorldzConfig.MIN_BORDER_RADIUS_BLOCKS = 64 → 1` per
+      Jason's 2026-07-18 decision (global floor of 1) — a tiny start
+      (as low as 1 block), a collapse-to-almost-nothing final radius, and
+      a low End minimum are all allowed now; beatability at those sizes is
+      the user's responsibility, not something the floor enforces
+      (documented in the constant's javadoc). Confirmed nothing structural
+      needed 64 — the only three call sites were the config sanitizer's
+      three clamp calls (`sanitizeBorder` ×2, `sanitizeEndBorder`); no
+      README text documented a 64 minimum to fix. Two `WorldzConfigTest`
+      cases (`borderSettingsLoadAndSanitizeIndependently`,
+      `endBorderLoadsAndClampsItsMinimumRadius`) were exercising the old
+      floor via a since-permitted input (32) — changed to 0 so they still
+      demonstrate the (now 1-block) clamp; full suite green afterward,
+      no other test depended on the old floor. Config 21's test config
+      dropped to a genuine 2-block start and its comments updated;
+      0.2.13 built and deployed to Worldz-Test. **[Jason] to re-test
+      config 21.**
 
 ## Phase 5b — Stepped border resizing (GOALS 19–20 clarification)
 

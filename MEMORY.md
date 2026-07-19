@@ -783,8 +783,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   minimum all droppable to 1; beatability is the user's responsibility.
   Safe because nothing structural needs 64 (BorderSchedule only requires
   `> 0`, vanilla setSize accepts tiny diameters); the 64 was an arbitrary
-  sanitizer floor. Planning-pass only — logged for an execution model, not
-  yet changed.
+  sanitizer floor. **Done same day (0.2.13, TODO 5.5):** floor lowered to
+  1, two tests updated to exercise the new floor instead of the old one
+  (full suite green), config 21 dropped to a genuine 2-block start,
+  0.2.13 built and deployed to Worldz-Test — Jason to re-test config 21.
 
 ## Reference Log
 
