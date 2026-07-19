@@ -154,6 +154,12 @@ public final class LimitedBiomeSource extends BiomeSource {
             && encodedWorldType.map("single_biome"::equals).orElse(false);
         boolean chaosBiomesDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("chaos_biomes"::equals).orElse(false);
+        // Closes the gap logged in MEMORY.md/TODO.md (Phase 6.2b/6.3): a strip_world
+        // created without ever opening Customize (world_preset/strip_world.json's own
+        // "world_type": "strip_world" hint) previously fell straight through to the
+        // generic preset's own defaults, silently ignoring stripWorld.bands entirely.
+        boolean stripWorldDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("strip_world"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -161,17 +167,23 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : () -> resolveConfiguredBiomes(config, biomeGetter));
+                    : stripWorldDefaults
+                        ? () -> resolveStripWorldAllowed(biomeGetter)
+                        : () -> resolveConfiguredBiomes(config, biomeGetter));
 
         // Every encoded instance has starter_radius. Its presence distinguishes a
         // persisted "no starter biome" from the fieldless preset that consults config.
+        // strip_world never has a starter biome at all (GOALS 32: a shape, not a biome
+        // restriction) -- Optional.empty() directly, not a fallback lookup.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : encodedStarterBiome.or(() -> chaosBiomesDefaults
-                ? resolveChaosBiomesStarter(config, biomeGetter)
-                : singleBiomeDefaults
-                    ? resolveSingleBiomeStarter(config, biomeGetter)
-                    : resolveConfiguredStarter(config, biomeGetter));
+            : stripWorldDefaults
+                ? Optional.empty()
+                : encodedStarterBiome.or(() -> chaosBiomesDefaults
+                    ? resolveChaosBiomesStarter(config, biomeGetter)
+                    : singleBiomeDefaults
+                        ? resolveSingleBiomeStarter(config, biomeGetter)
+                        : resolveConfiguredStarter(config, biomeGetter));
         int radius = encodedStarterRadius.orElse(
             chaosBiomesDefaults ? config.chaosBiomes.starterRadiusBlocks
                 : singleBiomeDefaults ? config.singleBiome.starterRadiusBlocks : config.starterRadiusBlocks
@@ -200,28 +212,34 @@ public final class LimitedBiomeSource extends BiomeSource {
                         LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
                         WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
                     )
-                    : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
+                    : stripWorldDefaults && config.stripWorld.bands.enabled
+                        ? WorldLayoutPlan.resolveBands(
+                            config.stripWorld.bands.biomes, config.stripWorld.bands.widthBlocks,
+                            config.stripWorld.bands.seedRandomOrder, Map.of(), new Random().nextLong()
+                        )
+                        : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
         SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()
             ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)
             : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> chaosBiomesDefaults
                 ? config.chaosBiomes.spawn.strategy
                 : singleBiomeDefaults
                     ? config.singleBiome.spawn.strategy
-                    : config.spawn.strategy);
-        // allow_rivers/allow_oceans come from whichever typed-preset config section is in
-        // play (GOALS 13/14, DESIGN §20.5, generalized to CHAOS in Phase 4.1); the generic
-        // fieldless preset falls back to its own top-level fields (default false either way).
+                    : stripWorldDefaults
+                        ? config.stripWorld.spawn.strategy
+                        : config.spawn.strategy);
+        // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config
+        // section is in play (GOALS 13/14, DESIGN §20.5, generalized to CHAOS in Phase 4.1
+        // and STRIP_BANDS in the GOALS 36 follow-up); the generic fieldless preset falls
+        // back to its own top-level fields (allow_beaches has no such field, so false).
         boolean allowRivers = encodedAllowRivers.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowRivers
-            : singleBiomeDefaults ? config.singleBiome.allowRivers : config.allowRivers);
+            : singleBiomeDefaults ? config.singleBiome.allowRivers
+                : stripWorldDefaults ? config.stripWorld.bands.allowRivers : config.allowRivers);
         boolean allowOceans = encodedAllowOceans.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowOceans
-            : singleBiomeDefaults ? config.singleBiome.allowOceans : config.allowOceans);
-        // allow_beaches (GOALS 36 follow-up) has no generic-preset equivalent -- only
-        // single_biome/chaos_biomes/strip_world bands support it, so the fieldless-preset
-        // fallback for neither is a literal false rather than a top-level config field.
-        // strip_world bands has no fieldless-preset defaulting branch at all yet (same known
-        // gap as its other fields -- see MEMORY.md), so it never reaches this "neither" case.
+            : singleBiomeDefaults ? config.singleBiome.allowOceans
+                : stripWorldDefaults ? config.stripWorld.bands.allowOceans : config.allowOceans);
         boolean allowBeaches = encodedAllowBeaches.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowBeaches
-            : singleBiomeDefaults ? config.singleBiome.allowBeaches : false);
+            : singleBiomeDefaults ? config.singleBiome.allowBeaches
+                : stripWorldDefaults ? config.stripWorld.bands.allowBeaches : false);
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
@@ -384,6 +402,17 @@ public final class LimitedBiomeSource extends BiomeSource {
             );
         }
         return resolved;
+    }
+
+    /**
+     * A strip world is a shape, not a biome restriction (GOALS 32): ordinary vanilla biome
+     * variety, matching {@link media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor}'s
+     * own explicit-customization resolution.
+     */
+    private static HolderSet<Biome> resolveStripWorldAllowed(HolderGetter<Biome> biomeGetter) {
+        return biomeGetter.get(BiomeTags.IS_OVERWORLD)
+            .<HolderSet<Biome>>map(value -> value)
+            .orElseThrow(() -> new IllegalStateException("Missing #minecraft:is_overworld biome tag."));
     }
 
     private static HolderSet<Biome> resolveConfiguredBiomes(WorldzConfig config, HolderGetter<Biome> biomeGetter) {

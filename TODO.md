@@ -793,6 +793,49 @@ rectangular shape.
       defaults apply automatically without any YAML changes. 4 new tests;
       full suite green (301 tests); clean build across all modules. 0.2.26
       built and deployed to Worldz-Test.
+      **Follow-up (0.2.27):** Jason copied config 29 to `29a`, changed only
+      `widthRadiusBlocks`, and went straight from selecting "Worldz: Strip
+      World" to "Create World" without opening Customize -- exactly the
+      already-documented "known gap" (Phase 6.2b's note, repeated in 6.3's
+      own): `LimitedBiomeSource.resolve()`'s fieldless-preset defaulting
+      had `singleBiomeDefaults`/`chaosBiomesDefaults` flags but no
+      `stripWorldDefaults` equivalent, so a strip world created without
+      ever opening Customize silently fell through to the generic
+      preset's own defaults (`LayoutMode.LEGACY`), ignoring
+      `stripWorld.bands` entirely. Confirmed by decompressing and
+      `strings`-scanning both worlds' persisted
+      `data/minecraft/world_gen_settings.dat`: Worldz-29a (config-only)
+      contained `legacy`; Worldz-29b (created via Customize, which Jason
+      built himself through the UI as a working comparison) contained
+      `strip_bands`. Deferring this had seemed reasonable back in 6.2b/6.3
+      since Customize always worked as a substitute -- but a config-driven
+      test file implicitly promises "just select the preset and create,"
+      so leaving it deferred was actively misleading for exactly the
+      config-based testing workflow this project relies on. Fix: added
+      the missing `stripWorldDefaults` flag (from
+      `world_preset/strip_world.json`'s own `"world_type": "strip_world"`
+      hint, already present in the JSON but never read) and wired it
+      through every branch `singleBiomeDefaults`/`chaosBiomesDefaults`
+      already had -- allowed biomes (`#minecraft:is_overworld` tag, a new
+      `resolveStripWorldAllowed` helper mirroring
+      `StripWorldPresetEditor`'s own resolution), starter (always empty --
+      a strip world has no starter-biome concept), world layout
+      (`WorldLayoutPlan.resolveBands(...)` when `stripWorld.bands.enabled`,
+      else `legacy()`), spawn strategy, and the three
+      allowRivers/Oceans/Beaches pass-through toggles. Radius/starter-land/
+      limits/exterior needed no branch -- they already matched the generic
+      fallback strip world itself uses. Corridor **width** was never
+      affected by any of this: `EnvelopedChunkGenerator`'s own codec
+      resolves `StripPlan` unconditionally from the shared top-level
+      `strip:` config regardless of `world_type`, which is exactly why
+      Jason's narrowed `widthRadiusBlocks: 2` worked correctly in 29a even
+      though bands didn't -- only the biome-source's per-preset defaulting
+      was gapped. `LimitedBiomeSource` still has no dedicated JUnit suite
+      (needs live game registries), so added a structural regression-guard
+      test pinning the new branches, same pattern as the two earlier
+      fixes in this file. README's "known gap" paragraph removed --
+      accurate now. 1 new test; full suite green (302 tests); clean build.
+      0.2.27 built and deployed to Worldz-Test.
       **[Jason] acceptance still outstanding** for the re-test of config 29
       — everything else in Phase 6 (26-28, and 29's non-biome behavior) is
       confirmed working; do not start Phase 7 without explicit go-ahead.

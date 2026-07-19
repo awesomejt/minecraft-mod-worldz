@@ -1085,6 +1085,39 @@ Durable decisions, verified API notes, and rationale that should survive across 
   sites exist and all needed updating anyway. 0.2.26 built and deployed to
   Worldz-Test; awaiting Jason's re-test of config 29 for the actual
   pass-through behavior this time.
+- 2026-07-19 (GOALS 36 fieldless-creation gap, 0.2.27) — Jason's 0.2.26
+  re-test hit the already-documented "known gap" head-on: he copied
+  config 29 to `29a` (only `widthRadiusBlocks` changed) and created a
+  world straight from the preset picker, no Customize. Bands silently
+  didn't apply -- exactly what 6.2b's and 6.3's own notes predicted, but
+  actually hitting it live made clear that deferring it was the wrong
+  call: a YAML test config implicitly promises "select the preset and
+  create," so the gap was actively misleading for the config-driven
+  testing workflow this whole project relies on. Diagnosed by decoding
+  both worlds' persisted NBT directly rather than guessing: gzip-decoded
+  `data/minecraft/world_gen_settings.dat` for both saves and grepped the
+  raw bytes for known substrings -- Worldz-29a (config-only) contained
+  `legacy`, Worldz-29b (which Jason built himself via the UI as a working
+  comparison to test against) contained `strip_bands`. This is a
+  generally useful technique worth remembering for any future "is my
+  persisted-world data actually what I think it is" question --
+  `python3 -c "import gzip; ..."` then `strings` on the decoded bytes,
+  no NBT library needed for a quick existence/substring check. Root
+  cause: `LimitedBiomeSource.resolve()`'s fieldless-preset defaulting had
+  `singleBiomeDefaults`/`chaosBiomesDefaults` flags (derived from
+  `world_preset/<name>.json`'s own `"world_type"` hint) but no
+  `stripWorldDefaults` equivalent -- even though `strip_world.json`
+  already carried the hint, nothing ever read it. Fixed by adding the
+  flag and threading it through every branch the other two already had:
+  allowed biomes (`#minecraft:is_overworld` tag), starter (always empty),
+  world layout (`resolveBands(...)` when enabled, else `legacy()`), spawn
+  strategy, and the three pass-through toggles. Confirmed the corridor
+  **width** was never part of this gap: `EnvelopedChunkGenerator`'s own
+  codec resolves `StripPlan` unconditionally from top-level `strip:`
+  config regardless of `world_type` -- a completely separate resolution
+  path from `LimitedBiomeSource`'s biome-source defaulting, which is
+  exactly why Jason's narrower `widthRadiusBlocks: 2` in 29a worked fine
+  even though bands didn't. 0.2.27 built and deployed to Worldz-Test.
 
 ## Reference Log
 

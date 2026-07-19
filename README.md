@@ -274,12 +274,6 @@ These three only matter when `bands.enabled` is set — the plain, band-free
 strip world already shows full vanilla biome variety (including rivers,
 oceans, and beaches) with nothing to configure.
 
-Known gap: unlike `strip.widthRadiusBlocks`/`widthMode`, biome bands are not
-picked up by the fieldless-preset defaulting (creating a world by selecting
-the preset without ever opening **Customize**). Open Customize at least
-once — its fields are pre-filled from `stripWorld.bands` — to actually get
-banded biomes rather than the plain full-variety corridor.
-
 ## Configuration
 
 The mod reads `config/jlt_worldz.yaml` at startup if present; it is entirely

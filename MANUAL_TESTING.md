@@ -340,7 +340,9 @@ Requires 0.2.16+ (the `resizeStyle`/stepped driver did not exist before it).
 Uses configs `26`-`29` (see [`config/tests/README.md`](config/tests/README.md)).
 **Select "Worldz: Strip World"** on the creation screen for all four, not
 plain "Worldz". Requires 0.2.22+ (the dedicated preset did not exist before
-it); test 5 requires 0.2.24+ (biome bands, GOALS 36).
+it); test 5 requires 0.2.27+ (biome bands, GOALS 36, including the
+fieldless-creation fix -- 0.2.24-0.2.26 needed Customize opened at least
+once for bands to apply at all).
 
 1. **Basic strip**, `26-strip-world-basic.yaml`. Confirm: ordinary vanilla
    terrain and full biome variety (this preset does not restrict biomes);
@@ -365,22 +367,26 @@ it); test 5 requires 0.2.24+ (biome bands, GOALS 36).
    width-mode toggle, the Nether checkbox, spawn strategy, and the Border/
    End Border/Exterior buttons all work and a customized world reflects
    the chosen values in-game.
-5. **Biome bands**, `29-strip-world-biome-bands.yaml` (GOALS 36, 0.2.26+).
-   Open Customize and confirm the "Pass through an ordered biome-band
-   sequence" checkbox, the band-biomes list, band width, shuffle-once
-   checkbox, and the three river/ocean/beach pass-through checkboxes (all
-   checked by default) are all present and pre-filled from the config;
-   confirm terrain stays ordinary vanilla shape (only the biome changes);
-   walking along +X in ~256-block increments the biome should cycle
-   desert → jungle → ice_spikes → badlands → taiga → back to desert;
-   walking along -X from spawn should show the same sequence in reverse
-   (band index wraps via floor division, not mirrored oddly at X=0);
-   confirm Z still ends into void at ~64 blocks out either side, unchanged
-   from the plain strip world; look for a natural river, ocean, beach, or
-   stony shore along the corridor and confirm it shows through as its real
-   vanilla biome instead of being relabeled to the current band's biome
-   (this was broken in 0.2.24/0.2.25 — bands never passed through water or
-   beach biomes at all).
+5. **Biome bands, config-only (no Customize)**, `29-strip-world-biome-bands.yaml`
+   (GOALS 36). Copy the config, then go straight from selecting "Worldz:
+   Strip World" to **Create World** without opening Customize at all. This
+   is exactly the path that was broken through 0.2.26: bands need
+   0.2.27+ to apply without ever opening Customize. Confirm terrain stays
+   ordinary vanilla shape (only the biome changes); walking along +X in
+   ~256-block increments the biome should cycle desert → jungle →
+   ice_spikes → badlands → taiga → back to desert; walking along -X from
+   spawn should show the same sequence in reverse (band index wraps via
+   floor division, not mirrored oddly at X=0); confirm Z still ends into
+   void at ~64 blocks out either side, unchanged from the plain strip
+   world; look for a natural river, ocean, beach, or stony shore along the
+   corridor and confirm it shows through as its real vanilla biome instead
+   of being relabeled to the current band's biome.
+6. **Biome bands, via Customize.** Same config, but this time open
+   Customize before creating. Confirm the "Pass through an ordered
+   biome-band sequence" checkbox, the band-biomes list, band width,
+   shuffle-once checkbox, and the three river/ocean/beach pass-through
+   checkboxes (all checked by default) are all present and pre-filled from
+   the config, and the resulting world matches test 5's expectations.
 
 ## Scenario table: seed-informed spawn (Phase 16)
 

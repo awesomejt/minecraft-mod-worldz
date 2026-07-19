@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.26", properties.getProperty("version"));
+        assertEquals("0.2.27", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -147,6 +147,28 @@ class ProjectMetadataTest {
             ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
         )).getAsJsonObject();
         assertEquals("Worldz: Strip World", lang.get("generator.jlt_worldz.strip_world").getAsString());
+    }
+
+    @Test
+    void limitedBiomeSourceAppliesStripWorldBandsWithoutCustomize() throws IOException {
+        // Regression guard (Jason found in-game, GOALS 36 follow-up): creating a strip_world
+        // directly from world_preset/strip_world.json's fieldless "world_type": "strip_world"
+        // hint -- never opening Customize -- previously fell straight through to the generic
+        // preset's own defaults (LayoutMode.LEGACY), silently ignoring stripWorld.bands.
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains(
+            "boolean stripWorldDefaults = encodedStarterRadius.isEmpty()\n"
+                + "            && encodedWorldType.map(\"strip_world\"::equals).orElse(false);"
+        ));
+        assertTrue(source.contains("resolveStripWorldAllowed(biomeGetter)"));
+        assertTrue(source.contains("stripWorldDefaults && config.stripWorld.bands.enabled"));
+        assertTrue(source.contains("WorldLayoutPlan.resolveBands("));
+        assertTrue(source.contains("stripWorldDefaults ? config.stripWorld.bands.allowRivers : config.allowRivers"));
+        assertTrue(source.contains("stripWorldDefaults ? config.stripWorld.bands.allowOceans : config.allowOceans"));
+        assertTrue(source.contains("stripWorldDefaults ? config.stripWorld.bands.allowBeaches : false"));
     }
 
     @Test
@@ -430,7 +452,9 @@ class ProjectMetadataTest {
                 + "                ? config.chaosBiomes.spawn.strategy\n"
                 + "                : singleBiomeDefaults\n"
                 + "                    ? config.singleBiome.spawn.strategy\n"
-                + "                    : config.spawn.strategy);"
+                + "                    : stripWorldDefaults\n"
+                + "                        ? config.stripWorld.spawn.strategy\n"
+                + "                        : config.spawn.strategy);"
         ));
         assertTrue(source.contains("Codec.STRING.optionalFieldOf(\"world_type\").forGetter(source -> Optional.<String>empty())"));
     }
