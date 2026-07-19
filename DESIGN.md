@@ -1820,3 +1820,92 @@ level from armor in the tick logic and add bounded seconds per level.
 Clean split: Protection = discoverable damage relief; the custom enchant =
 the specialized grace tool you hunt for. Both bounded per the no-immunity
 rule.
+
+## 23. Strip world / 1D Minecraft (GOALS 32, 36) — design spike (TODO 6.1)
+
+A narrow corridor along one axis; everything happens in that strip. Design
+verified 2026-07-19 against the real 26.2 sources and this codebase's
+existing border/exterior/progression machinery.
+
+**Vanilla `WorldBorder` is confirmed square-only.** Read the real class:
+one `centerX`/`centerZ` pair and a single `extent` (size), used identically
+for both axes in `getMinX`/`getMaxX`/`getMinZ`/`getMaxZ` — there is no way
+to give it an independent X/Z half-width. Any genuinely rectangular bound
+has to come from this mod's own exterior-envelope mechanism, not vanilla's
+border.
+
+**Key finding: the strip's *length* needs no new machinery at all.** Pick
+one fixed axis for the corridor to run along — say X, width constrains Z
+(seeds have no privileged axis, so hardcoding this is a pure implementation
+simplification, not a scope gap). Size vanilla's `WorldBorder` to the
+strip's *length* exactly as every other world type already does. The
+border's redundant Z-reach (it's square, so it also nominally bounds Z to
+the same large radius) is never actually experienced, since the width
+constraint below always kicks in first, well inside the border's radius.
+This means the *length* axis gets real collision, the existing delayed/
+expanding/collapsing schedule machinery (GOALS 17/19/20), and the
+warning vignette — all for free, unmodified, exactly satisfying "composes
+with limited length (17) and the expanding/collapsing schedules (19-20)"
+with zero new code.
+
+**The *width* is the genuinely new piece, and is structurally limited to
+"soft" (no real collision).** The existing exterior envelope
+(`ExteriorPlan.DimensionEnvelope`) only ever governs *terrain
+generation* (what's there), never player collision — collision on the
+existing square shape comes exclusively from vanilla's border, which
+(confirmed above) cannot be made rectangular. So there is no way to give
+the strip's width a real invisible-wall push-back without building a
+wholly new collision mechanism (e.g. an actual placed wall of
+unbreakable blocks along both long edges) — out of scope for this phase
+unless Jason wants it explicitly; the default should be the same "soft,
+walk-off-into-void" experience already established for GOAL 38-style
+soft edges, reusing `ExteriorMode` (`VOID`/`OCEAN`) exactly as-is.
+
+**Recommended shape: additive, not a generalization of the square
+envelope.** Rather than retrofitting `ExteriorPlan.DimensionEnvelope`
+into a rectangle (touching the heavily-tested, already-shipped square
+path used by every existing challenge type), add a small, new, orthogonal
+concept — a `StripPlan` (`enabled`, `widthBlocks`, `widthMode: void |
+ocean`, optional `applyToNether`) — checked *additionally* to whatever
+the existing square envelope/border already decide: a column is
+classified by the strip's width mode whenever `abs(z - originZ) >
+widthBlocks / 2`, regardless of what the square envelope says, with the
+strip's own check taking precedence when both could apply (they should
+rarely overlap in practice, since a "narrow corridor" width is normally
+much smaller than any configured square boundary). This is a pure
+addition: zero behavior change, zero risk, to every existing world type,
+since `widthBlocks` defaults to disabled/unbounded everywhere else.
+
+**A real, concrete defect found for free by this exercise:**
+`ObjectiveSite`'s fallback End-portal/fortress placement (`ProgressionGuarantees`)
+bakes in the same square assumption — `fitsInside` checks `abs(x) <=
+radius && abs(z) <= radius` against one shared radius, and
+`FALLBACK_Z_CANDIDATES = {0, 64, -64, 128, -128}` can pick a Z offset
+*outside* a strip narrower than 128 blocks, placing the compact fallback
+portal in the void/wall zone. This needs the fallback-Z candidate search
+(and `fitsInside`'s Z bound) to respect the strip's own `widthBlocks`
+separately from the border's length radius — real, necessary 6.2 work,
+not hypothetical.
+
+**Preset shape:** own dedicated typed preset (`jlt_worldz:strip_world`,
+name TBD at 6.2), mirroring `single_biome`/`chaos_biomes` — own Customize
+screen, own config section, own `world_type` codec hint — matching this
+project's established one-preset-per-challenge-family convention (GOALS
+32 is its own numbered use case, not a variant), rather than folding a
+"strip mode" toggle into the generic Worldz preset's advanced screens.
+
+**Biome-sequence variation (36):** ordered (or seed-randomized) biome
+bands selected over untouched vanilla terrain every N chunks along the
+strip's length axis — the exact same per-cell selection machinery Phase
+4's chaos biomes already built (`WorldLayoutPlan`/`sampleUniform`), just
+walking bands in *order* along one axis instead of *randomly* over a 2D
+grid. No height adjustment, so none of the removed coastline-defect class
+can apply here either. Scoped to TODO 6.3, after the core strip (6.2)
+ships.
+
+**Nether strip (32, optional):** the same additive width-check applied to
+the Nether's own `EnvelopedChunkGenerator` instance; independently
+toggleable, mirroring how Nether border/exterior settings are already
+independent of the Overworld's throughout this codebase.
+
+Decided 2026-07-19; no code yet — 6.2 implements from this design.

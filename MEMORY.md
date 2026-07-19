@@ -926,6 +926,23 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Phase 6.** Set aside, not abandoned — the "mask, don't discard"
   approach (DESIGN §21.2) is a credible plan if this comes back into
   scope later; restart from that finding rather than re-researching.
+- 2026-07-19 (Phase 6.1 design spike, DESIGN §23) — Confirmed
+  `WorldBorder` is square-only (one `extent`, both axes identical).
+  Strip world's *length* axis needs zero new code — size vanilla's
+  existing border to it, exactly like every other type, and GOALS
+  17/19/20 composition comes free. The *width* axis is the new piece and
+  is structurally limited to a soft (no-collision) edge, since collision
+  has only ever come from vanilla's border. Decision: implement width as
+  an additive `StripPlan` check layered on top of the existing
+  (untouched) square envelope/border, not a retrofit of
+  `ExteriorPlan.DimensionEnvelope` into a rectangle — zero risk to every
+  shipped world type. Found a genuine defect while verifying reachability:
+  `ObjectiveSite`'s fallback-portal Z-candidate search
+  (`{0, 64, -64, 128, -128}`) can pick a point outside a narrow strip,
+  needing a strip-aware bound in 6.2. One fixed axis (X) for the
+  corridor, no orientation config — seeds have no privileged axis, so
+  this is a pure implementation simplification. Own dedicated typed
+  preset, matching `single_biome`/`chaos_biomes` convention.
 
 ## Reference Log
 

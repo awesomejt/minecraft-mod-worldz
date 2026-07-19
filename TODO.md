@@ -557,16 +557,34 @@ Independent of 5b/5c; Jason picks phase order.
 Right after the limits phase: it is the same access/envelope machinery in a
 rectangular shape.
 
-- [ ] 6.1 Design spike (DESIGN §20.11): vanilla `WorldBorder` is
+- [x] 6.1 Design spike (DESIGN §20.11): vanilla `WorldBorder` is
       square-only (verify in 26.2 sources), so the strip's long walls likely
       come from the exterior-envelope mechanism (void or solid wall) rather
       than the border — decide the access-prevention approach and its
       interaction with the 17–20 schedules. Stronghold/End-portal
       reachability inside the strip via the existing progression guarantees
       (the fallback-portal machinery applies). Optional Nether strip (32).
-- [ ] 6.2 Implement (as a `limited` option or its own type — 6.1 decides);
-      configurable width in blocks/chunks; test configs; docs; **[Jason]**
-      acceptance.
+      **Done — full design in DESIGN §23.** Confirmed `WorldBorder` is
+      square-only by reading the class directly (one `extent`, used
+      identically for both axes). Key finding: the strip's *length* needs
+      no new code — size vanilla's existing border to the length, exactly
+      like every other world type, and GOALS 17/19/20 composition comes
+      free. The *width* is the new piece, and is structurally limited to
+      a soft (no-collision) edge, since collision has only ever come from
+      vanilla's border, which can't be rectangular. Recommended shape:
+      additive, not a retrofit — a small new `StripPlan` width-check
+      applied on top of the existing (untouched) square envelope/border,
+      zero risk to every shipped world type. Found a real, concrete
+      defect along the way: `ObjectiveSite`'s fallback-portal placement
+      bakes in the same square assumption
+      (`FALLBACK_Z_CANDIDATES` can pick a Z outside a narrow strip) —
+      genuine 6.2 work, not hypothetical. Own dedicated typed preset
+      (matching `single_biome`/`chaos_biomes`), one fixed axis (X) for
+      the corridor (no orientation config — seeds have no privileged
+      axis).
+- [ ] 6.2 Implement (as a `limited` option or its own type — 6.1 decided:
+      **own dedicated typed preset**, see DESIGN §23); configurable width
+      in blocks/chunks; test configs; docs; **[Jason]** acceptance.
 - [ ] 6.3 Biome-sequence strip (36): the strip passes through ordered (or
       seed-randomized) biome bands, changing every N chunks, selecting
       biomes over untouched vanilla terrain — Phase 4's selection machinery
