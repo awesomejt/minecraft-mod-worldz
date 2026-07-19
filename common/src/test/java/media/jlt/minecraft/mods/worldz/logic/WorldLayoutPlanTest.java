@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.config.LayoutConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -325,5 +326,98 @@ class WorldLayoutPlanTest {
         assertEquals(3.0, plan.landBiomes().stream()
             .filter(weight -> weight.biomeId().equals("minecraft:plains"))
             .findFirst().orElseThrow().weight());
+    }
+
+    @Test
+    void stripBandsWalksTheOrderedSequenceByXOnlyAndWrapsAtTheEnd() {
+        WorldLayoutPlan plan = WorldLayoutPlan.resolveBands(
+            List.of("minecraft:plains", "minecraft:desert", "minecraft:taiga"), 64, false, Map.of(), 1L
+        );
+
+        assertEquals("minecraft:plains", plan.sampleAt(0, 999).biomeId().orElseThrow());
+        assertEquals("minecraft:plains", plan.sampleAt(63, -999).biomeId().orElseThrow());
+        assertEquals("minecraft:desert", plan.sampleAt(64, 0).biomeId().orElseThrow());
+        assertEquals("minecraft:taiga", plan.sampleAt(128, 0).biomeId().orElseThrow());
+        // Wraps back to the first biome once the sequence is exhausted.
+        assertEquals("minecraft:plains", plan.sampleAt(192, 0).biomeId().orElseThrow());
+    }
+
+    @Test
+    void stripBandsHandlesNegativeXConsistentlyWithFloorDivision() {
+        WorldLayoutPlan plan = WorldLayoutPlan.resolveBands(
+            List.of("minecraft:plains", "minecraft:desert"), 64, false, Map.of(), 1L
+        );
+
+        assertEquals("minecraft:desert", plan.sampleAt(-1, 0).biomeId().orElseThrow());
+        assertEquals("minecraft:desert", plan.sampleAt(-64, 0).biomeId().orElseThrow());
+        assertEquals("minecraft:plains", plan.sampleAt(-65, 0).biomeId().orElseThrow());
+    }
+
+    @Test
+    void stripBandsReportsLandRoleAndFullLandFactorByDefault() {
+        WorldLayoutPlan plan = WorldLayoutPlan.resolveBands(List.of("minecraft:plains"), 64, false, Map.of(), 1L);
+
+        WorldLayoutPlan.LayoutSample sample = plan.sampleAt(0, 0);
+        assertEquals(BiomeRole.LAND, sample.role());
+        assertEquals(1.0, sample.landFactor());
+    }
+
+    @Test
+    void stripBandsRespectsRoleOverrides() {
+        WorldLayoutPlan plan = WorldLayoutPlan.resolveBands(
+            List.of("minecraft:frozen_ocean"), 64, false, Map.of("minecraft:frozen_ocean", "land"), 1L
+        );
+
+        assertEquals(BiomeRole.LAND, plan.sampleAt(0, 0).role());
+    }
+
+    @Test
+    void stripBandsWithoutAnyBiomesIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> WorldLayoutPlan.resolveBands(
+            List.of(), 64, false, Map.of(), 1L
+        ));
+    }
+
+    @Test
+    void stripBandsSeedRandomOrderIsAPermutationAndDeterministic() {
+        List<String> biomes = List.of(
+            "minecraft:plains", "minecraft:desert", "minecraft:taiga", "minecraft:jungle", "minecraft:savanna"
+        );
+
+        WorldLayoutPlan first = WorldLayoutPlan.resolveBands(biomes, 64, true, Map.of(), 42L);
+        WorldLayoutPlan second = WorldLayoutPlan.resolveBands(biomes, 64, true, Map.of(), 42L);
+
+        List<String> firstOrder = sampledOrder(first, biomes.size());
+        assertEquals(firstOrder, sampledOrder(second, biomes.size()), "the same seed must shuffle identically every time");
+        assertEquals(Set.copyOf(biomes), Set.copyOf(firstOrder), "shuffling must be a permutation, never adding or losing biomes");
+    }
+
+    @Test
+    void stripBandsWithoutSeedRandomOrderKeepsTheConfiguredOrder() {
+        List<String> biomes = List.of("minecraft:plains", "minecraft:desert", "minecraft:taiga");
+
+        WorldLayoutPlan plan = WorldLayoutPlan.resolveBands(biomes, 64, false, Map.of(), 42L);
+
+        assertEquals(biomes, sampledOrder(plan, biomes.size()));
+    }
+
+    @Test
+    void stripBandsWithSeedPreservesTheAlreadyResolvedBandOrder() {
+        WorldLayoutPlan plan = WorldLayoutPlan.resolveBands(
+            List.of("minecraft:plains", "minecraft:desert", "minecraft:taiga"), 64, true, Map.of(), 42L
+        );
+        List<String> originalOrder = sampledOrder(plan, 3);
+
+        WorldLayoutPlan reseeded = plan.withSeed(99L);
+
+        assertEquals(originalOrder, sampledOrder(reseeded, 3), "re-seeding must not reshuffle an already-resolved band order");
+    }
+
+    private static List<String> sampledOrder(WorldLayoutPlan plan, int bandCount) {
+        List<String> order = new ArrayList<>();
+        for (int band = 0; band < bandCount; band++) {
+            order.add(plan.sampleAt(band * 64, 0).biomeId().orElseThrow());
+        }
+        return order;
     }
 }

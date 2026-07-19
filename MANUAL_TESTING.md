@@ -335,12 +335,12 @@ Requires 0.2.16+ (the `resizeStyle`/stepped driver did not exist before it).
    smoothly tick by tick, stepped borders hold perfectly still and then
    snap.
 
-## Phase 6 acceptance (strip world, GOALS 32, TODO 6.2c)
+## Phase 6 acceptance (strip world, GOALS 32/36, TODO 6.2c/6.3)
 
-Uses configs `26`-`28` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: Strip World"** on the creation screen for all three, not
+Uses configs `26`-`29` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Strip World"** on the creation screen for all four, not
 plain "Worldz". Requires 0.2.22+ (the dedicated preset did not exist before
-it).
+it); test 5 requires 0.2.24+ (biome bands, GOALS 36).
 
 1. **Basic strip**, `26-strip-world-basic.yaml`. Confirm: ordinary vanilla
    terrain and full biome variety (this preset does not restrict biomes);
@@ -365,6 +365,16 @@ it).
    width-mode toggle, the Nether checkbox, spawn strategy, and the Border/
    End Border/Exterior buttons all work and a customized world reflects
    the chosen values in-game.
+5. **Biome bands**, `29-strip-world-biome-bands.yaml` (GOALS 36). Open
+   Customize and confirm the "Pass through an ordered biome-band sequence"
+   checkbox, the band-biomes list, band width, and shuffle-once checkbox
+   are all present and pre-filled from the config; confirm terrain stays
+   ordinary vanilla shape (only the biome changes); walking along +X in
+   ~256-block increments the biome should cycle desert → jungle →
+   ice_spikes → badlands → taiga → back to desert; walking along -X from
+   spawn should show the same sequence in reverse (band index wraps via
+   floor division, not mirrored oddly at X=0); confirm Z still ends into
+   void at ~64 blocks out either side, unchanged from the plain strip world.
 
 ## Scenario table: seed-informed spawn (Phase 16)
 

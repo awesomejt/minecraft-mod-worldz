@@ -692,6 +692,55 @@ rectangular shape.
       biomes over untouched vanilla terrain — Phase 4's selection machinery
       with ordered bands instead of random cells. Config: band width, biome
       list/order, seed-random option. Test config; **[Jason]** acceptance.
+      **Done (0.2.24):** confirmed design per Jason — "seed-randomized"
+      means a single fixed permutation (shuffle the sequence once, not
+      per-band independent randomness), wraparound at a bounded strip's end
+      repeats/cycles the list (does not hold the last biome), and this
+      extends the existing `strip_world` preset rather than becoming a new
+      dedicated one. New `LayoutMode.STRIP_BANDS` and
+      `WorldLayoutPlan.bandBiomes`/`resolveBands(...)` (ordered walk along X
+      only via `floorDiv`/`floorMod`, ignoring Z; the one-time shuffle uses
+      the file's own `hash01`/`splitmix64` primitives, not `java.util.Random`,
+      for reproducibility) — a 12th record component, added via the
+      established legacy-overload pattern (11-arg constructor still works,
+      defaulting to `List.of()`) so none of `WorldLayoutPlan`'s ~18 existing
+      call sites needed touching; `withSeed` fixed to pass `bandBiomes`
+      through unchanged (it's already-resolved data, not something to
+      re-derive from a new seed). New `config.StripBandsConfig` (`enabled`,
+      `biomes`, `widthBlocks` default 128, `seedRandomOrder`) nested under
+      `StripWorldConfig.bands`, with matching read/sanitize/map/summary
+      wiring in `WorldzConfig` (invalid entries and tags dropped
+      individually with a warning, same as `chaosBiomes.biomes`; an enabled
+      section with no usable biomes disables itself rather than crashing).
+      `StripWorldCustomization` gained `bandsEnabled`/`bandBiomes`/
+      `bandWidthBlocks`/`bandSeedRandomOrder` fields, validation (concrete
+      ids only, no `#tags`; width clamped to the shared layout region-scale
+      range), and a `layoutPlan(seed)` method resolving `legacy()` vs
+      `resolveBands(...)`; `StripWorldPresetEditor`/`StripWorldCustomizeScreen`
+      wired through (new checkbox, multi-line biome list, width field,
+      shuffle-once checkbox). Also fixed two now-non-exhaustive
+      `LayoutMode` switches this new enum value broke:
+      `WorldzConfig.sanitizeLayout` (the generic preset's `layout:` section
+      has no field for an ordered band sequence, so `STRIP_BANDS` there
+      always falls back with a warning) and `EnvelopedChunkGenerator
+      .resolveLayout`'s terrain-adjustment skip-list (STRIP_BANDS never
+      adjusts height, same as CHAOS — GOALS 36 requires vanilla terrain
+      shape throughout). **Known gap, same shape as 6.2b's:**
+      `LimitedBiomeSource`'s fieldless-preset defaulting has no
+      `STRIP_BANDS` branch, so creating a strip world without ever opening
+      Customize never gets bands even if `stripWorld.bands.enabled: true`
+      is configured — opening Customize once (whose fields correctly
+      pre-fill from config either way) is required. New
+      `config/tests/29-strip-world-biome-bands.yaml`; "Phase 6 acceptance"
+      in MANUAL_TESTING.md extended with a 5th item; README.md gained a
+      "Biome bands (GOALS 36)" subsection under the strip-world section.
+      19 new tests across `WorldLayoutPlanTest`,
+      `StripWorldCustomizationTest`, `WorldzConfigTest`; full suite green
+      (297 tests); clean build across all modules. 0.2.24 built and
+      deployed to Worldz-Test.
+      **[Jason] acceptance still outstanding** for all of Phase 6
+      (6.2c and 6.3 together) — nothing to report yet beyond docs/configs
+      being ready; do not start Phase 7 without explicit go-ahead.
 
 ## Phase 7 — Ocean island challenge, core (GOALS 01, 04)
 

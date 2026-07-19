@@ -202,7 +202,7 @@ public final class WorldzConfig {
             config.chaosBiomes = readChaosBiomesConfig(object.get("chaosBiomes"), "chaosBiomes", logger);
         }
         if (object.containsKey("stripWorld")) {
-            config.stripWorld = readStripWorldConfig(object.get("stripWorld"), "stripWorld");
+            config.stripWorld = readStripWorldConfig(object.get("stripWorld"), "stripWorld", logger);
         }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
@@ -258,7 +258,7 @@ public final class WorldzConfig {
         }
         singleBiome = sanitizeSingleBiome(singleBiome, logger);
         chaosBiomes = sanitizeChaosBiomes(chaosBiomes, logger);
-        stripWorld = sanitizeStripWorld(stripWorld);
+        stripWorld = sanitizeStripWorld(stripWorld, logger);
         return this;
     }
 
@@ -325,12 +325,40 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static StripWorldConfig sanitizeStripWorld(StripWorldConfig config) {
+    private static StripWorldConfig sanitizeStripWorld(StripWorldConfig config, Logger logger) {
         StripWorldConfig sanitized = config == null ? new StripWorldConfig() : config;
         sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
         if (sanitized.spawn.strategy == null) {
             sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
         }
+        sanitized.bands = sanitizeStripBands(sanitized.bands, logger);
+        return sanitized;
+    }
+
+    private static StripBandsConfig sanitizeStripBands(StripBandsConfig config, Logger logger) {
+        StripBandsConfig sanitized = config == null ? new StripBandsConfig() : config;
+
+        BiomeListSpec biomeSpec = BiomeListSpec.parse(sanitized.biomes);
+        for (String invalid : biomeSpec.invalidEntries()) {
+            logger.warn("Ignoring invalid stripWorld.bands biome '{}'.", invalid);
+        }
+        for (BiomeListSpec.Entry entry : biomeSpec.entries()) {
+            if (entry.tag()) {
+                logger.warn("Ignoring stripWorld.bands biome tag '#{}'; bands require concrete biome ids.", entry.id());
+            }
+        }
+        sanitized.biomes = new ArrayList<>(
+            biomeSpec.entries().stream().filter(entry -> !entry.tag()).map(BiomeListSpec.Entry::id).toList()
+        );
+        if (sanitized.enabled && sanitized.biomes.isEmpty()) {
+            logger.warn("stripWorld.bands.enabled is set but has no usable biomes; disabling biome bands.");
+            sanitized.enabled = false;
+        }
+
+        sanitized.widthBlocks = clampWithWarning(
+            sanitized.widthBlocks, MIN_LAYOUT_REGION_SCALE_BLOCKS, MAX_LAYOUT_REGION_SCALE_BLOCKS,
+            "stripWorld.bands.widthBlocks", logger
+        );
         return sanitized;
     }
 
@@ -619,13 +647,36 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StripWorldConfig readStripWorldConfig(Object value, String name) {
+    private static StripWorldConfig readStripWorldConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
         StripWorldConfig config = new StripWorldConfig();
         if (map.containsKey("spawn")) {
             config.spawn = readSpawnConfig(map.get("spawn"), name + ".spawn");
+        }
+        if (map.containsKey("bands")) {
+            config.bands = readStripBandsConfig(map.get("bands"), name + ".bands", logger);
+        }
+        return config;
+    }
+
+    private static StripBandsConfig readStripBandsConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StripBandsConfig config = new StripBandsConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("biomes")) {
+            config.biomes = readStringList(map.get("biomes"), name + ".biomes", logger);
+        }
+        if (map.containsKey("widthBlocks")) {
+            config.widthBlocks = readInt(map.get("widthBlocks"), name + ".widthBlocks");
+        }
+        if (map.containsKey("seedRandomOrder")) {
+            config.seedRandomOrder = readBoolean(map.get("seedRandomOrder"), name + ".seedRandomOrder");
         }
         return config;
     }
@@ -809,6 +860,11 @@ public final class WorldzConfig {
             case SINGLE_BIOME -> sanitized.singleBiome.isEmpty();
             case CHAOS -> !hasLand;
             case VOID, LEGACY -> false;
+            // STRIP_BANDS is strip_world-only (GOALS 36): it needs an ordered, unweighted
+            // band sequence the generic preset's layout: section has no field for, so it can
+            // never resolve here -- always fall back rather than risk WorldLayoutPlan's own
+            // "at least one band biome" validation throwing during world creation.
+            case STRIP_BANDS -> true;
         };
         if (unsupported) {
             logger.warn(
@@ -913,6 +969,16 @@ public final class WorldzConfig {
     private static Map<String, Object> stripWorldMap(StripWorldConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("spawn", spawnMap(config.spawn));
+        values.put("bands", stripBandsMap(config.bands));
+        return values;
+    }
+
+    private static Map<String, Object> stripBandsMap(StripBandsConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("biomes", config.biomes);
+        values.put("widthBlocks", config.widthBlocks);
+        values.put("seedRandomOrder", config.seedRandomOrder);
         return values;
     }
 
@@ -975,7 +1041,17 @@ public final class WorldzConfig {
     }
 
     private static String stripWorldSummary(StripWorldConfig config) {
-        return "spawn=" + config.spawn.strategy.serializedName();
+        return "spawn=" + config.spawn.strategy.serializedName()
+            + ", bands=" + stripBandsSummary(config.bands);
+    }
+
+    private static String stripBandsSummary(StripBandsConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "biomes=" + config.biomes
+            + ", widthBlocks=" + config.widthBlocks
+            + ", seedRandomOrder=" + config.seedRandomOrder;
     }
 
     private static String layoutSummary(LayoutConfig config) {

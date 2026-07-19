@@ -542,7 +542,7 @@ class WorldzConfigTest {
                 + ", chaosBiomes=biomes=[minecraft:desert, minecraft:jungle, minecraft:ice_spikes,"
                 + " minecraft:badlands, minecraft:taiga], regionScaleBlocks=512, starterBiome=<none>"
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
-                + ", stripWorld=spawn=starter_at_origin"
+                + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -677,6 +677,69 @@ class WorldzConfigTest {
 
         assertEquals(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, tooSmall.chaosBiomes.regionScaleBlocks);
         assertEquals(WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS, tooLarge.chaosBiomes.regionScaleBlocks);
+    }
+
+    @Test
+    void stripWorldBandsSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stripWorld:
+              bands:
+                enabled: true
+                biomes:
+                  - minecraft:desert
+                  - minecraft:jungle
+                widthBlocks: 256
+                seedRandomOrder: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.stripWorld.bands.enabled);
+        assertEquals(List.of("minecraft:desert", "minecraft:jungle"), config.stripWorld.bands.biomes);
+        assertEquals(256, config.stripWorld.bands.widthBlocks);
+        assertTrue(config.stripWorld.bands.seedRandomOrder);
+    }
+
+    @Test
+    void stripWorldBandsTagsAreDroppedIndividually() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stripWorld:
+              bands:
+                enabled: true
+                biomes:
+                  - minecraft:desert
+                  - '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:desert"), config.stripWorld.bands.biomes);
+    }
+
+    @Test
+    void stripWorldBandsEnabledWithNoUsableBiomesDisablesItself() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stripWorld:
+              bands:
+                enabled: true
+                biomes:
+                  - '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.stripWorld.bands.enabled);
+    }
+
+    @Test
+    void stripWorldBandsWidthIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            stripWorld:
+              bands:
+                widthBlocks: 1
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            stripWorld:
+              bands:
+                widthBlocks: 999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, tooSmall.stripWorld.bands.widthBlocks);
+        assertEquals(WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS, tooLarge.stripWorld.bands.widthBlocks);
     }
 
     @Test

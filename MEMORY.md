@@ -996,6 +996,37 @@ Durable decisions, verified API notes, and rationale that should survive across 
   corridor; `ObjectiveSite.narrowForStrip` correctly clamps the Z bound
   down to the strip's own width first, so only Z=0 survives. 0.2.23
   built and deployed to Worldz-Test — Jason acceptance still outstanding.
+- 2026-07-19 (Phase 6.3, 0.2.24) — Biome-sequence strip (GOALS 36). Jason
+  confirmed three design questions before implementation: (1)
+  "seed-randomized" order means one fixed permutation chosen at world
+  creation, not per-band independent randomness each time a band is
+  sampled; (2) wraparound at a bounded strip's end repeats/cycles the
+  biome list, it does not hold the last biome forever; (3) scope is to
+  extend the existing `strip_world` preset with an optional `bands:`
+  section, not create a new dedicated preset. New `LayoutMode.STRIP_BANDS`
+  walks an ordered biome list along X only via `floorDiv`/`floorMod`
+  (ignoring Z entirely — bands run the corridor's full width), added to
+  `WorldLayoutPlan` as a 12th record component (`bandBiomes`) using the
+  same legacy-overload technique as every other additive field this
+  session (old 11-arg constructor still works). The one-time shuffle
+  reuses the file's own `hash01`/`splitmix64` hash primitives rather than
+  `java.util.Random`, matching CHAOS/OCEAN's existing determinism.
+  `withSeed` needed an actual fix, not just a signature update: `bandBiomes`
+  is already-resolved data from the one-time shuffle, so it must pass
+  through unchanged on re-seed, not be treated like CHAOS/OCEAN's
+  live-sampled fields. Terrain stays vanilla throughout — `STRIP_BANDS`
+  joins CHAOS in both `WorldzConfig.sanitizeLayout`'s (generic preset has
+  no field for an ordered sequence, always falls back) and
+  `EnvelopedChunkGenerator.resolveLayout`'s (never adjusts height) skip
+  lists. Same known-gap shape as 6.2b: `LimitedBiomeSource`'s
+  fieldless-preset defaulting has no `STRIP_BANDS` branch, so bands need
+  Customize opened at least once even when configured in YAML — logged,
+  not fixed, for the same reason as 6.2b's gap (`resolve()` is large,
+  heavily tested, serves three other presets already). 0.2.24 built and
+  deployed to Worldz-Test. This completes every non-Jason item in Phase 6
+  (6.1 design, 6.2a core, 6.2b preset, 6.2c docs/configs, 6.3 bands) —
+  **awaiting Jason's acceptance testing (configs 26-29, MANUAL_TESTING.md's
+  "Phase 6 acceptance" section) before starting Phase 7.**
 
 ## Reference Log
 

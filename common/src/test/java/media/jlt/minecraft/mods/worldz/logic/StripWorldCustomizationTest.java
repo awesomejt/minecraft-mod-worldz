@@ -3,6 +3,8 @@ package media.jlt.minecraft.mods.worldz.logic;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,7 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StripWorldCustomizationTest {
     private static StripWorldCustomization create(int widthRadiusBlocks, ExteriorMode widthMode, boolean applyToNether) {
         return new StripWorldCustomization(
-            widthRadiusBlocks, widthMode, applyToNether, SpawnStrategy.STARTER_AT_ORIGIN,
+            widthRadiusBlocks, widthMode, applyToNether, false, List.of(), 128, false, SpawnStrategy.STARTER_AT_ORIGIN,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
+        );
+    }
+
+    private static StripWorldCustomization createWithBands(boolean bandsEnabled, List<String> bandBiomes, int bandWidthBlocks) {
+        return new StripWorldCustomization(
+            32, ExteriorMode.VOID, false, bandsEnabled, bandBiomes, bandWidthBlocks, false, SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -84,7 +94,7 @@ class StripWorldCustomizationTest {
     @Test
     void fromTextParsesDecimalWidthAndMode() {
         StripWorldCustomization customization = StripWorldCustomization.fromText(
-            "48", "ocean", true, SpawnStrategy.PREFERRED_NATURAL_BIOME,
+            "48", "ocean", true, false, "", "128", false, SpawnStrategy.PREFERRED_NATURAL_BIOME,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -98,9 +108,64 @@ class StripWorldCustomizationTest {
     @Test
     void fromTextRejectsNonNumericWidth() {
         assertThrows(IllegalArgumentException.class, () -> StripWorldCustomization.fromText(
-            "not-a-number", "void", false, SpawnStrategy.STARTER_AT_ORIGIN,
+            "not-a-number", "void", false, false, "", "128", false, SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));
+    }
+
+    @Test
+    void fromTextParsesBandFields() {
+        StripWorldCustomization customization = StripWorldCustomization.fromText(
+            "48", "void", false, true, "minecraft:desert\nminecraft:jungle", "256", true,
+            SpawnStrategy.STARTER_AT_ORIGIN,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
+        );
+
+        assertTrue(customization.bandsEnabled());
+        assertEquals(List.of("minecraft:desert", "minecraft:jungle"), customization.bandBiomes());
+        assertEquals(256, customization.bandWidthBlocks());
+        assertTrue(customization.bandSeedRandomOrder());
+    }
+
+    @Test
+    void constructorAllowsBandsDisabledWithNoBiomes() {
+        StripWorldCustomization customization = createWithBands(false, List.of(), 128);
+        assertFalse(customization.bandsEnabled());
+        assertTrue(customization.bandBiomes().isEmpty());
+    }
+
+    @Test
+    void constructorRejectsEnabledBandsWithNoBiomes() {
+        assertThrows(IllegalArgumentException.class, () -> createWithBands(true, List.of(), 128));
+    }
+
+    @Test
+    void constructorRejectsBandTags() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> createWithBands(true, List.of("#minecraft:is_overworld"), 128)
+        );
+    }
+
+    @Test
+    void constructorRejectsBandWidthOutsideSupportedRange() {
+        assertThrows(IllegalArgumentException.class, () -> createWithBands(true, List.of("minecraft:desert"), 4));
+    }
+
+    @Test
+    void layoutPlanIsLegacyWhenBandsAreDisabled() {
+        StripWorldCustomization customization = createWithBands(false, List.of(), 128);
+        assertEquals(LayoutMode.LEGACY, customization.layoutPlan(1L).mode());
+    }
+
+    @Test
+    void layoutPlanResolvesBandsWhenEnabled() {
+        StripWorldCustomization customization = createWithBands(true, List.of("minecraft:desert", "minecraft:jungle"), 256);
+        WorldLayoutPlan plan = customization.layoutPlan(1L);
+        assertEquals(LayoutMode.STRIP_BANDS, plan.mode());
+        assertEquals(List.of("minecraft:desert", "minecraft:jungle"), plan.bandBiomes());
+        assertEquals(256, plan.regionScaleBlocks());
     }
 }

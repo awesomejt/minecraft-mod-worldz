@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.23", properties.getProperty("version"));
+        assertEquals("0.2.24", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -162,7 +162,7 @@ class ProjectMetadataTest {
         // LEGACY/VOID in the terrain-adjustment skip list rather than SINGLE_BIOME's
         // guaranteed-land raise.
         assertTrue(generator.contains(
-            "if (mode == LayoutMode.LEGACY || mode == LayoutMode.VOID || mode == LayoutMode.CHAOS) {"
+            "if (mode == LayoutMode.LEGACY || mode == LayoutMode.VOID || mode == LayoutMode.CHAOS || mode == LayoutMode.STRIP_BANDS) {"
         ));
         assertTrue(source.contains(
             "boolean supportsPassThrough = worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME\n"

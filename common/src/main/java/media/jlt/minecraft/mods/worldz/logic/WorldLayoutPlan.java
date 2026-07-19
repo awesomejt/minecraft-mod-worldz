@@ -32,6 +32,10 @@ import java.util.Set;
  * @param layoutOriginBlockX grid and starter-overlay center X; {@code 0} until Phase 16 (§18)
  * @param layoutOriginBlockZ grid and starter-overlay center Z; {@code 0} until Phase 16 (§18)
  * @param algorithmRevision persisted sampling-algorithm revision
+ * @param bandBiomes the {@code STRIP_BANDS} mode's ordered, unweighted biome sequence walked
+ *     along X (GOALS 36) -- already resolved to its final walk order at construction time
+ *     (a one-time seed-derived shuffle happens in {@link #resolveBands}, not here), so
+ *     reloading a saved world always repeats the same order rather than reshuffling
  */
 public record WorldLayoutPlan(
     LayoutMode mode,
@@ -44,7 +48,8 @@ public record WorldLayoutPlan(
     Map<String, BiomeRole> roleOverrides,
     int layoutOriginBlockX,
     int layoutOriginBlockZ,
-    int algorithmRevision
+    int algorithmRevision,
+    List<String> bandBiomes
 ) {
     /** Revision of every plan decoded before Phase 15: no layout sampling occurs. */
     public static final int LEGACY_MODE_REVISION = 0;
@@ -71,6 +76,7 @@ public record WorldLayoutPlan(
         beachBiomes = validateWeights(beachBiomes, "beach");
         singleBiome = singleBiome == null ? Optional.empty() : singleBiome;
         roleOverrides = Map.copyOf(roleOverrides);
+        bandBiomes = List.copyOf(bandBiomes);
 
         if (mode == LayoutMode.SINGLE_BIOME && singleBiome.map(String::isBlank).orElse(true)) {
             throw new IllegalArgumentException("Single-biome layouts require a biome id.");
@@ -81,6 +87,44 @@ public record WorldLayoutPlan(
         if (mode == LayoutMode.CHAOS && landBiomes.isEmpty()) {
             throw new IllegalArgumentException("Chaos layouts require at least one land biome.");
         }
+        if (mode == LayoutMode.STRIP_BANDS && bandBiomes.isEmpty()) {
+            throw new IllegalArgumentException("Strip-band layouts require at least one band biome.");
+        }
+    }
+
+    /**
+     * Creates a plan without a strip-bands sequence -- every mode except
+     * {@code STRIP_BANDS}, which is the only mode {@link #bandBiomes} affects.
+     *
+     * @param mode layout mode
+     * @param seed source of all sampling randomness
+     * @param regionScaleBlocks grid-cell edge length in blocks
+     * @param landBiomes weighted candidates for the {@code LAND} role
+     * @param oceanBiomes weighted candidates for the {@code OCEAN} role
+     * @param beachBiomes weighted candidates for the {@code BEACH} coast-transition role
+     * @param singleBiome the {@code SINGLE_BIOME} mode's one biome id
+     * @param roleOverrides explicit id-to-role overrides layered on {@link BiomeRoles}
+     * @param layoutOriginBlockX grid and starter-overlay center X
+     * @param layoutOriginBlockZ grid and starter-overlay center Z
+     * @param algorithmRevision persisted sampling-algorithm revision
+     */
+    public WorldLayoutPlan(
+        LayoutMode mode,
+        long seed,
+        int regionScaleBlocks,
+        List<BiomeWeight> landBiomes,
+        List<BiomeWeight> oceanBiomes,
+        List<BiomeWeight> beachBiomes,
+        Optional<String> singleBiome,
+        Map<String, BiomeRole> roleOverrides,
+        int layoutOriginBlockX,
+        int layoutOriginBlockZ,
+        int algorithmRevision
+    ) {
+        this(
+            mode, seed, regionScaleBlocks, landBiomes, oceanBiomes, beachBiomes, singleBiome, roleOverrides,
+            layoutOriginBlockX, layoutOriginBlockZ, algorithmRevision, List.of()
+        );
     }
 
     private static List<BiomeWeight> validateWeights(List<BiomeWeight> weights, String roleName) {
@@ -117,9 +161,12 @@ public record WorldLayoutPlan(
      * @return this plan unchanged if the seed already matches, otherwise a re-seeded copy
      */
     public WorldLayoutPlan withSeed(long newSeed) {
+        // bandBiomes is already-resolved data (any shuffle happened once, at world creation,
+        // via resolveBands), not something to re-derive here -- only future per-cell sampling
+        // (CHAOS/OCEAN's weightedPick) actually reads the seed live.
         return newSeed == this.seed ? this : new WorldLayoutPlan(
             mode, newSeed, regionScaleBlocks, landBiomes, oceanBiomes, beachBiomes,
-            singleBiome, roleOverrides, layoutOriginBlockX, layoutOriginBlockZ, algorithmRevision
+            singleBiome, roleOverrides, layoutOriginBlockX, layoutOriginBlockZ, algorithmRevision, bandBiomes
         );
     }
 
@@ -195,6 +242,48 @@ public record WorldLayoutPlan(
     }
 
     /**
+     * Resolves a {@code STRIP_BANDS} plan (GOALS 36) from an ordered, unweighted biome
+     * sequence. When {@code seedRandomOrder} is set, the sequence is shuffled exactly once
+     * here (a single seed-derived permutation, not per-band randomness) and that final order
+     * is what gets persisted -- reloading a saved world always repeats the same shuffled
+     * order rather than reshuffling on every load.
+     *
+     * @param bandBiomes ordered, unweighted band biome ids (at least one required)
+     * @param bandWidthBlocks band width in blocks, reusing the generic grid-cell concept
+     * @param seedRandomOrder whether to shuffle the sequence once instead of using it as given
+     * @param roleOverrideEntries raw biome id to role-name overrides, syntax-validated here
+     * @param seed sampling seed, used only for the one-time shuffle when requested
+     * @return immutable resolved plan
+     */
+    public static WorldLayoutPlan resolveBands(
+        List<String> bandBiomes,
+        int bandWidthBlocks,
+        boolean seedRandomOrder,
+        Map<String, String> roleOverrideEntries,
+        long seed
+    ) {
+        Map<String, BiomeRole> overrides = new LinkedHashMap<>();
+        roleOverrideEntries.forEach((id, role) -> overrides.put(id, BiomeRole.parse(role)));
+        List<String> order = seedRandomOrder ? shuffleOnce(bandBiomes, seed) : List.copyOf(bandBiomes);
+        return new WorldLayoutPlan(
+            LayoutMode.STRIP_BANDS, seed, bandWidthBlocks, List.of(), List.of(), List.of(),
+            Optional.empty(), overrides, 0, 0, CURRENT_REVISION, order
+        );
+    }
+
+    private static List<String> shuffleOnce(List<String> values, long seed) {
+        List<String> shuffled = new ArrayList<>(values);
+        for (int index = shuffled.size() - 1; index > 0; index--) {
+            int swapWith = (int)Math.floorMod(
+                (long)(hash01(seed, "band_order", index, 0, 0) * (index + 1)), (long)(index + 1)
+            );
+            String moved = shuffled.set(index, shuffled.get(swapWith));
+            shuffled.set(swapWith, moved);
+        }
+        return List.copyOf(shuffled);
+    }
+
+    /**
      * Samples the plan at one block column.
      *
      * @param blockX block X
@@ -211,7 +300,21 @@ public record WorldLayoutPlan(
             }
             case VOID -> new LayoutSample(BiomeRole.LAND, Optional.empty(), 1.0);
             case CHAOS -> sampleUniform(BiomeRole.LAND, landBiomes, blockX, blockZ, "biome_land");
+            case STRIP_BANDS -> sampleBand(blockX);
         };
+    }
+
+    /**
+     * Samples the ordered band sequence by X position alone -- the strip's length axis;
+     * bands repeat (wrap) once the sequence is exhausted, so the pattern is well-defined
+     * regardless of how long the corridor's border eventually makes it.
+     */
+    private LayoutSample sampleBand(int blockX) {
+        long bandIndex = Math.floorDiv((long)blockX - layoutOriginBlockX, regionScaleBlocks);
+        int position = (int)Math.floorMod(bandIndex, (long)bandBiomes.size());
+        String biomeId = bandBiomes.get(position);
+        BiomeRole role = BiomeRoles.resolve(biomeId, roleOverrides);
+        return new LayoutSample(role, Optional.of(biomeId), roleFactor(role));
     }
 
     /**

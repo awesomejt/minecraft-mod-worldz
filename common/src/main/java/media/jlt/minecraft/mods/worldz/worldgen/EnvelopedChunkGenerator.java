@@ -786,11 +786,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // VOID's sky-island overlay is Phase 15.5 work; its placeholder sample
         // always reports full land factor, which would wrongly raise the whole
         // world instead of leaving it void. Skip terrain adjustment until then.
-        // CHAOS (Phase 4.1) deliberately never adjusts terrain at all -- GOALS 33
-        // requires terrain shape to stay exactly vanilla, only biome identity changes.
+        // CHAOS (Phase 4.1) and STRIP_BANDS (Phase 6.3, GOALS 36) deliberately never
+        // adjust terrain at all -- both require terrain shape to stay exactly vanilla,
+        // only biome identity changes.
         // Mode is invariant regardless of when the real world seed resolves, so
         // gating on it here (rather than through the live effective plan) is safe.
-        if (mode == LayoutMode.LEGACY || mode == LayoutMode.VOID || mode == LayoutMode.CHAOS) {
+        if (mode == LayoutMode.LEGACY || mode == LayoutMode.VOID || mode == LayoutMode.CHAOS || mode == LayoutMode.STRIP_BANDS) {
             return Optional.empty();
         }
         return Optional.of(new LayoutContext(source));

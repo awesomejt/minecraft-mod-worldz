@@ -9,6 +9,8 @@ package media.jlt.minecraft.mods.worldz.config;
 public final class StripWorldConfig {
     /** Layout-origin and initial-spawn strategy. */
     public SpawnConfig spawn = new SpawnConfig();
+    /** Optional ordered biome-band sequence along the strip's length (GOALS 36). */
+    public StripBandsConfig bands = new StripBandsConfig();
 
     /** Creates a config populated with defaults. */
     public StripWorldConfig() {

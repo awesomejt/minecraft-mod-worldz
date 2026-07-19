@@ -13,7 +13,9 @@ public enum LayoutMode {
     /** A starter island floating in an otherwise infinite sky void. */
     VOID,
     /** Seed-shuffled land biome regions over completely untouched vanilla terrain. */
-    CHAOS;
+    CHAOS,
+    /** Ordered (or once-shuffled) biome bands along a strip's length, GOALS 36. */
+    STRIP_BANDS;
 
     /**
      * Parses the stable lowercase configuration name.

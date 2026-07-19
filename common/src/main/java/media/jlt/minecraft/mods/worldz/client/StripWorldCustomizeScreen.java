@@ -9,6 +9,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.ScrollableLayout;
 import net.minecraft.client.gui.components.Tooltip;
@@ -36,6 +37,12 @@ final class StripWorldCustomizeScreen extends Screen implements
     private ExteriorMode widthMode;
     private Button widthModeButton;
     private boolean applyToNether;
+    private boolean bandsEnabled;
+    private MultiLineEditBox bandBiomes;
+    private EditBox bandWidthBlocks;
+    private boolean bandSeedRandomOrder;
+    private String bandBiomesText;
+    private String bandWidthBlocksText;
     private SpawnStrategy spawnStrategy;
     private Button spawnStrategyButton;
     private MultiLineTextWidget errorMessage;
@@ -52,6 +59,10 @@ final class StripWorldCustomizeScreen extends Screen implements
         this.initialWidthRadiusBlocks = initial.widthRadiusBlocks();
         this.widthMode = initial.widthMode();
         this.applyToNether = initial.applyToNether();
+        this.bandsEnabled = initial.bandsEnabled();
+        this.bandBiomesText = initial.bandBiomesText();
+        this.bandWidthBlocksText = Integer.toString(initial.bandWidthBlocks());
+        this.bandSeedRandomOrder = initial.bandSeedRandomOrder();
         this.spawnStrategy = initial.spawnStrategy();
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
@@ -86,6 +97,34 @@ final class StripWorldCustomizeScreen extends Screen implements
         form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.apply_to_nether"), this.font)
             .selected(this.applyToNether)
             .onValueChange((checkbox, selected) -> this.applyToNether = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.bands_enabled"), this.font)
+            .selected(this.bandsEnabled)
+            .onValueChange((checkbox, selected) -> this.bandsEnabled = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        this.bandBiomes = MultiLineEditBox.builder()
+            .setPlaceholder(Component.translatable("jlt_worldz.strip_world.band_biomes.hint"))
+            .build(this.font, FORM_WIDTH, 40, Component.translatable("jlt_worldz.strip_world.band_biomes"));
+        this.bandBiomes.setCharacterLimit(4096);
+        this.bandBiomes.setValue(this.bandBiomesText);
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.bandBiomes, Component.translatable("jlt_worldz.strip_world.band_biomes")
+        ));
+
+        this.bandWidthBlocks = textField(
+            Component.translatable("jlt_worldz.strip_world.band_width"), this.bandWidthBlocksText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.bandWidthBlocks, Component.translatable("jlt_worldz.strip_world.band_width")
+        ));
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.band_seed_random_order"), this.font)
+            .selected(this.bandSeedRandomOrder)
+            .onValueChange((checkbox, selected) -> this.bandSeedRandomOrder = selected)
             .maxWidth(FORM_WIDTH)
             .build());
 
@@ -169,6 +208,10 @@ final class StripWorldCustomizeScreen extends Screen implements
                 this.unit.toBlocksText(this.widthRadiusBlocks.getValue()),
                 this.widthMode.serializedName(),
                 this.applyToNether,
+                this.bandsEnabled,
+                this.bandBiomes.getValue(),
+                this.bandWidthBlocks.getValue(),
+                this.bandSeedRandomOrder,
                 this.spawnStrategy,
                 this.overworldBorder,
                 this.netherBorder,

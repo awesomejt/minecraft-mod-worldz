@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.client;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripWorldCustomization;
@@ -29,8 +30,10 @@ import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 /** Small preset editor for the {@code jlt_worldz:strip_world} typed preset (GOALS 32). */
 public final class StripWorldPresetEditor implements PresetEditor {
@@ -83,7 +86,7 @@ public final class StripWorldPresetEditor implements PresetEditor {
             StarterLandPlan.fromConfig(sharedConfig),
             customization.worldLimitPlan(),
             customization.exteriorPlan(),
-            WorldLayoutPlan.legacy(),
+            customization.layoutPlan(new Random().nextLong()),
             customization.spawnStrategy(),
             false,
             false,
@@ -126,10 +129,16 @@ public final class StripWorldPresetEditor implements PresetEditor {
         StripPlan strip = enveloped.strip();
         WorldLimitPlan plan = source.worldLimits();
         var exterior = source.exteriorPlan();
+        WorldLayoutPlan layout = source.worldLayoutPlan();
+        boolean bandsEnabled = layout.mode() == LayoutMode.STRIP_BANDS;
         return new StripWorldCustomization(
             strip.widthRadiusBlocks(),
             strip.widthMode(),
             strip.enabled(),
+            bandsEnabled,
+            bandsEnabled ? layout.bandBiomes() : List.of(),
+            bandsEnabled ? layout.regionScaleBlocks() : WorldzCommon.config().stripWorld.bands.widthBlocks,
+            false,
             source.spawnStrategy(),
             fromPlan(plan.overworld()), fromPlan(plan.nether()), fromPlan(plan.end()),
             fromPlan(exterior.overworld()), fromPlan(exterior.nether())

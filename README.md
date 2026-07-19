@@ -35,7 +35,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz** | The original flexible preset: allowed-biome list, coordinated `ocean`/`single_biome`/`void`/`chaos`/`legacy` layouts, borders, exteriors, starter land. See [Using Worldz](#using-worldz) below. | Full screen: biomes, starter zone, borders, exteriors, layout, spawn strategy. |
 | **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location; optional natural rivers/oceans. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Chaos Biomes** | Seed-shuffled land biome regions over completely untouched vanilla terrain — deserts beside ice spikes beside jungles; configurable region size; optional starter zone; optional natural rivers/oceans. See [Chaos biomes challenge](#chaos-biomes-challenge) below. | Small screen: weighted biome list, region size, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
-| **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, spawn strategy, borders, exteriors. |
+| **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor; optional ordered biome-band sequence along its length. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, biome bands toggle/list/width/shuffle, spawn strategy, borders, exteriors. |
 
 ## Supported loaders
 
@@ -183,8 +183,10 @@ same way `single_biome`'s does.
 Select **Worldz: Strip World** under **World Type** for a world that is a
 narrow corridor along one fixed axis — everything happens in that strip.
 Unlike `single_biome`/`chaos_biomes`, this preset does not restrict biomes
-at all: ordinary vanilla terrain and full biome variety generate, just
-shaped into a corridor.
+at all by default: ordinary vanilla terrain and full biome variety generate,
+just shaped into a corridor. Optionally, an ordered sequence of biome bands
+can walk the corridor's length instead (see [Biome
+bands](#biome-bands-goals-36) below).
 
 The corridor has two independent parts. Its **length** (the long axis) uses
 the ordinary square border unmodified — the same [limited-world
@@ -223,6 +225,46 @@ The corridor's length, End border, and exteriors all use the same shared
 `overworldBorder`/`netherBorder`/`endBorder`/`overworldExterior`/
 `netherExterior` sections every other world type reads, and are also
 available on this preset's Customize screen.
+
+### Biome bands (GOALS 36)
+
+Optionally, instead of full vanilla biome variety, the corridor can walk an
+ordered sequence of biomes along its length — desert, then jungle, then ice
+spikes, and so on, changing every `bands.widthBlocks` — the same
+"terrain stays vanilla, only the biome relabels" philosophy as [Chaos
+biomes](#chaos-biomes-challenge), but ordered along one axis instead of
+scattered in a 2D grid. The sequence repeats (wraps) once exhausted, so it
+stays well-defined regardless of how long the corridor's border eventually
+makes it.
+
+Configure it with a nested `bands:` section under `stripWorld:`:
+
+```yaml
+stripWorld:
+  bands:
+    enabled: false
+    biomes:
+      - 'minecraft:desert'
+      - 'minecraft:jungle'
+      - 'minecraft:ice_spikes'
+      - 'minecraft:badlands'
+      - 'minecraft:taiga'
+    widthBlocks: 128
+    seedRandomOrder: false
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `bands.enabled` | `false` | Whether the corridor passes through biome bands instead of ordinary vanilla terrain. |
+| `bands.biomes` | desert/jungle/ice_spikes/badlands/taiga | Ordered, unweighted biome ids walked along the strip's length. Concrete ids only, no `#tags`. At least one is required when `enabled` is set. |
+| `bands.widthBlocks` | `128` | Band width in blocks along the strip's length axis. Clamped to `16..8192`. |
+| `bands.seedRandomOrder` | `false` | Shuffle `biomes` once — a fixed permutation baked in at world creation, not per-band randomness — instead of using the list in the order given. |
+
+Known gap: unlike `strip.widthRadiusBlocks`/`widthMode`, biome bands are not
+picked up by the fieldless-preset defaulting (creating a world by selecting
+the preset without ever opening **Customize**). Open Customize at least
+once — its fields are pre-filled from `stripWorld.bands` — to actually get
+banded biomes rather than the plain full-variety corridor.
 
 ## Configuration
 
