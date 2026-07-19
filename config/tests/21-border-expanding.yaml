@@ -1,0 +1,26 @@
+# GOALS 19: expanding world -- starts at a small radius, holds there for an
+# initial delay, then grows continuously at a configured rate. Use an
+# operator's `/tick step <ticks>` (1 Minecraft day = 24000 ticks) to skip
+# through the delay and resize period quickly instead of waiting in real
+# time -- `/time set`/`/time add` only change the daylight cycle, not the
+# game-time tick counter the border schedule actually runs on.
+#
+# Steps once in-game:
+#  1. Confirm the border starts at 128 (radius) and does not move yet.
+#  2. `/tick step 24000` (1 day) -- confirm it still hasn't started
+#     (resizeDelayDays: 1).
+#  3. `/tick step 24000` again -- confirm the border has now grown partway
+#     toward 1024, continuing smoothly rather than jumping.
+#  4. `/tick step 48000` (2 more days) -- confirm it has reached exactly
+#     1024 and stops there.
+layout:
+  mode: legacy
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 128
+  finalRadiusBlocks: 1024
+  resizeDelayDays: 1
+  resizeDays: 2
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin

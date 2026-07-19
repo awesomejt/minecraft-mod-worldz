@@ -60,6 +60,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `17-chaos-biomes-pass-through-and-starter.yaml` | GOALS 33's rivers/oceans option (`allowRivers`/`allowOceans: true`, same Phase 3.1 mechanism as `singleBiome`'s) plus a `starterBiome: minecraft:plains` safe zone at spawn instead of chaos starting immediately. Test this before 18/19 — it confirms real oceans/rivers survive under chaos biomes before moving on to region-size variations. |
 | `18-chaos-biomes-tiny-regions.yaml` | Same as 16 but `regionScaleBlocks: 64` — biome should change much more often while traveling. |
 | `19-chaos-biomes-huge-regions.yaml` | Same as 16 but `regionScaleBlocks: 4096` — expect long uninterrupted stretches of one biome. |
+| `20-border-static-small-invisible-wall-vs-void.yaml` | GOALS 17/18, plain "Worldz" preset: a small (128) static border (invisible wall) with a void exterior at the same auto-derived boundary — confirms the two are the same distinct systems, plus the small-border End-portal fallback guarantee. |
+| `21-border-expanding.yaml` | GOALS 19: border grows from 128 to 1024 over 2 days after a 1-day initial delay. Use `/tick step` to skip ahead — see the file's own steps. |
+| `22-border-collapsing.yaml` | GOALS 20: border shrinks from 2048 to a 256 minimum over 3 days after a deliberately much larger 5-day delay (exploration time); spawn stays centered so it's always safe. |
+| `23-end-border-carry-over.yaml` | GOALS 17: Overworld border pinned to the 64-block minimum, `endBorder.carryFromOverworld: true` with `minimumRadiusBlocks: 256` — confirms the floor overrides the tiny carried radius so the End border is 256, not 64, keeping the dragon fight winnable. |
 
 ### Why `01` showed ocean labeled as river
 

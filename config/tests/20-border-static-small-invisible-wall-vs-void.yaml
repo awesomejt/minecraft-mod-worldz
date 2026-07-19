@@ -1,0 +1,21 @@
+# GOALS 17/18: a small static Overworld border (invisible wall) with a void
+# exterior at the same boundary (auto-derived from the border radius since
+# overworldExterior.boundaryRadiusBlocks is 0), on the plain "Worldz" preset
+# (NOT a typed preset -- this phase is about the shared border/exterior
+# mechanism itself). Walking to the border edge should stop you with the
+# vanilla invisible-wall effect; terrain generation itself is completely
+# ordinary vanilla right up to that same edge, then void beyond it. Small
+# enough (128 blocks) that a natural stronghold is unlikely to fit --
+# expect the compact fallback End portal (GOALS 17's beatability guarantee)
+# near positive X instead.
+layout:
+  mode: legacy
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 128
+  finalRadiusBlocks: 128
+  ensureEndPortal: true
+overworldExterior:
+  mode: void
+spawn:
+  strategy: starter_at_origin

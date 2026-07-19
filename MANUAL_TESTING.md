@@ -254,6 +254,59 @@ All four need **"Worldz: Chaos Biomes"** on the creation screen.
    Deviation log; this item originally required their absence too, before
    that phase existed.)
 
+## Phase 5 acceptance (2026-07-18 challenge-world replan, TODO 5.4)
+
+Uses configs `20`-`23` (see [`config/tests/README.md`](config/tests/README.md)),
+all on the plain **"Worldz"** preset (this phase is about the shared
+border/exterior/limit mechanism itself, not any particular world type).
+
+1. **Static small border, invisible wall vs. void**, `20-border-static-small-invisible-wall-vs-void.yaml`.
+   Confirm the border stops you (vanilla's invisible-wall effect) at
+   exactly 128 blocks from spawn in every direction, terrain generation is
+   completely ordinary vanilla right up to that same edge, and it turns to
+   void immediately beyond it — the two systems track the same boundary
+   here but are otherwise independent. Confirm a compact fallback End
+   portal exists somewhere near positive X (no real stronghold fits inside
+   128 blocks).
+2. **Expanding border**, `21-border-expanding.yaml`. Follow the file's own
+   steps (use an operator's `/tick step <ticks>` to skip through the delay
+   and resize period instead of waiting in real time — `/time set`/`/time
+   add` only change the daylight cycle, not the tick counter the border
+   schedule runs on). Confirm: the border holds at 128 during the 1-day
+   delay, then grows continuously (not in a jump) to 1024 over the next 2
+   days and stops exactly there.
+3. **Collapsing border**, `22-border-collapsing.yaml`. Same `/tick step`
+   approach. Confirm: the border holds at 2048 during a *much longer*
+   5-day delay (GOALS 20's explicit ask, contrast with 21's 1-day delay),
+   then collapses continuously to 256 over 3 days and stops there — not
+   below it. Confirm spawn (and anything built there) stays safely inside
+   the fully-collapsed border, since it's centered at the origin.
+4. **End border carry-over**, `23-end-border-carry-over.yaml`. Overworld
+   border is pinned to the 64-block minimum on purpose. Confirm: a compact
+   fallback End portal exists (Overworld border is far too small for a
+   natural stronghold), and once in the End, the border there is centered
+   at `(0, 0)` with radius **256** (the configured `minimumRadiusBlocks`),
+   not 64 — the main island, every obsidian pillar, and the exit portal
+   should all be comfortably inside it. Confirm the dragon fight is normal
+   and winnable.
+5. **Blocks/Chunks unit toggle** (no config file — a Customize-screen UI
+   check). Open any Border or Exterior sub-screen (from any preset's
+   Customize screen) and click the **Radius units** button: confirm it
+   switches between "Blocks" and "Chunks" and converts whatever's already
+   typed in each radius field (e.g. 512 blocks becomes 32 chunks) rather
+   than reinterpreting the same digits under the new unit.
+6. **Single Biome / Chaos Biomes Customize-screen border wiring** (no
+   config file). Open "Worldz: Single Biome"'s and "Worldz: Chaos
+   Biomes"'s Customize screens: confirm both now show Overworld/Nether
+   Border, End Border, and Overworld/Nether Exterior buttons (Phase 5.3;
+   see items 6/5 of Phases 2/4's acceptance sections for what else those
+   screens show) and that toggling a border/exterior/End Border setting
+   there and creating a world actually applies it — e.g. enable the
+   Overworld border in Single Biome's Customize screen with a small
+   radius and confirm it's actually in effect in-game, the same as
+   setting `overworldBorder` in `singleBiome:`-free top-level config would
+   do for the plain preset.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

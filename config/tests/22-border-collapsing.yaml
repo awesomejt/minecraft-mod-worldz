@@ -1,0 +1,27 @@
+# GOALS 20: collapsing world -- starts large, holds there for a much longer
+# delay than the expanding case (21) to allow exploration first, then
+# shrinks continuously down to a minimum size. Spawn stays at the center
+# (`starter_at_origin`), so a build there is always safe even after the
+# border fully collapses. Use `/tick step <ticks>` to skip through the
+# delay and resize period (see config 21's note).
+#
+# Steps once in-game:
+#  1. Confirm the border starts at 2048 (radius) and does not move yet.
+#  2. `/tick step 120000` (5 days) -- confirm it still hasn't started
+#     (resizeDelayDays: 5, much larger than 21's delay -- deliberately, per
+#     GOALS 20).
+#  3. `/tick step 72000` (3 more days) -- confirm the border has now
+#     collapsed to exactly 256 and stops there (its configured minimum).
+#  4. Confirm spawn (and anything built there) is still safely inside the
+#     collapsed border.
+layout:
+  mode: legacy
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 2048
+  finalRadiusBlocks: 256
+  resizeDelayDays: 5
+  resizeDays: 3
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin

@@ -240,8 +240,15 @@ composed with the new world types; plus the one real gap (the End).
       `endBorder` field too (previously config-only). See the Deviation
       log — this changes what Phase 4.2's Customize-screen acceptance
       item validated.
-- [ ] 5.4 Test configs (static small, expanding, collapsing, End carry-over);
-      docs; **[Jason]** acceptance.
+- [x] 5.4 Test configs (static small, expanding, collapsing, End carry-over);
+      docs. `config/tests/20`-`23`, all on the plain "Worldz" preset (this
+      phase is about the shared mechanism, not any one world type); see
+      `config/tests/README.md` and MANUAL_TESTING.md's "Phase 5
+      acceptance" for exact steps, including `/tick step` for skipping
+      through delay/resize periods without a real-time wait, and two
+      no-config-file UI checks (the blocks/chunks unit toggle; Single
+      Biome/Chaos Biomes' new Customize-screen border wiring actually
+      applying in-game). **[Jason] acceptance outstanding.**
 
 ## Phase 6 — Strip world, 1D Minecraft (GOALS 32)
 
