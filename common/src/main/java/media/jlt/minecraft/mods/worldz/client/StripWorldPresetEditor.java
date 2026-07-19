@@ -88,8 +88,9 @@ public final class StripWorldPresetEditor implements PresetEditor {
             customization.exteriorPlan(),
             customization.layoutPlan(new Random().nextLong()),
             customization.spawnStrategy(),
-            false,
-            false,
+            customization.bandAllowRivers(),
+            customization.bandAllowOceans(),
+            customization.bandAllowBeaches(),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
@@ -139,6 +140,9 @@ public final class StripWorldPresetEditor implements PresetEditor {
             bandsEnabled ? layout.bandBiomes() : List.of(),
             bandsEnabled ? layout.regionScaleBlocks() : WorldzCommon.config().stripWorld.bands.widthBlocks,
             false,
+            source.allowRivers(),
+            source.allowOceans(),
+            source.allowBeaches(),
             source.spawnStrategy(),
             fromPlan(plan.overworld()), fromPlan(plan.nether()), fromPlan(plan.end()),
             fromPlan(exterior.overworld()), fromPlan(exterior.nether())

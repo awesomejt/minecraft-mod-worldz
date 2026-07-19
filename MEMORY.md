@@ -1055,6 +1055,36 @@ Durable decisions, verified API notes, and rationale that should survive across 
   deployed to Worldz-Test; awaiting Jason's re-test of config 29
   specifically (26-28 and the rest of 29's behavior already confirmed
   working).
+- 2026-07-19 (GOALS 36 follow-up, 0.2.26) — Jason's re-test of config 29
+  surfaced a real design gap, distinct from the 0.2.25 bug: a band
+  sequence has no way to show natural rivers/oceans/beaches at all unless
+  a player manually adds water/beach biomes to their band list, since none
+  of the existing per-column resolution paths pass anything through when
+  `STRIP_BANDS` is active. Asked two scope questions before implementing:
+  (1) add the new beach/stony-shore pass-through to all three biome-
+  restricting presets (single_biome, chaos_biomes, strip bands) for
+  consistency, not just strip bands -- Jason chose all three; (2) whether
+  strip bands' pass-through toggles should default on or off -- Jason
+  chose **on**, specifically for bands (single_biome/chaos_biomes keep
+  their existing off-by-default convention unchanged), reasoning that a
+  curated restricted list needs this by default or water/beach features
+  silently vanish. Key implementation fact worth remembering:
+  `BiomeTags.IS_BEACH` only covers `beach`/`snowy_beach` -- `stony_shore`
+  has no dedicated vanilla tag at all (confirmed via `javap`/actual
+  extracted `data/minecraft/tags/worldgen/biome/is_beach.json` from the
+  vanilla jar, not just decompiled source), so it's checked as a direct
+  `ResourceKey` alongside the tag, the same pattern used anywhere a
+  specific untagged vanilla biome needs recognizing. Also fixed
+  `LimitedBiomeSource.supportsPassThrough`, which the 0.2.24 STRIP_BANDS
+  work never added to (same class of oversight as the 0.2.25 bug --
+  reinforces the pattern from that entry: adding a new `WorldLayoutPlan`
+  mode touches more call sites in `LimitedBiomeSource` than it first
+  appears to). `LimitedBiomeSource
+  .customized()`'s signature changed directly (added `allowBeaches`
+  param) rather than via a legacy overload, since only 4 internal call
+  sites exist and all needed updating anyway. 0.2.26 built and deployed to
+  Worldz-Test; awaiting Jason's re-test of config 29 for the actual
+  pass-through behavior this time.
 
 ## Reference Log
 

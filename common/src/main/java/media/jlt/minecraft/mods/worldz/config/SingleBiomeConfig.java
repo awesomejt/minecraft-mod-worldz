@@ -18,6 +18,8 @@ public final class SingleBiomeConfig {
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally (GOALS 14, additive over {@link #allowRivers}). */
     public boolean allowOceans = false;
+    /** Let vanilla's own beach/stony-shore biomes generate where vanilla would place one. */
+    public boolean allowBeaches = false;
 
     /** Creates a config populated with defaults. */
     public SingleBiomeConfig() {

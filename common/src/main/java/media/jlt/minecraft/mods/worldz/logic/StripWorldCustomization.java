@@ -20,6 +20,9 @@ import java.util.Map;
  * @param bandBiomes ordered, unweighted band biome ids walked along the strip's length
  * @param bandWidthBlocks band width in blocks, only meaningful when {@link #bandsEnabled} is set
  * @param bandSeedRandomOrder shuffle {@link #bandBiomes} once instead of using it as given
+ * @param bandAllowRivers let vanilla's own river biomes pass through the band sequence
+ * @param bandAllowOceans let vanilla's own river/ocean-family biomes pass through the band sequence
+ * @param bandAllowBeaches let vanilla's own beach/stony-shore biomes pass through the band sequence
  * @param spawnStrategy layout-origin and initial-spawn strategy
  * @param overworldBorder overworld border selection -- the corridor's length (GOALS 17-20)
  * @param netherBorder Nether border selection
@@ -35,6 +38,9 @@ public record StripWorldCustomization(
     List<String> bandBiomes,
     int bandWidthBlocks,
     boolean bandSeedRandomOrder,
+    boolean bandAllowRivers,
+    boolean bandAllowOceans,
+    boolean bandAllowBeaches,
     SpawnStrategy spawnStrategy,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
@@ -99,6 +105,9 @@ public record StripWorldCustomization(
             config.stripWorld.bands.biomes,
             config.stripWorld.bands.widthBlocks,
             config.stripWorld.bands.seedRandomOrder,
+            config.stripWorld.bands.allowRivers,
+            config.stripWorld.bands.allowOceans,
+            config.stripWorld.bands.allowBeaches,
             config.stripWorld.spawn.strategy,
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
@@ -118,6 +127,9 @@ public record StripWorldCustomization(
      * @param bandBiomesText newline- or comma-separated band biome ids
      * @param bandWidthBlocks decimal band width
      * @param bandSeedRandomOrder shuffle the band sequence once instead of using it as given
+     * @param bandAllowRivers let vanilla's own river biomes pass through the band sequence
+     * @param bandAllowOceans let vanilla's own river/ocean-family biomes pass through the band sequence
+     * @param bandAllowBeaches let vanilla's own beach/stony-shore biomes pass through the band sequence
      * @param spawnStrategy layout-origin and spawn strategy
      * @param overworldBorder validated overworld border values
      * @param netherBorder validated Nether border values
@@ -134,6 +146,9 @@ public record StripWorldCustomization(
         String bandBiomesText,
         String bandWidthBlocks,
         boolean bandSeedRandomOrder,
+        boolean bandAllowRivers,
+        boolean bandAllowOceans,
+        boolean bandAllowBeaches,
         SpawnStrategy spawnStrategy,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
@@ -153,6 +168,9 @@ public record StripWorldCustomization(
             bandBiomes,
             parseInteger(bandWidthBlocks, "Band width"),
             bandSeedRandomOrder,
+            bandAllowRivers,
+            bandAllowOceans,
+            bandAllowBeaches,
             spawnStrategy,
             overworldBorder,
             netherBorder,

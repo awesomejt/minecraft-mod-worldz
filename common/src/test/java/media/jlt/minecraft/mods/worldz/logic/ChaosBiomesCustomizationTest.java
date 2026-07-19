@@ -16,7 +16,8 @@ class ChaosBiomesCustomizationTest {
         SpawnStrategy spawnStrategy, boolean allowRivers, boolean allowOceans
     ) {
         return new ChaosBiomesCustomization(
-            biomes, regionScaleBlocks, starterBiome, starterRadiusBlocks, spawnStrategy, allowRivers, allowOceans,
+            biomes, regionScaleBlocks, starterBiome, starterRadiusBlocks, spawnStrategy,
+            allowRivers, allowOceans, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -115,7 +116,7 @@ class ChaosBiomesCustomizationTest {
     void fromTextParsesNewlineSeparatedBiomesAndDecimalFields() {
         ChaosBiomesCustomization customization = ChaosBiomesCustomization.fromText(
             "minecraft:desert\nminecraft:jungle@2", "256", "minecraft:plains", "128",
-            SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false,
+            SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -132,10 +133,20 @@ class ChaosBiomesCustomizationTest {
     @Test
     void fromTextRejectsNonNumericFields() {
         assertThrows(IllegalArgumentException.class, () -> ChaosBiomesCustomization.fromText(
-            "minecraft:desert", "not-a-number", "", "256", SpawnStrategy.STARTER_AT_ORIGIN, false, false,
+            "minecraft:desert", "not-a-number", "", "256", SpawnStrategy.STARTER_AT_ORIGIN, false, false, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));
+    }
+
+    @Test
+    void fromConfigCopiesAllowBeaches() {
+        WorldzConfig config = new WorldzConfig();
+        config.chaosBiomes.allowBeaches = true;
+
+        ChaosBiomesCustomization customization = ChaosBiomesCustomization.fromConfig(config);
+
+        assertTrue(customization.allowBeaches());
     }
 
     @Test

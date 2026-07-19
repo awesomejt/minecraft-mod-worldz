@@ -754,6 +754,45 @@ rectangular shape.
       existing test method rather than a new one, so the suite count is
       unchanged (297 tests, all green). 0.2.25 built and deployed to
       Worldz-Test.
+      **Follow-up (0.2.26):** Jason's re-test of config 29 on 0.2.25 found
+      a real gap, not the earlier bug recurring: none of the five
+      configured band biomes are water/beach biomes, so a band world had
+      no way to show natural rivers/oceans/beaches at all -- every one of
+      those spots got relabeled to the current band's land biome instead.
+      `single_biome`/`chaos_biomes` already solve this with their
+      `allowRivers`/`allowOceans` pass-through toggles (GOALS 13/14), but
+      (a) `STRIP_BANDS` was never added to `LimitedBiomeSource`'s
+      `supportsPassThrough` gate, and (b) there was no equivalent toggle
+      for beach/stony-shore biomes on any of the three presets. Jason
+      confirmed scope via two questions: add the new `allowBeaches`
+      setting to all three presets (single_biome, chaos_biomes, strip
+      bands), not just strip bands; and for strip bands specifically
+      (only), default all three pass-through toggles
+      (`allowRivers`/`allowOceans`/`allowBeaches`) to **true** rather than
+      matching single_biome/chaos_biomes' off-by-default convention --
+      since a band sequence is already a curated, restricted list, an
+      off-by-default toggle would silently strip out natural water/beach
+      features unless a player remembered to add them to every band
+      configuration by hand. Implementation: `BiomeTags.IS_BEACH` covers
+      `beach`/`snowy_beach` but not `stony_shore` (no dedicated vanilla
+      tag), so the new pass-through checks that specific id directly
+      alongside the tag. `LimitedBiomeSource.supportsPassThrough` gained
+      `STRIP_BANDS`; a new `allowBeaches` field/codec entry/constructor
+      param threads through `LimitedBiomeSource` end to end (both the
+      `resolve()` decode path and the explicit `customized()` factory --
+      an internal, controlled signature, updated directly rather than via
+      a legacy overload since only 4 call sites exist). New
+      `SingleBiomeConfig.allowBeaches`/`ChaosBiomesConfig.allowBeaches`
+      (default `false`, matching existing convention) and
+      `StripBandsConfig.allowRivers`/`allowOceans`/`allowBeaches` (default
+      `true`, per Jason's confirmed decision) with full `WorldzConfig`
+      read/sanitize/map/summary wiring; all three Customization records,
+      PresetEditors, and CustomizeScreens updated to match. Config 29
+      updated with a new test step (look for natural water/beach features
+      passing through) rather than a new config file, since the new
+      defaults apply automatically without any YAML changes. 4 new tests;
+      full suite green (301 tests); clean build across all modules. 0.2.26
+      built and deployed to Worldz-Test.
       **[Jason] acceptance still outstanding** for the re-test of config 29
       — everything else in Phase 6 (26-28, and 29's non-biome behavior) is
       confirmed working; do not start Phase 7 without explicit go-ahead.

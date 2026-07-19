@@ -39,6 +39,7 @@ final class SingleBiomeCustomizeScreen extends Screen implements
     private String starterRadiusText;
     private boolean allowRivers;
     private boolean allowOceans;
+    private boolean allowBeaches;
     private WorldzCustomization.BorderSettings overworldBorder;
     private WorldzCustomization.BorderSettings netherBorder;
     private WorldzCustomization.EndBorderSettings endBorder;
@@ -54,6 +55,7 @@ final class SingleBiomeCustomizeScreen extends Screen implements
         this.starterRadiusText = Integer.toString(initial.starterRadiusBlocks());
         this.allowRivers = initial.allowRivers();
         this.allowOceans = initial.allowOceans();
+        this.allowBeaches = initial.allowBeaches();
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
         this.endBorder = initial.endBorder();
@@ -100,6 +102,12 @@ final class SingleBiomeCustomizeScreen extends Screen implements
         form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.single_biome.allow_oceans"), this.font)
             .selected(this.allowOceans)
             .onValueChange((checkbox, selected) -> this.allowOceans = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.single_biome.allow_beaches"), this.font)
+            .selected(this.allowBeaches)
+            .onValueChange((checkbox, selected) -> this.allowBeaches = selected)
             .maxWidth(FORM_WIDTH)
             .build());
 
@@ -169,6 +177,7 @@ final class SingleBiomeCustomizeScreen extends Screen implements
                 this.spawnStrategy,
                 this.allowRivers,
                 this.allowOceans,
+                this.allowBeaches,
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,

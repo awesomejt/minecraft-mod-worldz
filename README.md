@@ -115,6 +115,7 @@ singleBiome:
     strategy: starter_at_origin
   allowRivers: false
   allowOceans: false
+  allowBeaches: false
 ```
 
 | Setting | Default | Description |
@@ -125,13 +126,14 @@ singleBiome:
 | `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. `preferred_natural_biome` searches for a *natural* occurrence of `starterBiome` using the real seed and moves spawn there instead of forcing a zone at `(0, 0)` — the way to get a starter biome whose location (and, incidentally, whatever natural shape it has) comes from the seed rather than being placed arbitrarily. |
 | `allowRivers` | `false` | Let vanilla's own river biomes generate wherever vanilla would naturally place one, instead of `landBiome` applying there too. Terrain is untouched — the river channel is exactly vanilla's shape. Never overrides the starter zone, which always stays guaranteed land. |
 | `allowOceans` | `false` | Same idea for vanilla's own ocean biomes (every temperature and depth variant) — additive over `allowRivers`, so turning this on keeps rivers passing through too. Coastlines are exactly vanilla's: no straight edges, no height blending. |
+| `allowBeaches` | `false` | Same idea for vanilla's own `beach`/`snowy_beach` biomes plus `stony_shore` (which has no dedicated vanilla tag, so it's checked directly) — independent of `allowRivers`/`allowOceans`. |
 
 `allowedBiomes` (what structures/features see as possible biomes) is derived
 automatically from `landBiome` and `starterBiome` — there is nothing to keep
-in sync by hand for this type. When `allowRivers`/`allowOceans` are on, the
-matching vanilla biome tags (`#minecraft:is_river`, `#minecraft:is_ocean`)
-are folded in too, so structure/feature placement knows those biomes can
-occur.
+in sync by hand for this type. When `allowRivers`/`allowOceans`/`allowBeaches`
+are on, the matching vanilla biomes (`#minecraft:is_river`,
+`#minecraft:is_ocean`, `#minecraft:is_beach` plus `stony_shore`) are folded
+in too, so structure/feature placement knows those biomes can occur.
 
 ## Chaos biomes challenge
 
@@ -163,6 +165,7 @@ chaosBiomes:
     strategy: starter_at_origin
   allowRivers: false
   allowOceans: false
+  allowBeaches: false
 ```
 
 | Setting | Default | Description |
@@ -174,6 +177,7 @@ chaosBiomes:
 | `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
 | `allowRivers` | `false` | Same mechanism as `single_biome`'s `allowRivers` — vanilla's own river biomes pass through, terrain untouched. |
 | `allowOceans` | `false` | Same mechanism as `single_biome`'s `allowOceans` — additive over `allowRivers`. |
+| `allowBeaches` | `false` | Same mechanism as `single_biome`'s `allowBeaches` — vanilla's own beach/stony-shore biomes pass through, independent of `allowRivers`/`allowOceans`. |
 
 `allowedBiomes` derives automatically from `biomes` plus `starterBiome`, the
 same way `single_biome`'s does.
@@ -251,6 +255,9 @@ stripWorld:
       - 'minecraft:taiga'
     widthBlocks: 128
     seedRandomOrder: false
+    allowRivers: true
+    allowOceans: true
+    allowBeaches: true
 ```
 
 | Setting | Default | Description |
@@ -259,6 +266,13 @@ stripWorld:
 | `bands.biomes` | desert/jungle/ice_spikes/badlands/taiga | Ordered, unweighted biome ids walked along the strip's length. Concrete ids only, no `#tags`. At least one is required when `enabled` is set. |
 | `bands.widthBlocks` | `128` | Band width in blocks along the strip's length axis. Clamped to `16..8192`. |
 | `bands.seedRandomOrder` | `false` | Shuffle `biomes` once — a fixed permutation baked in at world creation, not per-band randomness — instead of using the list in the order given. |
+| `bands.allowRivers` | `true` | Let vanilla's own river biomes pass through the band sequence wherever vanilla would naturally place one, same mechanism as `single_biome`'s `allowRivers`. Defaults **on** here — unlike `single_biome`/`chaos_biomes`, a band sequence is already a curated, restricted list, so without this a player would need to remember to add water biomes to every band configuration just to get them at all. |
+| `bands.allowOceans` | `true` | Same idea for vanilla's own ocean biomes — additive over `allowRivers`. Also defaults **on** for the same reason. |
+| `bands.allowBeaches` | `true` | Same idea for vanilla's own beach/stony-shore biomes, independent of `allowRivers`/`allowOceans`. Also defaults **on** for the same reason. |
+
+These three only matter when `bands.enabled` is set — the plain, band-free
+strip world already shows full vanilla biome variety (including rivers,
+oceans, and beaches) with nothing to configure.
 
 Known gap: unlike `strip.widthRadiusBlocks`/`widthMode`, biome bands are not
 picked up by the fieldless-preset defaulting (creating a world by selecting

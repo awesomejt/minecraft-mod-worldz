@@ -88,6 +88,7 @@ public final class WorldzPresetEditor implements PresetEditor {
             // generic Worldz preset has no equivalent Customize toggle.
             false,
             false,
+            false,
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());

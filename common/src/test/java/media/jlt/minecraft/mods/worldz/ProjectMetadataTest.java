@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.25", properties.getProperty("version"));
+        assertEquals("0.2.26", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -166,7 +166,8 @@ class ProjectMetadataTest {
         ));
         assertTrue(source.contains(
             "boolean supportsPassThrough = worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME\n"
-                + "            || worldLayoutPlan.mode() == LayoutMode.CHAOS;"
+                + "            || worldLayoutPlan.mode() == LayoutMode.CHAOS\n"
+                + "            || worldLayoutPlan.mode() == LayoutMode.STRIP_BANDS;"
         ));
     }
 

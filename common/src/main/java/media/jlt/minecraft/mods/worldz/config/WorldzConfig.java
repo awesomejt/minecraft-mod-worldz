@@ -615,6 +615,9 @@ public final class WorldzConfig {
         if (map.containsKey("allowOceans")) {
             config.allowOceans = readBoolean(map.get("allowOceans"), name + ".allowOceans");
         }
+        if (map.containsKey("allowBeaches")) {
+            config.allowBeaches = readBoolean(map.get("allowBeaches"), name + ".allowBeaches");
+        }
         return config;
     }
 
@@ -643,6 +646,9 @@ public final class WorldzConfig {
         }
         if (map.containsKey("allowOceans")) {
             config.allowOceans = readBoolean(map.get("allowOceans"), name + ".allowOceans");
+        }
+        if (map.containsKey("allowBeaches")) {
+            config.allowBeaches = readBoolean(map.get("allowBeaches"), name + ".allowBeaches");
         }
         return config;
     }
@@ -677,6 +683,15 @@ public final class WorldzConfig {
         }
         if (map.containsKey("seedRandomOrder")) {
             config.seedRandomOrder = readBoolean(map.get("seedRandomOrder"), name + ".seedRandomOrder");
+        }
+        if (map.containsKey("allowRivers")) {
+            config.allowRivers = readBoolean(map.get("allowRivers"), name + ".allowRivers");
+        }
+        if (map.containsKey("allowOceans")) {
+            config.allowOceans = readBoolean(map.get("allowOceans"), name + ".allowOceans");
+        }
+        if (map.containsKey("allowBeaches")) {
+            config.allowBeaches = readBoolean(map.get("allowBeaches"), name + ".allowBeaches");
         }
         return config;
     }
@@ -951,6 +966,7 @@ public final class WorldzConfig {
         values.put("spawn", spawnMap(config.spawn));
         values.put("allowRivers", config.allowRivers);
         values.put("allowOceans", config.allowOceans);
+        values.put("allowBeaches", config.allowBeaches);
         return values;
     }
 
@@ -963,6 +979,7 @@ public final class WorldzConfig {
         values.put("spawn", spawnMap(config.spawn));
         values.put("allowRivers", config.allowRivers);
         values.put("allowOceans", config.allowOceans);
+        values.put("allowBeaches", config.allowBeaches);
         return values;
     }
 
@@ -979,6 +996,9 @@ public final class WorldzConfig {
         values.put("biomes", config.biomes);
         values.put("widthBlocks", config.widthBlocks);
         values.put("seedRandomOrder", config.seedRandomOrder);
+        values.put("allowRivers", config.allowRivers);
+        values.put("allowOceans", config.allowOceans);
+        values.put("allowBeaches", config.allowBeaches);
         return values;
     }
 
@@ -1027,7 +1047,8 @@ public final class WorldzConfig {
             + ", starterRadiusBlocks=" + config.starterRadiusBlocks
             + ", spawn=" + config.spawn.strategy.serializedName()
             + ", allowRivers=" + config.allowRivers
-            + ", allowOceans=" + config.allowOceans;
+            + ", allowOceans=" + config.allowOceans
+            + ", allowBeaches=" + config.allowBeaches;
     }
 
     private static String chaosBiomesSummary(ChaosBiomesConfig config) {
@@ -1037,7 +1058,8 @@ public final class WorldzConfig {
             + ", starterRadiusBlocks=" + config.starterRadiusBlocks
             + ", spawn=" + config.spawn.strategy.serializedName()
             + ", allowRivers=" + config.allowRivers
-            + ", allowOceans=" + config.allowOceans;
+            + ", allowOceans=" + config.allowOceans
+            + ", allowBeaches=" + config.allowBeaches;
     }
 
     private static String stripWorldSummary(StripWorldConfig config) {
@@ -1051,7 +1073,10 @@ public final class WorldzConfig {
         }
         return "biomes=" + config.biomes
             + ", widthBlocks=" + config.widthBlocks
-            + ", seedRandomOrder=" + config.seedRandomOrder;
+            + ", seedRandomOrder=" + config.seedRandomOrder
+            + ", allowRivers=" + config.allowRivers
+            + ", allowOceans=" + config.allowOceans
+            + ", allowBeaches=" + config.allowBeaches;
     }
 
     private static String layoutSummary(LayoutConfig config) {

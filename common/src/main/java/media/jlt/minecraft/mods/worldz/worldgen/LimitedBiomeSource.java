@@ -47,6 +47,15 @@ import java.util.stream.Stream;
 
 /** A multi-noise biome source restricted to configured overworld biomes. */
 public final class LimitedBiomeSource extends BiomeSource {
+    /**
+     * {@code stony_shore} has no dedicated vanilla tag the way beaches do
+     * ({@link BiomeTags#IS_BEACH} only covers {@code beach}/{@code snowy_beach}),
+     * so the beach pass-through checks this specific id directly.
+     */
+    private static final ResourceKey<Biome> STONY_SHORE = ResourceKey.create(
+        Registries.BIOME, Identifier.withDefaultNamespace("stony_shore")
+    );
+
     /** Codec registered as {@code jlt_worldz:limited}. */
     public static final MapCodec<LimitedBiomeSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(source -> Optional.of(source.allowedBiomes())),
@@ -60,6 +69,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             .forGetter(source -> Optional.of(source.spawnStrategy.serializedName())),
         Codec.BOOL.optionalFieldOf("allow_rivers").forGetter(source -> Optional.of(source.allowRivers)),
         Codec.BOOL.optionalFieldOf("allow_oceans").forGetter(source -> Optional.of(source.allowOceans)),
+        Codec.BOOL.optionalFieldOf("allow_beaches").forGetter(source -> Optional.of(source.allowBeaches)),
         Codec.STRING.optionalFieldOf("world_type").forGetter(source -> Optional.<String>empty()),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
@@ -73,6 +83,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final SpawnStrategy spawnStrategy;
     private final boolean allowRivers;
     private final boolean allowOceans;
+    private final boolean allowBeaches;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
@@ -91,6 +102,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         SpawnStrategy spawnStrategy,
         boolean allowRivers,
         boolean allowOceans,
+        boolean allowBeaches,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -104,6 +116,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.spawnStrategy = spawnStrategy;
         this.allowRivers = allowRivers;
         this.allowOceans = allowOceans;
+        this.allowBeaches = allowBeaches;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -113,7 +126,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // asks this biome source for its possible biomes or an actual biome.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
             allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan,
-            allowRivers, allowOceans, biomeGetter
+            allowRivers, allowOceans, allowBeaches, biomeGetter
         ));
     }
 
@@ -128,6 +141,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<String> encodedSpawnStrategy,
         Optional<Boolean> encodedAllowRivers,
         Optional<Boolean> encodedAllowOceans,
+        Optional<Boolean> encodedAllowBeaches,
         Optional<String> encodedWorldType,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -201,10 +215,17 @@ public final class LimitedBiomeSource extends BiomeSource {
             : singleBiomeDefaults ? config.singleBiome.allowRivers : config.allowRivers);
         boolean allowOceans = encodedAllowOceans.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowOceans
             : singleBiomeDefaults ? config.singleBiome.allowOceans : config.allowOceans);
+        // allow_beaches (GOALS 36 follow-up) has no generic-preset equivalent -- only
+        // single_biome/chaos_biomes/strip_world bands support it, so the fieldless-preset
+        // fallback for neither is a literal false rather than a top-level config field.
+        // strip_world bands has no fieldless-preset defaulting branch at all yet (same known
+        // gap as its other fields -- see MEMORY.md), so it never reaches this "neither" case.
+        boolean allowBeaches = encodedAllowBeaches.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowBeaches
+            : singleBiomeDefaults ? config.singleBiome.allowBeaches : false);
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
-            allowRivers, allowOceans, encodedStarterRadius.isEmpty(), biomeGetter
+            allowRivers, allowOceans, allowBeaches, encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -221,6 +242,7 @@ public final class LimitedBiomeSource extends BiomeSource {
      * @param spawnStrategy persisted layout-origin and spawn strategy
      * @param allowRivers let vanilla's own river biomes generate naturally (single_biome only, GOALS 13)
      * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally (single_biome only, GOALS 14)
+     * @param allowBeaches let vanilla's own beach/stony-shore biomes generate naturally
      * @param biomeGetter biome registry lookup used for vanilla climate parameters
      * @return a fully explicit source independent of later YAML changes
      */
@@ -235,6 +257,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         SpawnStrategy spawnStrategy,
         boolean allowRivers,
         boolean allowOceans,
+        boolean allowBeaches,
         HolderGetter<Biome> biomeGetter
     ) {
         return new LimitedBiomeSource(
@@ -248,6 +271,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             spawnStrategy,
             allowRivers,
             allowOceans,
+            allowBeaches,
             false,
             biomeGetter
         );
@@ -260,6 +284,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         WorldLayoutPlan worldLayoutPlan,
         boolean allowRivers,
         boolean allowOceans,
+        boolean allowBeaches,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -305,19 +330,24 @@ public final class LimitedBiomeSource extends BiomeSource {
         }
 
         // DESIGN §20.5: the vanilla pass-through (GOALS 13/14, generalized to CHAOS in
-        // Phase 4.1) needs the full, unfiltered overworld source -- the Worldz-restricted
-        // `delegate` above essentially never contains river/ocean biomes, so sampling it
-        // would defeat the whole feature.
+        // Phase 4.1 and STRIP_BANDS in the GOALS 36 follow-up) needs the full, unfiltered
+        // overworld source -- the Worldz-restricted `delegate` above essentially never
+        // contains river/ocean/beach biomes, so sampling it would defeat the whole feature.
         Optional<MultiNoiseBiomeSource> naturalDelegate = Optional.empty();
         boolean supportsPassThrough = worldLayoutPlan.mode() == LayoutMode.SINGLE_BIOME
-            || worldLayoutPlan.mode() == LayoutMode.CHAOS;
-        if (supportsPassThrough && (allowRivers || allowOceans)) {
+            || worldLayoutPlan.mode() == LayoutMode.CHAOS
+            || worldLayoutPlan.mode() == LayoutMode.STRIP_BANDS;
+        if (supportsPassThrough && (allowRivers || allowOceans || allowBeaches)) {
             naturalDelegate = Optional.of(MultiNoiseBiomeSource.createFromList(overworld));
             if (allowRivers) {
                 biomeGetter.get(BiomeTags.IS_RIVER).ifPresent(holders -> holders.stream().forEach(possible::add));
             }
             if (allowOceans) {
                 biomeGetter.get(BiomeTags.IS_OCEAN).ifPresent(holders -> holders.stream().forEach(possible::add));
+            }
+            if (allowBeaches) {
+                biomeGetter.get(BiomeTags.IS_BEACH).ifPresent(holders -> holders.stream().forEach(possible::add));
+                biomeGetter.get(STONY_SHORE).ifPresent(possible::add);
             }
         }
 
@@ -575,6 +605,15 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
+     * Returns whether vanilla's own beach/stony-shore biomes are allowed to pass through.
+     *
+     * @return true when the pass-through applies to beaches
+     */
+    public boolean allowBeaches() {
+        return this.allowBeaches;
+    }
+
+    /**
      * Returns the current layout origin's X coordinate. Always {@code 0} unless
      * {@link #setOrigin(int, int)} has been called (see {@code SpawnOriginManager}).
      *
@@ -682,6 +721,9 @@ public final class LimitedBiomeSource extends BiomeSource {
             return Optional.of(natural);
         }
         if (this.allowOceans && natural.is(BiomeTags.IS_OCEAN)) {
+            return Optional.of(natural);
+        }
+        if (this.allowBeaches && (natural.is(BiomeTags.IS_BEACH) || natural.is(STONY_SHORE))) {
             return Optional.of(natural);
         }
         return Optional.empty();

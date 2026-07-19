@@ -15,6 +15,15 @@
 # cross into a new biome roughly every 256 blocks, repeating (wrapping) the
 # five-biome sequence once exhausted.
 #
+# bands.allowRivers/allowOceans/allowBeaches default to true (GOALS 36
+# follow-up, Jason 2026-07-19) specifically for bands -- none of the five
+# configured biomes are water/beach biomes, so wherever vanilla's own
+# terrain would naturally put a river, ocean, beach, or stony shore, that
+# should still show through instead of being overridden by the band's land
+# biome. This is what an earlier build of this config got wrong: biomes
+# were "not all mapping correctly" because natural water/beach features
+# never passed through at all.
+#
 # Steps once in-game:
 #  1. Confirm the corridor's terrain is ordinary vanilla shape (hills,
 #     caves, etc.) -- only the biome/surface-block dressing changes.
@@ -26,6 +35,9 @@
 #     consistent with positive X, not mirrored oddly).
 #  4. Confirm Z still behaves like an ordinary strip world: terrain ends
 #     into void at approximately 64 blocks out either side.
+#  5. Look for a natural river, ocean, beach, or stony shore along the
+#     corridor (F3 to check biome); confirm it shows through as its real
+#     vanilla biome rather than being relabeled to the current band's biome.
 strip:
   enabled: true
   widthRadiusBlocks: 64

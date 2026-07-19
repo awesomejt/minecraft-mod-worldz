@@ -94,6 +94,7 @@ public final class ChaosBiomesPresetEditor implements PresetEditor {
             customization.spawnStrategy(),
             customization.allowRivers(),
             customization.allowOceans(),
+            customization.allowBeaches(),
             biomes
         );
         NoiseBasedChunkGenerator customizedGenerator = new NoiseBasedChunkGenerator(source, noiseGenerator.generatorSettings());
@@ -140,6 +141,7 @@ public final class ChaosBiomesPresetEditor implements PresetEditor {
             source.spawnStrategy(),
             source.allowRivers(),
             source.allowOceans(),
+            source.allowBeaches(),
             fromPlan(plan.overworld()), fromPlan(plan.nether()), fromPlan(plan.end()),
             fromPlan(exterior.overworld()), fromPlan(exterior.nether())
         );

@@ -538,10 +538,11 @@ class WorldzConfigTest {
                 + ", spawn=starter_at_origin"
                 + ", singleBiome=landBiome=minecraft:plains, starterBiome=<none>"
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin"
-                + ", allowRivers=false, allowOceans=false"
+                + ", allowRivers=false, allowOceans=false, allowBeaches=false"
                 + ", chaosBiomes=biomes=[minecraft:desert, minecraft:jungle, minecraft:ice_spikes,"
                 + " minecraft:badlands, minecraft:taiga], regionScaleBlocks=512, starterBiome=<none>"
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
+                + ", allowBeaches=false"
                 + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
@@ -559,6 +560,7 @@ class WorldzConfigTest {
                 strategy: preferred_natural_biome
               allowRivers: true
               allowOceans: true
+              allowBeaches: true
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:desert", config.singleBiome.landBiome);
@@ -567,6 +569,7 @@ class WorldzConfigTest {
         assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, config.singleBiome.spawn.strategy);
         assertTrue(config.singleBiome.allowRivers);
         assertTrue(config.singleBiome.allowOceans);
+        assertTrue(config.singleBiome.allowBeaches);
     }
 
     @Test
@@ -575,6 +578,7 @@ class WorldzConfigTest {
 
         assertFalse(config.singleBiome.allowRivers);
         assertFalse(config.singleBiome.allowOceans);
+        assertFalse(config.singleBiome.allowBeaches);
     }
 
     @Test
@@ -631,6 +635,7 @@ class WorldzConfigTest {
                 strategy: preferred_natural_biome
               allowRivers: true
               allowOceans: true
+              allowBeaches: true
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(List.of("minecraft:plains@3.0", "minecraft:desert"), config.chaosBiomes.biomes);
@@ -640,6 +645,7 @@ class WorldzConfigTest {
         assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, config.chaosBiomes.spawn.strategy);
         assertTrue(config.chaosBiomes.allowRivers);
         assertTrue(config.chaosBiomes.allowOceans);
+        assertTrue(config.chaosBiomes.allowBeaches);
     }
 
     @Test
@@ -690,12 +696,27 @@ class WorldzConfigTest {
                   - minecraft:jungle
                 widthBlocks: 256
                 seedRandomOrder: true
+                allowRivers: false
+                allowOceans: false
+                allowBeaches: false
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.stripWorld.bands.enabled);
         assertEquals(List.of("minecraft:desert", "minecraft:jungle"), config.stripWorld.bands.biomes);
         assertEquals(256, config.stripWorld.bands.widthBlocks);
         assertTrue(config.stripWorld.bands.seedRandomOrder);
+        assertFalse(config.stripWorld.bands.allowRivers);
+        assertFalse(config.stripWorld.bands.allowOceans);
+        assertFalse(config.stripWorld.bands.allowBeaches);
+    }
+
+    @Test
+    void stripWorldBandsPassThroughDefaultsTrue() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertTrue(config.stripWorld.bands.allowRivers);
+        assertTrue(config.stripWorld.bands.allowOceans);
+        assertTrue(config.stripWorld.bands.allowBeaches);
     }
 
     @Test

@@ -41,6 +41,9 @@ final class StripWorldCustomizeScreen extends Screen implements
     private MultiLineEditBox bandBiomes;
     private EditBox bandWidthBlocks;
     private boolean bandSeedRandomOrder;
+    private boolean bandAllowRivers;
+    private boolean bandAllowOceans;
+    private boolean bandAllowBeaches;
     private String bandBiomesText;
     private String bandWidthBlocksText;
     private SpawnStrategy spawnStrategy;
@@ -63,6 +66,9 @@ final class StripWorldCustomizeScreen extends Screen implements
         this.bandBiomesText = initial.bandBiomesText();
         this.bandWidthBlocksText = Integer.toString(initial.bandWidthBlocks());
         this.bandSeedRandomOrder = initial.bandSeedRandomOrder();
+        this.bandAllowRivers = initial.bandAllowRivers();
+        this.bandAllowOceans = initial.bandAllowOceans();
+        this.bandAllowBeaches = initial.bandAllowBeaches();
         this.spawnStrategy = initial.spawnStrategy();
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
@@ -125,6 +131,24 @@ final class StripWorldCustomizeScreen extends Screen implements
         form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.band_seed_random_order"), this.font)
             .selected(this.bandSeedRandomOrder)
             .onValueChange((checkbox, selected) -> this.bandSeedRandomOrder = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.band_allow_rivers"), this.font)
+            .selected(this.bandAllowRivers)
+            .onValueChange((checkbox, selected) -> this.bandAllowRivers = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.band_allow_oceans"), this.font)
+            .selected(this.bandAllowOceans)
+            .onValueChange((checkbox, selected) -> this.bandAllowOceans = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.strip_world.band_allow_beaches"), this.font)
+            .selected(this.bandAllowBeaches)
+            .onValueChange((checkbox, selected) -> this.bandAllowBeaches = selected)
             .maxWidth(FORM_WIDTH)
             .build());
 
@@ -212,6 +236,9 @@ final class StripWorldCustomizeScreen extends Screen implements
                 this.bandBiomes.getValue(),
                 this.bandWidthBlocks.getValue(),
                 this.bandSeedRandomOrder,
+                this.bandAllowRivers,
+                this.bandAllowOceans,
+                this.bandAllowBeaches,
                 this.spawnStrategy,
                 this.overworldBorder,
                 this.netherBorder,

@@ -13,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StripWorldCustomizationTest {
     private static StripWorldCustomization create(int widthRadiusBlocks, ExteriorMode widthMode, boolean applyToNether) {
         return new StripWorldCustomization(
-            widthRadiusBlocks, widthMode, applyToNether, false, List.of(), 128, false, SpawnStrategy.STARTER_AT_ORIGIN,
+            widthRadiusBlocks, widthMode, applyToNether, false, List.of(), 128, false, false, false, false,
+            SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -21,7 +22,8 @@ class StripWorldCustomizationTest {
 
     private static StripWorldCustomization createWithBands(boolean bandsEnabled, List<String> bandBiomes, int bandWidthBlocks) {
         return new StripWorldCustomization(
-            32, ExteriorMode.VOID, false, bandsEnabled, bandBiomes, bandWidthBlocks, false, SpawnStrategy.STARTER_AT_ORIGIN,
+            32, ExteriorMode.VOID, false, bandsEnabled, bandBiomes, bandWidthBlocks, false, false, false, false,
+            SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -94,7 +96,8 @@ class StripWorldCustomizationTest {
     @Test
     void fromTextParsesDecimalWidthAndMode() {
         StripWorldCustomization customization = StripWorldCustomization.fromText(
-            "48", "ocean", true, false, "", "128", false, SpawnStrategy.PREFERRED_NATURAL_BIOME,
+            "48", "ocean", true, false, "", "128", false, false, false, false,
+            SpawnStrategy.PREFERRED_NATURAL_BIOME,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -108,7 +111,8 @@ class StripWorldCustomizationTest {
     @Test
     void fromTextRejectsNonNumericWidth() {
         assertThrows(IllegalArgumentException.class, () -> StripWorldCustomization.fromText(
-            "not-a-number", "void", false, false, "", "128", false, SpawnStrategy.STARTER_AT_ORIGIN,
+            "not-a-number", "void", false, false, "", "128", false, false, false, false,
+            SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));
@@ -117,7 +121,7 @@ class StripWorldCustomizationTest {
     @Test
     void fromTextParsesBandFields() {
         StripWorldCustomization customization = StripWorldCustomization.fromText(
-            "48", "void", false, true, "minecraft:desert\nminecraft:jungle", "256", true,
+            "48", "void", false, true, "minecraft:desert\nminecraft:jungle", "256", true, true, true, true,
             SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
@@ -127,6 +131,20 @@ class StripWorldCustomizationTest {
         assertEquals(List.of("minecraft:desert", "minecraft:jungle"), customization.bandBiomes());
         assertEquals(256, customization.bandWidthBlocks());
         assertTrue(customization.bandSeedRandomOrder());
+        assertTrue(customization.bandAllowRivers());
+        assertTrue(customization.bandAllowOceans());
+        assertTrue(customization.bandAllowBeaches());
+    }
+
+    @Test
+    void fromConfigCopiesBandPassThroughDefaults() {
+        WorldzConfig config = new WorldzConfig();
+
+        StripWorldCustomization customization = StripWorldCustomization.fromConfig(config);
+
+        assertTrue(customization.bandAllowRivers());
+        assertTrue(customization.bandAllowOceans());
+        assertTrue(customization.bandAllowBeaches());
     }
 
     @Test

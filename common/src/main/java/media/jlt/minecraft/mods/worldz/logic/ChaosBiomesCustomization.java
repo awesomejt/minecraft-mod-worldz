@@ -19,6 +19,7 @@ import java.util.List;
  * @param spawnStrategy layout-origin and initial-spawn strategy
  * @param allowRivers let vanilla's own river biomes generate naturally
  * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+ * @param allowBeaches let vanilla's own beach/stony-shore biomes generate where vanilla would place one
  * @param overworldBorder overworld border selection (GOALS 17-20, TODO 5.3)
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
@@ -33,6 +34,7 @@ public record ChaosBiomesCustomization(
     SpawnStrategy spawnStrategy,
     boolean allowRivers,
     boolean allowOceans,
+    boolean allowBeaches,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
@@ -100,6 +102,7 @@ public record ChaosBiomesCustomization(
             config.chaosBiomes.spawn.strategy,
             config.chaosBiomes.allowRivers,
             config.chaosBiomes.allowOceans,
+            config.chaosBiomes.allowBeaches,
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
@@ -118,6 +121,7 @@ public record ChaosBiomesCustomization(
      * @param spawnStrategy layout-origin and spawn strategy
      * @param allowRivers let vanilla's own river biomes generate naturally
      * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+     * @param allowBeaches let vanilla's own beach/stony-shore biomes generate where vanilla would place one
      * @param overworldBorder validated overworld border values
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
@@ -133,6 +137,7 @@ public record ChaosBiomesCustomization(
         SpawnStrategy spawnStrategy,
         boolean allowRivers,
         boolean allowOceans,
+        boolean allowBeaches,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
@@ -151,6 +156,7 @@ public record ChaosBiomesCustomization(
             spawnStrategy,
             allowRivers,
             allowOceans,
+            allowBeaches,
             overworldBorder,
             netherBorder,
             endBorder,

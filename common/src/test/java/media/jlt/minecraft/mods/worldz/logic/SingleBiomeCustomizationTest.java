@@ -16,7 +16,7 @@ class SingleBiomeCustomizationTest {
         boolean allowRivers, boolean allowOceans
     ) {
         return new SingleBiomeCustomization(
-            landBiome, starterBiome, starterRadiusBlocks, spawnStrategy, allowRivers, allowOceans,
+            landBiome, starterBiome, starterRadiusBlocks, spawnStrategy, allowRivers, allowOceans, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -102,7 +102,7 @@ class SingleBiomeCustomizationTest {
     @Test
     void fromTextParsesDecimalRadius() {
         SingleBiomeCustomization customization = SingleBiomeCustomization.fromText(
-            "minecraft:desert", "minecraft:plains", "512", SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false,
+            "minecraft:desert", "minecraft:plains", "512", SpawnStrategy.PREFERRED_NATURAL_BIOME, true, false, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -118,10 +118,20 @@ class SingleBiomeCustomizationTest {
     @Test
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> SingleBiomeCustomization.fromText(
-            "minecraft:plains", "", "not-a-number", SpawnStrategy.STARTER_AT_ORIGIN, false, false,
+            "minecraft:plains", "", "not-a-number", SpawnStrategy.STARTER_AT_ORIGIN, false, false, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));
+    }
+
+    @Test
+    void fromConfigCopiesAllowBeaches() {
+        WorldzConfig config = new WorldzConfig();
+        config.singleBiome.allowBeaches = true;
+
+        SingleBiomeCustomization customization = SingleBiomeCustomization.fromConfig(config);
+
+        assertTrue(customization.allowBeaches());
     }
 
     @Test

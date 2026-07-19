@@ -365,16 +365,22 @@ it); test 5 requires 0.2.24+ (biome bands, GOALS 36).
    width-mode toggle, the Nether checkbox, spawn strategy, and the Border/
    End Border/Exterior buttons all work and a customized world reflects
    the chosen values in-game.
-5. **Biome bands**, `29-strip-world-biome-bands.yaml` (GOALS 36). Open
-   Customize and confirm the "Pass through an ordered biome-band sequence"
-   checkbox, the band-biomes list, band width, and shuffle-once checkbox
-   are all present and pre-filled from the config; confirm terrain stays
-   ordinary vanilla shape (only the biome changes); walking along +X in
-   ~256-block increments the biome should cycle desert → jungle →
-   ice_spikes → badlands → taiga → back to desert; walking along -X from
-   spawn should show the same sequence in reverse (band index wraps via
-   floor division, not mirrored oddly at X=0); confirm Z still ends into
-   void at ~64 blocks out either side, unchanged from the plain strip world.
+5. **Biome bands**, `29-strip-world-biome-bands.yaml` (GOALS 36, 0.2.26+).
+   Open Customize and confirm the "Pass through an ordered biome-band
+   sequence" checkbox, the band-biomes list, band width, shuffle-once
+   checkbox, and the three river/ocean/beach pass-through checkboxes (all
+   checked by default) are all present and pre-filled from the config;
+   confirm terrain stays ordinary vanilla shape (only the biome changes);
+   walking along +X in ~256-block increments the biome should cycle
+   desert → jungle → ice_spikes → badlands → taiga → back to desert;
+   walking along -X from spawn should show the same sequence in reverse
+   (band index wraps via floor division, not mirrored oddly at X=0);
+   confirm Z still ends into void at ~64 blocks out either side, unchanged
+   from the plain strip world; look for a natural river, ocean, beach, or
+   stony shore along the corridor and confirm it shows through as its real
+   vanilla biome instead of being relabeled to the current band's biome
+   (this was broken in 0.2.24/0.2.25 — bands never passed through water or
+   beach biomes at all).
 
 ## Scenario table: seed-informed spawn (Phase 16)
 
