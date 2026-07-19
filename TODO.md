@@ -738,9 +738,25 @@ rectangular shape.
       `StripWorldCustomizationTest`, `WorldzConfigTest`; full suite green
       (297 tests); clean build across all modules. 0.2.24 built and
       deployed to Worldz-Test.
-      **[Jason] acceptance still outstanding** for all of Phase 6
-      (6.2c and 6.3 together) — nothing to report yet beyond docs/configs
-      being ready; do not start Phase 7 without explicit go-ahead.
+      **Fixed (0.2.25), found by Jason testing config 29:** biomes were
+      "not all mapping correctly" — `LimitedBiomeSource.resolveLayoutBiomes`
+      only pulled ids from `landBiomes`/`oceanBiomes`/`beachBiomes`/
+      `singleBiome`, never `bandBiomes`, so `STRIP_BANDS`'s resolved-holder
+      map was always empty and every column silently fell through to plain
+      vanilla climate-filtered biomes instead of the configured sequence
+      (whichever band biome happened to coincide with vanilla's own
+      climate choice at that spot looked right by accident; the rest
+      didn't). One-line fix: `ids.addAll(plan.bandBiomes())`. Added a
+      structural regression-guard assertion in `ProjectMetadataTest`
+      pinning that line, since `LimitedBiomeSource` needs live game
+      registries to test behaviorally and can't get real JUnit coverage
+      here (same limitation as the rest of this class); added to an
+      existing test method rather than a new one, so the suite count is
+      unchanged (297 tests, all green). 0.2.25 built and deployed to
+      Worldz-Test.
+      **[Jason] acceptance still outstanding** for the re-test of config 29
+      — everything else in Phase 6 (26-28, and 29's non-biome behavior) is
+      confirmed working; do not start Phase 7 without explicit go-ahead.
 
 ## Phase 7 — Ocean island challenge, core (GOALS 01, 04)
 

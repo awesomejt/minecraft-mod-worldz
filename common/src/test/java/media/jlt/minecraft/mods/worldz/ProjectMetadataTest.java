@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.24", properties.getProperty("version"));
+        assertEquals("0.2.25", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -309,6 +309,11 @@ class ProjectMetadataTest {
         assertTrue(source.contains("layoutPlan.sampleAt(blockX - originX, blockZ - originZ).biomeId()"));
         assertTrue(source.contains("resolveLayoutBiomes(worldLayoutPlan, biomeGetter)"));
         assertTrue(source.contains("possible.addAll(layoutBiomes.values())"));
+        // Regression guard (Jason found in-game, GOALS 36): resolveLayoutBiomes must pull
+        // STRIP_BANDS ids into the resolved-holder map same as every other mode's biome
+        // lists, or sampleAt's returned biomeId never resolves to a real Holder<Biome> and
+        // getNoiseBiome silently falls through to plain vanilla climate-filtered biomes.
+        assertTrue(source.contains("ids.addAll(plan.bandBiomes())"));
     }
 
     @Test

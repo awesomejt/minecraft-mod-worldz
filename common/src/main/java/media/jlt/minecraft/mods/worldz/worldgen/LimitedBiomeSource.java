@@ -335,6 +335,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         plan.oceanBiomes().forEach(weight -> ids.add(weight.biomeId()));
         plan.beachBiomes().forEach(weight -> ids.add(weight.biomeId()));
         plan.singleBiome().ifPresent(ids::add);
+        ids.addAll(plan.bandBiomes());
 
         Map<String, Holder<Biome>> resolved = new LinkedHashMap<>();
         for (String id : ids) {

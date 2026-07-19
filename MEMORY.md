@@ -1027,6 +1027,34 @@ Durable decisions, verified API notes, and rationale that should survive across 
   (6.1 design, 6.2a core, 6.2b preset, 6.2c docs/configs, 6.3 bands) —
   **awaiting Jason's acceptance testing (configs 26-29, MANUAL_TESTING.md's
   "Phase 6 acceptance" section) before starting Phase 7.**
+- 2026-07-19 (Phase 6.3 fix, 0.2.25) — Jason tested configs 26-29 in-game
+  and reported config 29's biomes "not all mapping correctly." Root cause:
+  `LimitedBiomeSource.resolveLayoutBiomes` (the method that turns a
+  `WorldLayoutPlan`'s biome ids into real registry `Holder<Biome>`
+  instances for actual sampling) only ever read `landBiomes`/
+  `oceanBiomes`/`beachBiomes`/`singleBiome` — I added `STRIP_BANDS` and its
+  `bandBiomes` list to `WorldLayoutPlan` itself but never threaded it
+  through this second, separate resolution step. The result: `sampleAt`
+  correctly picked the right band biome id, but the id-to-Holder map was
+  always empty for `STRIP_BANDS`, so `getNoiseBiome` silently fell through
+  to plain vanilla climate-filtered biomes at every column instead — some
+  columns coincidentally matched (vanilla's own climate choice happened to
+  agree with the configured band), most didn't. **Lesson worth
+  remembering:** this project has (at least) two independent places that
+  need to know about a `WorldLayoutPlan` mode's biome ids —
+  `WorldLayoutPlan.sampleAt` itself (which id to report) and
+  `LimitedBiomeSource.resolveLayoutBiomes` (turning reported ids into
+  actually-usable holders) — adding a new mode requires checking both, and
+  only checking the first one *looks* like a complete change (compiles
+  clean, the new mode's own tests pass, since `WorldLayoutPlanTest` never
+  touches `LimitedBiomeSource` at all). Since `LimitedBiomeSource` needs
+  live Minecraft registries to test behaviorally and has no dedicated
+  JUnit suite of its own, added a structural regression-guard assertion to
+  `ProjectMetadataTest` instead, pinning the exact
+  `ids.addAll(plan.bandBiomes())` line. One-line fix; 0.2.25 built and
+  deployed to Worldz-Test; awaiting Jason's re-test of config 29
+  specifically (26-28 and the rest of 29's behavior already confirmed
+  working).
 
 ## Reference Log
 
