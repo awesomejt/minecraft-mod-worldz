@@ -1909,3 +1909,228 @@ toggleable, mirroring how Nether border/exterior settings are already
 independent of the Overworld's throughout this codebase.
 
 Decided 2026-07-19; no code yet — 6.2 implements from this design.
+
+## 24. Ocean island challenge, core (GOALS 01, 04) — design pass (TODO 7.1)
+
+A small artificial island of one chosen biome at the origin, surrounded by
+an endless generated ocean. Design verified 2026-07-19 against this
+codebase's existing starter-land, exterior, layout, and progression
+machinery.
+
+### 24.1 Additive, not retrofit — a new `IslandPlan`, not a `StarterLandPlan` extension
+
+TODO 7.1's own phrasing ("noise-perturbed radius over the existing
+starter-land profile") could be read as extending the shared
+`StarterLandPlan`/`StarterZone`/`StarterLandProfile` classes every other
+typed preset already uses. Considered and rejected: those classes are
+circular by design, unseeded (pure functions of `x`, `z`, and an
+externally-sampled relief noise value), and shared by `single_biome`,
+`chaos_biomes`, the generic `worldz` preset, and (indirectly) the
+End/Nether progression code. Giving them a seed-dependent angular
+perturbation would need a whole new "placeholder seed at decode, real seed
+resolved at generation time" plumbing path (the same two-phase dance
+`WorldLayoutPlan.seed`/`LimitedBiomeSource.setLayoutSeed`/
+`effectiveLayoutPlan()` already exists for) grafted onto a class four other
+already-shipped, already-tested presets depend on — real risk for no
+shared benefit, since nothing else wants a non-circular starter zone.
+
+Decision: **`IslandPlan` is a new, additive, ocean-island-only mechanism**,
+threaded through `EnvelopedChunkGenerator` (mirroring `StripPlan`, added
+Phase 6.2a) and `LimitedBiomeSource` (a new field, mirroring `allowBeaches`,
+added the GOALS 36 follow-up) — not a modification of the shared
+starter-land system. Every other preset is completely unaffected; the
+island's land/shore/ocean-gradient logic lives entirely in new pure-logic
+classes that *reuse the same approach* `StarterLandProfile` established
+(smoothstep blending, a relief-noise-flavored natural variation) without
+touching or depending on it directly. This matches this project's
+established precedent exactly: strip world's width (Phase 6.1) was kept as
+an additive check layered on the untouched square envelope rather than a
+retrofit of `ExteriorPlan.DimensionEnvelope` into a rectangle, for the same
+reason.
+
+The shared starter-land system's own beach-ring width gap (BEACH currently
+spans the whole `transitionWidthBlocks` blend, logged 2026-07-16, "not
+fixed") is deliberately **not** touched by this phase either, for the same
+risk-containment reason — `single_biome`/`chaos_biomes`/the generic preset
+keep their existing (accepted, documented) behavior unchanged.
+Ocean island gets a correctly narrow shore ring from day one because GOALS
+01 requires it explicitly ("beach and/or stony shore to transition to the
+ocean"), not because the shared system was patched.
+
+### 24.2 Seeding the perturbation without new seed plumbing
+
+`IslandPlan` itself carries no seed field. Ocean island's land biome is
+**always** resolved as `LayoutMode.SINGLE_BIOME` (the existing, unmodified
+mechanism single_biome already uses) — every ocean-island world therefore
+already has a real, re-seeded `WorldLayoutPlan` available via
+`LimitedBiomeSource.effectiveLayoutPlan()`, and `EnvelopedChunkGenerator`'s
+own `LayoutContext.plan()` already calls that same method live (confirmed
+by reading the class directly: `LayoutContext` holds a reference to the
+`LimitedBiomeSource` instance and calls `source.effectiveLayoutPlan()` on
+every access, never a stale copy) — so both the biome-classification code
+path (`LimitedBiomeSource`) and the terrain-height code path
+(`EnvelopedChunkGenerator`) already observe the identical, already-resolved
+real world seed through the exact same object. The new `IslandShapeProfile`
+perturbation functions take that seed as a plain parameter
+(`effectiveLayoutPlan().seed()` on one side, `layout.get().plan().seed()`
+on the other — same value) and reuse `WorldLayoutPlan`'s own
+`hash01`/`splitmix64` deterministic-hash primitives (not vanilla
+`RandomState` noise) for the angular perturbation itself. Vanilla
+`RandomState`-derived noise (`Noises.SURFACE_SECONDARY`, the way starter
+land's relief noise already works) was considered and rejected here
+specifically because `LimitedBiomeSource.getNoiseBiome` only ever receives
+a `Climate.Sampler`, never a `RandomState` — it has no way to sample
+arbitrary vanilla noise directly, so a `RandomState`-based approach would
+work in `EnvelopedChunkGenerator` but not in `LimitedBiomeSource`, and the
+two absolutely must agree pixel-for-pixel on where the coastline is (this
+project has hit the biome/terrain-mismatch defect class before — see
+§20.1's straight-coastline/floating-structure history). A seed-and-hash
+function callable identically from both places, with no `RandomState`
+dependency, sidesteps the mismatch entirely by construction.
+
+### 24.3 Natural island shape
+
+`IslandShapeProfile` (new pure-logic class) computes an angle-dependent
+effective radius: `radiusAt(baseRadiusBlocks, amplitude, angleRadians,
+seed) = baseRadiusBlocks * (1 + perturbation)`, where `perturbation` sums a
+small number (3-4) of sine harmonics with per-harmonic amplitude decreasing
+by `1/k` and a per-harmonic phase hashed deterministically from `seed` (via
+`WorldLayoutPlan`'s existing hash primitives) — a cheap, deterministic,
+JUnit-testable "lumpy circle" with a dominant low-frequency wobble plus
+finer detail, clamped to a safe range (default amplitude `0.3`, hard clamp
+`0.0`-`0.6` of the base radius) so no combination of harmonics can produce
+a self-intersecting or negative-radius shape. `distanceFromShore(x, z,
+baseRadiusBlocks, amplitude, seed)` returns `hypot(x, z) -
+radiusAt(baseRadiusBlocks, amplitude, angleOf(x, z), seed)` — negative
+inside the island, positive outside, zero at the (perturbed) coastline.
+This single signed-distance function is the one shared primitive every
+other piece of island logic (biome classification, terrain height, shore
+ring, ocean gradient) is defined in terms of, so they can never disagree
+about where the coastline actually is.
+
+Terrain height reuses `StarterLandProfile`'s exact smoothstep-and-relief
+approach (a new small function taking the signed shore distance instead of
+a raw circular one, otherwise the same shape), so an island reads as "the
+existing starter-land island, just not circular" rather than a visually
+distinct algorithm.
+
+### 24.4 Dedicated narrow shore ring (beach/stony-shore)
+
+A new `shoreWidthBlocks` (default `12`, distinct from and narrower than the
+terrain-height blend's own transition width) defines a ring measured
+outward from the perturbed coastline (`0 <= distanceFromShore <=
+shoreWidthBlocks`). Columns in that ring resolve to `BiomeRole.BEACH`, with
+the biome itself a 50/50-weighted pick between `minecraft:beach` and
+`minecraft:stony_shore` per column (a small dedicated weighted-pick helper,
+not routed through `WorldLayoutPlan`'s land/ocean/beach lists — those exist
+for the coordinated-layout system's own composition needs, which
+ocean_island doesn't use). This directly fixes the logged beach-width gap
+for this preset specifically (§24.1): a narrow ring at the true coastline,
+not the whole raised-terrain blend.
+
+### 24.5 Ocean depth/biome gradient
+
+The generic `ExteriorMode.OCEAN`/`ExteriorTerrainProfile` mechanism
+(`OCEAN_DEPTH = 16` fixed everywhere, one hardcoded `Biomes.DEEP_OCEAN`
+holder in `LimitedBiomeSource`) is **not reused or modified** — it has no
+notion of per-column depth variation and is shared by every other preset's
+"ocean exterior" option, which stays exactly as flat/simple as it is today.
+Ocean island's gradient is new, self-contained logic keyed off the same
+`distanceFromShore` value:
+
+- **Shore band** (`shoreWidthBlocks` to `shoreWidthBlocks +
+  oceanShallowWidthBlocks`, default width `64`): shallow floor (default `8`
+  blocks below sea level), biome weighted-picked from `{warm_ocean,
+  lukewarm_ocean, ocean}` — GOALS 01's literal "shallow (warm/lukewarm)."
+- **Deepening band** (next `oceanDeepenWidthBlocks`, default `128`): floor
+  smoothly ramps (same smoothstep curve as everywhere else in this
+  codebase) from the shallow depth to the deep depth (default `32` blocks
+  below sea level); biome weighted-picked from the full 9-entry vanilla
+  ocean set (`BiomeRoles`' existing `OCEAN_IDS` constant already enumerates
+  exactly this list) — "all ocean biomes available."
+- **Deep band** (beyond that, continuing to infinity — "endless ocean"):
+  floor holds at the deep depth; biome continues drawing from the same
+  full 9-entry set.
+
+All width/depth numbers above are config defaults, not hardcoded
+constants, for Jason to tune during acceptance testing without a code
+change. The weighted picks reuse `WorldLayoutPlan`'s existing
+`hash01`-based deterministic per-cell selection approach (same seed as
+§24.2), sampled at a coarse region scale (not per-block) so the ocean reads
+as patches of biome variety, not per-block dithering.
+
+### 24.6 Progression guarantees at small radii
+
+`ObjectiveSite.supportiveRadius` already returns a non-empty (finite)
+radius whenever the exterior/envelope mode is non-`NORMAL`, independent of
+whether a border is enabled — ocean island's `IslandPlan` mode is
+non-`NORMAL` by construction, so `ensureObjective = true` on the Overworld
+border settings (default for this preset, border itself left *disabled* --
+GOALS 01 has no size limit, only the ocean shape) is all that's needed to
+reuse the entire existing compact-fallback-End-portal machinery unmodified.
+For a genuinely tiny island (radius near the GOALS 01 floor, "16 blocks/1
+chunk"), the existing `fitsInside`/`NATURAL_STRUCTURE_MARGIN` (128 blocks)
+check will essentially never consider the fallback site "safely fits," so
+`supportiveFallbackZ` falls through to its documented last-resort `(0, 0)`
+placement — meaning the compact 11x11 End portal structure gets built at
+the island's own center, consuming most or all of a 1-chunk island's
+surface. **Accepted trade-off, not a defect to chase**: GOALS 01 requires
+beatability, not that a tiny island stays fully buildable-on; a player who
+wants both a tiny island and room to build picks a larger radius. Documented
+in README/MANUAL_TESTING rather than special-cased in code.
+
+Nether stays fully vanilla by default (`ensureObjective = false` on the
+Nether border settings, matching GOALS 01's "Nether... unchanged" exactly)
+— no artificial restriction means no compact-fallback-fortress need;
+ordinary vanilla Nether exploration already finds a natural fortress.
+
+### 24.7 Exclusion zone (§20.7) and distant natural islands (GOALS 04, TODO 7.3)
+
+The core ocean_island preset (TODO 7.2, GOALS 01) ships with the ocean
+gradient's deep band extending to infinity — no natural land anywhere
+beyond the artificial island, ever. GOALS 04 is the *same* preset with one
+additional toggle: an **exclusion zone** (`exclusionZoneEnabled`, default
+`false`; `exclusionZoneRadiusBlocks`, default `2000` per §20.7's own
+placeholder) beyond which `IslandPlan`'s masking releases entirely and
+`effectiveModeAt` reports `NORMAL` again, letting the delegate's real
+vanilla terrain resume — small natural islands then occur wherever the
+seed's own terrain noise happens to poke above sea level (§20's Q1 answer:
+confirmed no additional "island guarantee" is needed or possible, since
+biome and terrain shape are independent in modern Minecraft and restricting
+biomes alone doesn't suppress land). This is a pure extension of
+`effectiveModeAt`'s existing radius check (compare against the exclusion
+radius in addition to the island's own perturbed radius) — no new terrain
+math beyond what 7.2 already builds. Reused as-is by later phases per
+§20.7 (GOALS 07, 08, 24) once they need it.
+
+### 24.8 New typed preset shape
+
+`jlt_worldz:ocean_island` (GOALS 01-04), following the established
+one-preset-per-challenge-family pattern exactly: `OceanIslandConfig`
+(island biome, `radiusBlocks`, `shapeAmplitude`, `shoreWidthBlocks`, ocean
+gradient widths/depths, `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`),
+`OceanIslandCustomization` record, `OceanIslandPresetEditor`,
+`OceanIslandCustomizeScreen`, `ocean_island.json` preset resource + `normal`
+tag entry + lang keys, both loaders' registration, matching resource/
+structural tests. Unlike every prior typed preset, ocean_island has **no
+spawn-strategy option** — the island only ever exists artificially at the
+origin, so `PREFERRED_NATURAL_BIOME`/`VANILLA_SPAWN` are meaningless for
+it; spawn is always the island's own safe surface point near the origin
+(reusing the existing `STARTER_AT_ORIGIN`-style safe-spawn search, just
+with no strategy toggle exposed). The shared Overworld/Nether Border,
+End Border, and Nether Exterior Customize buttons remain available and
+optional (all default off/normal) for players who want to compose a size
+limit or restrict the Nether on top of the island shape; there is
+deliberately no separate Overworld Exterior toggle, since `IslandPlan`
+unconditionally supplies the Overworld's entire exterior itself.
+
+Radius bounds are new, dedicated constants
+(`MIN_ISLAND_RADIUS_BLOCKS = 8`, satisfying GOALS 01's "16 blocks/1 chunk"
+under either a diameter or radius reading; `MAX_ISLAND_RADIUS_BLOCKS =
+65536` as a generous "huge" ceiling) rather than the shared
+`MIN_STARTER_RADIUS_BLOCKS`/`MAX_STARTER_RADIUS_BLOCKS` (64-4096) every
+other preset's starter zone uses — those bounds were tuned for "a starter
+zone inside an otherwise-normal world," not "the entire visible island,"
+and GOALS 01 explicitly requires going smaller than 64.
+
+Decided 2026-07-19; no code yet — 7.2/7.3 implement from this design.

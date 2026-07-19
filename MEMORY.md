@@ -1126,6 +1126,71 @@ Durable decisions, verified API notes, and rationale that should survive across 
   both follow-up fixes) with no known outstanding defects. Still need
   Jason's explicit go-ahead before starting Phase 7 (standing phase-gate
   rule), but nothing left to fix here.
+- 2026-07-19 (Phase 7.1, ocean island design pass, DESIGN §24) — Jason gave
+  the go-ahead to start Phase 7. No blocking scope questions found after a
+  full technical review (GOALS 01/04 plus TODO 7.1 are prescriptive enough
+  that remaining choices are implementation judgment calls, not genuine
+  ambiguity like GOALS 36's wording needed clarifying) — proceeded straight
+  into the design pass per AGENTS.md's "the executor designs details inside
+  this section's decisions" rule.
+  **Key decision: `IslandPlan` is new and additive, not a
+  `StarterLandPlan`/`StarterZone` retrofit.** Those classes are shared by
+  four already-shipped presets and are unseeded pure functions; giving them
+  a seed-dependent angular perturbation would need a whole new two-phase
+  seed-resolution plumbing path grafted onto code everything else depends
+  on, for zero benefit to anything but ocean_island. Same "additive, not
+  retrofit" call as strip world's width (Phase 6.1) over
+  `ExteriorPlan.DimensionEnvelope`.
+  **Seeding solved without new plumbing:** ocean_island's land biome is
+  always `LayoutMode.SINGLE_BIOME`, so `LimitedBiomeSource
+  .effectiveLayoutPlan()` already carries a real, re-seeded seed by the
+  time any island logic runs; confirmed by reading
+  `EnvelopedChunkGenerator.LayoutContext.plan()` directly -- it calls
+  `source.effectiveLayoutPlan()` live, never a stale copy, so both the
+  biome-classification path and the terrain-height path already observe
+  the identical resolved seed through the same object. `IslandShapeProfile`
+  takes that seed as a plain parameter and reuses `WorldLayoutPlan`'s own
+  `hash01`/`splitmix64` primitives -- deliberately not vanilla
+  `RandomState`-derived noise, because `LimitedBiomeSource.getNoiseBiome`
+  only ever receives a `Climate.Sampler`, not a `RandomState`, so a
+  noise-based approach would work in `EnvelopedChunkGenerator` but not in
+  `LimitedBiomeSource`, and the two absolutely must agree on the coastline
+  or this project hits the exact biome/terrain-mismatch defect class from
+  its pre-replan history again.
+  **Deliberately not fixing the shared beach-width gap.** The logged
+  "BEACH spans the whole transition, not a narrow shoreline" issue
+  (2026-07-16) stays as-is for `single_biome`/`chaos_biomes`/generic
+  `worldz` -- same risk-containment reasoning as the retrofit decision
+  above. Ocean island gets a correct narrow `shoreWidthBlocks` ring from
+  day one because GOALS 01 requires it explicitly, not via a shared-system
+  patch.
+  **Progression at tiny islands:** a genuinely tiny (near the "1 chunk"
+  floor) island will have the compact fallback End portal consume most of
+  its surface, since `NATURAL_STRUCTURE_MARGIN` (128 blocks) can never
+  "safely fit" at that scale and the fallback logic's own documented
+  last-resort is `(0, 0)` -- the island's center. Accepted as a documented
+  trade-off (GOALS 01 requires beatability, not that a tiny island stays
+  buildable-on too), not chased as a defect.
+  **GOALS 01 vs 04 scope split confirmed:** core ocean_island (7.2) has no
+  natural land anywhere, ever (the ocean gradient's deep band extends to
+  infinity); GOALS 04 (7.3) is the same preset plus one exclusion-zone
+  toggle that releases the masking beyond a radius (default 2000 blocks,
+  per §20.7) so natural seed terrain resumes far away. Confirmed via
+  GOALS.md's own Q1 answer: biome and terrain shape are independent in
+  modern Minecraft, so restricting biomes alone never suppresses natural
+  land -- the terrain cap is what's doing the work, and releasing it is
+  what 7.3 adds.
+  New dedicated radius bounds (`MIN_ISLAND_RADIUS_BLOCKS = 8`,
+  `MAX_ISLAND_RADIUS_BLOCKS = 65536`) rather than reusing the shared
+  starter-radius bounds (64-4096, tuned for "a zone inside an otherwise-
+  normal world," not "the entire visible island") -- GOALS 01 explicitly
+  requires going down to 1-chunk scale.
+  No spawn-strategy option for this preset (island only ever exists
+  artificially at the origin -- `PREFERRED_NATURAL_BIOME`/`VANILLA_SPAWN`
+  are meaningless for it); no separate Overworld Exterior toggle either
+  (`IslandPlan` unconditionally supplies the whole Overworld exterior).
+  Full design in DESIGN §24. Design pass only, no implementation yet --
+  7.2 builds from this.
 
 ## Reference Log
 

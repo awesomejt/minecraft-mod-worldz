@@ -846,13 +846,38 @@ rectangular shape.
 
 ## Phase 7 — Ocean island challenge, core (GOALS 01, 04)
 
-- [ ] 7.1 Design pass (DESIGN §20 extension): natural-looking island shaping
+- [x] 7.1 Design pass (DESIGN §20 extension): natural-looking island shaping
       (noise-perturbed radius over the existing starter-land profile — not a
       disc), a dedicated narrow shore width (beach/stony-shore ring; fixes
       the logged beach-width gap properly), shallow→deep ocean depth gradient
       with depth-appropriate ocean biomes (all ocean biomes available), and
       the shared **exclusion zone** module (center = origin, default 2000
       blocks; reused by 04, 07, 08, 24). **Commit** design first.
+      **Done (0.2.28):** full design in DESIGN §24. Key call: `IslandPlan`
+      is new and additive (mirrors `StripPlan`'s precedent), not a
+      `StarterLandPlan`/`StarterZone` retrofit — avoids risking four
+      already-shipped presets for a seed-plumbing change only ocean_island
+      needs. Seeding solved for free: ocean_island's land biome is always
+      `LayoutMode.SINGLE_BIOME`, so `LimitedBiomeSource.effectiveLayoutPlan
+      ()`'s already-resolved real seed is available to both the biome path
+      and the terrain path with zero new plumbing (confirmed
+      `EnvelopedChunkGenerator.LayoutContext.plan()` reads it live, never a
+      stale copy). `IslandShapeProfile` reuses `WorldLayoutPlan`'s own
+      hash primitives, not `RandomState` noise, since `LimitedBiomeSource`
+      has no `RandomState` access at all (only `Climate.Sampler`) and both
+      paths must agree on the coastline pixel-for-pixel. Shared
+      beach-width gap deliberately left as-is for other presets (same
+      risk-containment reasoning); ocean_island gets its own correct
+      narrow ring instead. New dedicated `MIN_ISLAND_RADIUS_BLOCKS`/
+      `MAX_ISLAND_RADIUS_BLOCKS` bounds rather than the shared starter-
+      radius ones (64-4096 doesn't reach GOALS 01's 1-chunk floor). No
+      spawn-strategy option or separate Overworld Exterior toggle for this
+      preset — see DESIGN §24.8 for why. GOALS 01/04 scope split confirmed:
+      7.2 ships infinite ocean (no natural land ever); 7.3 adds the
+      exclusion-zone release as one toggle on the same preset. No blocking
+      questions found for Jason after full review — GOALS/TODO text was
+      prescriptive enough; remaining choices are implementation judgment,
+      documented above and in DESIGN §24.
 - [ ] 7.2 Implement the `ocean_island` world type: configurable island size
       (1 chunk → huge), chosen island biome, endless ocean via the terrain
       cap, underground structures intact, unchanged Nether/End, beatable
