@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ObjectiveSite;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,6 +37,7 @@ final class ProgressionGuarantees {
         ServerLevel overworld,
         WorldLimitPlan.DimensionLimit limit,
         ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
         WorldLayoutPlan layoutPlan,
         int originX,
         int originZ
@@ -50,19 +52,20 @@ final class ProgressionGuarantees {
             return;
         }
         int radius = supportiveRadius.getAsInt();
+        int zRadius = ObjectiveSite.narrowForStrip(radius, strip);
 
         BlockPos natural = overworld.findNearestMapStructure(
             StructureTags.EYE_OF_ENDER_LOCATED, new BlockPos(originX, 0, originZ), 100, false
         );
         if (natural != null
-            && ObjectiveSite.fitsInside(natural.getX() - originX, natural.getZ() - originZ, radius, NATURAL_STRUCTURE_MARGIN)
+            && ObjectiveSite.fitsInside(natural.getX() - originX, natural.getZ() - originZ, radius, zRadius, NATURAL_STRUCTURE_MARGIN)
             && ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX() - originX, natural.getZ() - originZ)) {
             WorldzCommon.LOGGER.info("Natural stronghold at {} fits inside the Worldz supportive radius {}.", natural, radius);
             return;
         }
 
         int relativeX = ObjectiveSite.fallbackX(radius);
-        int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, NATURAL_STRUCTURE_MARGIN);
+        int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, zRadius, NATURAL_STRUCTURE_MARGIN);
         int x = originX + relativeX;
         int z = originZ + relativeZ;
         int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
@@ -76,7 +79,8 @@ final class ProgressionGuarantees {
     static void ensureBlazeAccess(
         ServerLevel nether,
         WorldLimitPlan.DimensionLimit limit,
-        ExteriorPlan.DimensionEnvelope envelope
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip
     ) {
         if (!limit.ensureObjective()) {
             return;
@@ -88,6 +92,7 @@ final class ProgressionGuarantees {
             return;
         }
         int radius = supportiveRadius.getAsInt();
+        int zRadius = ObjectiveSite.narrowForStrip(radius, strip);
 
         Holder<Structure> fortress = nether.registryAccess()
             .lookupOrThrow(Registries.STRUCTURE)
@@ -97,7 +102,7 @@ final class ProgressionGuarantees {
             .getGenerator()
             .findNearestMapStructure(nether, HolderSet.direct(fortress), BlockPos.ZERO, searchRadius, false);
         if (natural != null && ObjectiveSite.fitsInside(
-            natural.getFirst().getX(), natural.getFirst().getZ(), radius, NATURAL_STRUCTURE_MARGIN
+            natural.getFirst().getX(), natural.getFirst().getZ(), radius, zRadius, NATURAL_STRUCTURE_MARGIN
         )) {
             WorldzCommon.LOGGER.info(
                 "Natural Nether fortress at {} fits inside the Worldz supportive radius {}.", natural.getFirst(), radius

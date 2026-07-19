@@ -943,6 +943,25 @@ Durable decisions, verified API notes, and rationale that should survive across 
   corridor, no orientation config — seeds have no privileged axis, so
   this is a pure implementation simplification. Own dedicated typed
   preset, matching `single_biome`/`chaos_biomes` convention.
+- 2026-07-19 (Phase 6.2a, 0.2.21) — Strip world's core implementation
+  done, config-only (no preset/screen — that's 6.2b). Reused the
+  established additive-field/legacy-overload technique throughout:
+  `EnvelopedChunkGenerator` gained a `StripPlan` field and a 4-arg
+  `customized()` overload, with the old 3-arg one still working (defaults
+  disabled) — `SingleBiomePresetEditor`/`ChaosBiomesPresetEditor` needed
+  zero changes since strip isn't meant to compose with those types.
+  `ObjectiveSite` gained axis-aware `fitsInside`/`supportiveFallbackZ`
+  overloads (old signatures kept, delegating with equal X/Z bounds).
+  Caught a real bug the refactor itself would have introduced before it
+  shipped: centralizing every `envelope.modeAt` call into one
+  `effectiveModeAt` helper is exactly right, but `applyEnvelope`'s early
+  "nothing to do" exit still only checked `envelope.mode()`, which would
+  have silently skipped void-masking for a strip-only world (square
+  envelope normal, strip enabled) — fixed with a `hasActiveExterior()`
+  helper checking both. Worth remembering: whenever an early-exit
+  optimization exists alongside a classification helper, check that the
+  early-exit's condition still matches the classifier's real logic after
+  the classifier grows a new input.
 
 ## Reference Log
 

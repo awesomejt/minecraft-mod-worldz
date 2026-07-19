@@ -12,6 +12,7 @@ import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
+import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -65,7 +66,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
         Dimension.CODEC.fieldOf("dimension").forGetter(generator -> generator.dimension),
-        ExteriorCodecs.DIMENSION_CODEC.optionalFieldOf("exterior").forGetter(generator -> Optional.of(generator.envelope))
+        ExteriorCodecs.DIMENSION_CODEC.optionalFieldOf("exterior").forGetter(generator -> Optional.of(generator.envelope)),
+        StripCodecs.PLAN_CODEC.optionalFieldOf("strip").forGetter(generator -> Optional.of(generator.strip))
     ).apply(instance, EnvelopedChunkGenerator::resolve));
 
     private final ChunkGenerator delegate;
@@ -80,6 +82,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * server thread by whatever schedule driver ends up owning the live radius.
      */
     private volatile ExteriorPlan.DimensionEnvelope envelope;
+    /**
+     * A narrow corridor's width constraint (GOALS 32), layered additively on top of
+     * {@link #envelope} rather than replacing it -- see DESIGN §23. Static for the corridor's
+     * whole lifetime, unlike {@link #envelope}: nothing schedules it to change yet.
+     */
+    private final StripPlan strip;
     private final Optional<StarterLandContext> starterLand;
     private final Optional<LayoutContext> layout;
     private final Optional<LimitedBiomeSource> originSource;
@@ -87,12 +95,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
         Dimension dimension,
-        ExteriorPlan.DimensionEnvelope envelope
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
         this.dimension = dimension;
         this.envelope = resolveEnvelope(delegate, dimension, envelope);
+        this.strip = strip;
         this.starterLand = resolveStarterLand(delegate, dimension);
         this.layout = resolveLayout(delegate, dimension);
         this.originSource = dimension == Dimension.OVERWORLD && delegate.getBiomeSource() instanceof LimitedBiomeSource source
@@ -121,7 +131,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Wraps a generator with an explicit envelope selected during world creation.
+     * Wraps a generator with an explicit envelope selected during world creation, and no
+     * strip-world corridor.
      *
      * @param delegate vanilla or modded generator to delegate to
      * @param overworld whether this is the Overworld rather than the Nether
@@ -133,7 +144,26 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         boolean overworld,
         ExteriorPlan.DimensionEnvelope envelope
     ) {
-        return new EnvelopedChunkGenerator(delegate, overworld ? Dimension.OVERWORLD : Dimension.NETHER, envelope);
+        return customized(delegate, overworld, envelope, StripPlan.disabled());
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope and strip-world plan selected during world
+     * creation.
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param overworld whether this is the Overworld rather than the Nether
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        boolean overworld,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip
+    ) {
+        return new EnvelopedChunkGenerator(delegate, overworld ? Dimension.OVERWORLD : Dimension.NETHER, envelope, strip);
     }
 
     /**
@@ -168,16 +198,54 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.envelope = envelope;
     }
 
+    /**
+     * Returns the strip-world corridor plan (GOALS 32), disabled unless this world is a strip.
+     *
+     * @return strip plan
+     */
+    public StripPlan strip() {
+        return this.strip;
+    }
+
+    /**
+     * Classifies a column, combining the strip-world width constraint (if enabled) with the
+     * square envelope -- the strip's own verdict wins whenever it applies, since a narrow
+     * corridor's width is normally much smaller than any configured square boundary (DESIGN
+     * §23). Callers pass coordinates already relative to the origin.
+     *
+     * @param relativeX block X relative to the origin
+     * @param relativeZ block Z relative to the origin
+     * @return terrain to generate at the column
+     */
+    private ExteriorMode effectiveModeAt(int relativeX, int relativeZ) {
+        ExteriorMode stripMode = this.strip.modeAt(relativeZ);
+        return stripMode != ExteriorMode.NORMAL ? stripMode : this.envelope.modeAt(relativeX, relativeZ);
+    }
+
+    /**
+     * Returns whether either the square envelope or the strip-world width constraint changes
+     * delegated terrain anywhere in this dimension.
+     *
+     * @return whether any exterior masking is active
+     */
+    private boolean hasActiveExterior() {
+        return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled();
+    }
+
     private static EnvelopedChunkGenerator resolve(
         ChunkGenerator delegate,
         Dimension dimension,
-        Optional<ExteriorPlan.DimensionEnvelope> encodedEnvelope
+        Optional<ExteriorPlan.DimensionEnvelope> encodedEnvelope,
+        Optional<StripPlan> encodedStrip
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
         ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(
             () -> dimension == Dimension.OVERWORLD ? defaults.overworld() : defaults.nether()
         );
-        return new EnvelopedChunkGenerator(delegate, dimension, envelope);
+        StripPlan strip = encodedStrip.orElseGet(
+            () -> StripPlan.fromConfig(WorldzCommon.config().strip, dimension == Dimension.OVERWORLD)
+        );
+        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip);
     }
 
     @Override
@@ -306,7 +374,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         LevelHeightAccessor heightAccessor,
         RandomState randomState
     ) {
-        ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
+        ExteriorMode mode = this.effectiveModeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
@@ -330,7 +398,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         LevelHeightAccessor heightAccessor,
         RandomState randomState
     ) {
-        ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
+        ExteriorMode mode = this.effectiveModeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
@@ -377,6 +445,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     public void addDebugScreenInfo(List<String> result, RandomState randomState, BlockPos feetPos) {
         this.delegate.addDebugScreenInfo(result, randomState, feetPos);
         result.add("Worldz exterior: " + this.envelope.mode().serializedName());
+        if (this.strip.enabled()) {
+            result.add(
+                "Worldz strip: widthRadius=" + this.strip.widthRadiusBlocks()
+                    + ", widthMode=" + this.strip.widthMode().serializedName()
+            );
+        }
         this.starterLand.ifPresent(context -> result.add(
             "Worldz starter land: radius=" + context.radiusBlocks()
                 + ", transition=" + context.plan().transitionWidthBlocks()
@@ -412,7 +486,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     private void applyEnvelope(ChunkAccess chunk) {
-        if (this.envelope.mode() == ExteriorMode.NORMAL) {
+        if (!hasActiveExterior()) {
             return;
         }
         ChunkPos chunkPos = chunk.getPos();
@@ -421,7 +495,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         int maxY = chunk.getMaxY();
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
-                ExteriorMode mode = this.envelope.modeAt(x - originX(), z - originZ());
+                ExteriorMode mode = this.effectiveModeAt(x - originX(), z - originZ());
                 if (mode != ExteriorMode.NORMAL) {
                     for (int y = minY; y <= maxY; y++) {
                         pos.set(x, y, z);
@@ -458,7 +532,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         int originZ = originZ();
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
-                if (this.envelope.modeAt(x - originX, z - originZ) != ExteriorMode.NORMAL) {
+                if (this.effectiveModeAt(x - originX, z - originZ) != ExteriorMode.NORMAL) {
                     continue;
                 }
                 int naturalFloor = naturalOceanFloorHeight(x, z, chunk, randomState);
@@ -750,10 +824,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         int maxX = chunkPos.getMaxBlockX() - originX;
         int minZ = chunkPos.getMinBlockZ() - originZ;
         int maxZ = chunkPos.getMaxBlockZ() - originZ;
-        return this.envelope.modeAt(minX, minZ) != ExteriorMode.NORMAL
-            && this.envelope.modeAt(minX, maxZ) != ExteriorMode.NORMAL
-            && this.envelope.modeAt(maxX, minZ) != ExteriorMode.NORMAL
-            && this.envelope.modeAt(maxX, maxZ) != ExteriorMode.NORMAL;
+        return this.effectiveModeAt(minX, minZ) != ExteriorMode.NORMAL
+            && this.effectiveModeAt(minX, maxZ) != ExteriorMode.NORMAL
+            && this.effectiveModeAt(maxX, minZ) != ExteriorMode.NORMAL
+            && this.effectiveModeAt(maxX, maxZ) != ExteriorMode.NORMAL;
     }
 
     private enum Dimension {

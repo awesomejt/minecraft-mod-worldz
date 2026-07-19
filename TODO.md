@@ -582,9 +582,61 @@ rectangular shape.
       (matching `single_biome`/`chaos_biomes`), one fixed axis (X) for
       the corridor (no orientation config — seeds have no privileged
       axis).
-- [ ] 6.2 Implement (as a `limited` option or its own type — 6.1 decided:
-      **own dedicated typed preset**, see DESIGN §23); configurable width
-      in blocks/chunks; test configs; docs; **[Jason]** acceptance.
+- [x] 6.2a Core implementation: `StripPlan` (logic record — enabled,
+      widthBlocks, widthMode, applyToNether; JUnit-covered), config/codec
+      plumbing, the additive width-check in `EnvelopedChunkGenerator`
+      (layered on the existing, untouched square envelope — see DESIGN
+      §23), and the `ObjectiveSite`/`ProgressionGuarantees` strip-aware
+      fallback-Z fix found during 6.1's spike. No preset/screen yet —
+      config-only, reachable via the generic Worldz preset for this task.
+      (Split out from the original single 6.2 item — this project's own
+      precedent, Phase 4's chaos_biomes, needed a comparable core+screen
+      split; logged here rather than silently expanding one task.)
+      **Done (0.2.21):** new `logic.StripPlan` (enabled, widthRadiusBlocks,
+      widthMode — no `applyToNether` field; that's resolved once at the
+      config→plan boundary via `StripPlan.fromConfig(config, overworld)`,
+      so each dimension's `EnvelopedChunkGenerator` only ever holds an
+      already-resolved plan) + `config.StripConfig`; `WorldzConfig` gained
+      a single top-level `strip:` section (not per-dimension — GOALS 32
+      frames it as one corridor width, optionally mirrored to the Nether,
+      not two independently configurable widths). `EnvelopedChunkGenerator`
+      gained a `StripPlan strip` field (persisted via its own codec,
+      alongside `envelope`, its own new `strip()` accessor, and a new
+      4-arg `customized()` overload — the old 3-arg one still works,
+      defaulting to `StripPlan.disabled()`) and one centralizing
+      `effectiveModeAt(relativeX, relativeZ)` helper (strip's verdict wins
+      whenever it applies) that replaced every direct `envelope.modeAt`
+      call site, plus a `hasActiveExterior()` helper fixing a real bug the
+      refactor would otherwise have reintroduced: `applyEnvelope`'s early
+      "nothing to do" exit checked only `envelope.mode()`, which would
+      have skipped masking entirely for a strip-only world (square
+      envelope normal, strip enabled). Only `WorldzPresetEditor` (generic
+      preset) resolves a real `StripPlan` from config for now;
+      `SingleBiomePresetEditor`/`ChaosBiomesPresetEditor` are unchanged
+      (implicitly disabled) since strip isn't meant to compose with those
+      other typed presets. `ObjectiveSite` gained axis-aware overloads of
+      `fitsInside`/`supportiveFallbackZ` (old 4-arg signatures kept,
+      delegating to new 5-arg ones with equal X/Z bounds) plus
+      `narrowForStrip(radiusBlocks, strip)`; `ProgressionGuarantees` and
+      `WorldLimitManager` thread the resolved `StripPlan` through so the
+      fallback End-portal/fortress placement respects a narrow strip's
+      width instead of the border's own (much larger) length radius.
+      13 new tests across `StripPlanTest`, `ObjectiveSiteTest`,
+      `WorldzConfigTest`; full suite green (268 tests); clean build across
+      all modules. Known minor gap, not chased further: the Nether's own
+      `ensureObjective` early-exit doesn't yet account for a Nether-only
+      strip (an edge case — Nether strip without any other Nether
+      border/exterior active — noted here rather than adding more
+      branching for a combination nobody's asked for).
+- [ ] 6.2b Own dedicated typed preset (`jlt_worldz:strip_world`, per 6.1's
+      decision): config section, `StripWorldCustomization` record, small
+      Customize screen (width, width mode, Nether toggle, length border
+      reusing `WorldzBorderScreen`), `StripWorldPresetEditor`, world-type
+      registration, lang keys — mirroring `single_biome`/`chaos_biomes`'s
+      shape exactly.
+- [ ] 6.2c Test configs (basic strip, narrow width forcing the fallback-
+      portal fix to matter, Nether strip on/off); config/tests README +
+      MANUAL_TESTING rows; README docs; **[Jason]** acceptance.
 - [ ] 6.3 Biome-sequence strip (36): the strip passes through ordered (or
       seed-randomized) biome bands, changing every N chunks, selecting
       biomes over untouched vanilla terrain — Phase 4's selection machinery

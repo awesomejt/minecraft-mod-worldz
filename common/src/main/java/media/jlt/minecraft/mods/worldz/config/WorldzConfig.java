@@ -90,6 +90,8 @@ public final class WorldzConfig {
     public ExteriorConfig overworldExterior = new ExteriorConfig();
     /** Optional Nether terrain outside a central square. */
     public ExteriorConfig netherExterior = new ExteriorConfig();
+    /** Optional narrow strip-world corridor (GOALS 32). */
+    public StripConfig strip = new StripConfig();
     /** Optional coordinated terrain-layout composition. */
     public LayoutConfig layout = new LayoutConfig();
     /** Layout-origin and initial-spawn strategy. */
@@ -182,6 +184,9 @@ public final class WorldzConfig {
         if (object.containsKey("netherExterior")) {
             config.netherExterior = readExteriorConfig(object.get("netherExterior"), "netherExterior");
         }
+        if (object.containsKey("strip")) {
+            config.strip = readStripConfig(object.get("strip"), "strip");
+        }
         if (object.containsKey("layout")) {
             config.layout = readLayoutConfig(object.get("layout"), "layout", logger);
         }
@@ -240,6 +245,7 @@ public final class WorldzConfig {
         endBorder = sanitizeEndBorder(endBorder, logger);
         overworldExterior = sanitizeExterior(overworldExterior, overworldBorder, true, "overworldExterior", logger);
         netherExterior = sanitizeExterior(netherExterior, netherBorder, false, "netherExterior", logger);
+        strip = sanitizeStrip(strip, logger);
         layout = sanitizeLayout(layout, logger);
         spawn = spawn == null ? new SpawnConfig() : spawn;
         if (spawn.strategy == null) {
@@ -343,6 +349,7 @@ public final class WorldzConfig {
             + ", endBorder=" + endBorderSummary(endBorder)
             + ", overworldExterior=" + exteriorSummary(overworldExterior)
             + ", netherExterior=" + exteriorSummary(netherExterior)
+            + ", strip=" + stripSummary(strip)
             + ", layout=" + layoutSummary(layout)
             + ", spawn=" + spawn.strategy.serializedName()
             + ", singleBiome=" + singleBiomeSummary(singleBiome)
@@ -364,6 +371,7 @@ public final class WorldzConfig {
         values.put("endBorder", endBorderMap(endBorder));
         values.put("overworldExterior", exteriorMap(overworldExterior));
         values.put("netherExterior", exteriorMap(netherExterior));
+        values.put("strip", stripMap(strip));
         values.put("layout", layoutMap(layout));
         values.put("spawn", spawnMap(spawn));
         values.put("singleBiome", singleBiomeMap(singleBiome));
@@ -481,6 +489,26 @@ public final class WorldzConfig {
             config.oceanTransitionWidthBlocks = readInt(
                 map.get("oceanTransitionWidthBlocks"), name + ".oceanTransitionWidthBlocks"
             );
+        }
+        return config;
+    }
+
+    private static StripConfig readStripConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StripConfig config = new StripConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("widthRadiusBlocks")) {
+            config.widthRadiusBlocks = readInt(map.get("widthRadiusBlocks"), name + ".widthRadiusBlocks");
+        }
+        if (map.containsKey("widthMode")) {
+            config.widthMode = ExteriorMode.parse(readString(map.get("widthMode"), name + ".widthMode"));
+        }
+        if (map.containsKey("applyToNether")) {
+            config.applyToNether = readBoolean(map.get("applyToNether"), name + ".applyToNether");
         }
         return config;
     }
@@ -648,6 +676,19 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static StripConfig sanitizeStrip(StripConfig config, Logger logger) {
+        StripConfig sanitized = config == null ? new StripConfig() : config;
+        sanitized.widthRadiusBlocks = clampWithWarning(
+            sanitized.widthRadiusBlocks, 1, MAX_BORDER_RADIUS_BLOCKS, "strip.widthRadiusBlocks", logger
+        );
+        sanitized.widthMode = sanitized.widthMode == null ? ExteriorMode.VOID : sanitized.widthMode;
+        if (sanitized.widthMode == ExteriorMode.NORMAL) {
+            logger.warn("strip.widthMode cannot be normal; using void instead.");
+            sanitized.widthMode = ExteriorMode.VOID;
+        }
+        return sanitized;
+    }
+
     private static ExteriorConfig sanitizeExterior(
         ExteriorConfig config,
         BorderConfig border,
@@ -793,6 +834,15 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> stripMap(StripConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("widthRadiusBlocks", config.widthRadiusBlocks);
+        values.put("widthMode", config.widthMode.serializedName());
+        values.put("applyToNether", config.applyToNether);
+        return values;
+    }
+
     private static Map<String, Object> layoutMap(LayoutConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("mode", config.mode.serializedName());
@@ -860,6 +910,15 @@ public final class WorldzConfig {
         return config.mode.serializedName() + ", boundary="
             + (config.boundaryRadiusBlocks == 0 ? "auto" : config.boundaryRadiusBlocks)
             + (config.mode == ExteriorMode.OCEAN ? ", transition=" + config.oceanTransitionWidthBlocks : "");
+    }
+
+    private static String stripSummary(StripConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "widthRadius=" + config.widthRadiusBlocks
+            + ", widthMode=" + config.widthMode.serializedName()
+            + ", applyToNether=" + config.applyToNether;
     }
 
     private static String singleBiomeSummary(SingleBiomeConfig config) {

@@ -95,4 +95,37 @@ class ObjectiveSiteTest {
 
         assertEquals(0, ObjectiveSite.supportiveFallbackZ(oceanPlan, 32, 512, 128));
     }
+
+    @Test
+    void fitsInsideRespectsIndependentAxisBounds() {
+        assertTrue(ObjectiveSite.fitsInside(32, 32, 512, 64, 16));
+        assertFalse(ObjectiveSite.fitsInside(32, 49, 512, 64, 16));
+        assertTrue(ObjectiveSite.fitsInside(400, 32, 512, 64, 16));
+    }
+
+    @Test
+    void supportiveFallbackZSkipsCandidatesOutsideAStripsWidth() {
+        WorldLayoutPlan oceanPlan = new WorldLayoutPlan(
+            LayoutMode.OCEAN, 1L, 512, List.of(), List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0)),
+            List.of(), Optional.empty(), Map.of(), 0, 0, WorldLayoutPlan.CURRENT_REVISION
+        );
+
+        // Every candidate is "supportive" under LEGACY/VOID-equivalent plans, but a strip
+        // width of 32 rules out the 64/-64/128/-128 candidates -- only 0 fits.
+        assertEquals(0, ObjectiveSite.supportiveFallbackZ(WorldLayoutPlan.legacy(), 32, 512, 32, 16));
+        assertEquals(0, ObjectiveSite.supportiveFallbackZ(oceanPlan, 32, 512, 32, 16));
+    }
+
+    @Test
+    void narrowForStripUsesTheTighterOfBorderAndStripWidth() {
+        StripPlan strip = new StripPlan(true, 32, ExteriorMode.VOID);
+
+        assertEquals(32, ObjectiveSite.narrowForStrip(512, strip));
+        assertEquals(16, ObjectiveSite.narrowForStrip(16, strip));
+    }
+
+    @Test
+    void narrowForStripLeavesTheRadiusUnchangedWhenDisabled() {
+        assertEquals(512, ObjectiveSite.narrowForStrip(512, StripPlan.disabled()));
+    }
 }

@@ -5,11 +5,13 @@ import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
+import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 
 import java.util.OptionalInt;
 import java.util.OptionalLong;
@@ -35,8 +37,12 @@ public final class WorldLimitManager {
 
         WorldLimitPlan plan = limitedSource.worldLimits();
         ExteriorPlan exterior = limitedSource.exteriorPlan();
+        ChunkGenerator overworldGenerator = overworld.getChunkSource().getGenerator();
+        StripPlan overworldStrip = overworldGenerator instanceof EnvelopedChunkGenerator enveloped
+            ? enveloped.strip()
+            : StripPlan.disabled();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
-            && exterior.overworld().mode() != ExteriorMode.NORMAL)
+            && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()))
             || (plan.nether().ensureObjective() && exterior.nether().mode() != ExteriorMode.NORMAL);
         if (!plan.enabled() && !exteriorObjective) {
             return;
@@ -51,7 +57,7 @@ public final class WorldLimitManager {
         int originZ = limitedSource.originBlockZ();
         BorderInitResult overworldResult = initializeBorder(overworld, plan.overworld(), "Overworld", originX, originZ);
         ProgressionGuarantees.ensureEndPortal(
-            overworld, plan.overworld(), exterior.overworld(), limitedSource.worldLayoutPlan(), originX, originZ
+            overworld, plan.overworld(), exterior.overworld(), overworldStrip, limitedSource.worldLayoutPlan(), originX, originZ
         );
         ServerLevel nether = server.getLevel(Level.NETHER);
         BorderInitResult netherResult = BorderInitResult.NONE;
@@ -59,7 +65,11 @@ public final class WorldLimitManager {
             // Layout origins are Overworld-only (DESIGN §18); the Nether's border and
             // progression objective remain centered at the world origin (0, 0).
             netherResult = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
-            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether());
+            ChunkGenerator netherGenerator = nether.getChunkSource().getGenerator();
+            StripPlan netherStrip = netherGenerator instanceof EnvelopedChunkGenerator enveloped
+                ? enveloped.strip()
+                : StripPlan.disabled();
+            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether(), netherStrip);
         }
         ServerLevel end = server.getLevel(Level.END);
         if (end != null) {

@@ -285,6 +285,42 @@ class WorldzConfigTest {
     }
 
     @Test
+    void stripSettingsLoadAndSanitize() {
+        WorldzConfig config = WorldzConfig.parse("""
+            strip:
+              enabled: true
+              widthRadiusBlocks: 0
+              widthMode: ocean
+              applyToNether: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.strip.enabled);
+        assertEquals(1, config.strip.widthRadiusBlocks);
+        assertEquals(ExteriorMode.OCEAN, config.strip.widthMode);
+        assertTrue(config.strip.applyToNether);
+    }
+
+    @Test
+    void stripDefaultsToDisabledWithAVoidWidthMode() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.strip.enabled);
+        assertEquals(ExteriorMode.VOID, config.strip.widthMode);
+        assertFalse(config.strip.applyToNether);
+    }
+
+    @Test
+    void stripWidthModeCannotBeNormal() {
+        WorldzConfig config = WorldzConfig.parse("""
+            strip:
+              enabled: true
+              widthMode: normal
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(ExteriorMode.VOID, config.strip.widthMode);
+    }
+
+    @Test
     void layoutSettingsLoadWeightedBiomesAndRoleOverrides() {
         WorldzConfig config = WorldzConfig.parse("""
             layout:
@@ -497,6 +533,7 @@ class WorldzConfigTest {
                 + ", starterLand=transition=128, foundation=48"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>, endBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
+                + ", strip=<disabled>"
                 + ", layout=<legacy>"
                 + ", spawn=starter_at_origin"
                 + ", singleBiome=landBiome=minecraft:plains, starterBiome=<none>"
