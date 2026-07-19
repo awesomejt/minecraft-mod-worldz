@@ -853,6 +853,19 @@ Durable decisions, verified API notes, and rationale that should survive across 
   unit-tested (see the `NoClassDefFoundError` lesson two entries up) —
   this task's correctness rests entirely on `BorderSchedule`'s existing
   JUnit coverage plus Jason's upcoming in-game acceptance (5b.3).
+- 2026-07-18 — **Phase 5b.3 done (0.2.17):** stepped-resize test configs
+  24/25 mirroring Jason's original clarification wording exactly (8→1024
+  at 1 block/day; 1024→32 at 2 blocks/day after a 10-day delay). One
+  useful discovery while writing the in-game steps: a stepped schedule's
+  radius is recomputed from the clock every tick (5b.2), so unlike a
+  continuous schedule, `/time add <Nd>` fast-forwards a stepped
+  schedule's *growth*, not just its delay — worth remembering for future
+  test-config authoring. Also caught and fixed staleness in
+  `config/tests/README.md`'s rows for 21/22 (numbers predating Jason's
+  own later edits to those files) while touching this area — a reminder
+  that config-comment updates (done earlier for 21/22) and the separate
+  test-catalog README don't automatically stay in sync with each other.
+  0.2.17 deployed to Worldz-Test; Jason still needs to test 24/25.
 
 ## Reference Log
 

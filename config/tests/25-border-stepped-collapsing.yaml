@@ -1,0 +1,45 @@
+# GOALS 20 (stepped variant, DESIGN §21.1): Jason's original shrinking-world
+# scenario -- spawn into a 1024-radius world, explore for 10 days, then the
+# border shrinks by 2 blocks every day down to a final 32-block radius.
+# Unlike config 22 (continuous), the border should hold perfectly still
+# between jumps, not creep smoothly. Spawn stays at the center
+# (`starter_at_origin`), so a build there is always safe even after the
+# border fully collapses.
+#
+# Requires 0.2.16+ (Phase 5b: resizeStyle/stepped driver did not exist
+# before it).
+#
+# A stepped border recomputes its radius fresh from elapsed clock ticks
+# every server tick rather than running a vanilla lerp, so `/time add <Nd>`
+# fast-forwards a stepped schedule's shrinking too, not just its delay
+# (1 day = 24000 ticks) -- see config 24's note. Use `/tick step <ticks>`
+# instead when you want to actually watch an individual jump land.
+#
+# This schedule needs 496 daily steps (1024 -> 32, 2 blocks/day) after a
+# 10-day delay -- 506 in-game days total. Steps once in-game:
+#  1. Confirm the border starts at exactly 1024 (radius) and does not move.
+#  2. `/time add 10d` (or `/tick step 240000`) -- the 10-day delay expires.
+#  3. `/tick step 23999` -- confirm the border is STILL at 1024 (the first
+#     full day since the delay ended hasn't elapsed yet).
+#  4. `/tick step 1` (completing that 24000th tick) -- confirm the border
+#     has jumped to exactly 1022 in one abrupt snap, not a creep.
+#  5. `/tick step 240000` (10 more days) -- confirm the radius is now
+#     exactly 1002 (10 more 2-block steps) -- always a whole number, never
+#     fractional between jumps.
+#  6. Fast-forward the rest (485 more steps = 11640000 ticks) -- confirm
+#     it stops at exactly 32 and never goes below it.
+#  7. Confirm spawn (and anything built there) is still safely inside the
+#     collapsed border.
+layout:
+  mode: legacy
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 1024
+  finalRadiusBlocks: 32
+  resizeDelayDays: 10
+  resizeRateBlocks: 2
+  resizeRateDays: 1
+  resizeStyle: stepped
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin

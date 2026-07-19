@@ -384,10 +384,29 @@ Design is settled; these tasks are execution.
       see MEMORY.md), so this task's correctness rests on the already
       JUnit-covered `BorderSchedule` math plus 5b.3's in-game acceptance.
       Full suite green (255 tests, unchanged — nothing new to test here).
-- [ ] 5b.3 Test configs mirroring Jason's two scenarios (8-radius start,
+- [x] 5b.3 Test configs mirroring Jason's two scenarios (8-radius start,
       +1 block/day to 1024; 1024 start, 10-day delay, −2 blocks/day to 32);
       config/tests README + MANUAL_TESTING rows with `/tick step` math;
-      README docs; **[Jason]** acceptance.
+      README docs; **[Jason]** acceptance. **Done (0.2.17):**
+      `config/tests/24-border-stepped-expanding.yaml` (8→1024, 2-day delay,
+      +1 block/day) and `25-border-stepped-collapsing.yaml` (1024→32,
+      10-day delay, −2 blocks/day) — both mirror Jason's original
+      scenario wording; step-by-step `/time add`/`/tick step` instructions
+      worked out by hand and cross-checked (e.g. 24 needs 1016 daily
+      steps after its delay, 25 needs 496). Noted in both files: since
+      the stepped driver recomputes from the clock every tick (no vanilla
+      lerp), `/time add` fast-forwards a stepped schedule's growth too,
+      not just its delay — unlike continuous, where only the delay can be
+      skipped that way. New "Phase 5b acceptance" section in
+      MANUAL_TESTING.md; `config/tests/README.md` rows added for 24/25 and
+      21/22's stale numbers (predating Jason's own later edits) corrected
+      to match the files as they exist now; README.md's resizeStyle prose
+      was already written in 5b.1. Also marked Phase 5's own acceptance
+      section (configs 20/21/22/23) as passed with dates, since those
+      confirmations happened in conversation but the checklist itself was
+      never updated — only the two no-config-file UI checks remain
+      genuinely outstanding, still not blocking. **[Jason] to test 24/25
+      in Prism** (0.2.17 deployed to Worldz-Test).
 
 ## Phase 5c — Soft void border spike (GOAL 38)
 

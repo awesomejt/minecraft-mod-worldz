@@ -1,0 +1,42 @@
+# GOALS 19 (stepped variant, DESIGN §21.1): the world starts in a very small
+# area and grows by fixed increments -- Jason's original scenario: spawn in
+# an 8-block radius, then after a short delay the border grows 1 block/day
+# up to a max of 1024. Unlike config 21 (continuous), the border should hold
+# perfectly still between jumps, not creep smoothly.
+#
+# Requires 0.2.16+ (Phase 5b: resizeStyle/stepped driver did not exist
+# before it).
+#
+# Unlike continuous schedules (config 21), a stepped border recomputes its
+# radius fresh from elapsed clock ticks every server tick rather than
+# running a vanilla lerp -- so `/time add <Nd>` fast-forwards a stepped
+# schedule's growth too, not just its delay (1 day = 24000 ticks). Use
+# `/tick step <ticks>` instead when you want to actually watch an
+# individual jump land.
+#
+# This schedule needs 1016 daily steps (8 -> 1024) after a 2-day delay --
+# 1018 in-game days total. Steps once in-game:
+#  1. Confirm the border starts at exactly 8 (radius) and does not move.
+#  2. `/time add 2d` (or `/tick step 48000`) -- the 2-day delay expires.
+#  3. `/tick step 23999` -- confirm the border is STILL at 8 (the first
+#     full day since the delay ended hasn't elapsed yet).
+#  4. `/tick step 1` (completing that 24000th tick) -- confirm the border
+#     has jumped to exactly 9 in one abrupt snap, not a creep.
+#  5. `/tick step 240000` (10 more days) -- confirm the radius is now
+#     exactly 19 (10 more 1-block steps) -- always a whole number, never
+#     fractional between jumps.
+#  6. Fast-forward the rest (1005 more steps = 24120000 ticks) --
+#     confirm it stops at exactly 1024 and stays there.
+layout:
+  mode: legacy
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 8
+  finalRadiusBlocks: 1024
+  resizeDelayDays: 2
+  resizeRateBlocks: 1
+  resizeRateDays: 1
+  resizeStyle: stepped
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin

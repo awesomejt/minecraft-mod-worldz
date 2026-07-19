@@ -61,9 +61,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `18-chaos-biomes-tiny-regions.yaml` | Same as 16 but `regionScaleBlocks: 64` — biome should change much more often while traveling. |
 | `19-chaos-biomes-huge-regions.yaml` | Same as 16 but `regionScaleBlocks: 4096` — expect long uninterrupted stretches of one biome. |
 | `20-border-static-small-invisible-wall-vs-void.yaml` | GOALS 17/18, plain "Worldz" preset: a small (128) static border (invisible wall) with a void exterior at the same auto-derived boundary — confirms the two are the same distinct systems, plus the small-border End-portal fallback guarantee. |
-| `21-border-expanding.yaml` | GOALS 19: border grows from 128 to 1024 over 2 days after a 1-day initial delay. Use `/tick step` to skip ahead — see the file's own steps. |
-| `22-border-collapsing.yaml` | GOALS 20: border shrinks from 2048 to a 256 minimum over 3 days after a deliberately much larger 5-day delay (exploration time); spawn stays centered so it's always safe. |
+| `21-border-expanding.yaml` | GOALS 19, **continuous** style: border grows smoothly from a genuine 2-block start to 1024 over 88 days after a 2-day initial delay. Use `/time add`/`/tick step` to skip ahead — see the file's own steps. Requires 0.2.13+ (tiny starts) and 0.2.14+ (spawn no longer places you outside the border). |
+| `22-border-collapsing.yaml` | GOALS 20, **continuous** style: border shrinks smoothly from 2048 to a 256 minimum over 40 days after a deliberately much larger 10-day delay (exploration time); spawn stays centered so it's always safe. |
 | `23-end-border-carry-over.yaml` | GOALS 17: Overworld border pinned to the 64-block minimum, `endBorder.carryFromOverworld: true` with `minimumRadiusBlocks: 256` — confirms the floor overrides the tiny carried radius so the End border is 256, not 64, keeping the dragon fight winnable. |
+| `24-border-stepped-expanding.yaml` | GOALS 19, **stepped** style (Phase 5b, DESIGN §21.1): border holds at 8 for a 2-day delay, then jumps abruptly by 1 block/day up to 1024 — snaps, not a creep. Requires 0.2.16+. |
+| `25-border-stepped-collapsing.yaml` | GOALS 20, **stepped** style: border holds at 1024 for a 10-day delay, then jumps abruptly by 2 blocks/day down to a 32 minimum — snaps, not a creep; spawn stays centered so it's always safe. Requires 0.2.16+. |
 
 ### Why `01` showed ocean labeled as river
 

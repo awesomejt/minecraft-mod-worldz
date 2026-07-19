@@ -267,7 +267,7 @@ border/exterior/limit mechanism itself, not any particular world type).
    void immediately beyond it — the two systems track the same boundary
    here but are otherwise independent. Confirm a compact fallback End
    portal exists somewhere near positive X (no real stronghold fits inside
-   128 blocks).
+   128 blocks). **Passed 2026-07-18.**
 2. **Expanding border**, `21-border-expanding.yaml`. Follow the file's own
    steps — they carry the current values and the time-skipping commands.
    (26.2 note, verified 2026-07-18: `/time add <Nd>` now works for burning
@@ -277,13 +277,15 @@ border/exterior/limit mechanism itself, not any particular world type).
    per real tick, so use `/tick step` to watch the border actually move.)
    Confirm: the border holds at its initial radius through the whole
    delay, then grows continuously (not in a jump) and stops exactly at
-   `finalRadiusBlocks`.
+   `finalRadiusBlocks`. **Passed 2026-07-18** (after 0.2.13's radius-floor
+   fix and 0.2.14's spawn-offset fix — see TODO 5.5/5.6).
 3. **Collapsing border**, `22-border-collapsing.yaml`. Same `/tick step`
-   approach. Confirm: the border holds at 2048 during a *much longer*
-   5-day delay (GOALS 20's explicit ask, contrast with 21's 1-day delay),
-   then collapses continuously to 256 over 3 days and stops there — not
-   below it. Confirm spawn (and anything built there) stays safely inside
-   the fully-collapsed border, since it's centered at the origin.
+   approach. Confirm: the border holds at its initial radius during a
+   *much longer* delay than 21's (GOALS 20's explicit ask — exploration
+   time before the collapse), then collapses continuously to its final
+   radius and stops there — not below it. Confirm spawn (and anything
+   built there) stays safely inside the fully-collapsed border, since
+   it's centered at the origin. **Passed 2026-07-18.**
 4. **End border carry-over**, `23-end-border-carry-over.yaml`. Overworld
    border is pinned to the 64-block minimum on purpose. Confirm: a compact
    fallback End portal exists (Overworld border is far too small for a
@@ -291,7 +293,7 @@ border/exterior/limit mechanism itself, not any particular world type).
    at `(0, 0)` with radius **256** (the configured `minimumRadiusBlocks`),
    not 64 — the main island, every obsidian pillar, and the exit portal
    should all be comfortably inside it. Confirm the dragon fight is normal
-   and winnable.
+   and winnable. **Passed 2026-07-18.**
 5. **Blocks/Chunks unit toggle** (no config file — a Customize-screen UI
    check). Open any Border or Exterior sub-screen (from any preset's
    Customize screen) and click the **Radius units** button: confirm it
@@ -308,7 +310,30 @@ border/exterior/limit mechanism itself, not any particular world type).
    Overworld border in Single Biome's Customize screen with a small
    radius and confirm it's actually in effect in-game, the same as
    setting `overworldBorder` in `singleBiome:`-free top-level config would
-   do for the plain preset.
+   do for the plain preset. **Outstanding** — not yet confirmed, not
+   treated as blocking further phase work.
+
+## Phase 5b acceptance (stepped border resizing, TODO 5b.3)
+
+Uses configs `24`-`25` (see [`config/tests/README.md`](config/tests/README.md)),
+plain **"Worldz"** preset, same as Phase 5's own acceptance configs.
+Requires 0.2.16+ (the `resizeStyle`/stepped driver did not exist before it).
+
+1. **Stepped expanding border**, `24-border-stepped-expanding.yaml`. Follow
+   the file's own steps. Confirm: the border holds at exactly 8 (radius)
+   through the whole delay, then jumps by whole-block increments once per
+   day — never a smooth creep, and never a fractional radius between
+   jumps — until it reaches exactly 1024 and stops.
+2. **Stepped collapsing border**, `25-border-stepped-collapsing.yaml`.
+   Same approach. Confirm: the border holds at exactly 1024 through a
+   much longer delay (exploration time, mirroring GOALS 20's continuous
+   case), then jumps down by whole-block increments once per day until it
+   reaches exactly 32 and stops — never below it. Confirm spawn (and
+   anything built there) stays safely inside the fully-collapsed border.
+3. **Contrast with continuous.** Side by side with configs 21/22, confirm
+   the visual/behavioral difference is obvious: continuous borders creep
+   smoothly tick by tick, stepped borders hold perfectly still and then
+   snap.
 
 ## Scenario table: seed-informed spawn (Phase 16)
 
