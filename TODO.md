@@ -408,7 +408,7 @@ Design is settled; these tasks are execution.
       genuinely outstanding, still not blocking. **[Jason] confirmed
       24/25 both work as desired, 2026-07-19.** Phase 5b closed out.
 
-## Phase 5c — Soft void border spike (GOAL 38)
+## Phase 5c — Soft void border spike (GOAL 38) — **DEFERRED (2026-07-19)**
 
 The void as the visible edge of an expanding/collapsing world — no wall, the
 player can fall off. Feasible but expansion needs chunk-regeneration
@@ -416,6 +416,13 @@ backfill, the heaviest machinery proposed so far (full findings + decided
 overwrite rule in DESIGN §21.2). Spike first; implementation is **not**
 scheduled until the spike proves out — 5c.2 is written assuming success but
 must be re-planned from the spike's findings before execution.
+
+**Jason's decision (2026-07-19): defer GOAL 38 and 5c.2, move on to Phase
+6.** Not abandoned — two research rounds (5c.1, 5c.1b) produced a credible
+implementation plan ("mask, don't discard" — see DESIGN §21.2), just not
+yet worth building blind against untested engine internals. Revisit this
+phase later if GOAL 38 becomes worth prioritizing again; start from
+DESIGN §21.2's findings rather than re-researching from scratch.
 
 - [x] 5c.1 Spike (throwaway branch OK): make `EnvelopedChunkGenerator` read
       a live radius (volatile snapshot; worldgen threads — no SavedData

@@ -922,6 +922,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   read from source; reading source correctly answers "does this class/
   method exist and do what I think" but not "does this whole approach
   actually work end-to-end."
+- 2026-07-19 — **Jason's decision: defer GOAL 38 / Phase 5c.2, move on to
+  Phase 6.** Set aside, not abandoned — the "mask, don't discard"
+  approach (DESIGN §21.2) is a credible plan if this comes back into
+  scope later; restart from that finding rather than re-researching.
 
 ## Reference Log
 

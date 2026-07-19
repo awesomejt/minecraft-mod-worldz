@@ -1683,16 +1683,21 @@ existing skip of decoration/structures for permanently-void chunks would
 need a schedule-aware carve-out so schedule-driven exterior chunks
 decorate normally instead of being skipped.
 
-**Recommendation:** pursue **C** if greenlit — it is the only one of the
-three that avoids both major risks found so far (the 8-chunk
-neighbor-cascade reimplementation of A, and the resident-chunk-discard
-uncertainty of B), at the cost of a well-understood kind of work (custom
-NBT persistence) this project already does safely elsewhere, rather than
-deep unverified engine surgery. Genuinely new code either way, so it still
-needs live Prism testing to validate — this project has no automated way
-to catch a subtly wrong result before Jason finds it live. **[Jason]
-go/no-go** needed: proceed with C for 5c.2, defer GOAL 38 and move on to
-Phase 6, or ask for something else explored first.
+**Recommendation:** pursue **C** if this is picked back up — it is the
+only one of the three that avoids both major risks found so far (the
+8-chunk neighbor-cascade reimplementation of A, and the resident-chunk-
+discard uncertainty of B), at the cost of a well-understood kind of work
+(custom NBT persistence) this project already does safely elsewhere,
+rather than deep unverified engine surgery. Genuinely new code either way,
+so it still needs live Prism testing to validate — this project has no
+automated way to catch a subtly wrong result before Jason finds it live.
+
+**Decision (Jason, 2026-07-19): defer.** GOAL 38 and Phase 5c.2 are set
+aside, not abandoned — two research rounds produced a credible plan (C
+above) but nothing is built or tested yet, and it isn't worth pursuing
+blind right now. Work continues with Phase 6. If GOAL 38 comes back into
+scope later, start implementation from approach C rather than
+re-researching A/B from scratch.
 
 ## 22. Border presentation & enforcement (2026-07-18)
 
