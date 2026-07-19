@@ -76,10 +76,11 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(3, tag.getAsJsonArray("values").size());
+        assertEquals(4, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
         assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
         assertEquals("jlt_worldz:chaos_biomes", tag.getAsJsonArray("values").get(2).getAsString());
+        assertEquals("jlt_worldz:strip_world", tag.getAsJsonArray("values").get(3).getAsString());
     }
 
     @Test
@@ -93,6 +94,24 @@ class WorldPresetResourcesTest {
         assertEquals(2, biomeSource.size());
         assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
         assertEquals("chaos_biomes", biomeSource.get("world_type").getAsString());
+
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
+    }
+
+    @Test
+    void stripWorldPresetMirrorsWorldzButFlagsWorldType() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/strip_world.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject biomeSource = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator")
+            .getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("strip_world", biomeSource.get("world_type").getAsString());
 
         JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
         assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
@@ -131,6 +150,11 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.chaos_biomes.starter_radius"));
         assertTrue(language.has("jlt_worldz.chaos_biomes.allow_rivers"));
         assertTrue(language.has("jlt_worldz.chaos_biomes.allow_oceans"));
+        assertEquals("Worldz: Strip World", language.get("generator.jlt_worldz.strip_world").getAsString());
+        assertTrue(language.has("jlt_worldz.strip_world.title"));
+        assertTrue(language.has("jlt_worldz.strip_world.width_radius"));
+        assertTrue(language.has("jlt_worldz.strip_world.width_mode"));
+        assertTrue(language.has("jlt_worldz.strip_world.apply_to_nether"));
     }
 
     private static JsonObject resource(String path) throws IOException {

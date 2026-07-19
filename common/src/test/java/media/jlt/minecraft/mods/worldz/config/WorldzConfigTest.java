@@ -542,6 +542,7 @@ class WorldzConfigTest {
                 + ", chaosBiomes=biomes=[minecraft:desert, minecraft:jungle, minecraft:ice_spikes,"
                 + " minecraft:badlands, minecraft:taiga], regionScaleBlocks=512, starterBiome=<none>"
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
+                + ", stripWorld=spawn=starter_at_origin"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );

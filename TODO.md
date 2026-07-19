@@ -628,12 +628,49 @@ rectangular shape.
       strip (an edge case — Nether strip without any other Nether
       border/exterior active — noted here rather than adding more
       branching for a combination nobody's asked for).
-- [ ] 6.2b Own dedicated typed preset (`jlt_worldz:strip_world`, per 6.1's
+- [x] 6.2b Own dedicated typed preset (`jlt_worldz:strip_world`, per 6.1's
       decision): config section, `StripWorldCustomization` record, small
       Customize screen (width, width mode, Nether toggle, length border
       reusing `WorldzBorderScreen`), `StripWorldPresetEditor`, world-type
       registration, lang keys — mirroring `single_biome`/`chaos_biomes`'s
-      shape exactly.
+      shape exactly. **Done (0.2.22):** `StripWorldConfig` (just a
+      `spawn:` section — the corridor width itself stays the shared
+      top-level `strip:` config from 6.2a, not duplicated per-preset) and
+      `StripWorldCustomization` (widthRadiusBlocks, widthMode,
+      applyToNether, spawnStrategy, plus the same border/exterior/
+      End-border fields as `chaos_biomes` — the corridor's length reuses
+      that machinery unmodified). `StripWorldPresetEditor` builds its
+      `LimitedBiomeSource` with the full `#minecraft:is_overworld` tag
+      (ordinary vanilla biome variety — a strip is a shape, not a biome
+      restriction) and `WorldLayoutPlan.legacy()`, then wires
+      `customization.stripPlan(overworld)` into
+      `EnvelopedChunkGenerator.customized()`'s 4-arg overload.
+      `StripWorldCustomizeScreen` mirrors `ChaosBiomesCustomizeScreen`'s
+      shape (a Blocks/Chunks-toggle width field, a Void/Ocean width-mode
+      toggle, a Nether checkbox, spawn strategy, then the same Border/
+      EndBorder/Exterior buttons). Full registration: `world_preset/
+      strip_world.json`, the `normal.json` preset tag, lang keys, both
+      loaders' preset-editor hookup (Fabric mixin, NeoForge event) —
+      each verified by a matching resource/structural test, following
+      this project's existing per-preset test pattern exactly (a defect
+      class this project has caught before: a new preset with no test
+      coverage of its own registration is easy to silently leave broken).
+      **Known gap, not chased further:** `LimitedBiomeSource`'s
+      decode-time "fieldless preset" defaulting (the very first click,
+      before ever opening Customize) doesn't have a `strip_world` branch
+      — an un-customized strip world would default to the generic
+      preset's curated biome list and top-level spawn strategy instead
+      of full vanilla variety and `stripWorld`'s own spawn default. The
+      corridor mechanism itself is unaffected (resolved independently on
+      `EnvelopedChunkGenerator`'s own codec); this is purely a
+      biome-variety/spawn-default polish gap, fixed simply by opening
+      Customize once. Not touched because `LimitedBiomeSource.resolve()`
+      is a large, heavily-tested, sensitive method serving three other
+      presets already — revisit if it turns out to matter in practice.
+      10 new tests across `StripWorldCustomizationTest`,
+      `WorldPresetResourcesTest`, `ProjectMetadataTest`; full suite green
+      (278 tests); clean build across all modules (fabric + neoforge
+      registration compiles and resolves correctly).
 - [ ] 6.2c Test configs (basic strip, narrow width forcing the fallback-
       portal fix to matter, Nether strip on/off); config/tests README +
       MANUAL_TESTING rows; README docs; **[Jason]** acceptance.

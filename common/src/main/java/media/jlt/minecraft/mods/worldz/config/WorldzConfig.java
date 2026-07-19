@@ -100,6 +100,8 @@ public final class WorldzConfig {
     public SingleBiomeConfig singleBiome = new SingleBiomeConfig();
     /** Defaults for the {@code jlt_worldz:chaos_biomes} typed preset (DESIGN §20.11). */
     public ChaosBiomesConfig chaosBiomes = new ChaosBiomesConfig();
+    /** Defaults for the {@code jlt_worldz:strip_world} typed preset (GOALS 32, DESIGN §23). */
+    public StripWorldConfig stripWorld = new StripWorldConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -199,6 +201,9 @@ public final class WorldzConfig {
         if (object.containsKey("chaosBiomes")) {
             config.chaosBiomes = readChaosBiomesConfig(object.get("chaosBiomes"), "chaosBiomes", logger);
         }
+        if (object.containsKey("stripWorld")) {
+            config.stripWorld = readStripWorldConfig(object.get("stripWorld"), "stripWorld");
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -253,6 +258,7 @@ public final class WorldzConfig {
         }
         singleBiome = sanitizeSingleBiome(singleBiome, logger);
         chaosBiomes = sanitizeChaosBiomes(chaosBiomes, logger);
+        stripWorld = sanitizeStripWorld(stripWorld);
         return this;
     }
 
@@ -319,6 +325,15 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static StripWorldConfig sanitizeStripWorld(StripWorldConfig config) {
+        StripWorldConfig sanitized = config == null ? new StripWorldConfig() : config;
+        sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
+        if (sanitized.spawn.strategy == null) {
+            sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
+        }
+        return sanitized;
+    }
+
     private static String sanitizeSingleBiomeId(String value, String name, Logger logger) {
         String trimmed = value == null ? "" : value.trim();
         if (trimmed.isEmpty()) {
@@ -354,6 +369,7 @@ public final class WorldzConfig {
             + ", spawn=" + spawn.strategy.serializedName()
             + ", singleBiome=" + singleBiomeSummary(singleBiome)
             + ", chaosBiomes=" + chaosBiomesSummary(chaosBiomes)
+            + ", stripWorld=" + stripWorldSummary(stripWorld)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -376,6 +392,7 @@ public final class WorldzConfig {
         values.put("spawn", spawnMap(spawn));
         values.put("singleBiome", singleBiomeMap(singleBiome));
         values.put("chaosBiomes", chaosBiomesMap(chaosBiomes));
+        values.put("stripWorld", stripWorldMap(stripWorld));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -598,6 +615,17 @@ public final class WorldzConfig {
         }
         if (map.containsKey("allowOceans")) {
             config.allowOceans = readBoolean(map.get("allowOceans"), name + ".allowOceans");
+        }
+        return config;
+    }
+
+    private static StripWorldConfig readStripWorldConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StripWorldConfig config = new StripWorldConfig();
+        if (map.containsKey("spawn")) {
+            config.spawn = readSpawnConfig(map.get("spawn"), name + ".spawn");
         }
         return config;
     }
@@ -882,6 +910,12 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> stripWorldMap(StripWorldConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("spawn", spawnMap(config.spawn));
+        return values;
+    }
+
     private static String borderSummary(BorderConfig config, String objectiveName) {
         if (!config.enabled) {
             return "<disabled>";
@@ -938,6 +972,10 @@ public final class WorldzConfig {
             + ", spawn=" + config.spawn.strategy.serializedName()
             + ", allowRivers=" + config.allowRivers
             + ", allowOceans=" + config.allowOceans;
+    }
+
+    private static String stripWorldSummary(StripWorldConfig config) {
+        return "spawn=" + config.spawn.strategy.serializedName();
     }
 
     private static String layoutSummary(LayoutConfig config) {

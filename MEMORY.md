@@ -962,6 +962,30 @@ Durable decisions, verified API notes, and rationale that should survive across 
   optimization exists alongside a classification helper, check that the
   early-exit's condition still matches the classifier's real logic after
   the classifier grows a new input.
+- 2026-07-19 (Phase 6.2b, 0.2.22) — Strip world's own dedicated typed
+  preset (`jlt_worldz:strip_world`), mirroring `chaos_biomes`'s exact
+  shape: config section, `StripWorldCustomization`, small Customize
+  screen, `StripWorldPresetEditor`, full registration (world-preset JSON,
+  the `normal` preset tag, lang keys, both loaders' preset-editor hookup).
+  The corridor width stays the shared top-level `strip:` config from
+  6.2a rather than being duplicated into a per-preset section — only
+  `spawn` needed its own dedicated `StripWorldConfig`. A strip world's
+  biome source uses the full `#minecraft:is_overworld` tag (not the
+  generic preset's curated list) since a strip is a shape, not a biome
+  restriction. Every new registration point got a matching test
+  (resource JSON structure, lang-key presence, both loaders' hookup
+  strings) — this project already has a per-preset test for exactly this
+  reason: a new preset with no registration test of its own is easy to
+  silently leave broken (confirmed by `WorldPresetResourcesTest`'s
+  existing per-preset pattern, extended here rather than skipped).
+  Known, logged gap: `LimitedBiomeSource`'s "fieldless preset" decode-time
+  defaults (the very-first-click-before-Customize path) don't have a
+  strip_world branch yet — cosmetic (curated biome list instead of full
+  vanilla variety) until someone opens Customize once; the corridor
+  mechanism itself is unaffected since it resolves independently on
+  `EnvelopedChunkGenerator`'s own codec. Deliberately not touched:
+  `LimitedBiomeSource.resolve()` is large, heavily tested, and already
+  serves three other presets — not worth the risk for a cosmetic gap.
 
 ## Reference Log
 
