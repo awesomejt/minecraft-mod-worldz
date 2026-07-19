@@ -26,18 +26,18 @@
 # became 64. 0.2.13 lowers that floor to 1 -- beatability at very small
 # sizes is the user's own responsibility, not something the floor enforces.
 #
-# This file's resizeDelayDays/resizeDays (2 and 98) make a deliberately
-# slow reveal: after the delay the border creeps from 2 to 1024 over 98
-# days, roughly 10 radius-blocks per day. Steps once in-game (adjust the
+# This file's resizeDelayDays/resizeDays (2 and 88) make a deliberately
+# slow reveal: after the delay the border creeps from 2 to 1024 over 88
+# days, roughly 11.6 radius-blocks per day. Steps once in-game (adjust the
 # tick counts if you change the values above):
 #  1. Confirm the border starts at exactly 2 (radius -- not clamped up)
 #     and does not move yet.
 #  2. `/time add 2d` (or `/tick step 48000`) -- the delay expires; within
 #     a second or two the expansion should begin.
-#  3. `/tick step 24000` (1 day) -- confirm the border is ~10 blocks
+#  3. `/tick step 24000` (1 day) -- confirm the border is ~11-12 blocks
 #     larger, continuing smoothly rather than jumping. Repeat to taste.
 #  4. To fast-forward to the end, `/tick step` the remainder in big
-#     chunks (98 days total = 2352000 ticks) -- confirm it reaches
+#     chunks (88 days total = 2112000 ticks) -- confirm it reaches
 #     exactly 1024 and stops there.
 layout:
   mode: legacy
@@ -46,7 +46,7 @@ overworldBorder:
   initialRadiusBlocks: 2
   finalRadiusBlocks: 1024
   resizeDelayDays: 2
-  resizeDays: 98
+  resizeDays: 88
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

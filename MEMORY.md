@@ -787,6 +787,28 @@ Durable decisions, verified API notes, and rationale that should survive across 
   1, two tests updated to exercise the new floor instead of the old one
   (full suite green), config 21 dropped to a genuine 2-block start,
   0.2.13 built and deployed to Worldz-Test — Jason to re-test config 21.
+- 2026-07-18 (same-day follow-up, TODO 5.6) — Retesting config 21 under
+  0.2.13 surfaced a second, worse defect from the same root cause: Jason
+  spawned **outside** the (now tiny) border and took vanilla border
+  damage. `SpawnOriginManager.safeSpawnNear` had always added a hardcoded
+  `+8, +8` to the origin (to center spawn in the origin chunk) with zero
+  awareness of the border — invisible for a year of testing only because
+  the old 64-block floor guaranteed 8 blocks of slack. **Fixed (0.2.14):**
+  new `WorldLimitPlan.DimensionLimit.safeSpawnOffsetBlocks()` — preferred
+  8-block offset when the border is disabled/large, shrinking to as low
+  as 0 for a tiny configured initial radius; `safeSpawnNear` calls it
+  instead of the hardcoded constant. **Reusable lesson:** the logic lives
+  on the pure `DimensionLimit` record, not in `SpawnOriginManager` itself,
+  because `SpawnOriginManager` turns out to be untestable by plain
+  JUnit — merely loading the class throws `NoClassDefFoundError`
+  (`NoiseBasedChunkGenerator`, `HolderGetter`, etc. aren't on the test
+  classpath). Any future fix to that class needs to extract pure logic
+  into a `logic`/`worldgen` record/pure-static-method first, the same way
+  `BorderSchedule` and `EndLimit.resolveRadiusBlocks` already do — check a
+  class's import list for heavy `net.minecraft.*` worldgen types before
+  assuming a plain `assertEquals` test against it will even load. Full
+  suite green (244 tests); 0.2.14 deployed to Worldz-Test — Jason to
+  re-test config 21 again.
 
 ## Reference Log
 

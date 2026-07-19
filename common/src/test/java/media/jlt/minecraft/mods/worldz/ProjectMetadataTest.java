@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.13", properties.getProperty("version"));
+        assertEquals("0.2.14", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -444,8 +444,12 @@ class ProjectMetadataTest {
         // instead of deferring to vanilla's climate-blind findSpawnPosition() -- only
         // VANILLA_SPAWN still returns Optional.empty() to genuinely defer to vanilla.
         assertTrue(manager.contains("limitedSource.spawnStrategy() == SpawnStrategy.VANILLA_SPAWN"));
-        assertTrue(manager.contains("private static BlockPos safeSpawnNear(ServerLevel overworld, int originX, int originZ) {"));
-        assertTrue(manager.contains("return Optional.of(safeSpawnNear(overworld, 0, 0));"));
+        assertTrue(manager.contains("private static BlockPos safeSpawnNear("));
+        assertTrue(manager.contains("return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));"));
+        // 2026-07-18: the spawn offset clamps to the Overworld border's initial radius (see
+        // WorldLimitPlan.DimensionLimit.safeSpawnOffsetBlocks) so a very small border (as low
+        // as 1 block, since 0.2.13) can never place spawn beyond it.
+        assertTrue(manager.contains("limitedSource.worldLimits().overworld().safeSpawnOffsetBlocks()"));
     }
 
     @Test

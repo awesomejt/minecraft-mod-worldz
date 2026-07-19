@@ -258,8 +258,9 @@ composed with the new world types; plus the one real gap (the End).
       applying in-game). **[Jason] acceptance:** config 20 ✓ (2026-07-18),
       config 22 ✓ (2026-07-18, slow 2048→256/40-day collapse — works well;
       only pre-existing biome-painting artifacts noted, see Backlog); config
-      21 was blocked on the radius floor, fixed in 5.5 (0.2.13) — needs
-      retest; configs 21/23 + the two UI checks still outstanding.
+      21 was blocked on the radius floor (5.5), then on the spawn-offset
+      defect (5.6), both fixed — needs retest; configs 21/23 + the two UI
+      checks still outstanding.
 - [x] 5.5 Lower the border radius floor (found in config 21 acceptance:
       `initialRadiusBlocks: 4` rendered as a 64-block border). **Done
       (0.2.13):** `WorldzConfig.MIN_BORDER_RADIUS_BLOCKS = 64 → 1` per
@@ -279,6 +280,36 @@ composed with the new world types; plus the one real gap (the End).
       dropped to a genuine 2-block start and its comments updated;
       0.2.13 built and deployed to Worldz-Test. **[Jason] to re-test
       config 21.**
+- [x] 5.6 Fix `starter_at_origin` spawning beyond a tiny border (found
+      retesting config 21 after 5.5: Jason spawned outside the border and
+      took vanilla border damage). Root cause:
+      `SpawnOriginManager.safeSpawnNear` hardcoded a `+8, +8` offset from
+      the origin (centers spawn in the origin chunk rather than its
+      corner) with no awareness of the border at all — harmless while
+      5.5's 64-block floor guaranteed at least 64 blocks of clearance,
+      but a border as small as 1–2 blocks (now legal since 5.5) put the
+      hardcoded offset well beyond it, so the player spawned outside the
+      just-applied border and immediately took its push-back/damage.
+      **Done (0.2.14):** added `WorldLimitPlan.DimensionLimit.
+      safeSpawnOffsetBlocks()` — a pure method on the same record
+      `WorldLimitManager` already reads to center the border on this
+      origin, so it's guaranteed to agree — returning the preferred
+      8-block offset when the border is disabled or comfortably larger
+      than that, and shrinking (down to 0, one block clear of the border
+      itself) when the configured initial radius is tiny.
+      `SpawnOriginManager.safeSpawnNear` now calls it instead of adding a
+      fixed 8. Kept the new logic on the pure `DimensionLimit` record
+      (not in `SpawnOriginManager` itself) after discovering
+      `SpawnOriginManager` can't be touched by plain JUnit at all — it
+      pulls in enough vanilla worldgen classes
+      (`NoiseBasedChunkGenerator`, `HolderGetter`, etc.) that just
+      loading the class throws `NoClassDefFoundError` outside a real game
+      classpath; this matches the project's existing pattern of keeping
+      testable logic on pure `logic`/`worldgen` records rather than the
+      MC-facing manager classes. Four new `WorldLimitPlanTest` cases
+      cover disabled, comfortably-large, tiny, and 1-block borders; full
+      suite green (244 tests). 0.2.14 built and deployed to Worldz-Test.
+      **[Jason] to re-test config 21.**
 
 ## Phase 5b — Stepped border resizing (GOALS 19–20 clarification)
 

@@ -86,4 +86,30 @@ class WorldLimitPlanTest {
         assertEquals(320, plan.end().minimumRadiusBlocks());
     }
 
+    @Test
+    void safeSpawnOffsetIsThePreferredValueWhenNoBorderIsEnabled() {
+        assertEquals(8, WorldLimitPlan.DimensionLimit.disabled().safeSpawnOffsetBlocks());
+    }
+
+    @Test
+    void safeSpawnOffsetIsThePreferredValueWhenTheBorderIsComfortablyLarge() {
+        WorldLimitPlan.DimensionLimit limit = new WorldLimitPlan.DimensionLimit(true, 64, 64, 0, false);
+
+        assertEquals(8, limit.safeSpawnOffsetBlocks());
+    }
+
+    @Test
+    void safeSpawnOffsetShrinksToStayInsideATinyBorder() {
+        WorldLimitPlan.DimensionLimit limit = new WorldLimitPlan.DimensionLimit(true, 2, 2, 0, false);
+
+        assertEquals(1, limit.safeSpawnOffsetBlocks());
+    }
+
+    @Test
+    void safeSpawnOffsetNeverGoesNegativeAtTheSmallestPossibleBorder() {
+        WorldLimitPlan.DimensionLimit limit = new WorldLimitPlan.DimensionLimit(true, 1, 1, 0, false);
+
+        assertEquals(0, limit.safeSpawnOffsetBlocks());
+    }
+
 }

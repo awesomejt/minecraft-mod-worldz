@@ -114,7 +114,7 @@ public final class SpawnOriginManager {
             // ChunkBase-selected seed with vanilla-favorable climate at (0,0) spawned
             // correctly on both loaders, proving this was never loader-specific.
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.of(safeSpawnNear(overworld, 0, 0));
+            return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
         }
 
         Optional<Holder<Biome>> target = limitedSource.starterBiome();
@@ -123,7 +123,7 @@ public final class SpawnOriginManager {
                 "Layout strategy preferred_natural_biome needs a starter biome; using starter_at_origin instead."
             );
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.of(safeSpawnNear(overworld, 0, 0));
+            return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
         }
 
         ChunkGenerator generator = overworld.getChunkSource().getGenerator();
@@ -133,7 +133,7 @@ public final class SpawnOriginManager {
                 "Cannot build a real climate sampler for preferred_natural_biome; using starter_at_origin instead."
             );
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.of(safeSpawnNear(overworld, 0, 0));
+            return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
         }
 
         Optional<BlockPos> found = search(overworld, noiseGenerator, target.get());
@@ -144,28 +144,39 @@ public final class SpawnOriginManager {
                 SpawnSearchPlan.DEFAULT_MAX_RADIUS_BLOCKS
             );
             markResolved(overworld, limitedSource, 0, 0);
-            return Optional.of(safeSpawnNear(overworld, 0, 0));
+            return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
         }
 
         int originX = found.get().getX();
         int originZ = found.get().getZ();
         markResolved(overworld, limitedSource, originX, originZ);
-        return Optional.of(safeSpawnNear(overworld, originX, originZ));
+        return Optional.of(safeSpawnNear(overworld, limitedSource, originX, originZ));
     }
 
     /**
      * Resolves a safe surface spawn position at the given origin, without relying on
      * vanilla's own climate-based {@code findSpawnPosition()} search (see the
      * {@code STARTER_AT_ORIGIN} note in {@link #resolveFreshOrigin} for why that search is
-     * unsuitable here).
+     * unsuitable here). Offsets into the center of the origin chunk when there's room, but
+     * clamps that offset to stay inside the Overworld border's initial radius -- otherwise a
+     * small border (as low as 1 block, since 0.2.13) would place spawn beyond the border
+     * itself, triggering vanilla's own push-back/damage the instant the world loads.
      */
-    private static BlockPos safeSpawnNear(ServerLevel overworld, int originX, int originZ) {
+    private static BlockPos safeSpawnNear(
+        ServerLevel overworld,
+        LimitedBiomeSource limitedSource,
+        int originX,
+        int originZ
+    ) {
+        int offset = limitedSource.worldLimits().overworld().safeSpawnOffsetBlocks();
+        int spawnX = originX + offset;
+        int spawnZ = originZ + offset;
         ChunkGenerator generator = overworld.getChunkSource().getGenerator();
         int height = generator.getSpawnHeight(overworld);
         if (height < overworld.getMinY()) {
-            height = overworld.getHeight(Heightmap.Types.WORLD_SURFACE, originX + 8, originZ + 8);
+            height = overworld.getHeight(Heightmap.Types.WORLD_SURFACE, spawnX, spawnZ);
         }
-        return new BlockPos(originX + 8, height, originZ + 8);
+        return new BlockPos(spawnX, height, spawnZ);
     }
 
     private static Optional<BlockPos> search(

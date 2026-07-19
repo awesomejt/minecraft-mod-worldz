@@ -157,6 +157,28 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
                 resizeRateDays
             );
         }
+
+        /** Preferred spawn offset from the origin: the center of the origin chunk, not its corner. */
+        private static final int PREFERRED_SPAWN_OFFSET_BLOCKS = 8;
+        /** Kept clear of the border so vanilla's push-back/damage never applies right at spawn. */
+        private static final int SPAWN_BORDER_SAFETY_MARGIN_BLOCKS = 1;
+
+        /**
+         * Returns how far from the origin a fresh spawn may offset (into the center of the
+         * origin chunk) without landing beyond this border's initial radius. A disabled border
+         * imposes no constraint. Needed since 0.2.13 lowered the border radius floor to 1 --
+         * without this clamp, a tiny border would place spawn beyond it, triggering vanilla's
+         * own push-back/damage the instant the world loads.
+         *
+         * @return safe spawn offset in blocks, never more than {@value #PREFERRED_SPAWN_OFFSET_BLOCKS}
+         */
+        public int safeSpawnOffsetBlocks() {
+            if (!enabled) {
+                return PREFERRED_SPAWN_OFFSET_BLOCKS;
+            }
+            int maxSafeOffset = initialRadiusBlocks - SPAWN_BORDER_SAFETY_MARGIN_BLOCKS;
+            return Math.clamp(maxSafeOffset, 0, PREFERRED_SPAWN_OFFSET_BLOCKS);
+        }
     }
 
     /**
