@@ -962,6 +962,26 @@ rectangular shape.
       tests); clean build.
 - [ ] 7.4 Test configs (tiny/default/huge island, 04 variant); docs;
       **[Jason]** acceptance including "does the island read as natural".
+      **Configs and docs done (0.2.31):** `config/tests/30`-`33` (default
+      128-radius island; the 8-block "1 chunk" floor exercising the
+      documented tiny-island fallback-portal trade-off; a 4096-radius
+      "huge" island where the 30% coastline perturbation should read as
+      dramatic bays/headlands; a GOALS-04 exclusion-zone variant at a
+      test-friendly 512-block radius rather than the 2000-block default,
+      purely so it's practical to actually travel and check in a
+      reasonable amount of time). New "Phase 7 acceptance" section in
+      MANUAL_TESTING.md (5 items, including a Customize-screen sanity
+      check and an explicit note that 0.2.29 shipped with the beatability
+      bug 0.2.30 fixed — don't bother re-testing beatability on exactly
+      0.2.29). `config/tests/README.md`'s intro updated for the fifth
+      World Type entry, plus a drive-by fix of a stale claim about config
+      29 (strip_world bands) still needing Customize opened, which 0.2.27
+      already fixed but this file never got updated to say so.
+      **[Jason] acceptance still outstanding** — nothing to report yet,
+      this note only covers docs/configs being ready. This completes
+      every non-[Jason] item in Phase 7 (7.1 design, 7.2 core + GOALS-04
+      mechanism, the 7.2 beatability follow-up fix, 7.4 docs/configs) —
+      **do not start Phase 8 without Jason's explicit go-ahead.**
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 

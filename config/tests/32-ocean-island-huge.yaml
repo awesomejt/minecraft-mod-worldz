@@ -1,0 +1,37 @@
+# GOALS 01: a huge ocean island -- radius 4096 blocks (an 8192-block
+# diameter continent-scale island), demonstrating the "very small... to
+# huge" configurable range at the opposite extreme from config 31.
+# **Select "Worldz: Ocean Island"** on the creation screen.
+#
+# At this scale the default 30% shapeAmplitude coastline perturbation
+# should be clearly, dramatically visible -- large bays and headlands,
+# not just a slightly-uneven circle. A world map mod (Xaero's) is the
+# practical way to actually see the whole shape at once; flying the
+# coastline in survival would take a very long time.
+#
+# Steps once in-game:
+#  1. Use a map mod (or /tp around the perimeter) to confirm the
+#     coastline reads as a large, natural, irregular landmass -- not a
+#     circle, and not visibly tiled/repeating.
+#  2. Spot-check the beach/stony-shore ring and ocean gradient at a few
+#     different points around the coastline; confirm they track the
+#     actual (perturbed) shore, not a fixed circular radius.
+#  3. Confirm a compact fallback End portal (or natural stronghold, if
+#     one happens to fit) exists and the dragon fight is winnable.
+#  4. Confirm generation performance is reasonable -- this is the
+#     largest island size in this test suite, worth flagging if chunk
+#     generation feels unusually slow near the coastline.
+oceanIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 4096
+  shapeAmplitude: 0.3
+  shoreWidthBlocks: 24
+  oceanShallowWidthBlocks: 128
+  oceanDeepenWidthBlocks: 256
+  oceanShallowDepthBlocks: 8
+  oceanDeepDepthBlocks: 32
+  oceanRegionScaleBlocks: 256
+  exclusionZoneEnabled: false
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

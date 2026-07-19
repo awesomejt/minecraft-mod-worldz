@@ -388,6 +388,55 @@ once for bands to apply at all).
    checkboxes (all checked by default) are all present and pre-filled from
    the config, and the resulting world matches test 5's expectations.
 
+## Phase 7 acceptance (ocean island, GOALS 01/04, TODO 7.2-7.4)
+
+Uses configs `30`-`33` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Ocean Island"** on the creation screen for all four, not
+plain "Worldz". Requires 0.2.29+ (the dedicated preset did not exist before
+it); requires 0.2.30+ for the fallback End-portal guarantee to actually
+work (see [`MEMORY.md`](MEMORY.md) — 0.2.29 shipped with a real
+beatability bug found and fixed before this acceptance pass, so don't
+bother testing beatability on exactly 0.2.29).
+
+1. **Default island**, `30-ocean-island-default.yaml`. Confirm: the
+   coastline reads as natural/irregular, not a circle or square; a narrow
+   beach/stony-shore ring (mix of both) sits right at the coastline, not a
+   wide sandy apron; sailing outward, the ocean biome transitions from
+   warm/lukewarm/plain ocean near shore to exclusively deep-ocean-family
+   biomes further out (check F3 periodically); the seabed visibly deepens
+   the further out you go; underground structures/caves under the island
+   generate normally; a compact fallback End portal exists and the dragon
+   fight is winnable; the Nether is completely ordinary, unrestricted
+   vanilla generation.
+2. **Tiny island (the "1 chunk" floor)**, `31-ocean-island-tiny.yaml`.
+   Confirm the island is genuinely tiny (roughly one chunk across) and the
+   compact fallback End portal consumes most of the surface — this is the
+   documented trade-off (README's "Ocean island challenge" section), not
+   a defect. Confirm the shore ring and ocean gradient still work
+   correctly at this scale, and the dragon fight is winnable.
+3. **Huge island**, `32-ocean-island-huge.yaml`. Use a map mod (Xaero's)
+   or fly the perimeter to confirm the coastline reads as a large, natural
+   landmass with clearly visible bays/headlands, not a circle and not
+   visibly tiled. Spot-check the shore ring and ocean gradient at a few
+   different points around the coastline. Confirm generation performance
+   feels reasonable near the coastline.
+4. **Distant natural islands**, `33-ocean-island-distant-natural-islands.yaml`
+   (GOALS 04). Confirm the island and its gradient ocean behave like test
+   1 close to the origin; travel past 512 blocks in any direction
+   (spectator mode is fastest) and confirm the artificial ocean cap stops,
+   the delegate's own real vanilla terrain resumes (ordinary hills/biome
+   variety, and — seed-dependent — maybe a small natural island poking
+   above sea level somewhere out there), and the transition itself isn't
+   jarring (no visible seam, no floating terrain) right at the boundary.
+   Confirm the dragon fight is still winnable.
+5. **Customize screen sanity.** Open "Worldz: Ocean Island"'s Customize
+   screen: confirm island biome, radius, coastline shape (amplitude),
+   shore width, all five ocean-gradient fields, the exclusion-zone
+   toggle/radius, and the Border/End Border/Nether Exterior buttons all
+   work (note: no Overworld Exterior button and no spawn-strategy option
+   — both deliberately absent for this preset, see DESIGN §24.8) and a
+   customized world reflects the chosen values in-game.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

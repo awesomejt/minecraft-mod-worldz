@@ -1,0 +1,47 @@
+# GOALS 04: the same ocean_island preset as config 30, plus the
+# exclusion-zone toggle -- island/ocean shaping releases entirely beyond
+# `exclusionZoneRadiusBlocks`, letting the seed's own natural terrain
+# resume. Small natural islands then occur wherever the seed's terrain
+# noise happens to poke above sea level, same as any other unrestricted
+# vanilla ocean region (DESIGN §24.7, GOALS.md's own Q1 answer: biome and
+# terrain shape are independent in modern Minecraft, so nothing needs to
+# specifically "cause" an island to exist out there -- releasing the cap
+# is the whole mechanism). **Select "Worldz: Ocean Island"** on the
+# creation screen.
+#
+# exclusionZoneRadiusBlocks is deliberately set much smaller here (512)
+# than the shared default (2000, see DESIGN §20.7) purely to make this
+# config practical to test in a reasonable amount of travel time -- pick
+# a fixed seed and a boat, or just fly in spectator/creative to check the
+# transition quickly. The mechanism itself is identical regardless of the
+# radius; 2000 is still the right default for actual play.
+#
+# Steps once in-game:
+#  1. Confirm the island and its gradient ocean behave exactly like
+#     config 30 close to the origin.
+#  2. Travel outward past 512 blocks in any direction (boat, or
+#     spectator mode to check quickly): confirm the artificial ocean cap
+#     stops and the delegate's own real vanilla terrain resumes --
+#     hills, ordinary vanilla biome variety, and (with luck, seed-
+#     dependent) a small natural island poking above sea level somewhere
+#     out there.
+#  3. Confirm the transition itself isn't jarring/glitchy right at the
+#     512-block boundary (no visible seam, no floating terrain).
+#  4. Confirm the dragon fight is still winnable -- the exclusion zone
+#     only affects how far out the artificial shaping reaches, not the
+#     island's own beatability guarantee near the origin.
+oceanIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 96
+  shapeAmplitude: 0.3
+  shoreWidthBlocks: 12
+  oceanShallowWidthBlocks: 64
+  oceanDeepenWidthBlocks: 128
+  oceanShallowDepthBlocks: 8
+  oceanDeepDepthBlocks: 32
+  oceanRegionScaleBlocks: 128
+  exclusionZoneEnabled: true
+  exclusionZoneRadiusBlocks: 512
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

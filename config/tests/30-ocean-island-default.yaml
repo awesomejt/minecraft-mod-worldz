@@ -1,0 +1,55 @@
+# GOALS 01: a default-sized ocean island world (DESIGN §24). **Select
+# "Worldz: Ocean Island"** on the creation screen -- this preset's
+# fieldless defaulting is fully wired (unlike strip_world's bands, GOALS
+# 36, this preset learned that lesson from the start), so a config-only
+# "Create World" with no Customize visit gets the full island + gradient
+# ocean immediately.
+#
+# The island's coastline is a seed-derived "lumpy circle", not a perfect
+# disc: sine-harmonic perturbation at shapeAmplitude: 0.3 (30% of the
+# radius). A narrow (12-block) beach/stony-shore ring sits at the true
+# coastline; beyond it, the ocean gradually deepens from a shallow
+# warm/lukewarm/plain-ocean band (64 blocks wide) through a smooth
+# deepening band (128 blocks) to a permanently deep band drawing from all
+# nine vanilla ocean biomes -- GOALS 01's "shallow to deep, but all ocean
+# biomes available." The ocean continues at full depth forever beyond
+# that ("endless ocean").
+#
+# ensureObjective on the Overworld border guarantees a compact fallback
+# End portal even though the border itself is disabled -- ObjectiveSite's
+# supportive-radius logic already keys off the exterior mode being
+# non-normal, not the border, so this reuses that existing machinery
+# unmodified (DESIGN §24.6).
+#
+# Steps once in-game:
+#  1. Confirm the island's coastline looks natural/irregular, not a
+#     circle or square (Xaero's map helps see the whole shape at once).
+#  2. Confirm a narrow beach/stony-shore ring (mix of both) right at the
+#     coastline, not a wide sandy apron.
+#  3. Sail outward from the island in one direction: confirm the ocean
+#     biome transitions from warm/lukewarm/plain ocean near shore, through
+#     a mix, to exclusively deep-ocean-family biomes (deep_ocean,
+#     deep_lukewarm_ocean, deep_cold_ocean, deep_frozen_ocean) once far
+#     enough out -- check F3 periodically.
+#  4. Confirm the seabed visibly deepens the further out you go (dive
+#     down or check F3's Y coordinate at the floor).
+#  5. Confirm underground structures/caves under the island itself
+#     generate normally.
+#  6. Confirm a compact fallback End portal exists somewhere reachable
+#     and the dragon fight is winnable.
+#  7. Confirm the Nether is completely ordinary, unrestricted vanilla
+#     Nether generation.
+oceanIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 128
+  shapeAmplitude: 0.3
+  shoreWidthBlocks: 12
+  oceanShallowWidthBlocks: 64
+  oceanDeepenWidthBlocks: 128
+  oceanShallowDepthBlocks: 8
+  oceanDeepDepthBlocks: 32
+  oceanRegionScaleBlocks: 128
+  exclusionZoneEnabled: false
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -1,0 +1,43 @@
+# GOALS 01: the smallest supported ocean island -- radius 8 blocks (a
+# 16-block diameter, "1 chunk" under either a diameter or radius reading
+# of that phrase). **Select "Worldz: Ocean Island"** on the creation
+# screen.
+#
+# This deliberately exercises the documented tiny-island trade-off
+# (DESIGN §24.6, README's "Ocean island challenge" section): at this
+# scale, `NATURAL_STRUCTURE_MARGIN` (128 blocks) can never "fit" inside
+# an 8-block radius, so the compact fallback End portal's own
+# last-resort placement lands at the island's center -- consuming most
+# or all of the tiny island's surface. This is accepted, not a defect:
+# GOALS 01 requires the game stay beatable, not that a tiny island also
+# stays fully buildable-on.
+#
+# shapeAmplitude is left at the default (0.3); at this radius the
+# perturbation is only a couple of blocks either way, so the shape reads
+# more like "slightly uneven" than dramatically lumpy -- that's expected
+# at this scale, not a sign the perturbation isn't working (compare
+# against config 30's default-sized island, or 32's huge one, where the
+# same 30% amplitude is much more visually obvious).
+#
+# Steps once in-game:
+#  1. Confirm the island is genuinely tiny -- roughly a single chunk
+#     across.
+#  2. Confirm the compact fallback End portal was built at/near the
+#     island's center, consuming most of the surface as expected.
+#  3. Confirm the beach/stony-shore ring and ocean gradient still work
+#     correctly at this scale (F3 to check biomes a few blocks out).
+#  4. Confirm the dragon fight is winnable.
+oceanIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 8
+  shapeAmplitude: 0.3
+  shoreWidthBlocks: 4
+  oceanShallowWidthBlocks: 32
+  oceanDeepenWidthBlocks: 64
+  oceanShallowDepthBlocks: 8
+  oceanDeepDepthBlocks: 32
+  oceanRegionScaleBlocks: 64
+  exclusionZoneEnabled: false
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

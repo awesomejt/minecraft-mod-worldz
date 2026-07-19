@@ -1281,6 +1281,16 @@ Durable decisions, verified API notes, and rationale that should survive across 
   sidesteps it in the common case; full reasoning in DESIGN §24.9. 3 new
   tests; full suite green (348 tests); clean build. Still not yet tested
   in-game.
+- 2026-07-19 (Phase 7.4, ocean island docs/configs, 0.2.31) — Four new
+  `config/tests/30`-`33` files (default, the 8-block "1 chunk" floor, a
+  4096-block "huge" island, and a GOALS-04 exclusion-zone variant using a
+  test-friendly 512-block radius instead of the 2000-block default purely
+  for practical travel time) plus a new "Phase 7 acceptance" section in
+  MANUAL_TESTING.md. This closes out every non-Jason item in Phase 7
+  (7.1 design, 7.2 core implementation + the GOALS 04 exclusion-zone
+  mechanism that shipped alongside it, the 7.2 beatability follow-up fix,
+  7.4 docs/configs) -- awaiting Jason's in-game acceptance testing before
+  Phase 8 (GOALS 02/03, more ocean-island variants) can start.
 
 ## Reference Log
 

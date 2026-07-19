@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 6, the World Type dropdown has **four** Worldz
+   new world. Since Phase 7, the World Type dropdown has **five** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -35,8 +35,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
    only the `chaosBiomes:` section; "Worldz: Strip World" (files `26`-`29`)
    reads the shared top-level `strip:` section (corridor width, same as
    any other Worldz preset) plus its own `stripWorld:` section (spawn
-   strategy and the optional `bands:` biome-sequence subsection, GOALS 36).
-   Each ignores every other type's dedicated section.
+   strategy and the optional `bands:` biome-sequence subsection, GOALS 36);
+   "Worldz: Ocean Island" (files `30`-`33`) reads only its own
+   `oceanIsland:` section (GOALS 01, 04) plus the shared `overworldBorder`/
+   `netherBorder`/`endBorder`/`netherExterior` sections if set. Each
+   ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -73,7 +76,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `26-strip-world-basic.yaml` | GOALS 32 (Phase 6.2): a narrow strip world — corridor width (Z axis, void beyond) is new strip machinery; corridor length (X axis) is the ordinary square border, unmodified. **Select "Worldz: Strip World"**, not plain "Worldz". Requires 0.2.22+. |
 | `27-strip-world-narrow-fallback-portal.yaml` | GOALS 32: a deliberately narrow corridor (32-block width radius) exercising the fallback End-portal Z-candidate fix found during 6.1's spike — confirms the compact portal lands inside the corridor, not at a Z candidate the border's own (larger) radius would have wrongly allowed. **Select "Worldz: Strip World"**. |
 | `28-strip-world-nether-corridor.yaml` | GOALS 32's optional Nether strip: `strip.applyToNether: true` mirrors the same corridor width into the Nether, with its own independent length border and a compact fallback blaze site. **Select "Worldz: Strip World"**. |
-| `29-strip-world-biome-bands.yaml` | GOALS 36: `stripWorld.bands` walks an ordered five-biome sequence along the corridor's length every 256 blocks, wrapping once exhausted; terrain stays ordinary vanilla shape throughout. Requires opening **Customize** (a known gap, not a bug — see the file's own comment). **Select "Worldz: Strip World"**. Requires 0.2.24+. |
+| `29-strip-world-biome-bands.yaml` | GOALS 36: `stripWorld.bands` walks an ordered biome sequence along the corridor's length, wrapping once exhausted; terrain stays ordinary vanilla shape throughout. Applies straight from "Create World", no Customize visit needed (fixed in 0.2.27 — see [`MEMORY.md`](../../MEMORY.md)). **Select "Worldz: Strip World"**. Requires 0.2.27+. |
+| `30-ocean-island-default.yaml` | GOALS 01 (Phase 7.2): a default-sized (128-block radius) natural-looking ocean island — non-circular coastline, narrow beach/stony-shore ring, and a shallow-to-deep ocean gradient drawing from all nine vanilla ocean biomes further out. **Select "Worldz: Ocean Island"**. Requires 0.2.29+. |
+| `31-ocean-island-tiny.yaml` | GOALS 01's "1 chunk" floor: an 8-block-radius island. Exercises the documented tiny-island trade-off — the compact fallback End portal consumes most of the surface, since its safety margin can never "fit" at this scale. **Select "Worldz: Ocean Island"**. |
+| `32-ocean-island-huge.yaml` | GOALS 01's "huge" ceiling: a 4096-block-radius island, where the default 30% coastline perturbation should read as dramatic bays/headlands rather than a slightly-uneven circle. **Select "Worldz: Ocean Island"**. |
+| `33-ocean-island-distant-natural-islands.yaml` | GOALS 04: `oceanIsland.exclusionZoneEnabled: true` at a (deliberately test-friendly, smaller-than-default) 512-block radius — island/ocean shaping releases beyond it and the seed's own natural terrain resumes. **Select "Worldz: Ocean Island"**. |
 
 ### Why `01` showed ocean labeled as river
 
