@@ -141,6 +141,37 @@ public final class ObjectiveSite {
     }
 
     /**
+     * Narrows a supportive radius to also respect an ocean island's own radius (GOALS 01,
+     * DESIGN §24), which -- unlike every other exterior mechanism -- is deliberately
+     * <em>not</em> expressed through {@link ExteriorPlan.DimensionEnvelope} at all (§24.1/24.5:
+     * the flat single-depth envelope model can't represent the shallow-to-deep gradient), so
+     * the border/envelope-only overload above would otherwise report an ocean-island world as
+     * an unlimited normal world and silently skip the fallback End-portal guarantee entirely.
+     *
+     * @param borderEnabled whether the final border is a reachability bound
+     * @param finalBorderRadius final border half-width
+     * @param envelope exterior terrain bound
+     * @param island the world's ocean-island plan
+     * @return effective supportive radius, empty only when border, envelope, and island are
+     *     all inactive
+     */
+    public static OptionalInt supportiveRadius(
+        boolean borderEnabled,
+        int finalBorderRadius,
+        ExteriorPlan.DimensionEnvelope envelope,
+        IslandPlan island
+    ) {
+        if (!island.enabled()) {
+            return supportiveRadius(borderEnabled, finalBorderRadius, envelope);
+        }
+        int radius = borderEnabled ? finalBorderRadius : Integer.MAX_VALUE;
+        if (envelope.mode() != ExteriorMode.NORMAL) {
+            radius = Math.min(radius, envelope.solidRadiusBlocks());
+        }
+        return OptionalInt.of(Math.min(radius, island.radiusBlocks()));
+    }
+
+    /**
      * Narrows an X-axis supportive radius to also respect a strip world's width (GOALS 32),
      * whose Z bound is normally much smaller than the border/envelope's own radius. The
      * strip's length (X axis) already rides the same {@link #supportiveRadius} unmodified.

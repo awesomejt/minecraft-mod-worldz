@@ -943,6 +943,23 @@ rectangular shape.
       re-touching the identical call sites twice for no benefit (DESIGN
       §24.9). Nothing left here but test-config/documentation
       confirmation, folded into 7.4's acceptance pass below.
+      **Follow-up fix (0.2.30), found during 7.2's own review before any
+      in-game testing:** the fallback End-portal guarantee (beatability)
+      never fired for any ocean_island world. `WorldLimitManager`'s
+      `exteriorObjective` gate and `ObjectiveSite.supportiveRadius` only
+      ever checked `ExteriorPlan`/border state, and DESIGN §24.1/24.5
+      deliberately keep the island's exterior out of `ExteriorPlan`
+      entirely -- so every ocean_island world looked like an unlimited
+      normal world to this check and silently skipped the whole
+      guarantee. New `ObjectiveSite.supportiveRadius(..., IslandPlan)`
+      overload (tightest of border/envelope/island; unchanged for every
+      other preset) threaded through `ProgressionGuarantees.ensureEndPortal`
+      and the gate itself. Full design/rationale and one deliberately
+      deferred narrower edge case (`isSupportiveColumn`'s `LEGACY`
+      fast path can't distinguish island interior from open ocean, though
+      the existing safety-margin fallback logic sidesteps it in
+      practice) in DESIGN §24.9. 3 new tests; full suite green (348
+      tests); clean build.
 - [ ] 7.4 Test configs (tiny/default/huge island, 04 variant); docs;
       **[Jason]** acceptance including "does the island read as natural".
 

@@ -2177,3 +2177,41 @@ Decided 2026-07-19; no code yet — 7.2/7.3 implement from this design.
   real seed described in §24.2 holds even at `LEGACY` -- confirmed by the
   full test suite passing with zero changes needed to the seed-resolution
   path itself.
+- **Found and fixed during 7.2's own review, before any in-game testing:**
+  `WorldLimitManager.onServerStarted`'s `exteriorObjective` gate and
+  `ObjectiveSite.supportiveRadius` both only ever consulted
+  `ExteriorPlan`/border state to decide whether a world needs the fallback
+  End-portal guarantee. Since §24.1/24.5 deliberately keep the island's
+  exterior *out* of `ExteriorPlan` entirely (the flat single-depth
+  envelope model can't represent the gradient), every ocean_island world
+  looked exactly like an unlimited normal world to this check and the
+  guarantee silently never fired -- a complete beatability failure for
+  the whole preset, caught by re-reading `WorldLimitManager` against the
+  new `island` field rather than by a later bug report. Fixed with a new
+  `ObjectiveSite.supportiveRadius(borderEnabled, finalBorderRadius,
+  envelope, island)` overload (returns the tightest of border/envelope/
+  island radii; delegates unchanged to the existing overload when island
+  is disabled) and threading `IslandPlan` through
+  `ProgressionGuarantees.ensureEndPortal` and the `exteriorObjective`
+  gate. `ensureBlazeAccess` (Nether) needed no equivalent change --
+  GOALS 01 keeps the Nether completely vanilla, so its own guarantee
+  path is correctly untouched.
+- **Known, deliberately deferred edge case, not chased further:**
+  `ObjectiveSite.isSupportiveColumn` treats every column as supportive
+  whenever the layout plan is `LEGACY` (its documented fast path for "no
+  coordinated layout, assume supportive") -- but for ocean_island,
+  `LEGACY` doesn't mean "no information," it means "handled by
+  `IslandPlan` instead," so this fast path can't actually tell open ocean
+  from island interior. In practice this rarely matters: the fallback
+  portal's own `NATURAL_STRUCTURE_MARGIN` (128 blocks) means candidate
+  Z offsets other than `0` essentially never "fit" inside a modestly
+  sized island anyway, so placement already falls through to the
+  documented `(0, 0)` last resort -- unambiguously inside any island
+  shape regardless of amplitude. Only a fairly specific island size/
+  amplitude combination could theoretically place the fallback at a
+  candidate offset that clears the margin check yet lands outside the
+  perturbed coastline in that direction. Threading `IslandPlan` into
+  `isSupportiveColumn` itself would close this properly; deferred rather
+  than chased now given how narrow the actual exposure is -- revisit if
+  Jason's acceptance testing (large/oddly-amplituded islands especially)
+  ever actually surfaces it.

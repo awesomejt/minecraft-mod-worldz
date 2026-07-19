@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ObjectiveSite;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
@@ -38,6 +39,7 @@ final class ProgressionGuarantees {
         WorldLimitPlan.DimensionLimit limit,
         ExteriorPlan.DimensionEnvelope envelope,
         StripPlan strip,
+        IslandPlan island,
         WorldLayoutPlan layoutPlan,
         int originX,
         int originZ
@@ -46,7 +48,7 @@ final class ProgressionGuarantees {
             return;
         }
         OptionalInt supportiveRadius = ObjectiveSite.supportiveRadius(
-            limit.enabled(), limit.finalRadiusBlocks(), envelope
+            limit.enabled(), limit.finalRadiusBlocks(), envelope, island
         );
         if (supportiveRadius.isEmpty()) {
             return;

@@ -1244,6 +1244,43 @@ Durable decisions, verified API notes, and rationale that should survive across 
   task, not a new implementation one. 39 new tests; full suite green (345
   tests); clean build across all modules. Not yet tested in-game --
   config/tests files and MANUAL_TESTING acceptance section come with 7.4.
+- 2026-07-19 (Phase 7.2 follow-up fix, 0.2.30) — Self-review before any
+  in-game testing found a complete beatability failure: the fallback End
+  portal never gets built for any ocean_island world.
+  `WorldLimitManager.onServerStarted`'s `exteriorObjective` gate and
+  `ObjectiveSite.supportiveRadius` both only ever consulted
+  `ExteriorPlan`/border state, and DESIGN §24.1/24.5 deliberately keep
+  the island's own exterior *out* of `ExteriorPlan` (the flat
+  single-depth envelope model can't represent the shallow-to-deep
+  gradient) -- so every ocean_island world looked exactly like an
+  unlimited normal world to this specific check and the guarantee
+  silently never fired, even with `ensureEndPortal: true` configured.
+  **Lesson worth remembering, a second instance of a pattern already
+  named in this session (Phase 6.2a's `hasActiveExterior` miss, Phase 7.2's
+  own `applyTerrainAdjustments`/`hasActiveExterior` catches):** every time
+  a genuinely new "is this world shape-restricted at all" mechanism gets
+  added, there is more than one existing gate keying off the *old* signal
+  set (`ExteriorPlan`/border/strip) that needs auditing for the new one --
+  `effectiveModeAt`/`hasActiveExterior` were caught proactively during
+  7.2's own implementation, but this THIRD gate
+  (`ObjectiveSite.supportiveRadius`/`WorldLimitManager`'s
+  `exteriorObjective`) was missed even then, only caught by a deliberate
+  second read-through before declaring the phase ready for testing. Worth
+  actively grep'ing for every existing consumer of `ExteriorPlan`/
+  `envelope.mode()` the next time a mechanism is added that -- like
+  `IslandPlan` -- deliberately does NOT route through that shared
+  abstraction. Fixed with a new `ObjectiveSite.supportiveRadius(...,
+  IslandPlan)` overload (tightest of border/envelope/island; unchanged
+  for every other preset, confirmed by the existing overload's own tests
+  passing unmodified) threaded through `ProgressionGuarantees
+  .ensureEndPortal`. `ensureBlazeAccess` (Nether) needed no change --
+  GOALS 01 keeps the Nether fully vanilla. One narrower edge case
+  (`ObjectiveSite.isSupportiveColumn`'s `LEGACY` fast path can't
+  distinguish island interior from open ocean) found and deliberately
+  deferred, not fixed -- the existing safety-margin fallback logic
+  sidesteps it in the common case; full reasoning in DESIGN §24.9. 3 new
+  tests; full suite green (348 tests); clean build. Still not yet tested
+  in-game.
 
 ## Reference Log
 

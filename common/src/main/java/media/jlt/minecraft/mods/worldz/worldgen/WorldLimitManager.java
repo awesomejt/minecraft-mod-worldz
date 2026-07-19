@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import net.minecraft.server.MinecraftServer;
@@ -41,8 +42,13 @@ public final class WorldLimitManager {
         StripPlan overworldStrip = overworldGenerator instanceof EnvelopedChunkGenerator enveloped
             ? enveloped.strip()
             : StripPlan.disabled();
+        // The ocean island (GOALS 01, DESIGN §24) deliberately never expresses itself through
+        // ExteriorPlan -- the flat single-depth envelope model can't represent its shallow-to-
+        // deep gradient (§24.5) -- so this gate must check it separately, or an ocean-island
+        // world looks like an unlimited normal world here and skips the fallback End portal.
+        IslandPlan overworldIsland = limitedSource.island();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
-            && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()))
+            && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled() || overworldIsland.enabled()))
             || (plan.nether().ensureObjective() && exterior.nether().mode() != ExteriorMode.NORMAL);
         if (!plan.enabled() && !exteriorObjective) {
             return;
@@ -57,7 +63,8 @@ public final class WorldLimitManager {
         int originZ = limitedSource.originBlockZ();
         BorderInitResult overworldResult = initializeBorder(overworld, plan.overworld(), "Overworld", originX, originZ);
         ProgressionGuarantees.ensureEndPortal(
-            overworld, plan.overworld(), exterior.overworld(), overworldStrip, limitedSource.worldLayoutPlan(), originX, originZ
+            overworld, plan.overworld(), exterior.overworld(), overworldStrip, overworldIsland,
+            limitedSource.worldLayoutPlan(), originX, originZ
         );
         ServerLevel nether = server.getLevel(Level.NETHER);
         BorderInitResult netherResult = BorderInitResult.NONE;
