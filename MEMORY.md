@@ -837,6 +837,22 @@ Durable decisions, verified API notes, and rationale that should survive across 
   rate mode — no separate "how long will this take" calculation needed.
   This task is model/config/UI only; nothing resizes in a stepped way in
   a live world yet (that's 5b.2's tick driver).
+- 2026-07-18 — **Phase 5b.2 done (0.2.16):** the stepped-resize tick
+  driver, simplified from the original plan during implementation — no
+  "next step due" threshold is persisted at all. Instead
+  `WorldLimitState` stores the tick a stepped resize *began* at
+  (per dimension), and every server tick the driver recomputes
+  `BorderSchedule.radiusAtTick(elapsed)` fresh from that origin and calls
+  `setSize` unconditionally. Since the radius is a pure function of
+  elapsed clock ticks (not a running counter), this needs no
+  "missed ticks while closed" special-casing — a fresh recompute after
+  any gap is automatically correct. Same technique as the
+  `getDefaultClockTime()` fix: never trust an incrementally-updated
+  counter when a pure recompute from the authoritative clock is
+  available and just as cheap. `WorldLimitManager` itself still can't be
+  unit-tested (see the `NoClassDefFoundError` lesson two entries up) —
+  this task's correctness rests entirely on `BorderSchedule`'s existing
+  JUnit coverage plus Jason's upcoming in-game acceptance (5b.3).
 
 ## Reference Log
 

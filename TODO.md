@@ -357,12 +357,33 @@ Design is settled; these tasks are execution.
       (255 tests). Driver (5b.2) and test configs (5b.3) still to come —
       this task is data model + config + UI only, nothing actually
       resizes in a stepped way yet.
-- [ ] 5b.2 Step driver in `WorldLimitManager.onServerTick`: apply due steps
+- [x] 5b.2 Step driver in `WorldLimitManager.onServerTick`: apply due steps
       via `WorldBorder.setSize` (instant snap), persist next-step tick in
       `WorldLimitState`, recompute-on-restart semantics (radius is a pure
       function of the per-dimension clock — use `getDefaultClockTime`, see
       the Deviation log; never `getGameTime`). Missed steps while the server
-      was closed apply on the next tick.
+      was closed apply on the next tick. **Done (0.2.16):** simplified from
+      the original plan — instead of a "next step due" threshold,
+      `WorldLimitState` persists the stepped resize's **origin tick**
+      (when it began) per dimension; every tick, `driveStepIfActive`
+      recomputes `schedule.radiusAtTick(dimensionTicks(level) -
+      originTick)` and calls `setSize` unconditionally (idempotent when
+      unchanged), stopping and clearing the origin once elapsed reaches
+      `schedule.totalDurationTicks()`. Because the radius is a pure
+      function of elapsed clock ticks, this needs no "next step" bookkeeping
+      at all and self-heals across restarts/missed ticks for free — a
+      `WorldLimitManager`-internal `BorderInitResult(pendingStartTick,
+      stepOriginTick)` record threads both concepts through
+      `initializeBorder` without disturbing the existing, already-proven
+      continuous code path (it takes the exact same branches it always
+      did; the stepped branch is new and additive alongside it).
+      `WorldLimitState` gained the origin-tick fields/accessors following
+      its existing `pendingStartTick`/`clearPendingStart` shape.
+      `WorldLimitManager` isn't unit-testable (heavy vanilla worldgen
+      classes, same `NoClassDefFoundError` issue as `SpawnOriginManager` —
+      see MEMORY.md), so this task's correctness rests on the already
+      JUnit-covered `BorderSchedule` math plus 5b.3's in-game acceptance.
+      Full suite green (255 tests, unchanged — nothing new to test here).
 - [ ] 5b.3 Test configs mirroring Jason's two scenarios (8-radius start,
       +1 block/day to 1024; 1024 start, 10-day delay, −2 blocks/day to 32);
       config/tests README + MANUAL_TESTING rows with `/tick step` math;

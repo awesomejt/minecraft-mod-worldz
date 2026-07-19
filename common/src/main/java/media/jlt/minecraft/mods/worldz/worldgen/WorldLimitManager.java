@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
+import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -20,7 +21,8 @@ public final class WorldLimitManager {
 
     /**
      * Initializes both dimension borders once, after the server has loaded.
-     * Vanilla persists and advances each resulting border transition.
+     * Vanilla persists and advances each resulting continuous transition; stepped
+     * transitions are driven every tick by {@link #onServerTick}.
      *
      * @param server newly started logical server
      */
@@ -47,16 +49,16 @@ public final class WorldLimitManager {
 
         int originX = limitedSource.originBlockX();
         int originZ = limitedSource.originBlockZ();
-        long overworldStartTick = initializeBorder(overworld, plan.overworld(), "Overworld", originX, originZ);
+        BorderInitResult overworldResult = initializeBorder(overworld, plan.overworld(), "Overworld", originX, originZ);
         ProgressionGuarantees.ensureEndPortal(
             overworld, plan.overworld(), exterior.overworld(), limitedSource.worldLayoutPlan(), originX, originZ
         );
         ServerLevel nether = server.getLevel(Level.NETHER);
-        long netherStartTick = -1L;
+        BorderInitResult netherResult = BorderInitResult.NONE;
         if (nether != null) {
             // Layout origins are Overworld-only (DESIGN §18); the Nether's border and
             // progression objective remain centered at the world origin (0, 0).
-            netherStartTick = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
+            netherResult = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether());
         }
         ServerLevel end = server.getLevel(Level.END);
@@ -65,19 +67,24 @@ public final class WorldLimitManager {
         }
         overworld.getDataStorage().set(
             WorldLimitState.TYPE,
-            new WorldLimitState(true, overworldStartTick, netherStartTick)
+            new WorldLimitState(
+                true,
+                overworldResult.pendingStartTick(), netherResult.pendingStartTick(),
+                overworldResult.stepOriginTick(), netherResult.stepOriginTick()
+            )
         );
     }
 
     /**
-     * Starts delayed transitions whose persisted game-time deadline is due.
+     * Starts delayed continuous transitions whose persisted game-time deadline is due, and
+     * drives every tick still-active stepped transitions.
      *
      * @param server ticking logical server
      */
     public static void onServerTick(MinecraftServer server) {
         ServerLevel overworld = server.overworld();
         WorldLimitState state = overworld.getDataStorage().get(WorldLimitState.TYPE);
-        if (state == null || !state.initialized() || !state.hasPendingStarts()) {
+        if (state == null || !state.initialized() || (!state.hasPendingStarts() && !state.hasActiveSteps())) {
             return;
         }
         BiomeSource source = overworld.getChunkSource().getGenerator().getBiomeSource();
@@ -87,13 +94,20 @@ public final class WorldLimitManager {
 
         WorldLimitPlan plan = limitedSource.worldLimits();
         startIfDue(state, true, overworld, plan.overworld(), "Overworld");
+        driveStepIfActive(state, true, overworld, plan.overworld(), "Overworld");
         ServerLevel nether = server.getLevel(Level.NETHER);
         if (nether != null) {
             startIfDue(state, false, nether, plan.nether(), "Nether");
+            driveStepIfActive(state, false, nether, plan.nether(), "Nether");
         }
     }
 
-    private static long initializeBorder(
+    /** Pending continuous-delay and active-stepped-origin ticks resulting from initialization. */
+    private record BorderInitResult(long pendingStartTick, long stepOriginTick) {
+        private static final BorderInitResult NONE = new BorderInitResult(-1L, -1L);
+    }
+
+    private static BorderInitResult initializeBorder(
         ServerLevel level,
         WorldLimitPlan.DimensionLimit limit,
         String dimensionName,
@@ -101,7 +115,7 @@ public final class WorldLimitManager {
         int originZ
     ) {
         if (!limit.enabled()) {
-            return -1L;
+            return BorderInitResult.NONE;
         }
 
         BorderSchedule schedule = limit.schedule();
@@ -110,16 +124,22 @@ public final class WorldLimitManager {
         if (schedule.initialRadiusBlocks() == schedule.finalRadiusBlocks()) {
             border.setSize(schedule.finalDiameterBlocks());
             logSchedule(dimensionName, limit, schedule, "static");
-            return -1L;
+            return BorderInitResult.NONE;
+        }
+        if (schedule.style() == ResizeStyle.STEPPED) {
+            border.setSize(schedule.initialDiameterBlocks());
+            long originTick = dimensionTicks(level);
+            logSchedule(dimensionName, limit, schedule, "stepped, tracking from tick " + originTick);
+            return new BorderInitResult(-1L, originTick);
         }
         if (schedule.delayTicks() > 0L) {
             border.setSize(schedule.initialDiameterBlocks());
             long startTick = Math.addExact(dimensionTicks(level), schedule.delayTicks());
             logSchedule(dimensionName, limit, schedule, "waiting until game tick " + startTick);
-            return startTick;
+            return new BorderInitResult(startTick, -1L);
         }
         startTransition(level, limit, dimensionName);
-        return -1L;
+        return BorderInitResult.NONE;
     }
 
     private static void initializeEndBorder(ServerLevel end, WorldLimitPlan.EndLimit limit, WorldLimitPlan.DimensionLimit overworld) {
@@ -170,6 +190,35 @@ public final class WorldLimitManager {
             );
         }
         logSchedule(dimensionName, limit, schedule, "started");
+    }
+
+    /**
+     * Applies the current tick's radius for an active stepped resize, and stops tracking it
+     * once it reaches its final radius. The radius is a pure function of elapsed clock ticks
+     * (see {@link BorderSchedule#radiusAtTick}), so this self-heals across restarts and any
+     * ticks missed while the server was closed -- there is no separate persisted lerp state.
+     */
+    private static void driveStepIfActive(
+        WorldLimitState state,
+        boolean overworld,
+        ServerLevel level,
+        WorldLimitPlan.DimensionLimit limit,
+        String dimensionName
+    ) {
+        OptionalLong origin = state.stepOriginTick(overworld);
+        if (origin.isEmpty()) {
+            return;
+        }
+        BorderSchedule schedule = limit.schedule();
+        long elapsed = dimensionTicks(level) - origin.getAsLong();
+        WorldBorder border = level.getWorldBorder();
+        if (elapsed >= schedule.totalDurationTicks()) {
+            border.setSize(schedule.finalDiameterBlocks());
+            state.clearStepOrigin(overworld);
+            logSchedule(dimensionName, limit, schedule, "stepped, finished");
+            return;
+        }
+        border.setSize(schedule.radiusAtTick(elapsed) * 2.0);
     }
 
     /**
