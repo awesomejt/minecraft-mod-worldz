@@ -771,6 +771,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `isInsideCloseToBorder`), and vanilla border damage lives in
   `LivingEntity` via `damagePerBlock`/`safeZone` (we zero it and run our
   own timer in `WorldLimitManager.onServerTick`).
+- 2026-07-18 (Phase 5 acceptance results + one gap) — Config 20 (static
+  border) and config 22 (slow 2048→256 collapse over 40 days after a
+  10-day delay) both **pass** in-game under 0.2.12; config 22 "works
+  really well", only pre-existing biome-painting artifacts noted (not new;
+  related to the Backlog's chaos-biomes water-relabel discussion). Config
+  21 exposed a gap, not a bug: `WorldzConfig.MIN_BORDER_RADIUS_BLOCKS = 64`
+  clamps the initial radius up, so `initialRadiusBlocks: 4` rendered as a
+  64-block border. Jason wants very small starts (1–2 blocks). Decision:
+  **lower the floor to 1 globally** (TODO 5.5) — initial, final, and End
+  minimum all droppable to 1; beatability is the user's responsibility.
+  Safe because nothing structural needs 64 (BorderSchedule only requires
+  `> 0`, vanilla setSize accepts tiny diameters); the 64 was an arbitrary
+  sanitizer floor. Planning-pass only — logged for an execution model, not
+  yet changed.
 
 ## Reference Log
 
