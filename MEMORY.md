@@ -807,8 +807,10 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `BorderSchedule` and `EndLimit.resolveRadiusBlocks` already do — check a
   class's import list for heavy `net.minecraft.*` worldgen types before
   assuming a plain `assertEquals` test against it will even load. Full
-  suite green (244 tests); 0.2.14 deployed to Worldz-Test — Jason to
-  re-test config 21 again.
+  suite green (244 tests); 0.2.14 deployed to Worldz-Test. **Jason
+  confirmed config 21 working, 2026-07-18** — both the radius-floor
+  (5.5) and spawn-offset (5.6) fixes hold up in-game; config 21 is
+  closed out.
 
 ## Reference Log
 

@@ -258,9 +258,9 @@ composed with the new world types; plus the one real gap (the End).
       applying in-game). **[Jason] acceptance:** config 20 ✓ (2026-07-18),
       config 22 ✓ (2026-07-18, slow 2048→256/40-day collapse — works well;
       only pre-existing biome-painting artifacts noted, see Backlog); config
-      21 was blocked on the radius floor (5.5), then on the spawn-offset
-      defect (5.6), both fixed — needs retest; configs 21/23 + the two UI
-      checks still outstanding.
+      21 ✓ (2026-07-18, after 5.5's radius-floor fix and 5.6's
+      spawn-offset fix, both under 0.2.14); config 23 + the two UI checks
+      still outstanding.
 - [x] 5.5 Lower the border radius floor (found in config 21 acceptance:
       `initialRadiusBlocks: 4` rendered as a 64-block border). **Done
       (0.2.13):** `WorldzConfig.MIN_BORDER_RADIUS_BLOCKS = 64 → 1` per
@@ -278,8 +278,9 @@ composed with the new world types; plus the one real gap (the End).
       demonstrate the (now 1-block) clamp; full suite green afterward,
       no other test depended on the old floor. Config 21's test config
       dropped to a genuine 2-block start and its comments updated;
-      0.2.13 built and deployed to Worldz-Test. **[Jason] to re-test
-      config 21.**
+      0.2.13 built and deployed to Worldz-Test. **[Jason] confirmed
+      2026-07-18** (superseded by 5.6's spawn-offset fix, retested
+      together).
 - [x] 5.6 Fix `starter_at_origin` spawning beyond a tiny border (found
       retesting config 21 after 5.5: Jason spawned outside the border and
       took vanilla border damage). Root cause:
@@ -309,7 +310,7 @@ composed with the new world types; plus the one real gap (the End).
       MC-facing manager classes. Four new `WorldLimitPlanTest` cases
       cover disabled, comfortably-large, tiny, and 1-block borders; full
       suite green (244 tests). 0.2.14 built and deployed to Worldz-Test.
-      **[Jason] to re-test config 21.**
+      **[Jason] confirmed config 21 working, 2026-07-18.**
 
 ## Phase 5b — Stepped border resizing (GOALS 19–20 clarification)
 
