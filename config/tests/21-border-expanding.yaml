@@ -1,9 +1,17 @@
 # GOALS 19: expanding world -- starts at a small radius, holds there for an
-# initial delay, then grows continuously at a configured rate. Use an
-# operator's `/tick step <ticks>` (1 Minecraft day = 24000 ticks) to skip
-# through the delay and resize period quickly instead of waiting in real
-# time -- `/time set`/`/time add` only change the daylight cycle, not the
-# per-dimension elapsed-tick counter the border schedule actually runs on.
+# initial delay, then grows continuously at a configured rate. Two ways to
+# skip through the schedule instead of waiting in real time (verified
+# against 26.2's TimeCommand, 2026-07-18 -- in this version `/time` moves
+# the dimension's WorldClock itself, the exact counter the border schedule
+# reads; the daylight cycle is just a timeline derived from it):
+#  - `/time add <Nd>` (run in the Overworld) jumps the clock instantly --
+#    perfect for burning through the *delay*. It will NOT fast-forward a
+#    resize already in progress, because vanilla's border lerp counts down
+#    per real tick, independent of the clock.
+#  - `/tick step <ticks>` (1 day = 24000) actually runs ticks, so it
+#    advances both the clock AND an in-progress resize -- use it to watch
+#    the border move. Avoid `/time set` backward; the schedule never
+#    un-starts, it just confuses the pending-delay math.
 #
 # Requires 0.2.12+: earlier versions compared the delay against the wrong
 # clock (ServerLevel.getGameTime(), which 26.2 no longer keeps in sync with
@@ -12,24 +20,27 @@
 # Deviation log entry. Delete any world created with an older jar and
 # start fresh; its stuck state isn't fixable in place.
 #
-# This file's own resizeDelayDays/resizeDays (5 and 1) mean a full test is
-# 6 in-game days = 144000 ticks total. Steps once in-game:
+# This file's resizeDelayDays/resizeDays (2 and 98) make a deliberately
+# slow reveal: after the delay the border creeps from 64 to 1024 over 98
+# days, roughly 10 radius-blocks per day. Steps once in-game (adjust the
+# tick counts if you change the values above):
 #  1. Confirm the border starts at 64 (radius, clamped up from
-#     initialRadiusBlocks: 16) and does not move yet.
-#  2. `/tick step 120000` (5 days) -- confirm it still hasn't started
-#     (resizeDelayDays: 5).
-#  3. `/tick step 12000` (half a day) -- confirm the border has now grown
-#     partway toward 1024, continuing smoothly rather than jumping.
-#  4. `/tick step 12000` again -- confirm it has reached exactly 1024 and
-#     stops there.
+#     initialRadiusBlocks: 4) and does not move yet.
+#  2. `/time add 2d` (or `/tick step 48000`) -- the delay expires; within
+#     a second or two the expansion should begin.
+#  3. `/tick step 24000` (1 day) -- confirm the border is ~10 blocks
+#     larger, continuing smoothly rather than jumping. Repeat to taste.
+#  4. To fast-forward to the end, `/tick step` the remainder in big
+#     chunks (98 days total = 2352000 ticks) -- confirm it reaches
+#     exactly 1024 and stops there.
 layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 16
+  initialRadiusBlocks: 4
   finalRadiusBlocks: 1024
-  resizeDelayDays: 5
-  resizeDays: 1
+  resizeDelayDays: 2
+  resizeDays: 98
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

@@ -269,12 +269,15 @@ border/exterior/limit mechanism itself, not any particular world type).
    portal exists somewhere near positive X (no real stronghold fits inside
    128 blocks).
 2. **Expanding border**, `21-border-expanding.yaml`. Follow the file's own
-   steps (use an operator's `/tick step <ticks>` to skip through the delay
-   and resize period instead of waiting in real time — `/time set`/`/time
-   add` only change the daylight cycle, not the tick counter the border
-   schedule runs on). Confirm: the border holds at 128 during the 1-day
-   delay, then grows continuously (not in a jump) to 1024 over the next 2
-   days and stops exactly there.
+   steps — they carry the current values and the time-skipping commands.
+   (26.2 note, verified 2026-07-18: `/time add <Nd>` now works for burning
+   through the *delay* — in this version `/time` advances the dimension's
+   WorldClock, the exact counter the schedule reads — but it will not
+   fast-forward a resize already in progress; the vanilla lerp counts down
+   per real tick, so use `/tick step` to watch the border actually move.)
+   Confirm: the border holds at its initial radius through the whole
+   delay, then grows continuously (not in a jump) and stops exactly at
+   `finalRadiusBlocks`.
 3. **Collapsing border**, `22-border-collapsing.yaml`. Same `/tick step`
    approach. Confirm: the border holds at 2048 during a *much longer*
    5-day delay (GOALS 20's explicit ask, contrast with 21's 1-day delay),

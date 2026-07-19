@@ -1411,3 +1411,19 @@ Durable decisions, verified API notes, and rationale that should survive across 
   a read-only source review; it only surfaced by decoding the actual
   persisted save files of a world that had visibly stopped behaving
   correctly.
+- **26.2's `/time` command operates on the WorldClock system, not just the
+  daylight cycle** (follow-up to the entry above; Jason noticed in-game,
+  verified in `TimeCommand` 2026-07-18): `/time add`/`/time set` without an
+  `of` clause resolve the *current dimension's* default clock and call
+  `ClockManager.addTicks`/`setTotalTicks` on it — the exact counter
+  `getDefaultClockTime()` reads, so `/time add 5d` legitimately triggers a
+  pending border-schedule delay (the daylight cycle is now a Timeline
+  *derived* from that clock; the old "only changes daylight" intuition is
+  pre-26.x). Nuance for test instructions: jumping the clock does **not**
+  fast-forward an in-progress continuous border resize — vanilla's
+  `MovingBorderExtent` counts down per real tick, independent of any clock
+  — so `/time add` to expire a delay, `/tick step` to watch movement.
+  (A Phase 5b *stepped* schedule, being a pure function of the clock,
+  *would* fast-forward under `/time add`.) `/time` also gained
+  `pause`/`resume`/`rate` and per-clock `of <clock>` targeting in 26.2 —
+  potentially useful for future test recipes.
