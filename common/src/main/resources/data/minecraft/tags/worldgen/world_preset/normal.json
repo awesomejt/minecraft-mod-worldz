@@ -4,6 +4,7 @@
     "jlt_worldz:worldz",
     "jlt_worldz:single_biome",
     "jlt_worldz:chaos_biomes",
-    "jlt_worldz:strip_world"
+    "jlt_worldz:strip_world",
+    "jlt_worldz:ocean_island"
   ]
 }

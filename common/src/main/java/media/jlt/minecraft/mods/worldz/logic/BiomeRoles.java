@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -57,5 +58,15 @@ public final class BiomeRoles {
     public static BiomeRole resolve(String biomeId, Map<String, BiomeRole> roleOverrides) {
         BiomeRole override = roleOverrides.get(biomeId);
         return override != null ? override : defaultRole(biomeId);
+    }
+
+    /**
+     * Returns the maintained set of vanilla ocean biome ids (every temperature and depth
+     * variant), for callers that need the full pool rather than a per-id role check.
+     *
+     * @return immutable list of canonical ocean biome ids
+     */
+    public static List<String> oceanIds() {
+        return List.copyOf(OCEAN_IDS);
     }
 }

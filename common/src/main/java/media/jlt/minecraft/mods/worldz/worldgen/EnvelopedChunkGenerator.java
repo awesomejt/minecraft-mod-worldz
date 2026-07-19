@@ -8,6 +8,9 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
@@ -91,6 +94,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private final Optional<StarterLandContext> starterLand;
     private final Optional<LayoutContext> layout;
     private final Optional<LimitedBiomeSource> originSource;
+    /**
+     * A natural ocean island (GOALS 01, DESIGN §24), read live from {@link #originSource}
+     * rather than persisted on this generator's own codec -- {@code LimitedBiomeSource} is
+     * already the single source of truth both the biome and terrain code paths share, so
+     * there is nothing to keep in sync by duplicating it here.
+     */
+    private final IslandPlan island;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -108,6 +118,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.originSource = dimension == Dimension.OVERWORLD && delegate.getBiomeSource() instanceof LimitedBiomeSource source
             ? Optional.of(source)
             : Optional.empty();
+        this.island = this.originSource.map(LimitedBiomeSource::island).orElse(IslandPlan.disabled());
     }
 
     /**
@@ -218,18 +229,37 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * @return terrain to generate at the column
      */
     private ExteriorMode effectiveModeAt(int relativeX, int relativeZ) {
+        if (this.island.enabled() && this.island.withinExclusionZone(relativeX, relativeZ)) {
+            // Inside the exclusion zone (or it's disabled, the GOALS 01 default): the island
+            // interior and its shore ring are real, unmasked generation (NORMAL); only open
+            // ocean beyond the shore is masked. Beyond the exclusion zone (GOALS 04), island
+            // shaping releases entirely and falls through to strip/envelope below, which stay
+            // disabled/normal for this preset -- so natural terrain resumes there.
+            double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
+            return distance > this.island.shoreWidthBlocks() ? ExteriorMode.OCEAN : ExteriorMode.NORMAL;
+        }
         ExteriorMode stripMode = this.strip.modeAt(relativeZ);
         return stripMode != ExteriorMode.NORMAL ? stripMode : this.envelope.modeAt(relativeX, relativeZ);
     }
 
     /**
-     * Returns whether either the square envelope or the strip-world width constraint changes
-     * delegated terrain anywhere in this dimension.
+     * Returns whether the square envelope, the strip-world width constraint, or the ocean
+     * island changes delegated terrain anywhere in this dimension.
      *
      * @return whether any exterior masking is active
      */
     private boolean hasActiveExterior() {
-        return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled();
+        return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled() || this.island.enabled();
+    }
+
+    /**
+     * Returns the real Minecraft world seed shared with {@code LimitedBiomeSource}'s biome
+     * classification (DESIGN §24.2), already resolved live via {@link #originSource} -- island
+     * shaping is Overworld-only, so this is only ever called when {@link #island} is enabled,
+     * which itself is only ever true when {@link #originSource} is present.
+     */
+    private long islandSeed() {
+        return this.originSource.orElseThrow().effectiveLayoutPlan().seed();
     }
 
     private static EnvelopedChunkGenerator resolve(
@@ -380,15 +410,17 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
             int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor, randomState);
             int layoutHeight = naturalHeight + (layoutFloor - naturalFloor);
-            return Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
+            int raisedHeight = Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
+            return Math.max(raisedHeight, islandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
         }
-        return ExteriorTerrainProfile.baseHeight(
-            mode,
-            isOceanFloor(type),
-            heightAccessor.getMinY(),
-            heightAccessor.getMaxY(),
-            getSeaLevel()
-        );
+        return this.island.enabled()
+            ? ExteriorTerrainProfile.baseHeight(
+                mode, isOceanFloor(type), heightAccessor.getMinY(), heightAccessor.getMaxY(), getSeaLevel(),
+                islandOceanDepthAt(x - originX(), z - originZ())
+            )
+            : ExteriorTerrainProfile.baseHeight(
+                mode, isOceanFloor(type), heightAccessor.getMinY(), heightAccessor.getMaxY(), getSeaLevel()
+            );
     }
 
     @Override
@@ -431,12 +463,26 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 fillStarterColumn(states, heightAccessor.getMinY(), minY, targetHeight - 1, naturalFloor);
             }
 
+            int islandHeight = islandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor);
+            if (islandHeight > naturalFloor) {
+                if (states == null) {
+                    states = copyColumn(naturalColumn, heightAccessor);
+                }
+                int minY = StarterLandProfile.foundationMinY(
+                    naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, heightAccessor.getMinY()
+                );
+                fillStarterColumn(states, heightAccessor.getMinY(), minY, islandHeight - 1, naturalFloor);
+            }
+
             return states == null ? naturalColumn : new NoiseColumn(heightAccessor.getMinY(), states);
         }
+        int depthBlocks = this.island.enabled()
+            ? islandOceanDepthAt(x - originX(), z - originZ())
+            : ExteriorTerrainProfile.OCEAN_DEPTH;
         BlockState[] states = new BlockState[heightAccessor.getHeight()];
         int minY = heightAccessor.getMinY();
         for (int index = 0; index < states.length; index++) {
-            states[index] = exteriorState(mode, minY + index, heightAccessor);
+            states[index] = exteriorState(mode, minY + index, heightAccessor, depthBlocks);
         }
         return new NoiseColumn(minY, states);
     }
@@ -449,6 +495,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             result.add(
                 "Worldz strip: widthRadius=" + this.strip.widthRadiusBlocks()
                     + ", widthMode=" + this.strip.widthMode().serializedName()
+            );
+        }
+        if (this.island.enabled()) {
+            result.add(
+                "Worldz island: radius=" + this.island.radiusBlocks()
+                    + ", amplitude=" + this.island.shapeAmplitude()
+                    + ", shoreWidth=" + this.island.shoreWidthBlocks()
+                    + ", exclusionZone=" + (this.island.exclusionZoneEnabled()
+                        ? "radius=" + this.island.exclusionZoneRadiusBlocks() : "<disabled>")
             );
         }
         this.starterLand.ifPresent(context -> result.add(
@@ -495,11 +550,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         int maxY = chunk.getMaxY();
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
-                ExteriorMode mode = this.effectiveModeAt(x - originX(), z - originZ());
+                int relativeX = x - originX();
+                int relativeZ = z - originZ();
+                ExteriorMode mode = this.effectiveModeAt(relativeX, relativeZ);
                 if (mode != ExteriorMode.NORMAL) {
+                    int depthBlocks = this.island.enabled()
+                        ? islandOceanDepthAt(relativeX, relativeZ)
+                        : ExteriorTerrainProfile.OCEAN_DEPTH;
                     for (int y = minY; y <= maxY; y++) {
                         pos.set(x, y, z);
-                        BlockState state = exteriorState(mode, y, chunk);
+                        BlockState state = exteriorState(mode, y, chunk, depthBlocks);
                         BlockState oldState = chunk.getBlockState(pos);
                         if (oldState != state) {
                             if (oldState.hasBlockEntity()) {
@@ -521,7 +581,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * 2026-07-17 performance entry for the in-game symptoms this fixed.
      */
     private void applyTerrainAdjustments(ChunkAccess chunk, RandomState randomState, boolean repairOnly) {
-        if (this.layout.isEmpty() && this.starterLand.isEmpty()) {
+        if (this.layout.isEmpty() && this.starterLand.isEmpty() && !this.island.enabled()) {
             return;
         }
         WorldLayoutPlan plan = this.layout.map(LayoutContext::plan).orElse(null);
@@ -558,6 +618,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                             naturalFloor, this.starterLand.get().plan().foundationDepthBlocks(), chunk.getMinY()
                         );
                         int maxY = repairOnly ? targetHeight - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : targetHeight - 1;
+                        fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
+                    }
+                }
+
+                if (this.island.enabled()) {
+                    int islandHeight = islandTargetHeight(x, z, chunk, randomState, naturalFloor, layoutFloor);
+                    if (islandHeight > naturalFloor) {
+                        int minY = StarterLandProfile.foundationMinY(naturalFloor, DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS, chunk.getMinY());
+                        int maxY = repairOnly ? islandHeight - 1 - PRESERVED_SURFACE_SHELL_BLOCKS : islandHeight - 1;
                         fillStarterColumn(chunk, pos, x, z, minY, maxY, naturalFloor);
                     }
                 }
@@ -643,6 +712,57 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             );
         }
         return Math.min(target, heightAccessor.getMaxY() + 1);
+    }
+
+    /**
+     * Computes the ocean island's guaranteed-land raise (GOALS 01, DESIGN §24.3), mirroring
+     * {@link #starterLandTargetHeight}'s shape exactly but keyed on the perturbed shore
+     * distance instead of a raw circular one. Returns {@code heightAccessor.getMinY()} (a
+     * harmless no-op once combined with {@code Math.max}) whenever the island is disabled,
+     * beyond the exclusion zone, or at/beyond the shore's own outer edge -- the last case is
+     * already masked to {@code OCEAN} by {@link #effectiveModeAt}, so there is nothing to
+     * raise there regardless.
+     */
+    private int islandTargetHeight(
+        int x,
+        int z,
+        LevelHeightAccessor heightAccessor,
+        RandomState randomState,
+        int naturalFloor,
+        int blendBaseline
+    ) {
+        int relativeX = x - originX();
+        int relativeZ = z - originZ();
+        if (!this.island.enabled() || !this.island.withinExclusionZone(relativeX, relativeZ)) {
+            return heightAccessor.getMinY();
+        }
+        double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
+        if (distance >= this.island.shoreWidthBlocks()) {
+            return heightAccessor.getMinY();
+        }
+        double reliefNoise = randomState.getOrCreateNoise(Noises.SURFACE_SECONDARY).getValue(
+            x * IslandShapeProfile.RELIEF_NOISE_SCALE, 0.0, z * IslandShapeProfile.RELIEF_NOISE_SCALE
+        );
+        int target = IslandShapeProfile.targetHeight(
+            distance, this.island.shoreWidthBlocks(), blendBaseline, getSeaLevel(), reliefNoise
+        );
+        return Math.min(target, heightAccessor.getMaxY() + 1);
+    }
+
+    /**
+     * Computes the ocean island's shallow-to-deep seabed depth at one column (GOALS 01,
+     * DESIGN §24.5). Only ever called once {@link #island} is confirmed enabled.
+     */
+    private int islandOceanDepthAt(int relativeX, int relativeZ) {
+        double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
+        double beyondShore = distance - this.island.shoreWidthBlocks();
+        return IslandOceanProfile.floorDepthBelowSeaLevel(
+            beyondShore,
+            this.island.oceanShallowWidthBlocks(),
+            this.island.oceanDeepenWidthBlocks(),
+            this.island.oceanShallowDepthBlocks(),
+            this.island.oceanDeepDepthBlocks()
+        );
     }
 
     private int naturalOceanFloorHeight(
@@ -797,7 +917,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return Optional.of(new LayoutContext(source));
     }
 
-    private BlockState exteriorState(ExteriorMode mode, int y, LevelHeightAccessor heightAccessor) {
+    private BlockState exteriorState(ExteriorMode mode, int y, LevelHeightAccessor heightAccessor, int depthBlocks) {
         if (mode == ExteriorMode.VOID) {
             return Blocks.AIR.defaultBlockState();
         }
@@ -805,7 +925,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             y,
             heightAccessor.getMinY(),
             heightAccessor.getMaxY(),
-            getSeaLevel()
+            getSeaLevel(),
+            depthBlocks
         )) {
             case BEDROCK -> Blocks.BEDROCK.defaultBlockState();
             case STONE -> Blocks.STONE.defaultBlockState();

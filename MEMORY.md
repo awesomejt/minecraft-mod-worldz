@@ -1191,6 +1191,59 @@ Durable decisions, verified API notes, and rationale that should survive across 
   (`IslandPlan` unconditionally supplies the whole Overworld exterior).
   Full design in DESIGN §24. Design pass only, no implementation yet --
   7.2 builds from this.
+- 2026-07-19 (Phase 7.2, ocean island core, 0.2.29) — Built from §24's
+  design; one real pivot found only during implementation, not caught by
+  the design pass itself: ocean_island's `WorldLayoutPlan` ended up
+  `LayoutMode.LEGACY`, not the `SINGLE_BIOME` §24.2 originally sketched.
+  `SINGLE_BIOME` mode has no notion of a radius at all -- its
+  `landFactor` is unconditionally `1.0` everywhere, which would raise the
+  *entire infinite world* toward guaranteed-land height, fighting the
+  island's own shape-aware raise everywhere outside the coastline. The
+  "free real seed" finding from §24.2 held anyway: `WorldLayoutPlan.seed`
+  is a plain field re-seeded the same way regardless of `mode`, so
+  `LimitedBiomeSource.effectiveLayoutPlan().seed()` still works perfectly
+  at `LEGACY`. **Lesson worth remembering:** a design pass verifying "is
+  this API/field accessible from here" (§24.2's `RandomState`-vs-
+  `Climate.Sampler` check, the `LayoutContext.plan()` live-reference
+  check) does not by itself verify "does this API's *side effect* compose
+  correctly with what I'm about to layer on top of it" -- the SINGLE_BIOME
+  conflict was a semantic interaction, not an access question, and only
+  showed up once the terrain-height code was actually being written
+  against both systems at once.
+  Caught the same "early-exit skips a new mechanism" bug class Phase
+  6.2a's own retrospective already named, before it shipped this time
+  rather than after: `EnvelopedChunkGenerator.applyTerrainAdjustments`'s
+  `layout.isEmpty() && starterLand.isEmpty()` skip and `hasActiveExterior`'s
+  OR-chain both needed `|| island.enabled()` added, found by deliberately
+  re-checking every early-exit against the new field while writing the
+  terrain code, not by a later bug report.
+  Applied the strip_world fieldless-preset lesson (0.2.27's fix)
+  proactively instead of reactively: `oceanIslandDefaults` was wired into
+  every branch of `LimitedBiomeSource.resolve()` (allowed biomes, starter,
+  layout, spawn strategy, the new `island` field) from this task's first
+  draft, rather than being discovered missing after Jason hit it in-game
+  the way strip_world's bands were.
+  `ExteriorTerrainProfile` gained backward-compatible explicit-depth
+  overloads (`oceanFloorY`/`oceanLayerAt`/`baseHeight`, each now also
+  taking a `depthBlocks` param; the original fixed-depth overloads
+  delegate to them) so the ocean gradient reuses the exact same
+  bedrock/stone/water/air block-layer classification every other exterior
+  mode already has -- zero behavior change for `single_biome`/
+  `chaos_biomes`/`strip_world`'s own plain `ExteriorMode.OCEAN` option,
+  confirmed by the full existing test suite passing unchanged.
+  `resolveStripWorldAllowed` renamed to `resolveFullVanillaOverworldAllowed`
+  in `LimitedBiomeSource` -- it was never actually strip-specific (just
+  "the full `#minecraft:is_overworld` tag"), and ocean_island's own
+  fieldless default plus its GOALS-04 exclusion-zone fallback delegate
+  both needed the identical thing.
+  The GOALS 04 exclusion-zone mechanism shipped as part of this task, not
+  as a separate 7.3 change -- `IslandPlan.withinExclusionZone` was baked
+  into every column-classification call site from the start, since
+  retrofitting it afterward would have meant re-touching the same call
+  sites twice. 7.3 is therefore closed out as a test-config/documentation
+  task, not a new implementation one. 39 new tests; full suite green (345
+  tests); clean build across all modules. Not yet tested in-game --
+  config/tests files and MANUAL_TESTING acceptance section come with 7.4.
 
 ## Reference Log
 

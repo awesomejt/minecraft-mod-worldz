@@ -10,8 +10,11 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.AllowedEntryFilter;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
+import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
@@ -70,6 +73,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Codec.BOOL.optionalFieldOf("allow_rivers").forGetter(source -> Optional.of(source.allowRivers)),
         Codec.BOOL.optionalFieldOf("allow_oceans").forGetter(source -> Optional.of(source.allowOceans)),
         Codec.BOOL.optionalFieldOf("allow_beaches").forGetter(source -> Optional.of(source.allowBeaches)),
+        IslandCodecs.PLAN_CODEC.optionalFieldOf("island").forGetter(source -> Optional.of(source.island)),
         Codec.STRING.optionalFieldOf("world_type").forGetter(source -> Optional.<String>empty()),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
@@ -84,6 +88,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final boolean allowRivers;
     private final boolean allowOceans;
     private final boolean allowBeaches;
+    private final IslandPlan island;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
@@ -103,6 +108,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowRivers,
         boolean allowOceans,
         boolean allowBeaches,
+        IslandPlan island,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -117,6 +123,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.allowRivers = allowRivers;
         this.allowOceans = allowOceans;
         this.allowBeaches = allowBeaches;
+        this.island = island;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -126,7 +133,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // asks this biome source for its possible biomes or an actual biome.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
             allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan,
-            allowRivers, allowOceans, allowBeaches, biomeGetter
+            allowRivers, allowOceans, allowBeaches, island, biomeGetter
         ));
     }
 
@@ -142,6 +149,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Boolean> encodedAllowRivers,
         Optional<Boolean> encodedAllowOceans,
         Optional<Boolean> encodedAllowBeaches,
+        Optional<IslandPlan> encodedIsland,
         Optional<String> encodedWorldType,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -160,6 +168,11 @@ public final class LimitedBiomeSource extends BiomeSource {
         // generic preset's own defaults, silently ignoring stripWorld.bands entirely.
         boolean stripWorldDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("strip_world"::equals).orElse(false);
+        // Same fix, same reason, for ocean_island (GOALS 01/04, DESIGN §24): without this
+        // branch a config-only "select preset, Create World" world would silently get no
+        // island at all (IslandPlan.disabled() fallback further down).
+        boolean oceanIslandDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("ocean_island"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -167,17 +180,17 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : stripWorldDefaults
-                        ? () -> resolveStripWorldAllowed(biomeGetter)
+                    : stripWorldDefaults || oceanIslandDefaults
+                        ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                         : () -> resolveConfiguredBiomes(config, biomeGetter));
 
         // Every encoded instance has starter_radius. Its presence distinguishes a
         // persisted "no starter biome" from the fieldless preset that consults config.
-        // strip_world never has a starter biome at all (GOALS 32: a shape, not a biome
-        // restriction) -- Optional.empty() directly, not a fallback lookup.
+        // strip_world/ocean_island never have a starter biome at all (GOALS 32/01: a shape,
+        // not a biome restriction) -- Optional.empty() directly, not a fallback lookup.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : stripWorldDefaults
+            : stripWorldDefaults || oceanIslandDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -199,7 +212,10 @@ public final class LimitedBiomeSource extends BiomeSource {
             : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
         // A fresh random sampling seed is picked once per newly created fieldless-preset
         // world and then re-seeded to the real Minecraft world seed at generation time
-        // (DESIGN §20.4) -- this placeholder never reaches actual sampling.
+        // (DESIGN §20.4) -- this placeholder never reaches actual sampling. ocean_island
+        // deliberately always stays LEGACY (DESIGN §24.2) -- its land biome is resolved
+        // entirely by IslandPlan, not WorldLayoutPlan, so it never reads config.layout here
+        // even though that's the generic preset's own fallback for every other branch.
         WorldLayoutPlan worldLayout = encodedStarterRadius.isPresent()
             ? encodedWorldLayout.orElseGet(WorldLayoutPlan::legacy)
             : encodedWorldLayout.orElseGet(() -> chaosBiomesDefaults
@@ -212,12 +228,16 @@ public final class LimitedBiomeSource extends BiomeSource {
                         LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
                         WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
                     )
-                    : stripWorldDefaults && config.stripWorld.bands.enabled
-                        ? WorldLayoutPlan.resolveBands(
-                            config.stripWorld.bands.biomes, config.stripWorld.bands.widthBlocks,
-                            config.stripWorld.bands.seedRandomOrder, Map.of(), new Random().nextLong()
-                        )
-                        : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
+                    : oceanIslandDefaults
+                        ? WorldLayoutPlan.legacy()
+                        : stripWorldDefaults && config.stripWorld.bands.enabled
+                            ? WorldLayoutPlan.resolveBands(
+                                config.stripWorld.bands.biomes, config.stripWorld.bands.widthBlocks,
+                                config.stripWorld.bands.seedRandomOrder, Map.of(), new Random().nextLong()
+                            )
+                            : WorldLayoutPlan.fromConfig(config, new Random().nextLong()));
+        // ocean_island has no spawn-strategy option at all (DESIGN §24.8) -- always
+        // STARTER_AT_ORIGIN, regardless of what the generic preset's own config says.
         SpawnStrategy spawnStrategy = encodedStarterRadius.isPresent()
             ? encodedSpawnStrategy.map(SpawnStrategy::parse).orElse(SpawnStrategy.STARTER_AT_ORIGIN)
             : encodedSpawnStrategy.map(SpawnStrategy::parse).orElseGet(() -> chaosBiomesDefaults
@@ -226,11 +246,15 @@ public final class LimitedBiomeSource extends BiomeSource {
                     ? config.singleBiome.spawn.strategy
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
-                        : config.spawn.strategy);
+                        : oceanIslandDefaults
+                            ? SpawnStrategy.STARTER_AT_ORIGIN
+                            : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config
         // section is in play (GOALS 13/14, DESIGN §20.5, generalized to CHAOS in Phase 4.1
         // and STRIP_BANDS in the GOALS 36 follow-up); the generic fieldless preset falls
         // back to its own top-level fields (allow_beaches has no such field, so false).
+        // ocean_island never uses this pass-through mechanism at all (its own IslandPlan
+        // logic resolves every biome directly), so it always stays false here.
         boolean allowRivers = encodedAllowRivers.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowRivers
             : singleBiomeDefaults ? config.singleBiome.allowRivers
                 : stripWorldDefaults ? config.stripWorld.bands.allowRivers : config.allowRivers);
@@ -240,10 +264,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowBeaches = encodedAllowBeaches.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowBeaches
             : singleBiomeDefaults ? config.singleBiome.allowBeaches
                 : stripWorldDefaults ? config.stripWorld.bands.allowBeaches : false);
+        IslandPlan island = encodedIsland.orElseGet(
+            () -> oceanIslandDefaults ? IslandPlan.fromConfig(config.oceanIsland) : IslandPlan.disabled()
+        );
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
-            allowRivers, allowOceans, allowBeaches, encodedStarterRadius.isEmpty(), biomeGetter
+            allowRivers, allowOceans, allowBeaches, island, encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -278,6 +305,46 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowBeaches,
         HolderGetter<Biome> biomeGetter
     ) {
+        return customized(
+            allowedBiomes, starterBiome, starterRadiusBlocks, starterLandPlan, worldLimits, exteriorPlan,
+            worldLayoutPlan, spawnStrategy, allowRivers, allowOceans, allowBeaches, IslandPlan.disabled(), biomeGetter
+        );
+    }
+
+    /**
+     * Creates a source from values selected in the world-creation screen, including an
+     * explicit ocean-island plan (GOALS 01, DESIGN §24).
+     *
+     * @param allowedBiomes resolved direct allowed-biome holders
+     * @param starterBiome optional resolved starter biome
+     * @param starterRadiusBlocks starter-zone radius
+     * @param starterLandPlan persisted terrain guarantee
+     * @param worldLimits persisted border plan
+     * @param exteriorPlan persisted exterior-terrain plan
+     * @param worldLayoutPlan persisted coordinated-layout plan
+     * @param spawnStrategy persisted layout-origin and spawn strategy
+     * @param allowRivers let vanilla's own river biomes generate naturally
+     * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+     * @param allowBeaches let vanilla's own beach/stony-shore biomes generate naturally
+     * @param island resolved ocean-island plan, disabled for every other preset
+     * @param biomeGetter biome registry lookup used for vanilla climate parameters
+     * @return a fully explicit source independent of later YAML changes
+     */
+    public static LimitedBiomeSource customized(
+        HolderSet<Biome> allowedBiomes,
+        Optional<Holder<Biome>> starterBiome,
+        int starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        WorldLimitPlan worldLimits,
+        ExteriorPlan exteriorPlan,
+        WorldLayoutPlan worldLayoutPlan,
+        SpawnStrategy spawnStrategy,
+        boolean allowRivers,
+        boolean allowOceans,
+        boolean allowBeaches,
+        IslandPlan island,
+        HolderGetter<Biome> biomeGetter
+    ) {
         return new LimitedBiomeSource(
             () -> allowedBiomes,
             starterBiome,
@@ -290,6 +357,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             allowRivers,
             allowOceans,
             allowBeaches,
+            island,
             false,
             biomeGetter
         );
@@ -303,6 +371,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowRivers,
         boolean allowOceans,
         boolean allowBeaches,
+        IslandPlan island,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -369,9 +438,43 @@ public final class LimitedBiomeSource extends BiomeSource {
             }
         }
 
+        Map<String, Holder<Biome>> islandBiomes = resolveIslandBiomes(island, biomeGetter);
+        if (island.enabled()) {
+            possible.addAll(islandBiomes.values());
+        }
+
         return new Resolution(
-            HolderSet.direct(List.copyOf(allowedSet)), delegate, naturalDelegate, Set.copyOf(possible), layoutBiomes
+            HolderSet.direct(List.copyOf(allowedSet)), delegate, naturalDelegate, Set.copyOf(possible),
+            layoutBiomes, islandBiomes
         );
+    }
+
+    /**
+     * Resolves every biome id {@link IslandPlan} can ever select: the island's own land biome,
+     * the shore ring's beach/stony-shore pair, and the complete vanilla ocean-biome set (GOALS
+     * 01's gradient, DESIGN §24.5).
+     */
+    private static Map<String, Holder<Biome>> resolveIslandBiomes(IslandPlan island, HolderGetter<Biome> biomeGetter) {
+        if (!island.enabled()) {
+            return Map.of();
+        }
+        Set<String> ids = new LinkedHashSet<>();
+        ids.add(island.islandBiome());
+        ids.add("minecraft:beach");
+        ids.add("minecraft:stony_shore");
+        ids.addAll(BiomeRoles.oceanIds());
+
+        Map<String, Holder<Biome>> resolved = new LinkedHashMap<>();
+        for (String id : ids) {
+            ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(id));
+            Optional<Holder.Reference<Biome>> holder = biomeGetter.get(key);
+            if (holder.isEmpty()) {
+                WorldzCommon.LOGGER.warn("Unknown island biome '{}'; it will never be selected.", id);
+            } else {
+                resolved.put(id, holder.get());
+            }
+        }
+        return resolved;
     }
 
     private static Map<String, Holder<Biome>> resolveLayoutBiomes(WorldLayoutPlan plan, HolderGetter<Biome> biomeGetter) {
@@ -405,11 +508,13 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
-     * A strip world is a shape, not a biome restriction (GOALS 32): ordinary vanilla biome
-     * variety, matching {@link media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor}'s
-     * own explicit-customization resolution.
+     * A strip world or ocean island is a shape, not a biome restriction (GOALS 32, 01):
+     * ordinary vanilla biome variety, matching {@code StripWorldPresetEditor}'s own
+     * explicit-customization resolution. Also the fallback ocean_island's own delegate uses
+     * beyond an enabled exclusion zone (GOALS 04), so the seed's natural terrain reads with
+     * full vanilla variety, not a restricted list.
      */
-    private static HolderSet<Biome> resolveStripWorldAllowed(HolderGetter<Biome> biomeGetter) {
+    private static HolderSet<Biome> resolveFullVanillaOverworldAllowed(HolderGetter<Biome> biomeGetter) {
         return biomeGetter.get(BiomeTags.IS_OVERWORLD)
             .<HolderSet<Biome>>map(value -> value)
             .orElseThrow(() -> new IllegalStateException("Missing #minecraft:is_overworld biome tag."));
@@ -643,6 +748,16 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
+     * Returns the ocean-island plan baked into this world (GOALS 01, DESIGN §24), disabled
+     * for every preset except {@code ocean_island}.
+     *
+     * @return resolved island plan
+     */
+    public IslandPlan island() {
+        return this.island;
+    }
+
+    /**
      * Returns the current layout origin's X coordinate. Always {@code 0} unless
      * {@link #setOrigin(int, int)} has been called (see {@code SpawnOriginManager}).
      *
@@ -737,6 +852,36 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
+     * Resolves the ocean-island biome at one column (GOALS 01, DESIGN §24): the island's own
+     * biome inside the coastline, a beach/stony-shore pick in the shore ring, or the
+     * shallow-to-deep ocean gradient beyond it. Shares {@link #effectiveLayoutPlan}'s
+     * already-resolved real seed with {@code EnvelopedChunkGenerator}'s terrain code (DESIGN
+     * §24.2), so biome and terrain height can never disagree about where the coastline is.
+     *
+     * @param relativeX block X relative to the origin
+     * @param relativeZ block Z relative to the origin
+     * @return the resolved island biome, empty only if the registry lookup for it failed
+     */
+    private Optional<Holder<Biome>> islandBiomeAt(int relativeX, int relativeZ) {
+        long seed = this.effectiveLayoutPlan.seed();
+        double distance = this.island.distanceFromShore(relativeX, relativeZ, seed);
+        Map<String, Holder<Biome>> islandBiomes = this.resolution.get().islandBiomes();
+        String biomeId;
+        if (distance > this.island.shoreWidthBlocks()) {
+            double beyondShore = distance - this.island.shoreWidthBlocks();
+            biomeId = IslandOceanProfile.biomeAt(
+                relativeX, relativeZ, beyondShore, this.island.oceanShallowWidthBlocks(),
+                this.island.oceanRegionScaleBlocks(), seed
+            );
+        } else if (distance > 0.0) {
+            biomeId = IslandOceanProfile.shoreBiomeAt(relativeX, relativeZ, seed);
+        } else {
+            biomeId = this.island.islandBiome();
+        }
+        return Optional.ofNullable(islandBiomes.get(biomeId));
+    }
+
+    /**
      * Shared by {@link #getNoiseBiome} and {@link #isNaturalPassThroughAt} so the two never
      * disagree about where the pass-through applies.
      */
@@ -782,6 +927,12 @@ public final class LimitedBiomeSource extends BiomeSource {
         int blockZ = QuartPos.toBlock(quartZ);
         int originX = this.originBlockX;
         int originZ = this.originBlockZ;
+        if (this.island.enabled() && this.island.withinExclusionZone(blockX - originX, blockZ - originZ)) {
+            Optional<Holder<Biome>> islandResult = islandBiomeAt(blockX - originX, blockZ - originZ);
+            if (islandResult.isPresent()) {
+                return islandResult.get();
+            }
+        }
         if (this.exteriorPlan.overworld().modeAt(blockX - originX, blockZ - originZ) == ExteriorMode.OCEAN) {
             return this.oceanBiome.orElseThrow(() -> new IllegalStateException("Deep ocean biome is unavailable."));
         }
@@ -815,7 +966,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         MultiNoiseBiomeSource delegate,
         Optional<MultiNoiseBiomeSource> naturalDelegate,
         Set<Holder<Biome>> possibleBiomes,
-        Map<String, Holder<Biome>> layoutBiomes
+        Map<String, Holder<Biome>> layoutBiomes,
+        Map<String, Holder<Biome>> islandBiomes
     ) {
     }
 }

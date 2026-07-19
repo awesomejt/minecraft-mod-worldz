@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz;
 
 import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
+import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
@@ -21,5 +22,6 @@ final class WorldzNeoForgeClient {
         event.register(SingleBiomePresetEditor.SINGLE_BIOME_PRESET, SingleBiomePresetEditor.INSTANCE);
         event.register(ChaosBiomesPresetEditor.CHAOS_BIOMES_PRESET, ChaosBiomesPresetEditor.INSTANCE);
         event.register(StripWorldPresetEditor.STRIP_WORLD_PRESET, StripWorldPresetEditor.INSTANCE);
+        event.register(OceanIslandPresetEditor.OCEAN_ISLAND_PRESET, OceanIslandPresetEditor.INSTANCE);
     }
 }

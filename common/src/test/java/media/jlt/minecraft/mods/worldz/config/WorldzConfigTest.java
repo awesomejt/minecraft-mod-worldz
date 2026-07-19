@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
@@ -544,6 +545,10 @@ class WorldzConfigTest {
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
                 + ", allowBeaches=false"
                 + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
+                + ", oceanIsland=islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
+                + ", shoreWidthBlocks=12, oceanShallowWidthBlocks=64, oceanDeepenWidthBlocks=128"
+                + ", oceanShallowDepthBlocks=8, oceanDeepDepthBlocks=32, oceanRegionScaleBlocks=128"
+                + ", exclusionZone=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -761,6 +766,84 @@ class WorldzConfigTest {
 
         assertEquals(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, tooSmall.stripWorld.bands.widthBlocks);
         assertEquals(WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS, tooLarge.stripWorld.bands.widthBlocks);
+    }
+
+    @Test
+    void oceanIslandSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              islandBiome: desert
+              radiusBlocks: 256
+              shapeAmplitude: 0.4
+              shoreWidthBlocks: 16
+              oceanShallowWidthBlocks: 32
+              oceanDeepenWidthBlocks: 64
+              oceanShallowDepthBlocks: 4
+              oceanDeepDepthBlocks: 40
+              oceanRegionScaleBlocks: 96
+              exclusionZoneEnabled: true
+              exclusionZoneRadiusBlocks: 1500
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:desert", config.oceanIsland.islandBiome);
+        assertEquals(256, config.oceanIsland.radiusBlocks);
+        assertEquals(0.4, config.oceanIsland.shapeAmplitude);
+        assertEquals(16, config.oceanIsland.shoreWidthBlocks);
+        assertEquals(32, config.oceanIsland.oceanShallowWidthBlocks);
+        assertEquals(64, config.oceanIsland.oceanDeepenWidthBlocks);
+        assertEquals(4, config.oceanIsland.oceanShallowDepthBlocks);
+        assertEquals(40, config.oceanIsland.oceanDeepDepthBlocks);
+        assertEquals(96, config.oceanIsland.oceanRegionScaleBlocks);
+        assertTrue(config.oceanIsland.exclusionZoneEnabled);
+        assertEquals(1500, config.oceanIsland.exclusionZoneRadiusBlocks);
+    }
+
+    @Test
+    void oceanIslandDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals("minecraft:plains", config.oceanIsland.islandBiome);
+        assertFalse(config.oceanIsland.exclusionZoneEnabled);
+    }
+
+    @Test
+    void oceanIslandRadiusIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            oceanIsland:
+              radiusBlocks: 1
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            oceanIsland:
+              radiusBlocks: 9999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, tooSmall.oceanIsland.radiusBlocks);
+        assertEquals(WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS, tooLarge.oceanIsland.radiusBlocks);
+    }
+
+    @Test
+    void oceanIslandShapeAmplitudeIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            oceanIsland:
+              shapeAmplitude: -0.5
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            oceanIsland:
+              shapeAmplitude: 5.0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0.0, tooSmall.oceanIsland.shapeAmplitude);
+        assertEquals(IslandShapeProfile.MAX_AMPLITUDE, tooLarge.oceanIsland.shapeAmplitude);
+    }
+
+    @Test
+    void oceanIslandInvalidIslandBiomeFallsBackToDefault() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              islandBiome: '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:plains", config.oceanIsland.islandBiome);
     }
 
     @Test

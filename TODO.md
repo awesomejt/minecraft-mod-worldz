@@ -857,10 +857,12 @@ rectangular shape.
       is new and additive (mirrors `StripPlan`'s precedent), not a
       `StarterLandPlan`/`StarterZone` retrofit — avoids risking four
       already-shipped presets for a seed-plumbing change only ocean_island
-      needs. Seeding solved for free: ocean_island's land biome is always
-      `LayoutMode.SINGLE_BIOME`, so `LimitedBiomeSource.effectiveLayoutPlan
-      ()`'s already-resolved real seed is available to both the biome path
-      and the terrain path with zero new plumbing (confirmed
+      needs. Seeding solved for free: `WorldLayoutPlan.seed` is populated
+      and re-seeded the same way regardless of layout mode, so
+      `LimitedBiomeSource.effectiveLayoutPlan()`'s already-resolved real
+      seed is available to both the biome path and the terrain path with
+      zero new plumbing, whichever mode 7.2 ends up using for the land
+      biome itself (confirmed
       `EnvelopedChunkGenerator.LayoutContext.plan()` reads it live, never a
       stale copy). `IslandShapeProfile` reuses `WorldLayoutPlan`'s own
       hash primitives, not `RandomState` noise, since `LimitedBiomeSource`
@@ -878,12 +880,69 @@ rectangular shape.
       questions found for Jason after full review — GOALS/TODO text was
       prescriptive enough; remaining choices are implementation judgment,
       documented above and in DESIGN §24.
-- [ ] 7.2 Implement the `ocean_island` world type: configurable island size
+- [x] 7.2 Implement the `ocean_island` world type: configurable island size
       (1 chunk → huge), chosen island biome, endless ocean via the terrain
       cap, underground structures intact, unchanged Nether/End, beatable
       (progression guarantees). Use case 01.
-- [ ] 7.3 Distant natural islands (04): release the ocean cap beyond the
+      **Done (0.2.29):** new pure-logic `IslandShapeProfile` (seed-hashed
+      sine-harmonic coastline perturbation, shore-distance-based smoothstep
+      terrain raise reusing `StarterLandProfile`'s relief-noise approach)
+      and `IslandOceanProfile` (shallow-to-deep seabed depth ramp; shore
+      ring's beach/stony-shore 50/50 pick; ocean gradient's biome pool
+      widens from 3 shallow ids to the full 9-entry vanilla ocean set
+      beyond the shallow band). New `IslandPlan` record (mirrors
+      `StripPlan`'s additive precedent) threaded through
+      `LimitedBiomeSource` (a new field/codec entry, biome classification
+      via new early checks in `getNoiseBiome`) and read live by
+      `EnvelopedChunkGenerator` via `originSource` (no second codec copy
+      to desync). `ExteriorTerrainProfile` gained backward-compatible
+      explicit-depth overloads so the gradient reuses the same
+      bedrock/stone/water/air block-layer math every other exterior mode
+      already has, instead of duplicating it. Found and fixed the same
+      "early-exit skips a new mechanism" bug class Phase 6.2a hit for
+      strip: `applyTerrainAdjustments`'s `layout.isEmpty() &&
+      starterLand.isEmpty()` skip and `hasActiveExterior`'s OR both needed
+      `|| island.enabled()` added, or island's own terrain/masking would
+      have silently never applied. Real design pivot found only during
+      implementation (not caught in 7.1's design pass): ocean_island's
+      `WorldLayoutPlan` ended up `LEGACY`, not the `SINGLE_BIOME` 7.1
+      sketched -- `SINGLE_BIOME`'s own unconditional full-land-factor
+      terrain raise would have fought the island's own shape-aware raise
+      everywhere outside the island (no radius concept in that mode at
+      all). The real seed is still free either way since
+      `WorldLayoutPlan.seed` doesn't care which mode it's attached to;
+      DESIGN §24.2/§24.9 updated to match what actually shipped. Renamed
+      `LimitedBiomeSource.resolveStripWorldAllowed` to
+      `resolveFullVanillaOverworldAllowed` (its "full `#minecraft
+      :is_overworld` tag" logic was never actually strip-specific, and
+      ocean_island's own fieldless-preset default and GOALS-04 fallback
+      delegate both needed the identical thing). Learned the strip_world
+      fieldless-preset lesson early this time: `oceanIslandDefaults`
+      wired into every branch of `LimitedBiomeSource.resolve()` from the
+      start, not discovered as a bug afterward. Full new preset scaffolding
+      (`OceanIslandConfig`, `OceanIslandCustomization`,
+      `OceanIslandPresetEditor`, `OceanIslandCustomizeScreen` -- no
+      spawn-strategy field or Overworld Exterior toggle, per DESIGN
+      §24.8 -- `ocean_island.json`, `normal` tag entry, lang keys, both
+      loaders' registration) mirroring the established one-preset-per-
+      challenge-family pattern exactly. New dedicated
+      `MIN_ISLAND_RADIUS_BLOCKS`/`MAX_ISLAND_RADIUS_BLOCKS` config bounds.
+      39 new tests (pure-logic profiles, `IslandPlan` validation,
+      `OceanIslandCustomizationTest`, `WorldzConfigTest`/
+      `WorldPresetResourcesTest`/`ProjectMetadataTest` additions); full
+      suite green (345 tests); clean build across all modules.
+      **The GOALS 04 exclusion-zone mechanism (7.3) shipped as part of
+      this task** -- see 7.3 below.
+- [x] 7.3 Distant natural islands (04): release the ocean cap beyond the
       exclusion radius so the seed's natural terrain resumes far away.
+      **Mechanism done as part of 7.2 (0.2.29):** `IslandPlan
+      .withinExclusionZone` gates every column classification
+      (`effectiveModeAt`, `islandTargetHeight`, `islandOceanDepthAt`,
+      `LimitedBiomeSource.getNoiseBiome`'s island branch) from the start
+      -- splitting it into a separate later change would have meant
+      re-touching the identical call sites twice for no benefit (DESIGN
+      §24.9). Nothing left here but test-config/documentation
+      confirmation, folded into 7.4's acceptance pass below.
 - [ ] 7.4 Test configs (tiny/default/huge island, 04 variant); docs;
       **[Jason]** acceptance including "does the island read as natural".
 

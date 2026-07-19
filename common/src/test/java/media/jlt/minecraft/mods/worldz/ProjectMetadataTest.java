@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.28", properties.getProperty("version"));
+        assertEquals("0.2.29", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -150,6 +150,25 @@ class ProjectMetadataTest {
     }
 
     @Test
+    void oceanIslandTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("OceanIslandPresetEditor.OCEAN_ISLAND_PRESET"));
+        assertTrue(fabricMixin.contains("OceanIslandPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(OceanIslandPresetEditor.OCEAN_ISLAND_PRESET, OceanIslandPresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Ocean Island", lang.get("generator.jlt_worldz.ocean_island").getAsString());
+    }
+
+    @Test
     void limitedBiomeSourceAppliesStripWorldBandsWithoutCustomize() throws IOException {
         // Regression guard (Jason found in-game, GOALS 36 follow-up): creating a strip_world
         // directly from world_preset/strip_world.json's fieldless "world_type": "strip_world"
@@ -163,7 +182,7 @@ class ProjectMetadataTest {
             "boolean stripWorldDefaults = encodedStarterRadius.isEmpty()\n"
                 + "            && encodedWorldType.map(\"strip_world\"::equals).orElse(false);"
         ));
-        assertTrue(source.contains("resolveStripWorldAllowed(biomeGetter)"));
+        assertTrue(source.contains("resolveFullVanillaOverworldAllowed(biomeGetter)"));
         assertTrue(source.contains("stripWorldDefaults && config.stripWorld.bands.enabled"));
         assertTrue(source.contains("WorldLayoutPlan.resolveBands("));
         assertTrue(source.contains("stripWorldDefaults ? config.stripWorld.bands.allowRivers : config.allowRivers"));
@@ -454,7 +473,9 @@ class ProjectMetadataTest {
                 + "                    ? config.singleBiome.spawn.strategy\n"
                 + "                    : stripWorldDefaults\n"
                 + "                        ? config.stripWorld.spawn.strategy\n"
-                + "                        : config.spawn.strategy);"
+                + "                        : oceanIslandDefaults\n"
+                + "                            ? SpawnStrategy.STARTER_AT_ORIGIN\n"
+                + "                            : config.spawn.strategy);"
         ));
         assertTrue(source.contains("Codec.STRING.optionalFieldOf(\"world_type\").forGetter(source -> Optional.<String>empty())"));
     }

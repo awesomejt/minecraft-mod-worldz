@@ -1959,19 +1959,27 @@ ocean"), not because the shared system was patched.
 
 ### 24.2 Seeding the perturbation without new seed plumbing
 
-`IslandPlan` itself carries no seed field. Ocean island's land biome is
-**always** resolved as `LayoutMode.SINGLE_BIOME` (the existing, unmodified
-mechanism single_biome already uses) — every ocean-island world therefore
-already has a real, re-seeded `WorldLayoutPlan` available via
-`LimitedBiomeSource.effectiveLayoutPlan()`, and `EnvelopedChunkGenerator`'s
-own `LayoutContext.plan()` already calls that same method live (confirmed
-by reading the class directly: `LayoutContext` holds a reference to the
-`LimitedBiomeSource` instance and calls `source.effectiveLayoutPlan()` on
-every access, never a stale copy) — so both the biome-classification code
-path (`LimitedBiomeSource`) and the terrain-height code path
-(`EnvelopedChunkGenerator`) already observe the identical, already-resolved
-real world seed through the exact same object. The new `IslandShapeProfile`
-perturbation functions take that seed as a plain parameter
+`IslandPlan` itself carries no seed field. `WorldLayoutPlan.seed` is
+populated and re-seeded the same way regardless of `mode` (a plain field on
+the record, not gated on which mode is active), so ocean_island can read a
+real, live-resolved seed via `LimitedBiomeSource.effectiveLayoutPlan()`
+without needing its own seed-resolution plumbing, no matter which layout
+mode it ends up using for the land biome itself (§24.9's as-built notes
+settle that as `LEGACY`, not `SINGLE_BIOME` as first sketched here —
+`SINGLE_BIOME`'s own unconditional `landFactor = 1.0` terrain-raise
+would have fought the island's own shape-aware raise everywhere outside
+the island). `EnvelopedChunkGenerator`'s own `LayoutContext.plan()` already
+calls that same method live (confirmed by reading the class directly:
+`LayoutContext` holds a reference to the `LimitedBiomeSource` instance and
+calls `source.effectiveLayoutPlan()` on every access, never a stale copy),
+and `EnvelopedChunkGenerator.originSource` gives the terrain code path its
+own direct route to the same seed independent of `LayoutContext`/`layout`
+being present at all — so both the biome-classification code path
+(`LimitedBiomeSource`) and the terrain-height code path
+(`EnvelopedChunkGenerator`) observe the identical, already-resolved real
+world seed through the exact same object regardless of layout mode. The
+new `IslandShapeProfile` perturbation functions take that seed as a plain
+parameter
 (`effectiveLayoutPlan().seed()` on one side, `layout.get().plan().seed()`
 on the other — same value) and reuse `WorldLayoutPlan`'s own
 `hash01`/`splitmix64` deterministic-hash primitives (not vanilla
@@ -2134,3 +2142,38 @@ zone inside an otherwise-normal world," not "the entire visible island,"
 and GOALS 01 explicitly requires going smaller than 64.
 
 Decided 2026-07-19; no code yet — 7.2/7.3 implement from this design.
+
+### 24.9 As-built notes (TODO 7.2)
+
+- **`ExteriorTerrainProfile` gained explicit-depth overloads** (`oceanFloorY`/
+  `oceanLayerAt`/`baseHeight`, each now also accepting a `depthBlocks`
+  parameter; the original fixed-`OCEAN_DEPTH` overloads delegate to them
+  unchanged) rather than a parallel island-only copy of the same block-layer
+  math -- a small, additive, backward-compatible refactor (every other
+  preset's plain `ExteriorMode.OCEAN` option is untouched) that let the
+  island's shallow-to-deep gradient reuse the exact same bedrock/stone/
+  water/air classification instead of duplicating it.
+- **`resolveStripWorldAllowed` renamed to `resolveFullVanillaOverworldAllowed`**
+  in `LimitedBiomeSource` -- its "full `#minecraft:is_overworld` tag" logic
+  was never actually strip-specific, and ocean_island's own fieldless-preset
+  default (and its exclusion-zone fallback delegate, GOALS 04) needed the
+  exact same thing.
+- **The GOALS 04 exclusion-zone mechanism shipped as part of 7.2**, not as
+  a separate 7.3 change: `IslandPlan.withinExclusionZone` is a single check
+  already threaded through every column classification
+  (`effectiveModeAt`, `islandTargetHeight`, `islandOceanDepthAt`,
+  `LimitedBiomeSource.getNoiseBiome`'s island branch) from the start, since
+  retrofitting it in after the fact would have meant re-touching the exact
+  same call sites a second time for no benefit. 7.3 is therefore a
+  test-config/documentation task confirming already-shipped behavior, not
+  a new implementation task.
+- **Seeding confirmed to work exactly as designed in §24.2**: ocean_island's
+  `WorldLayoutPlan` stays `LEGACY` (not `SINGLE_BIOME` -- an earlier idea
+  rejected during implementation once it became clear `SINGLE_BIOME`'s own
+  `landFactor = 1.0` terrain-raise would fight the island's own shape-aware
+  raise everywhere outside the island, since that mode has no notion of a
+  radius at all). `LimitedBiomeSource.effectiveLayoutPlan().seed()` is
+  still populated and re-seeded normally regardless of mode, so the "free"
+  real seed described in §24.2 holds even at `LEGACY` -- confirmed by the
+  full test suite passing with zero changes needed to the seed-resolution
+  path itself.

@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
@@ -54,6 +55,15 @@ public final class WorldzConfig {
     public static final int MIN_LAYOUT_REGION_SCALE_BLOCKS = 16;
     /** Largest supported layout grid-cell edge length. */
     public static final int MAX_LAYOUT_REGION_SCALE_BLOCKS = 8192;
+    /**
+     * Smallest supported ocean-island radius. Deliberately far below
+     * {@link #MIN_STARTER_RADIUS_BLOCKS}: that bound was tuned for a starter zone inside an
+     * otherwise-normal world, not the entire visible island GOALS 01 explicitly wants
+     * configurable down to "16 blocks/1 chunk" (DESIGN §24.8).
+     */
+    public static final int MIN_ISLAND_RADIUS_BLOCKS = 8;
+    /** Largest supported ocean-island radius -- a generous "huge" ceiling, not a tuned limit. */
+    public static final int MAX_ISLAND_RADIUS_BLOCKS = 65536;
 
     private static final String YAML_EXTENSION = ".yaml";
 
@@ -102,6 +112,8 @@ public final class WorldzConfig {
     public ChaosBiomesConfig chaosBiomes = new ChaosBiomesConfig();
     /** Defaults for the {@code jlt_worldz:strip_world} typed preset (GOALS 32, DESIGN §23). */
     public StripWorldConfig stripWorld = new StripWorldConfig();
+    /** Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 04; DESIGN §24). */
+    public OceanIslandConfig oceanIsland = new OceanIslandConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -204,6 +216,9 @@ public final class WorldzConfig {
         if (object.containsKey("stripWorld")) {
             config.stripWorld = readStripWorldConfig(object.get("stripWorld"), "stripWorld", logger);
         }
+        if (object.containsKey("oceanIsland")) {
+            config.oceanIsland = readOceanIslandConfig(object.get("oceanIsland"), "oceanIsland");
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -259,6 +274,7 @@ public final class WorldzConfig {
         singleBiome = sanitizeSingleBiome(singleBiome, logger);
         chaosBiomes = sanitizeChaosBiomes(chaosBiomes, logger);
         stripWorld = sanitizeStripWorld(stripWorld, logger);
+        oceanIsland = sanitizeOceanIsland(oceanIsland, logger);
         return this;
     }
 
@@ -335,6 +351,55 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static OceanIslandConfig sanitizeOceanIsland(OceanIslandConfig config, Logger logger) {
+        OceanIslandConfig sanitized = config == null ? new OceanIslandConfig() : config;
+
+        String originalBiome = sanitized.islandBiome;
+        sanitized.islandBiome = sanitizeSingleBiomeId(sanitized.islandBiome, "oceanIsland.islandBiome", logger);
+        if (sanitized.islandBiome.isEmpty()) {
+            sanitized.islandBiome = new OceanIslandConfig().islandBiome;
+            logger.warn("Invalid oceanIsland.islandBiome '{}'; using the default instead.", originalBiome);
+        }
+
+        sanitized.radiusBlocks = clampWithWarning(
+            sanitized.radiusBlocks, MIN_ISLAND_RADIUS_BLOCKS, MAX_ISLAND_RADIUS_BLOCKS, "oceanIsland.radiusBlocks", logger
+        );
+        double clampedAmplitude = Math.clamp(sanitized.shapeAmplitude, 0.0, IslandShapeProfile.MAX_AMPLITUDE);
+        if (clampedAmplitude != sanitized.shapeAmplitude) {
+            logger.warn("Clamped oceanIsland.shapeAmplitude from {} to {}.", sanitized.shapeAmplitude, clampedAmplitude);
+            sanitized.shapeAmplitude = clampedAmplitude;
+        }
+        if (sanitized.shoreWidthBlocks < 1) {
+            logger.warn("Clamped oceanIsland.shoreWidthBlocks from {} to 1.", sanitized.shoreWidthBlocks);
+            sanitized.shoreWidthBlocks = 1;
+        }
+        if (sanitized.oceanShallowWidthBlocks < 0) {
+            logger.warn("Clamped oceanIsland.oceanShallowWidthBlocks from {} to 0.", sanitized.oceanShallowWidthBlocks);
+            sanitized.oceanShallowWidthBlocks = 0;
+        }
+        if (sanitized.oceanDeepenWidthBlocks < 0) {
+            logger.warn("Clamped oceanIsland.oceanDeepenWidthBlocks from {} to 0.", sanitized.oceanDeepenWidthBlocks);
+            sanitized.oceanDeepenWidthBlocks = 0;
+        }
+        if (sanitized.oceanShallowDepthBlocks < 1) {
+            logger.warn("Clamped oceanIsland.oceanShallowDepthBlocks from {} to 1.", sanitized.oceanShallowDepthBlocks);
+            sanitized.oceanShallowDepthBlocks = 1;
+        }
+        if (sanitized.oceanDeepDepthBlocks < 1) {
+            logger.warn("Clamped oceanIsland.oceanDeepDepthBlocks from {} to 1.", sanitized.oceanDeepDepthBlocks);
+            sanitized.oceanDeepDepthBlocks = 1;
+        }
+        if (sanitized.oceanRegionScaleBlocks < 1) {
+            logger.warn("Clamped oceanIsland.oceanRegionScaleBlocks from {} to 1.", sanitized.oceanRegionScaleBlocks);
+            sanitized.oceanRegionScaleBlocks = 1;
+        }
+        if (sanitized.exclusionZoneRadiusBlocks < 1) {
+            logger.warn("Clamped oceanIsland.exclusionZoneRadiusBlocks from {} to 1.", sanitized.exclusionZoneRadiusBlocks);
+            sanitized.exclusionZoneRadiusBlocks = 1;
+        }
+        return sanitized;
+    }
+
     private static StripBandsConfig sanitizeStripBands(StripBandsConfig config, Logger logger) {
         StripBandsConfig sanitized = config == null ? new StripBandsConfig() : config;
 
@@ -398,6 +463,7 @@ public final class WorldzConfig {
             + ", singleBiome=" + singleBiomeSummary(singleBiome)
             + ", chaosBiomes=" + chaosBiomesSummary(chaosBiomes)
             + ", stripWorld=" + stripWorldSummary(stripWorld)
+            + ", oceanIsland=" + oceanIslandSummary(oceanIsland)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -421,6 +487,7 @@ public final class WorldzConfig {
         values.put("singleBiome", singleBiomeMap(singleBiome));
         values.put("chaosBiomes", chaosBiomesMap(chaosBiomes));
         values.put("stripWorld", stripWorldMap(stripWorld));
+        values.put("oceanIsland", oceanIslandMap(oceanIsland));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -667,6 +734,47 @@ public final class WorldzConfig {
         return config;
     }
 
+    private static OceanIslandConfig readOceanIslandConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        OceanIslandConfig config = new OceanIslandConfig();
+        if (map.containsKey("islandBiome")) {
+            config.islandBiome = readString(map.get("islandBiome"), name + ".islandBiome");
+        }
+        if (map.containsKey("radiusBlocks")) {
+            config.radiusBlocks = readInt(map.get("radiusBlocks"), name + ".radiusBlocks");
+        }
+        if (map.containsKey("shapeAmplitude")) {
+            config.shapeAmplitude = readDouble(map.get("shapeAmplitude"), name + ".shapeAmplitude");
+        }
+        if (map.containsKey("shoreWidthBlocks")) {
+            config.shoreWidthBlocks = readInt(map.get("shoreWidthBlocks"), name + ".shoreWidthBlocks");
+        }
+        if (map.containsKey("oceanShallowWidthBlocks")) {
+            config.oceanShallowWidthBlocks = readInt(map.get("oceanShallowWidthBlocks"), name + ".oceanShallowWidthBlocks");
+        }
+        if (map.containsKey("oceanDeepenWidthBlocks")) {
+            config.oceanDeepenWidthBlocks = readInt(map.get("oceanDeepenWidthBlocks"), name + ".oceanDeepenWidthBlocks");
+        }
+        if (map.containsKey("oceanShallowDepthBlocks")) {
+            config.oceanShallowDepthBlocks = readInt(map.get("oceanShallowDepthBlocks"), name + ".oceanShallowDepthBlocks");
+        }
+        if (map.containsKey("oceanDeepDepthBlocks")) {
+            config.oceanDeepDepthBlocks = readInt(map.get("oceanDeepDepthBlocks"), name + ".oceanDeepDepthBlocks");
+        }
+        if (map.containsKey("oceanRegionScaleBlocks")) {
+            config.oceanRegionScaleBlocks = readInt(map.get("oceanRegionScaleBlocks"), name + ".oceanRegionScaleBlocks");
+        }
+        if (map.containsKey("exclusionZoneEnabled")) {
+            config.exclusionZoneEnabled = readBoolean(map.get("exclusionZoneEnabled"), name + ".exclusionZoneEnabled");
+        }
+        if (map.containsKey("exclusionZoneRadiusBlocks")) {
+            config.exclusionZoneRadiusBlocks = readInt(map.get("exclusionZoneRadiusBlocks"), name + ".exclusionZoneRadiusBlocks");
+        }
+        return config;
+    }
+
     private static StripBandsConfig readStripBandsConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
@@ -724,6 +832,20 @@ public final class WorldzConfig {
         } catch (ArithmeticException exception) {
             throw new IllegalArgumentException(name + " must be an integer", exception);
         }
+    }
+
+    private static double readDouble(Object value, String name) {
+        return switch (value) {
+            case Double doubleValue -> doubleValue;
+            case Float floatValue -> floatValue.doubleValue();
+            case Integer integer -> integer.doubleValue();
+            case Byte byteValue -> byteValue.doubleValue();
+            case Short shortValue -> shortValue.doubleValue();
+            case Long longValue -> longValue.doubleValue();
+            case BigInteger bigInteger -> bigInteger.doubleValue();
+            case BigDecimal bigDecimal -> bigDecimal.doubleValue();
+            default -> throw new IllegalArgumentException(name + " must be a number");
+        };
     }
 
     private static BorderConfig sanitizeBorder(BorderConfig config, String name, Logger logger) {
@@ -990,6 +1112,22 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> oceanIslandMap(OceanIslandConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("islandBiome", config.islandBiome);
+        values.put("radiusBlocks", config.radiusBlocks);
+        values.put("shapeAmplitude", config.shapeAmplitude);
+        values.put("shoreWidthBlocks", config.shoreWidthBlocks);
+        values.put("oceanShallowWidthBlocks", config.oceanShallowWidthBlocks);
+        values.put("oceanDeepenWidthBlocks", config.oceanDeepenWidthBlocks);
+        values.put("oceanShallowDepthBlocks", config.oceanShallowDepthBlocks);
+        values.put("oceanDeepDepthBlocks", config.oceanDeepDepthBlocks);
+        values.put("oceanRegionScaleBlocks", config.oceanRegionScaleBlocks);
+        values.put("exclusionZoneEnabled", config.exclusionZoneEnabled);
+        values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
+        return values;
+    }
+
     private static Map<String, Object> stripBandsMap(StripBandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1065,6 +1203,21 @@ public final class WorldzConfig {
     private static String stripWorldSummary(StripWorldConfig config) {
         return "spawn=" + config.spawn.strategy.serializedName()
             + ", bands=" + stripBandsSummary(config.bands);
+    }
+
+    private static String oceanIslandSummary(OceanIslandConfig config) {
+        return "islandBiome=" + config.islandBiome
+            + ", radiusBlocks=" + config.radiusBlocks
+            + ", shapeAmplitude=" + config.shapeAmplitude
+            + ", shoreWidthBlocks=" + config.shoreWidthBlocks
+            + ", oceanShallowWidthBlocks=" + config.oceanShallowWidthBlocks
+            + ", oceanDeepenWidthBlocks=" + config.oceanDeepenWidthBlocks
+            + ", oceanShallowDepthBlocks=" + config.oceanShallowDepthBlocks
+            + ", oceanDeepDepthBlocks=" + config.oceanDeepDepthBlocks
+            + ", oceanRegionScaleBlocks=" + config.oceanRegionScaleBlocks
+            + ", exclusionZone=" + (config.exclusionZoneEnabled
+                ? "radius=" + config.exclusionZoneRadiusBlocks
+                : "<disabled>");
     }
 
     private static String stripBandsSummary(StripBandsConfig config) {

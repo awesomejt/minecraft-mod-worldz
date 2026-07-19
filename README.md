@@ -36,6 +36,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location; optional natural rivers/oceans. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Chaos Biomes** | Seed-shuffled land biome regions over completely untouched vanilla terrain — deserts beside ice spikes beside jungles; configurable region size; optional starter zone; optional natural rivers/oceans. See [Chaos biomes challenge](#chaos-biomes-challenge) below. | Small screen: weighted biome list, region size, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor; optional ordered biome-band sequence along its length. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, biome bands toggle/list/width/shuffle, spawn strategy, borders, exteriors. |
+| **Worldz: Ocean Island** | A small, natural-looking artificial island of one chosen biome at the origin, surrounded by an endless generated ocean that gradually deepens from shore to open water; optional distant natural islands beyond an exclusion zone. See [Ocean island challenge](#ocean-island-challenge) below. | Small screen: island biome, radius, coastline shape, shore-ring width, ocean gradient widths/depths, exclusion zone toggle/radius, borders, Nether exterior. |
 
 ## Supported loaders
 
@@ -273,6 +274,79 @@ stripWorld:
 These three only matter when `bands.enabled` is set — the plain, band-free
 strip world already shows full vanilla biome variety (including rivers,
 oceans, and beaches) with nothing to configure.
+
+## Ocean island challenge
+
+Select **Worldz: Ocean Island** under **World Type** for a small artificial
+island of one chosen biome at the origin, surrounded by an endless generated
+ocean. Unlike every other typed preset, there is no spawn-strategy option —
+the island only ever exists artificially at the origin, so spawn is always
+the island's own safe surface point near `(0, 0)`.
+
+The island's coastline is deliberately not a perfect circle: a handful of
+seed-derived sine harmonics perturb the radius by direction, giving a
+natural "lumpy" shape instead of a disc. A narrow beach/stony-shore ring
+(50/50 mix) sits right at the true coastline — narrower than, and
+independent from, the terrain-height blend that raises the island's
+interior toward guaranteed land. Beyond the shore ring, the ocean itself
+gradually deepens: a shallow band (warm/lukewarm/plain ocean only) close to
+shore, then a smooth transition to a deep band drawing from the complete
+vanilla ocean-biome set (all nine temperature/depth variants) — GOALS 01's
+"shallow to deep, but all ocean biomes available." Both the coastline shape
+and the ocean gradient are keyed off the same underlying signed distance
+from the coastline, so biome and terrain height can never disagree about
+where the shore actually is.
+
+Nether and End are completely unaffected by any of this — the island
+mechanism only ever touches the Overworld. The shared Overworld/Nether
+Border, End Border, and Nether Exterior Customize buttons remain available
+and optional if you also want to compose a size limit or restrict the
+Nether on top of the island shape; there is no separate Overworld Exterior
+option, since the island unconditionally supplies the entire Overworld
+exterior itself.
+
+Configure its defaults with an `oceanIsland:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+oceanIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 128
+  shapeAmplitude: 0.3
+  shoreWidthBlocks: 12
+  oceanShallowWidthBlocks: 64
+  oceanDeepenWidthBlocks: 128
+  oceanShallowDepthBlocks: 8
+  oceanDeepDepthBlocks: 32
+  oceanRegionScaleBlocks: 128
+  exclusionZoneEnabled: false
+  exclusionZoneRadiusBlocks: 2000
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior. |
+| `radiusBlocks` | `128` | Configured (unperturbed) island radius. Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
+| `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius. `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |
+| `shoreWidthBlocks` | `12` | Width of the beach/stony-shore ring measured from the true coastline; also the terrain-height taper width from the island's full guaranteed height down to sea level. |
+| `oceanShallowWidthBlocks` | `64` | Width of the shallow ocean band immediately beyond the shore ring. |
+| `oceanDeepenWidthBlocks` | `128` | Width over which the seabed smoothly ramps from shallow to deep. |
+| `oceanShallowDepthBlocks` | `8` | Seabed depth below sea level in the shallow band. |
+| `oceanDeepDepthBlocks` | `32` | Seabed depth below sea level once fully deep — the ocean stays this deep forever beyond the deepening band ("endless ocean"). |
+| `oceanRegionScaleBlocks` | `128` | Grid-cell edge length for the ocean biome's per-region pick, so the ocean reads as patches of variety rather than per-block dithering. |
+| `exclusionZoneEnabled` | `false` | GOALS 04: when set, island/ocean shaping releases entirely beyond `exclusionZoneRadiusBlocks`, letting the seed's own natural terrain resume — small natural islands then occur wherever the seed's terrain noise happens to poke above sea level, far from the artificial island. Off by default, matching GOALS 01's core "endless ocean, no natural land ever" behavior. |
+| `exclusionZoneRadiusBlocks` | `2000` | Radius beyond which shaping releases, when enabled. |
+
+Underground structures beneath the island itself generate normally — Worldz
+never suppresses structure placement, only exterior terrain far from the
+island (which, like every other exterior mode in this mod, never supported
+structures to begin with). A genuinely tiny island (near the 1-chunk floor)
+will have the compact fallback End portal (see [Limited-world
+borders](#limited-world-borders)) consume most or all of its surface, since
+the portal's own safety margin can never "fit" at that scale — an accepted
+trade-off, not a defect: GOALS 01 requires the game stay beatable, not that
+a tiny island also stays fully buildable-on. Pick a larger radius if you
+want both.
 
 ## Configuration
 

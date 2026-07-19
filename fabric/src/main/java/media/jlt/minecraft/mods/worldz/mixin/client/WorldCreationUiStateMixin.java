@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.mixin.client;
 
 import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
+import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
@@ -31,6 +32,8 @@ abstract class WorldCreationUiStateMixin {
             callback.setReturnValue(ChaosBiomesPresetEditor.INSTANCE);
         } else if (preset.unwrapKey().filter(StripWorldPresetEditor.STRIP_WORLD_PRESET::equals).isPresent()) {
             callback.setReturnValue(StripWorldPresetEditor.INSTANCE);
+        } else if (preset.unwrapKey().filter(OceanIslandPresetEditor.OCEAN_ISLAND_PRESET::equals).isPresent()) {
+            callback.setReturnValue(OceanIslandPresetEditor.INSTANCE);
         }
     }
 }
