@@ -127,6 +127,7 @@ public final class SkyIslandPresetEditor implements PresetEditor {
             skyIsland.shapeAmplitude(),
             skyIsland.surfaceY(),
             skyIsland.thicknessBlocks(),
+            skyIsland.chestTier(),
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
             fromPlan(plan.end()),

@@ -11,6 +11,7 @@ import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
+import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import org.slf4j.Logger;
 import org.yaml.snakeyaml.DumperOptions;
@@ -225,7 +226,7 @@ public final class WorldzConfig {
             config.oceanIsland = readOceanIslandConfig(object.get("oceanIsland"), "oceanIsland", logger);
         }
         if (object.containsKey("skyIsland")) {
-            config.skyIsland = readSkyIslandConfig(object.get("skyIsland"), "skyIsland");
+            config.skyIsland = readSkyIslandConfig(object.get("skyIsland"), "skyIsland", logger);
         }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
@@ -406,7 +407,7 @@ public final class WorldzConfig {
             logger.warn("Clamped oceanIsland.exclusionZoneRadiusBlocks from {} to 1.", sanitized.exclusionZoneRadiusBlocks);
             sanitized.exclusionZoneRadiusBlocks = 1;
         }
-        sanitized.starterKit = sanitizeStarterKit(sanitized.starterKit, logger);
+        sanitized.starterKit = sanitizeStarterKit(sanitized.starterKit, "oceanIsland.starterKit", logger);
         return sanitized;
     }
 
@@ -432,10 +433,14 @@ public final class WorldzConfig {
             sanitized.thicknessBlocks, SkyIslandPlan.MIN_THICKNESS_BLOCKS, SkyIslandPlan.MAX_THICKNESS_BLOCKS,
             "skyIsland.thicknessBlocks", logger
         );
+        sanitized.chestTier = sanitized.chestTier == null ? StarterKitTier.MEDIUM : sanitized.chestTier;
+        sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "skyIsland.easyKit", logger);
+        sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "skyIsland.mediumKit", logger);
+        sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "skyIsland.hardKit", logger);
         return sanitized;
     }
 
-    private static StarterKitConfig sanitizeStarterKit(StarterKitConfig config, Logger logger) {
+    private static StarterKitConfig sanitizeStarterKit(StarterKitConfig config, String name, Logger logger) {
         StarterKitConfig sanitized = config == null ? new StarterKitConfig() : config;
         if (sanitized.essentials == null) {
             sanitized.essentials = new StarterKitConfig().essentials;
@@ -444,13 +449,13 @@ public final class WorldzConfig {
             sanitized.extras = new StarterKitConfig().extras;
         }
         if (sanitized.extrasCount < 0) {
-            logger.warn("Clamped oceanIsland.starterKit.extrasCount from {} to 0.", sanitized.extrasCount);
+            logger.warn("Clamped {}.extrasCount from {} to 0.", name, sanitized.extrasCount);
             sanitized.extrasCount = 0;
         }
         if (sanitized.extrasCount > 0 && sanitized.extras.isEmpty()) {
             logger.warn(
-                "Clamped oceanIsland.starterKit.extrasCount from {} to 0 because the extras pool is empty.",
-                sanitized.extrasCount
+                "Clamped {}.extrasCount from {} to 0 because the extras pool is empty.",
+                name, sanitized.extrasCount
             );
             sanitized.extrasCount = 0;
         }
@@ -843,7 +848,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static SkyIslandConfig readSkyIslandConfig(Object value, String name) {
+    private static SkyIslandConfig readSkyIslandConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -862,6 +867,18 @@ public final class WorldzConfig {
         }
         if (map.containsKey("thicknessBlocks")) {
             config.thicknessBlocks = readInt(map.get("thicknessBlocks"), name + ".thicknessBlocks");
+        }
+        if (map.containsKey("chestTier")) {
+            config.chestTier = StarterKitTier.parse(readString(map.get("chestTier"), name + ".chestTier"));
+        }
+        if (map.containsKey("easyKit")) {
+            config.easyKit = readStarterKitConfig(map.get("easyKit"), name + ".easyKit", logger);
+        }
+        if (map.containsKey("mediumKit")) {
+            config.mediumKit = readStarterKitConfig(map.get("mediumKit"), name + ".mediumKit", logger);
+        }
+        if (map.containsKey("hardKit")) {
+            config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
         }
         return config;
     }
@@ -1246,6 +1263,10 @@ public final class WorldzConfig {
         values.put("shapeAmplitude", config.shapeAmplitude);
         values.put("surfaceY", config.surfaceY);
         values.put("thicknessBlocks", config.thicknessBlocks);
+        values.put("chestTier", config.chestTier.serializedName());
+        values.put("easyKit", starterKitMap(config.easyKit));
+        values.put("mediumKit", starterKitMap(config.mediumKit));
+        values.put("hardKit", starterKitMap(config.hardKit));
         return values;
     }
 
@@ -1357,7 +1378,11 @@ public final class WorldzConfig {
             + ", radiusBlocks=" + config.radiusBlocks
             + ", shapeAmplitude=" + config.shapeAmplitude
             + ", surfaceY=" + config.surfaceY
-            + ", thicknessBlocks=" + config.thicknessBlocks;
+            + ", thicknessBlocks=" + config.thicknessBlocks
+            + ", chestTier=" + config.chestTier.serializedName()
+            + ", easyKit=" + starterKitSummary(config.easyKit)
+            + ", mediumKit=" + starterKitSummary(config.mediumKit)
+            + ", hardKit=" + starterKitSummary(config.hardKit);
     }
 
     private static String starterKitSummary(StarterKitConfig config) {

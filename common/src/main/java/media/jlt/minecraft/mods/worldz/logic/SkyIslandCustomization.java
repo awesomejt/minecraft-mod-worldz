@@ -17,6 +17,7 @@ import java.util.List;
  * @param shapeAmplitude coastline perturbation strength
  * @param surfaceY the island's walkable surface Y (GOALS 05 default 64, slime rule)
  * @param thicknessBlocks how many blocks of solid ground extend below {@code surfaceY}
+ * @param chestTier the necessities-chest difficulty tier (GOALS 05, DESIGN §27.8)
  * @param overworldBorder optional Overworld size limit, composed on top of the island shape
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
@@ -28,6 +29,7 @@ public record SkyIslandCustomization(
     double shapeAmplitude,
     int surfaceY,
     int thicknessBlocks,
+    StarterKitTier chestTier,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
@@ -74,6 +76,7 @@ public record SkyIslandCustomization(
             config.skyIsland.shapeAmplitude,
             config.skyIsland.surfaceY,
             config.skyIsland.thicknessBlocks,
+            config.skyIsland.chestTier,
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
@@ -89,6 +92,7 @@ public record SkyIslandCustomization(
      * @param shapeAmplitude decimal coastline perturbation strength
      * @param surfaceY decimal surface Y
      * @param thicknessBlocks decimal slab thickness
+     * @param chestTier the necessities-chest difficulty tier
      * @param overworldBorder validated Overworld border values
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
@@ -101,6 +105,7 @@ public record SkyIslandCustomization(
         String shapeAmplitude,
         String surfaceY,
         String thicknessBlocks,
+        StarterKitTier chestTier,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
@@ -112,6 +117,7 @@ public record SkyIslandCustomization(
             parseDouble(shapeAmplitude, "Island shape amplitude"),
             parseInteger(surfaceY, "Surface Y"),
             parseInteger(thicknessBlocks, "Slab thickness"),
+            chestTier,
             overworldBorder,
             netherBorder,
             endBorder,
@@ -125,7 +131,7 @@ public record SkyIslandCustomization(
      * @return immutable, always-enabled sky island plan
      */
     public SkyIslandPlan skyIslandPlan() {
-        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks);
+        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier);
     }
 
     /**

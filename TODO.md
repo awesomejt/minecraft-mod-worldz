@@ -1319,10 +1319,34 @@ island's 7.1–7.4/8.1–8.3 split):
       additions); full suite green (431 tests); clean build across all
       modules (fabric + neoforge registration compiles and resolves
       correctly). No chest/starter-kit yet — that's 10.3.
-- [ ] 10.3 Chest tiers: extend `StarterKitPlan`/`StarterKitConfig` with
+- [x] 10.3 Chest tiers: extend `StarterKitPlan`/`StarterKitConfig` with
       easy/medium/hard tiers and the biome-driven water-item swap; wire into
       `sky_island`'s chest deployment (reuses `StarterKitDeployment`). GOALS
       05.
+      **Done (0.2.44):** new `StarterKitTier` enum (easy/medium/hard);
+      `SkyIslandPlan` gained a persisted `chestTier` field (7th component)
+      and `SkyIslandConfig` gained `chestTier` + three full
+      `StarterKitConfig` sections (`easyKit`/`mediumKit`/`hardKit`,
+      sensible tier-differentiated defaults — since sky island decoration
+      is fully suppressed, every tier includes saplings, the one thing no
+      tier can survive without). Tier is a Customize-screen cycle button
+      (mirrors `islandSource`'s) and persists on the world; the actual kit
+      item lists stay config-only, matching `ocean_island`'s own kit
+      exactly. `StarterKitDeployment.spawnStarterChest` places a real
+      `minecraft:chest` at the world origin on top of the slab, resolves
+      the selected tier's kit, and appends one guaranteed water-source
+      item computed from the biome (DESIGN §27.8 explains why the mapping
+      is the *opposite* of a literal reading of GOALS 05's own example:
+      dry/desert-family biomes get a water bucket since rain never
+      supplies one, every other family gets a cauldron since rain will
+      fill it naturally). `WorldLimitManager` gained a
+      `needsStarterChest` gate paralleling `needsChestBoat` exactly. 8 new
+      tests; full suite green (439 tests); clean build. **Known,
+      deliberately deferred risk flagged for 10.6 testing:** the chest is
+      placed at literal origin the same way the chest boat already is,
+      with no accounting for `safeSpawnOffsetBlocks()`'s own spawn
+      offset — worth checking specifically on a small-radius (8-16 block)
+      island.
 - [ ] 10.4 Nether sky island variant: same bounded-below mechanism applied
       to the Nether exterior, with a fortress/structure-retention toggle
       reusing `ProgressionGuarantees.ensureBlazeAccess`'s existing

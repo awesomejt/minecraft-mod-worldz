@@ -8,6 +8,7 @@ import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
+import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -556,7 +557,14 @@ class WorldzConfigTest {
                 + " minecraft:oak_sapling:3], extras=[minecraft:bread:3, minecraft:wooden_axe:1,"
                 + " minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:water_bucket:1], extrasCount=2"
                 + ", skyIsland=islandBiome=minecraft:plains, radiusBlocks=16, shapeAmplitude=0.3"
-                + ", surfaceY=64, thicknessBlocks=6"
+                + ", surfaceY=64, thicknessBlocks=6, chestTier=medium"
+                + ", easyKit=essentials=[minecraft:oak_sapling:4, minecraft:bread:8, minecraft:crafting_table:1],"
+                + " extras=[minecraft:wooden_pickaxe:1, minecraft:wooden_axe:1, minecraft:torch:16,"
+                + " minecraft:cobblestone:32], extrasCount=3"
+                + ", mediumKit=essentials=[minecraft:oak_sapling:3, minecraft:bread:4],"
+                + " extras=[minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:cobblestone:16], extrasCount=2"
+                + ", hardKit=essentials=[minecraft:oak_sapling:2], extras=[minecraft:bread:2, minecraft:torch:4],"
+                + " extrasCount=1"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -986,6 +994,47 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.skyIsland.islandBiome);
+    }
+
+    @Test
+    void skyIslandChestTierDefaultsToMedium() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+        assertEquals(StarterKitTier.MEDIUM, config.skyIsland.chestTier);
+    }
+
+    @Test
+    void skyIslandChestTierLoadsEasyAndHard() {
+        WorldzConfig easy = WorldzConfig.parse("""
+            skyIsland:
+              chestTier: easy
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig hard = WorldzConfig.parse("""
+            skyIsland:
+              chestTier: hard
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(StarterKitTier.EASY, easy.skyIsland.chestTier);
+        assertEquals(StarterKitTier.HARD, hard.skyIsland.chestTier);
+    }
+
+    @Test
+    void skyIslandKitsLoadIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              easyKit:
+                essentials:
+                  - minecraft:bread:10
+                extrasCount: 0
+              hardKit:
+                essentials:
+                  - minecraft:oak_sapling:1
+                extrasCount: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:bread:10"), config.skyIsland.easyKit.essentials);
+        assertEquals(List.of("minecraft:oak_sapling:1"), config.skyIsland.hardKit.essentials);
+        // Untouched kit keeps its own defaults.
+        assertEquals(new SkyIslandConfig().mediumKit.essentials, config.skyIsland.mediumKit.essentials);
     }
 
     @Test

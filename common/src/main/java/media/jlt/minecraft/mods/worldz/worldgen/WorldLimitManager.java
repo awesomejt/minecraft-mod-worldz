@@ -62,7 +62,11 @@ public final class WorldLimitManager {
         // in here anyway so it still runs (once) for a chest-boat world with no border/objective
         // configured at all, reusing the same one-time WorldLimitState guard below.
         boolean needsChestBoat = overworldIsland.enabled() && !overworldIsland.hasLand();
-        if (!plan.enabled() && !exteriorObjective && !needsChestBoat) {
+        // Same reasoning for the sky island's own necessities chest (GOALS 05, DESIGN §27.8):
+        // every sky island world gets one, regardless of whether any border/objective is
+        // configured at all.
+        boolean needsStarterChest = overworldSkyIsland.enabled();
+        if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest) {
             return;
         }
 
@@ -80,6 +84,9 @@ public final class WorldLimitManager {
         );
         if (needsChestBoat) {
             StarterKitDeployment.spawnChestBoat(overworld, originX, originZ);
+        }
+        if (needsStarterChest) {
+            StarterKitDeployment.spawnStarterChest(overworld, originX, originZ, overworldSkyIsland);
         }
         ServerLevel nether = server.getLevel(Level.NETHER);
         BorderInitResult netherResult = BorderInitResult.NONE;

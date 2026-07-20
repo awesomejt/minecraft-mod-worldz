@@ -18,6 +18,7 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  * @param islandBiome the one biome that fills the island's interior
  * @param surfaceY the island's walkable surface Y (GOALS 05 default 64, slime rule)
  * @param thicknessBlocks how many blocks of solid ground extend below {@link #surfaceY}
+ * @param chestTier the necessities-chest difficulty tier (GOALS 05, DESIGN §27.8)
  */
 public record SkyIslandPlan(
     boolean enabled,
@@ -25,7 +26,8 @@ public record SkyIslandPlan(
     double shapeAmplitude,
     String islandBiome,
     int surfaceY,
-    int thicknessBlocks
+    int thicknessBlocks,
+    StarterKitTier chestTier
 ) {
     /** GOALS 05's own default: spawn at Y 64 to avoid slimes. */
     public static final int DEFAULT_SURFACE_Y = 64;
@@ -57,6 +59,9 @@ public record SkyIslandPlan(
                 "Sky island thickness must be between " + MIN_THICKNESS_BLOCKS + " and " + MAX_THICKNESS_BLOCKS + "."
             );
         }
+        if (chestTier == null) {
+            throw new IllegalArgumentException("Chest tier is required.");
+        }
     }
 
     /**
@@ -67,7 +72,7 @@ public record SkyIslandPlan(
     public static SkyIslandPlan disabled() {
         return new SkyIslandPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0, "minecraft:plains",
-            DEFAULT_SURFACE_Y, DEFAULT_THICKNESS_BLOCKS
+            DEFAULT_SURFACE_Y, DEFAULT_THICKNESS_BLOCKS, StarterKitTier.MEDIUM
         );
     }
 
@@ -79,7 +84,8 @@ public record SkyIslandPlan(
      */
     public static SkyIslandPlan fromConfig(SkyIslandConfig config) {
         return new SkyIslandPlan(
-            true, config.radiusBlocks, config.shapeAmplitude, config.islandBiome, config.surfaceY, config.thicknessBlocks
+            true, config.radiusBlocks, config.shapeAmplitude, config.islandBiome, config.surfaceY, config.thicknessBlocks,
+            config.chestTier
         );
     }
 

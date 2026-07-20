@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.client;
 
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandCustomization;
+import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
@@ -25,6 +26,8 @@ final class SkyIslandCustomizeScreen extends Screen implements
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
     private final CreateWorldScreen parent;
+    private StarterKitTier chestTier;
+    private Button chestTierButton;
     private EditBox islandBiome;
     private EditBox radiusBlocks;
     private EditBox shapeAmplitude;
@@ -45,6 +48,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
     SkyIslandCustomizeScreen(CreateWorldScreen parent, SkyIslandCustomization initial) {
         super(TITLE);
         this.parent = parent;
+        this.chestTier = initial.chestTier();
         this.islandBiomeText = initial.islandBiome();
         this.radiusBlocksText = Integer.toString(initial.radiusBlocks());
         this.shapeAmplitudeText = Double.toString(initial.shapeAmplitude());
@@ -62,6 +66,11 @@ final class SkyIslandCustomizeScreen extends Screen implements
         LinearLayout content = this.layout.addToContents(LinearLayout.vertical());
         LinearLayout form = LinearLayout.vertical().spacing(4);
         form.defaultCellSetting().alignHorizontallyCenter();
+
+        this.chestTierButton = Button.builder(chestTierLabel(this.chestTier), button -> cycleChestTier())
+            .width(FORM_WIDTH)
+            .build();
+        form.addChild(this.chestTierButton);
 
         this.islandBiome = textField(Component.translatable("jlt_worldz.sky_island.island_biome"), this.islandBiomeText);
         this.islandBiome.setResponder(value -> this.islandBiomeText = value);
@@ -127,6 +136,19 @@ final class SkyIslandCustomizeScreen extends Screen implements
         this.repositionElements();
     }
 
+    private void cycleChestTier() {
+        StarterKitTier[] values = StarterKitTier.values();
+        this.chestTier = values[(this.chestTier.ordinal() + 1) % values.length];
+        this.chestTierButton.setMessage(chestTierLabel(this.chestTier));
+    }
+
+    private static Component chestTierLabel(StarterKitTier tier) {
+        return Component.translatable(
+            "jlt_worldz.sky_island.chest_tier",
+            Component.translatable("jlt_worldz.sky_island.chest_tier." + tier.serializedName())
+        );
+    }
+
     private EditBox textField(Component narration, String value) {
         EditBox field = new EditBox(this.font, FORM_WIDTH, 20, narration);
         field.setMaxLength(256);
@@ -142,6 +164,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
                 this.shapeAmplitude.getValue(),
                 this.surfaceY.getValue(),
                 this.thicknessBlocks.getValue(),
+                this.chestTier,
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,

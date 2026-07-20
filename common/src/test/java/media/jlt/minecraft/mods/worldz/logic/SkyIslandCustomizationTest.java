@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SkyIslandCustomizationTest {
     private static SkyIslandCustomization create(String islandBiome, int radiusBlocks, double shapeAmplitude, int surfaceY, int thicknessBlocks) {
         return new SkyIslandCustomization(
-            islandBiome, radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks,
+            islandBiome, radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -31,6 +31,7 @@ class SkyIslandCustomizationTest {
         assertEquals(config.skyIsland.shapeAmplitude, customization.shapeAmplitude());
         assertEquals(config.skyIsland.surfaceY, customization.surfaceY());
         assertEquals(config.skyIsland.thicknessBlocks, customization.thicknessBlocks());
+        assertEquals(config.skyIsland.chestTier, customization.chestTier());
     }
 
     @Test
@@ -96,7 +97,7 @@ class SkyIslandCustomizationTest {
     @Test
     void fromTextParsesDecimalAndDoubleFields() {
         SkyIslandCustomization customization = SkyIslandCustomization.fromText(
-            "minecraft:desert", "256", "0.4", "72", "8",
+            "minecraft:desert", "256", "0.4", "72", "8", StarterKitTier.HARD,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -106,12 +107,13 @@ class SkyIslandCustomizationTest {
         assertEquals(0.4, customization.shapeAmplitude());
         assertEquals(72, customization.surfaceY());
         assertEquals(8, customization.thicknessBlocks());
+        assertEquals(StarterKitTier.HARD, customization.chestTier());
     }
 
     @Test
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> SkyIslandCustomization.fromText(
-            "minecraft:plains", "not-a-number", "0.3", "64", "6",
+            "minecraft:plains", "not-a-number", "0.3", "64", "6", StarterKitTier.MEDIUM,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         ));

@@ -196,7 +196,7 @@ class ObjectiveSiteTest {
         // Same regression class as the ocean island (GOALS 05, DESIGN §27.5): a sky island's
         // Overworld exterior is also never expressed through ExteriorPlan, so the
         // border/envelope-only overload alone would wrongly report an unlimited normal world.
-        SkyIslandPlan skyIsland = new SkyIslandPlan(true, 16, 0.3, "minecraft:plains", 64, 6);
+        SkyIslandPlan skyIsland = new SkyIslandPlan(true, 16, 0.3, "minecraft:plains", 64, 6, StarterKitTier.MEDIUM);
         assertEquals(
             16, ObjectiveSite.supportiveRadius(false, 512, ExteriorPlan.DimensionEnvelope.normal(), skyIsland).orElseThrow()
         );
@@ -204,7 +204,7 @@ class ObjectiveSiteTest {
 
     @Test
     void skyIslandAwareSupportiveRadiusUsesTheTightestOfBorderEnvelopeAndIsland() {
-        SkyIslandPlan skyIsland = new SkyIslandPlan(true, 128, 0.3, "minecraft:plains", 64, 6);
+        SkyIslandPlan skyIsland = new SkyIslandPlan(true, 128, 0.3, "minecraft:plains", 64, 6, StarterKitTier.MEDIUM);
         var voidEnvelope = new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, 384, 0);
 
         assertEquals(64, ObjectiveSite.supportiveRadius(true, 64, voidEnvelope, skyIsland).orElseThrow());

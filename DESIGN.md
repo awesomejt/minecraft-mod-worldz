@@ -3099,19 +3099,46 @@ throwaway-branch-OK spike: confirm what, if anything, in `EnvelopedChunkGenerato
 generalizes to wrapping the End's generator, and report findings rather
 than attempting an implementation now. Findings go here once 10.5 runs.
 
-### 27.8 Chest tiers (GOALS 05, TODO 10.3)
+### 27.8 Chest tiers (GOALS 05, TODO 10.3) — as-built
 
 Phase 8's `StarterKitPlan` (essentials + seed-picked extras, DESIGN §25.3)
-is reused, not replaced. Per Jason's decision, three built-in tiers
-(easy/medium/hard) each get their own essentials/extras lists (mirroring
-`StarterKitConfig`'s existing shape three times over, one per tier, plus a
-tier selector on the Customize screen and in config); the only
-biome-driven substitution is the single item GOALS 05 names by name — a
-water bucket in wet/ocean-adjacent biomes, a cauldron in dry ones (same
-substring-family classification as §27.3's surface-block choice, reused
-rather than inventing a second one). Everything else about the kit
-(deterministic seed-based extras picking, config-overridability) is
-unchanged from Phase 8.
+is reused, not replaced. Three built-in tiers (`StarterKitTier`: EASY,
+MEDIUM, HARD) each get their own `StarterKitConfig` section
+(`SkyIslandConfig.easyKit`/`mediumKit`/`hardKit`, mirroring
+`OceanIslandConfig.starterKit`'s shape three times over) plus a
+`chestTier` selector — persisted on `SkyIslandPlan` itself (so a reloaded
+world remembers which tier it was created with, even though the actual
+item lists are still read live from config at deployment time, exactly
+like `ocean_island`'s own chest-boat kit already does) and exposed as a
+Customize-screen cycle button mirroring `islandSource`'s.
+
+**The water-source item's biome mapping is the opposite of a literal
+reading of GOALS 05's own example.** The text ("giving the user a bucket
+of water vs a cauldron to capture rain water") illustrates a *tier*
+axis, not a biome one — re-read closely, the biome-driven swap is a
+separate sentence entirely ("Biome... informs what is necessities
+chest"). Since every sky island is surrounded by void with vegetation/
+decoration fully suppressed (§27.2), the *only* water a desert-family
+(no-rain) biome will ever see is whatever's in the chest — it gets a
+guaranteed water bucket. Every other family gets a cauldron instead,
+since rain will fill it naturally over time and a bucket would be
+redundant. Reuses `SkyIslandProfile.familyFor`'s existing DESERT
+classification (§27.3) rather than inventing a second biome-family axis
+— the item is appended to the resolved kit's essentials
+(`StarterKitDeployment.spawnStarterChest`), not stored in config, since
+it's fully determined by the already-configured `islandBiome`.
+
+The chest itself is a literal placed `minecraft:chest` block at the
+world origin, on top of the slab (`Y = surfaceY`) — mirrors the chest
+*boat's* placement-at-origin choice (DESIGN §25.3) exactly, including
+that neither accounts for `safeSpawnOffsetBlocks()`'s own spawn-position
+offset. Flagged as a testing focus for 10.6, not fixed speculatively:
+whether a very small island radius (8–16 blocks) combined with the
+default 8-block spawn offset ever separates the player from the chest by
+more than a walkable step is exactly the kind of thing this project has
+consistently found through real in-game testing rather than by guessing
+ahead of time (the Phase 5.5/5.6 border-radius-floor bug is the closest
+precedent).
 
 ### 27.9 New typed preset shape (`jlt_worldz:sky_island`)
 
