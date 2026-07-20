@@ -1060,11 +1060,36 @@ rectangular shape.
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 
-- [ ] 8.1 Starter-chest infrastructure (shared with the sky, cave, Nether,
+- [x] 8.1 Starter-chest infrastructure (shared with the sky, cave, Nether,
       and End phases): loot presets + YAML-configurable contents, placed at
       spawn. Then use case 03: no-land ocean world, spawn on/next to a chest
       boat with essentials (lily pad, dirt, grass block, saplings) +
       configurable randoms.
+      **Done (0.2.37):** new `IslandSource` enum (`ARTIFICIAL`/`NATURAL`/
+      `CHEST_BOAT`) on `OceanIslandCustomization`/`OceanIslandConfig`,
+      Customize-screen cycle button (mirrors `StripWorldCustomizeScreen`'s
+      spawn-strategy button). New `IslandPlan.hasLand` boolean threaded
+      through all four column-classification call sites the island
+      touches (`LimitedBiomeSource.islandBiomeAt`,
+      `EnvelopedChunkGenerator.effectiveModeAt`/`islandTargetHeight`/
+      `islandOceanDepthAt`) plus a fifth found only by proactively
+      re-auditing every `IslandPlan` consumer before writing code:
+      `ObjectiveSite.supportiveRadius(..., IslandPlan)` would have
+      wrongly narrowed the fallback End-portal guarantee to 8 blocks for
+      every chest-boat world (its placeholder radius), fixed with a
+      regression test. New `StarterKitPlan` (pure logic, seed-deterministic
+      essentials + random extras) and `StarterKitConfig`
+      (`oceanIsland.starterKit` in YAML, no Customize-screen field --
+      matches every other variable-length list in this codebase already
+      being YAML-only). New `StarterKitDeployment` spawns an
+      `EntityTypes.OAK_CHEST_BOAT` at the world origin's water surface
+      with the resolved kit, called from `WorldLimitManager
+      .onServerStarted` (new `needsChestBoat` addition to its early-return
+      gate, reusing the existing one-time `WorldLimitState` guard).
+      `NATURAL` is a placeholder in this commit -- selectable, but
+      resolves identically to `ARTIFICIAL` until 8.2 (documented gap in
+      DESIGN §25.5, including the `currentCustomization()` read-back
+      ambiguity 8.2 will need to address). Full suite green; clean build.
 - [ ] 8.2 Natural island by seed (02): search the real seed's unmodified
       climate/terrain for a small natural island, set world spawn/origin
       there, replace everything else with ocean beyond it. Reuses the 16.3

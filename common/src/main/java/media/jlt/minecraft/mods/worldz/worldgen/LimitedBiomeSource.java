@@ -15,6 +15,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
@@ -264,9 +265,14 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowBeaches = encodedAllowBeaches.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowBeaches
             : singleBiomeDefaults ? config.singleBiome.allowBeaches
                 : stripWorldDefaults ? config.stripWorld.bands.allowBeaches : false);
-        IslandPlan island = encodedIsland.orElseGet(
-            () -> oceanIslandDefaults ? IslandPlan.fromConfig(config.oceanIsland) : IslandPlan.disabled()
-        );
+        IslandPlan island = encodedIsland.orElseGet(() -> {
+            if (!oceanIslandDefaults) {
+                return IslandPlan.disabled();
+            }
+            return config.oceanIsland.islandSource == IslandSource.CHEST_BOAT
+                ? IslandPlan.fromConfigWithoutLand(config.oceanIsland)
+                : IslandPlan.fromConfig(config.oceanIsland);
+        });
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
@@ -852,11 +858,15 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
-     * Resolves the ocean-island biome at one column (GOALS 01, DESIGN §24): the island's own
-     * biome inside the coastline, a beach/stony-shore pick in the shore ring, or the
-     * shallow-to-deep ocean gradient beyond it. Shares {@link #effectiveLayoutPlan}'s
-     * already-resolved real seed with {@code EnvelopedChunkGenerator}'s terrain code (DESIGN
-     * §24.2), so biome and terrain height can never disagree about where the coastline is.
+     * Resolves the ocean-island biome at one column (GOALS 01, 03, DESIGN §24, §25.2): the
+     * island's own biome inside the coastline, a beach/stony-shore pick in the shore ring, or
+     * the shallow-to-deep ocean gradient beyond it. {@link IslandPlan#hasLand} {@code false}
+     * (GOALS 03, {@code CHEST_BOAT}) skips the interior/shore-ring branches entirely -- every
+     * column falls straight to the ocean gradient, with the raw distance from origin standing
+     * in for "distance beyond the shore" since there is no shore ring to subtract. Shares
+     * {@link #effectiveLayoutPlan}'s already-resolved real seed with {@code
+     * EnvelopedChunkGenerator}'s terrain code (DESIGN §24.2), so biome and terrain height can
+     * never disagree about where the coastline is.
      *
      * @param relativeX block X relative to the origin
      * @param relativeZ block Z relative to the origin
@@ -867,16 +877,16 @@ public final class LimitedBiomeSource extends BiomeSource {
         double distance = this.island.distanceFromShore(relativeX, relativeZ, seed);
         Map<String, Holder<Biome>> islandBiomes = this.resolution.get().islandBiomes();
         String biomeId;
-        if (distance > this.island.shoreWidthBlocks()) {
-            double beyondShore = distance - this.island.shoreWidthBlocks();
+        if (this.island.hasLand() && distance <= 0.0) {
+            biomeId = this.island.islandBiome();
+        } else if (this.island.hasLand() && distance <= this.island.shoreWidthBlocks()) {
+            biomeId = IslandOceanProfile.shoreBiomeAt(relativeX, relativeZ, this.island.radiusBlocks(), seed);
+        } else {
+            double beyondShore = this.island.hasLand() ? distance - this.island.shoreWidthBlocks() : distance;
             biomeId = IslandOceanProfile.biomeAt(
                 relativeX, relativeZ, beyondShore, this.island.oceanShallowWidthBlocks(),
                 this.island.oceanRegionScaleBlocks(), seed
             );
-        } else if (distance > 0.0) {
-            biomeId = IslandOceanProfile.shoreBiomeAt(relativeX, relativeZ, this.island.radiusBlocks(), seed);
-        } else {
-            biomeId = this.island.islandBiome();
         }
         return Optional.ofNullable(islandBiomes.get(biomeId));
     }

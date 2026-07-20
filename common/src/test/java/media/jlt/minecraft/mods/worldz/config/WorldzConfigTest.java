@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
@@ -545,10 +546,13 @@ class WorldzConfigTest {
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
                 + ", allowBeaches=false"
                 + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
-                + ", oceanIsland=islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
+                + ", oceanIsland=islandSource=artificial, islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
                 + ", shoreWidthBlocks=12, oceanShallowWidthBlocks=64, oceanDeepenWidthBlocks=128"
                 + ", oceanShallowDepthBlocks=8, oceanDeepDepthBlocks=32, oceanRegionScaleBlocks=128"
                 + ", exclusionZone=<disabled>"
+                + ", starterKit=essentials=[minecraft:lily_pad:1, minecraft:dirt:4, minecraft:grass_block:2,"
+                + " minecraft:oak_sapling:3], extras=[minecraft:bread:3, minecraft:wooden_axe:1,"
+                + " minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:water_bucket:1], extrasCount=2"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -844,6 +848,68 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.oceanIsland.islandBiome);
+    }
+
+    @Test
+    void oceanIslandSourceDefaultsToArtificial() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+        assertEquals(IslandSource.ARTIFICIAL, config.oceanIsland.islandSource);
+    }
+
+    @Test
+    void oceanIslandSourceLoadsChestBoat() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              islandSource: chest_boat
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(IslandSource.CHEST_BOAT, config.oceanIsland.islandSource);
+    }
+
+    @Test
+    void starterKitSettingsLoadIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              starterKit:
+                essentials: ["minecraft:lily_pad:1", "minecraft:dirt:2"]
+                extras: ["minecraft:bread:5"]
+                extrasCount: 1
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:lily_pad:1", "minecraft:dirt:2"), config.oceanIsland.starterKit.essentials);
+        assertEquals(List.of("minecraft:bread:5"), config.oceanIsland.starterKit.extras);
+        assertEquals(1, config.oceanIsland.starterKit.extrasCount);
+    }
+
+    @Test
+    void starterKitDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+        assertFalse(config.oceanIsland.starterKit.essentials.isEmpty());
+        assertFalse(config.oceanIsland.starterKit.extras.isEmpty());
+        assertEquals(2, config.oceanIsland.starterKit.extrasCount);
+    }
+
+    @Test
+    void starterKitNegativeExtrasCountIsClampedToZero() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              starterKit:
+                extrasCount: -3
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.oceanIsland.starterKit.extrasCount);
+    }
+
+    @Test
+    void starterKitExtrasCountIsClampedToZeroWhenThePoolIsEmpty() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              starterKit:
+                extras: []
+                extrasCount: 3
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.oceanIsland.starterKit.extrasCount);
     }
 
     @Test

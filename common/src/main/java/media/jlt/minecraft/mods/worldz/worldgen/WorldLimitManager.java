@@ -50,7 +50,11 @@ public final class WorldLimitManager {
         boolean exteriorObjective = (plan.overworld().ensureObjective()
             && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled() || overworldIsland.enabled()))
             || (plan.nether().ensureObjective() && exterior.nether().mode() != ExteriorMode.NORMAL);
-        if (!plan.enabled() && !exteriorObjective) {
+        // GOALS 03's chest-boat spawn is unrelated to borders/the End-portal guarantee -- gated
+        // in here anyway so it still runs (once) for a chest-boat world with no border/objective
+        // configured at all, reusing the same one-time WorldLimitState guard below.
+        boolean needsChestBoat = overworldIsland.enabled() && !overworldIsland.hasLand();
+        if (!plan.enabled() && !exteriorObjective && !needsChestBoat) {
             return;
         }
 
@@ -66,6 +70,9 @@ public final class WorldLimitManager {
             overworld, plan.overworld(), exterior.overworld(), overworldStrip, overworldIsland,
             limitedSource.worldLayoutPlan(), originX, originZ
         );
+        if (needsChestBoat) {
+            StarterKitDeployment.spawnChestBoat(overworld, originX, originZ);
+        }
         ServerLevel nether = server.getLevel(Level.NETHER);
         BorderInitResult netherResult = BorderInitResult.NONE;
         if (nether != null) {

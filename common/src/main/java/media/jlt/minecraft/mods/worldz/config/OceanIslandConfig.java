@@ -2,12 +2,15 @@ package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 
 /**
- * Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 04; DESIGN §24),
- * consulted only when that preset resolves without explicit Customize-screen values.
+ * Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 02, 03, 04; DESIGN
+ * §24, §25), consulted only when that preset resolves without explicit Customize-screen values.
  */
 public final class OceanIslandConfig {
+    /** How the land is sourced (DESIGN §25.1): artificial, natural (seed), or chest-boat/none. */
+    public IslandSource islandSource = IslandSource.ARTIFICIAL;
     /** The one biome that fills the island's interior. */
     public String islandBiome = "minecraft:plains";
     /** Configured (unperturbed) island radius. */
@@ -30,6 +33,8 @@ public final class OceanIslandConfig {
     public boolean exclusionZoneEnabled;
     /** Radius beyond which shaping releases, when enabled. */
     public int exclusionZoneRadiusBlocks = IslandPlan.DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS;
+    /** Chest-boat starter kit, consulted only when {@link #islandSource} is {@code CHEST_BOAT}. */
+    public StarterKitConfig starterKit = new StarterKitConfig();
 
     /** Creates a config populated with defaults. */
     public OceanIslandConfig() {

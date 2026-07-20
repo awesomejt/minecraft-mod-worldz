@@ -176,6 +176,10 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.strip_world.apply_to_nether"));
         assertEquals("Worldz: Ocean Island", language.get("generator.jlt_worldz.ocean_island").getAsString());
         assertTrue(language.has("jlt_worldz.ocean_island.title"));
+        assertTrue(language.has("jlt_worldz.ocean_island.island_source"));
+        assertTrue(language.has("jlt_worldz.ocean_island.island_source.artificial"));
+        assertTrue(language.has("jlt_worldz.ocean_island.island_source.natural"));
+        assertTrue(language.has("jlt_worldz.ocean_island.island_source.chest_boat"));
         assertTrue(language.has("jlt_worldz.ocean_island.island_biome"));
         assertTrue(language.has("jlt_worldz.ocean_island.radius"));
         assertTrue(language.has("jlt_worldz.ocean_island.shape_amplitude"));

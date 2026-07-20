@@ -137,7 +137,7 @@ class ObjectiveSiteTest {
         // report an unlimited normal world -- silently skipping the fallback End-portal
         // guarantee for every ocean_island world.
         IslandPlan island = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, true
         );
         assertTrue(ObjectiveSite.supportiveRadius(false, 512, ExteriorPlan.DimensionEnvelope.normal()).isEmpty());
         assertEquals(
@@ -148,7 +148,7 @@ class ObjectiveSiteTest {
     @Test
     void islandAwareSupportiveRadiusUsesTheTightestOfBorderEnvelopeAndIsland() {
         IslandPlan island = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, true
         );
         var voidEnvelope = new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, 384, 0);
 
@@ -165,6 +165,26 @@ class ObjectiveSiteTest {
         assertEquals(
             ObjectiveSite.supportiveRadius(true, 256, ExteriorPlan.DimensionEnvelope.normal()),
             ObjectiveSite.supportiveRadius(true, 256, ExteriorPlan.DimensionEnvelope.normal(), IslandPlan.disabled())
+        );
+    }
+
+    @Test
+    void islandAwareSupportiveRadiusIgnoresThePlaceholderRadiusWhenLandFree() {
+        // GOALS 03 (chest boat): radiusBlocks is only a harmless placeholder when hasLand is
+        // false (DESIGN §25.2) -- treating it as a real bound would wrongly shrink the fallback
+        // End portal's search to the configured minimum island radius.
+        IslandPlan landFree = new IslandPlan(
+            true, 8, 0.0, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, false
+        );
+        assertEquals(
+            512, ObjectiveSite.supportiveRadius(true, 512, ExteriorPlan.DimensionEnvelope.normal(), landFree).orElseThrow()
+        );
+        // With no border enabled either, the land-free island contributes no bound at all --
+        // this is the "infinite ocean, no shore ever" case, not an empty/unlimited-normal-world
+        // result (island.enabled() is still true, so it never delegates to the 3-arg overload).
+        assertEquals(
+            Integer.MAX_VALUE,
+            ObjectiveSite.supportiveRadius(false, 512, ExteriorPlan.DimensionEnvelope.normal(), landFree).orElseThrow()
         );
     }
 }

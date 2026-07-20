@@ -1452,6 +1452,37 @@ Durable decisions, verified API notes, and rationale that should survive across 
   mechanics (`EntityTypes.OAK_CHEST_BOAT`, confirmed via `javap` against
   the compiled jar) recorded in DESIGN §25.3 for Jason's review rather
   than blocked on sign-off.
+- 2026-07-20 (Phase 8.1 implemented: chest boat / no-land ocean, GOALS
+  03) — `IslandSource` (ARTIFICIAL/NATURAL/CHEST_BOAT) and
+  `IslandPlan.hasLand` shipped per the design pass. One thing the design
+  pass didn't catch, found by proactively re-auditing every `IslandPlan`
+  consumer before writing code (the exact lesson named after Phase 7's
+  beatability bug): `ObjectiveSite.supportiveRadius(..., IslandPlan)`
+  narrows by `island.radiusBlocks()` unconditionally, which for a
+  land-free island is only ever the harmless `MIN_ISLAND_RADIUS_BLOCKS`
+  placeholder -- would have wrongly shrunk the fallback End-portal
+  guarantee's search to 8 blocks for every chest-boat world. Fixed by
+  skipping that narrowing when `!hasLand()`, with a regression test.
+  Customize-screen scope decided during implementation: `IslandSource`
+  gets a proper cycle button (mirrors `StripWorldCustomizeScreen`'s
+  `spawnStrategy` button); the starter kit itself stays YAML-only, no
+  in-game item-list editor, matching how every other variable-length
+  list in this codebase (`strip.bands.biomes`, etc.) is already YAML-only.
+  `NATURAL` is a placeholder in this commit only -- selectable, but
+  resolves identically to `ARTIFICIAL` until 8.2; `OceanIslandPresetEditor
+  .currentCustomization()`'s read-back can't yet distinguish the two
+  (both have `hasLand()==true`), falls back to reporting `ARTIFICIAL` --
+  8.2 needs to solve this if read-back accuracy matters once `NATURAL`
+  does something different. Chest boat: `EntityTypes.OAK_CHEST_BOAT
+  .create(level, EntitySpawnReason.STRUCTURE)`, spawned at the world
+  origin's water surface, items resolved via `BuiltInRegistries.ITEM
+  .getValue(...)` (a `DefaultedRegistry` -- a malformed configured item
+  id quietly becomes air rather than crashing world creation). New
+  `StarterKitDeployment` called from `WorldLimitManager.onServerStarted`,
+  reusing the existing one-time `WorldLimitState` guard; needed its own
+  addition (`needsChestBoat`) to that method's early-return gate, since a
+  chest-boat world with no borders/objective configured would otherwise
+  never reach the spawn code at all. Full suite green; clean build.
 
 ## Reference Log
 

@@ -2571,3 +2571,64 @@ further. If the isolation search rarely finds a good candidate within
 unreliable after reasonable tuning, park per TODO's own sanctioned
 escape hatch rather than open-endedly iterating.
 
+### 25.5 As-built notes (TODO 8.1)
+
+- **`IslandSource` and `IslandPlan.hasLand` shipped exactly as designed in
+  §25.1/25.2**, with one addition found necessary during implementation,
+  not anticipated in the design pass: `ObjectiveSite.supportiveRadius(...,
+  IslandPlan)` (the beatability-radius overload added during Phase 7's
+  own follow-up fix) narrows by `island.radiusBlocks()` unconditionally --
+  which, for a land-free island, is only ever the harmless
+  `MIN_ISLAND_RADIUS_BLOCKS` placeholder (DESIGN §25.2), not a real bound.
+  Left as-is, the fallback End-portal guarantee would have wrongly
+  shrunk its search to 8 blocks for every chest-boat world. Fixed by
+  skipping that narrowing entirely when `!island.hasLand()`. Caught by
+  proactively re-reading every consumer of `IslandPlan` before writing
+  any implementation code (the exact discipline named as a lesson after
+  Phase 7's own beatability bug), not by a test failure or a later bug
+  report.
+- **Customize-screen scope, decided during implementation, not
+  pre-specified in §25.1**: `IslandSource` gets a proper 3-way cycle
+  button on the Ocean Island Customize screen (mirroring
+  `StripWorldCustomizeScreen`'s `spawnStrategy` button exactly), but the
+  starter-chest kit itself (`StarterKitConfig`) is YAML-config-only --
+  no in-game field for its item lists. Precedent: every other
+  variable-length list in this codebase (`strip.bands.biomes`, etc.) is
+  also YAML-only with no dedicated Customize UI, so this isn't a new
+  category of limitation; building a dynamic add/remove item-list editor
+  widget for one preset's optional starter kit was judged disproportionate
+  scope for what GOALS 03 only ever asked to be "configurable."
+- **`NATURAL` (GOALS 02, TODO 8.2) is a placeholder in this commit,
+  not yet implemented.** The enum value exists (the type needs to be
+  stable for the codec/config), and it's selectable in the Customize
+  screen and YAML, but `LimitedBiomeSource.resolve()`'s fieldless-preset
+  path and `OceanIslandCustomization.islandPlan()` both currently treat
+  it identically to `ARTIFICIAL` -- real seed-search behavior lands in
+  8.2. `OceanIslandPresetEditor.currentCustomization()`'s read-back
+  (reopening Customize on an already-generated world) can't yet
+  distinguish `NATURAL` from `ARTIFICIAL` either, since both resolve to
+  `IslandPlan.hasLand() == true` and nothing else currently marks which
+  one was chosen -- falls back to reporting `ARTIFICIAL`. 8.2 needs to
+  either add a persisted marker or find another way to tell them apart
+  if that read-back accuracy matters once `NATURAL` actually does
+  something different from `ARTIFICIAL`.
+- **Chest boat placement**: `EntityTypes.OAK_CHEST_BOAT.create(level,
+  EntitySpawnReason.STRUCTURE)` (confirmed via `javap`: 26.2 keeps a
+  separate chest-boat `EntityType` per wood species, all implementing
+  `ContainerEntity` with a plain `setItem(int, ItemStack)`), spawned at
+  the world origin's water surface (`Heightmap.Types
+  .MOTION_BLOCKING_NO_LEAVES`, same chunk-forcing fix as the fallback
+  End portal). Item ids resolve via `BuiltInRegistries.ITEM.getValue(...)`
+  (a `DefaultedRegistry`, so a malformed configured item id quietly
+  resolves to air rather than crashing world creation -- consistent with
+  how invalid values are handled elsewhere in this codebase rather than
+  a new failure mode). `StarterKitDeployment` (new, `worldgen` package)
+  is called from `WorldLimitManager.onServerStarted`, gated on
+  `island.enabled() && !island.hasLand()`, reusing the exact same
+  one-time `WorldLimitState` guard as border/End-portal setup so it
+  never re-spawns a duplicate boat on a server restart. Needed its own
+  addition to the method's early-return gate (`needsChestBoat`), since a
+  chest-boat world with no borders/objective configured would otherwise
+  never reach the code that spawns it.
+
+

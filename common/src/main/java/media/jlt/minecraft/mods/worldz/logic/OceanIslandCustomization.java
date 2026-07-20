@@ -1,6 +1,5 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
-import media.jlt.minecraft.mods.worldz.config.OceanIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
 
@@ -8,11 +7,16 @@ import java.util.List;
 
 /**
  * Immutable, loader-neutral values selected for one new {@code jlt_worldz:ocean_island} world
- * (GOALS 01, 04; DESIGN §24): the small per-type field set, not the full generic Customize
- * screen's. Unlike every other typed preset, there is no spawn-strategy field (the island only
- * ever exists artificially at the origin -- see DESIGN §24.8) and no Overworld Exterior field
- * ({@link IslandPlan} unconditionally supplies the entire Overworld exterior itself).
+ * (GOALS 01, 02, 03, 04; DESIGN §24, §25): the small per-type field set, not the full generic
+ * Customize screen's. Unlike every other typed preset, there is no spawn-strategy field (the
+ * island only ever exists artificially at the origin -- see DESIGN §24.8) and no Overworld
+ * Exterior field ({@link IslandPlan} unconditionally supplies the entire Overworld exterior
+ * itself). {@link #islandSource} is this preset's own analogous choice (DESIGN §25.1):
+ * {@code ARTIFICIAL} keeps every field above meaningful exactly as before; {@code CHEST_BOAT}
+ * (GOALS 03) makes {@code islandBiome}/{@code radiusBlocks}/{@code shapeAmplitude} unused
+ * placeholders instead (land is entirely absent -- see {@link IslandPlan#hasLand}).
  *
+ * @param islandSource how the land is sourced (DESIGN §25.1)
  * @param islandBiome the one biome that fills the island's interior
  * @param radiusBlocks configured (unperturbed) island radius
  * @param shapeAmplitude coastline perturbation strength
@@ -30,6 +34,7 @@ import java.util.List;
  * @param netherExterior Nether exterior-terrain selection
  */
 public record OceanIslandCustomization(
+    IslandSource islandSource,
     String islandBiome,
     int radiusBlocks,
     double shapeAmplitude,
@@ -91,6 +96,7 @@ public record OceanIslandCustomization(
      */
     public static OceanIslandCustomization fromConfig(WorldzConfig config) {
         return new OceanIslandCustomization(
+            config.oceanIsland.islandSource,
             config.oceanIsland.islandBiome,
             config.oceanIsland.radiusBlocks,
             config.oceanIsland.shapeAmplitude,
@@ -112,6 +118,7 @@ public record OceanIslandCustomization(
     /**
      * Parses client text/toggle fields into validated customization values.
      *
+     * @param islandSource how the land is sourced
      * @param islandBiome the one biome that fills the island's interior
      * @param radiusBlocks decimal island radius
      * @param shapeAmplitude decimal coastline perturbation strength
@@ -130,6 +137,7 @@ public record OceanIslandCustomization(
      * @return canonical immutable customization values
      */
     public static OceanIslandCustomization fromText(
+        IslandSource islandSource,
         String islandBiome,
         String radiusBlocks,
         String shapeAmplitude,
@@ -147,6 +155,7 @@ public record OceanIslandCustomization(
         WorldzCustomization.ExteriorSettings netherExterior
     ) {
         return new OceanIslandCustomization(
+            islandSource,
             islandBiome,
             parseInteger(radiusBlocks, "Island radius"),
             parseDouble(shapeAmplitude, "Island shape amplitude"),
@@ -166,16 +175,19 @@ public record OceanIslandCustomization(
     }
 
     /**
-     * Resolves this world's island plan.
+     * Resolves this world's island plan. {@code CHEST_BOAT} (GOALS 03) resolves with
+     * {@link IslandPlan#hasLand} {@code false} and placeholder island-shape values (radius,
+     * amplitude, biome) that are never actually consulted -- see DESIGN §25.2.
      *
      * @return immutable, always-enabled island plan
      */
     public IslandPlan islandPlan() {
+        boolean hasLand = islandSource != IslandSource.CHEST_BOAT;
         return new IslandPlan(
             true,
-            radiusBlocks,
-            shapeAmplitude,
-            islandBiome,
+            hasLand ? radiusBlocks : WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS,
+            hasLand ? shapeAmplitude : 0.0,
+            hasLand ? islandBiome : "minecraft:plains",
             shoreWidthBlocks,
             oceanShallowWidthBlocks,
             oceanDeepenWidthBlocks,
@@ -183,7 +195,8 @@ public record OceanIslandCustomization(
             oceanDeepDepthBlocks,
             oceanRegionScaleBlocks,
             exclusionZoneEnabled,
-            exclusionZoneRadiusBlocks
+            exclusionZoneRadiusBlocks,
+            hasLand
         );
     }
 

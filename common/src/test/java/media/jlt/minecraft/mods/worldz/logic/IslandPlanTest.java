@@ -62,7 +62,7 @@ class IslandPlanTest {
     @Test
     void withinExclusionZoneRespectsTheConfiguredRadiusWhenEnabled() {
         IslandPlan plan = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, true, 2000
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, true, 2000, true
         );
         assertTrue(plan.withinExclusionZone(2000, 0));
         assertTrue(plan.withinExclusionZone(-2000, 2000));
@@ -82,7 +82,24 @@ class IslandPlanTest {
 
     private static IslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int shoreWidthBlocks) {
         return new IslandPlan(
-            true, radiusBlocks, shapeAmplitude, islandBiome, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000
+            true, radiusBlocks, shapeAmplitude, islandBiome, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000, true
         );
+    }
+
+    @Test
+    void hasLandDefaultsTrueForFromConfig() {
+        assertTrue(IslandPlan.fromConfig(new OceanIslandConfig()).hasLand());
+    }
+
+    @Test
+    void fromConfigWithoutLandResolvesWithHasLandFalse() {
+        OceanIslandConfig config = new OceanIslandConfig();
+        config.shoreWidthBlocks = 5;
+
+        IslandPlan plan = IslandPlan.fromConfigWithoutLand(config);
+
+        assertTrue(plan.enabled());
+        assertFalse(plan.hasLand());
+        assertEquals(5, plan.shoreWidthBlocks());
     }
 }

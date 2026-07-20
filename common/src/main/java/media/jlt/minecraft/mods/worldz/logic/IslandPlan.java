@@ -25,6 +25,10 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  * @param exclusionZoneEnabled whether island/ocean shaping releases beyond {@link
  *     #exclusionZoneRadiusBlocks}, letting the seed's natural terrain resume (GOALS 04)
  * @param exclusionZoneRadiusBlocks radius beyond which shaping releases, when enabled
+ * @param hasLand whether any land exists at all (DESIGN §25.2). {@code false} only for the
+ *     {@code CHEST_BOAT} island source (GOALS 03): the interior and shore-ring branches never
+ *     fire, and the ocean gradient starts right at the origin instead of past a shore ring that
+ *     doesn't exist. {@code radiusBlocks}/{@code islandBiome} are unused placeholders in that case.
  */
 public record IslandPlan(
     boolean enabled,
@@ -38,7 +42,8 @@ public record IslandPlan(
     int oceanDeepDepthBlocks,
     int oceanRegionScaleBlocks,
     boolean exclusionZoneEnabled,
-    int exclusionZoneRadiusBlocks
+    int exclusionZoneRadiusBlocks,
+    boolean hasLand
 ) {
     /** Fixture-verified default shore-ring width; see DESIGN §24.4. */
     public static final int DEFAULT_SHORE_WIDTH_BLOCKS = 12;
@@ -94,7 +99,7 @@ public record IslandPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0, "minecraft:plains",
             DEFAULT_SHORE_WIDTH_BLOCKS, DEFAULT_OCEAN_SHALLOW_WIDTH_BLOCKS, DEFAULT_OCEAN_DEEPEN_WIDTH_BLOCKS,
             DEFAULT_OCEAN_SHALLOW_DEPTH_BLOCKS, DEFAULT_OCEAN_DEEP_DEPTH_BLOCKS, DEFAULT_OCEAN_REGION_SCALE_BLOCKS,
-            false, DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS
+            false, DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS, true
         );
     }
 
@@ -102,7 +107,7 @@ public record IslandPlan(
      * Resolves a plan from sanitized YAML configuration.
      *
      * @param config sanitized ocean-island configuration
-     * @return resolved, enabled plan
+     * @return resolved, enabled plan with land present
      */
     public static IslandPlan fromConfig(OceanIslandConfig config) {
         return new IslandPlan(
@@ -117,7 +122,35 @@ public record IslandPlan(
             config.oceanDeepDepthBlocks,
             config.oceanRegionScaleBlocks,
             config.exclusionZoneEnabled,
-            config.exclusionZoneRadiusBlocks
+            config.exclusionZoneRadiusBlocks,
+            true
+        );
+    }
+
+    /**
+     * Resolves a land-free plan from sanitized YAML configuration (GOALS 03, {@code
+     * IslandSource.CHEST_BOAT}): the ocean gradient and exclusion zone still apply exactly as
+     * configured, but {@link #hasLand} is {@code false} so no interior biome or shore ring is
+     * ever selected -- {@code radiusBlocks}/{@code islandBiome} become unused placeholders.
+     *
+     * @param config sanitized ocean-island configuration
+     * @return resolved, enabled plan with no land
+     */
+    public static IslandPlan fromConfigWithoutLand(OceanIslandConfig config) {
+        return new IslandPlan(
+            true,
+            WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS,
+            0.0,
+            "minecraft:plains",
+            config.shoreWidthBlocks,
+            config.oceanShallowWidthBlocks,
+            config.oceanDeepenWidthBlocks,
+            config.oceanShallowDepthBlocks,
+            config.oceanDeepDepthBlocks,
+            config.oceanRegionScaleBlocks,
+            config.exclusionZoneEnabled,
+            config.exclusionZoneRadiusBlocks,
+            false
         );
     }
 

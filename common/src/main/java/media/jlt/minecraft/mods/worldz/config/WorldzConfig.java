@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
@@ -217,7 +218,7 @@ public final class WorldzConfig {
             config.stripWorld = readStripWorldConfig(object.get("stripWorld"), "stripWorld", logger);
         }
         if (object.containsKey("oceanIsland")) {
-            config.oceanIsland = readOceanIslandConfig(object.get("oceanIsland"), "oceanIsland");
+            config.oceanIsland = readOceanIslandConfig(object.get("oceanIsland"), "oceanIsland", logger);
         }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
@@ -396,6 +397,29 @@ public final class WorldzConfig {
         if (sanitized.exclusionZoneRadiusBlocks < 1) {
             logger.warn("Clamped oceanIsland.exclusionZoneRadiusBlocks from {} to 1.", sanitized.exclusionZoneRadiusBlocks);
             sanitized.exclusionZoneRadiusBlocks = 1;
+        }
+        sanitized.starterKit = sanitizeStarterKit(sanitized.starterKit, logger);
+        return sanitized;
+    }
+
+    private static StarterKitConfig sanitizeStarterKit(StarterKitConfig config, Logger logger) {
+        StarterKitConfig sanitized = config == null ? new StarterKitConfig() : config;
+        if (sanitized.essentials == null) {
+            sanitized.essentials = new StarterKitConfig().essentials;
+        }
+        if (sanitized.extras == null) {
+            sanitized.extras = new StarterKitConfig().extras;
+        }
+        if (sanitized.extrasCount < 0) {
+            logger.warn("Clamped oceanIsland.starterKit.extrasCount from {} to 0.", sanitized.extrasCount);
+            sanitized.extrasCount = 0;
+        }
+        if (sanitized.extrasCount > 0 && sanitized.extras.isEmpty()) {
+            logger.warn(
+                "Clamped oceanIsland.starterKit.extrasCount from {} to 0 because the extras pool is empty.",
+                sanitized.extrasCount
+            );
+            sanitized.extrasCount = 0;
         }
         return sanitized;
     }
@@ -734,11 +758,14 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static OceanIslandConfig readOceanIslandConfig(Object value, String name) {
+    private static OceanIslandConfig readOceanIslandConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
         OceanIslandConfig config = new OceanIslandConfig();
+        if (map.containsKey("islandSource")) {
+            config.islandSource = IslandSource.parse(readString(map.get("islandSource"), name + ".islandSource"));
+        }
         if (map.containsKey("islandBiome")) {
             config.islandBiome = readString(map.get("islandBiome"), name + ".islandBiome");
         }
@@ -771,6 +798,26 @@ public final class WorldzConfig {
         }
         if (map.containsKey("exclusionZoneRadiusBlocks")) {
             config.exclusionZoneRadiusBlocks = readInt(map.get("exclusionZoneRadiusBlocks"), name + ".exclusionZoneRadiusBlocks");
+        }
+        if (map.containsKey("starterKit")) {
+            config.starterKit = readStarterKitConfig(map.get("starterKit"), name + ".starterKit", logger);
+        }
+        return config;
+    }
+
+    private static StarterKitConfig readStarterKitConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StarterKitConfig config = new StarterKitConfig();
+        if (map.containsKey("essentials")) {
+            config.essentials = readStringList(map.get("essentials"), name + ".essentials", logger);
+        }
+        if (map.containsKey("extras")) {
+            config.extras = readStringList(map.get("extras"), name + ".extras", logger);
+        }
+        if (map.containsKey("extrasCount")) {
+            config.extrasCount = readInt(map.get("extrasCount"), name + ".extrasCount");
         }
         return config;
     }
@@ -1114,6 +1161,7 @@ public final class WorldzConfig {
 
     private static Map<String, Object> oceanIslandMap(OceanIslandConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
+        values.put("islandSource", config.islandSource.serializedName());
         values.put("islandBiome", config.islandBiome);
         values.put("radiusBlocks", config.radiusBlocks);
         values.put("shapeAmplitude", config.shapeAmplitude);
@@ -1125,6 +1173,15 @@ public final class WorldzConfig {
         values.put("oceanRegionScaleBlocks", config.oceanRegionScaleBlocks);
         values.put("exclusionZoneEnabled", config.exclusionZoneEnabled);
         values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
+        values.put("starterKit", starterKitMap(config.starterKit));
+        return values;
+    }
+
+    private static Map<String, Object> starterKitMap(StarterKitConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("essentials", config.essentials);
+        values.put("extras", config.extras);
+        values.put("extrasCount", config.extrasCount);
         return values;
     }
 
@@ -1206,7 +1263,8 @@ public final class WorldzConfig {
     }
 
     private static String oceanIslandSummary(OceanIslandConfig config) {
-        return "islandBiome=" + config.islandBiome
+        return "islandSource=" + config.islandSource.serializedName()
+            + ", islandBiome=" + config.islandBiome
             + ", radiusBlocks=" + config.radiusBlocks
             + ", shapeAmplitude=" + config.shapeAmplitude
             + ", shoreWidthBlocks=" + config.shoreWidthBlocks
@@ -1217,7 +1275,12 @@ public final class WorldzConfig {
             + ", oceanRegionScaleBlocks=" + config.oceanRegionScaleBlocks
             + ", exclusionZone=" + (config.exclusionZoneEnabled
                 ? "radius=" + config.exclusionZoneRadiusBlocks
-                : "<disabled>");
+                : "<disabled>")
+            + ", starterKit=" + starterKitSummary(config.starterKit);
+    }
+
+    private static String starterKitSummary(StarterKitConfig config) {
+        return "essentials=" + config.essentials + ", extras=" + config.extras + ", extrasCount=" + config.extrasCount;
     }
 
     private static String stripBandsSummary(StripBandsConfig config) {

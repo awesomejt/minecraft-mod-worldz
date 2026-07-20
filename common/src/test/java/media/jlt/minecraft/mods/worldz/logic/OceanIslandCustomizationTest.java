@@ -10,8 +10,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OceanIslandCustomizationTest {
     private static OceanIslandCustomization create(String islandBiome, int radiusBlocks, double shapeAmplitude, int shoreWidthBlocks) {
+        return create(IslandSource.ARTIFICIAL, islandBiome, radiusBlocks, shapeAmplitude, shoreWidthBlocks);
+    }
+
+    private static OceanIslandCustomization create(
+        IslandSource islandSource, String islandBiome, int radiusBlocks, double shapeAmplitude, int shoreWidthBlocks
+    ) {
         return new OceanIslandCustomization(
-            islandBiome, radiusBlocks, shapeAmplitude, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000,
+            islandSource, islandBiome, radiusBlocks, shapeAmplitude, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -89,7 +95,7 @@ class OceanIslandCustomizationTest {
     @Test
     void fromTextParsesDecimalAndDoubleFields() {
         OceanIslandCustomization customization = OceanIslandCustomization.fromText(
-            "minecraft:desert", "256", "0.4", "16", "64", "128", "8", "32", "128", true, "1500",
+            IslandSource.ARTIFICIAL, "minecraft:desert", "256", "0.4", "16", "64", "128", "8", "32", "128", true, "1500",
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -105,9 +111,24 @@ class OceanIslandCustomizationTest {
     @Test
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> OceanIslandCustomization.fromText(
-            "minecraft:plains", "not-a-number", "0.3", "12", "64", "128", "8", "32", "128", false, "2000",
+            IslandSource.ARTIFICIAL, "minecraft:plains", "not-a-number", "0.3", "12", "64", "128", "8", "32", "128", false, "2000",
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         ));
+    }
+
+    @Test
+    void islandPlanHasLandForArtificialSource() {
+        OceanIslandCustomization customization = create(IslandSource.ARTIFICIAL, "minecraft:desert", 128, 0.3, 12);
+        assertTrue(customization.islandPlan().hasLand());
+    }
+
+    @Test
+    void islandPlanHasNoLandForChestBoatSource() {
+        OceanIslandCustomization customization = create(IslandSource.CHEST_BOAT, "minecraft:desert", 128, 0.3, 12);
+        IslandPlan plan = customization.islandPlan();
+
+        assertTrue(plan.enabled());
+        assertFalse(plan.hasLand());
     }
 }

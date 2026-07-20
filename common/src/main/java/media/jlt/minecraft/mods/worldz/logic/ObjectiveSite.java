@@ -168,7 +168,11 @@ public final class ObjectiveSite {
         if (envelope.mode() != ExteriorMode.NORMAL) {
             radius = Math.min(radius, envelope.solidRadiusBlocks());
         }
-        return OptionalInt.of(Math.min(radius, island.radiusBlocks()));
+        // A land-free island (GOALS 03, IslandPlan.hasLand false) has no real size of its own to
+        // narrow by -- radiusBlocks is only ever a harmless placeholder in that case (DESIGN
+        // §25.2), and treating it as a real bound would wrongly shrink the fallback's search to
+        // the configured minimum radius.
+        return OptionalInt.of(island.hasLand() ? Math.min(radius, island.radiusBlocks()) : radius);
     }
 
     /**

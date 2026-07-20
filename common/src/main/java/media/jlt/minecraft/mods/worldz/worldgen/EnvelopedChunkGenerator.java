@@ -235,7 +235,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             // interior and its shore ring are real, unmasked generation (NORMAL); only open
             // ocean beyond the shore is masked. Beyond the exclusion zone (GOALS 04), island
             // shaping releases entirely and falls through to strip/envelope below, which stay
-            // disabled/normal for this preset -- so natural terrain resumes there.
+            // disabled/normal for this preset -- so natural terrain resumes there. Land-free
+            // (GOALS 03, DESIGN §25.2) never has a NORMAL branch here at all -- every column
+            // within the exclusion zone is OCEAN.
+            if (!this.island.hasLand()) {
+                return ExteriorMode.OCEAN;
+            }
             double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
             return distance > this.island.shoreWidthBlocks() ? ExteriorMode.OCEAN : ExteriorMode.NORMAL;
         }
@@ -757,7 +762,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         int relativeX = x - originX();
         int relativeZ = z - originZ();
-        if (!this.island.enabled() || !this.island.withinExclusionZone(relativeX, relativeZ)) {
+        if (!this.island.enabled() || !this.island.hasLand() || !this.island.withinExclusionZone(relativeX, relativeZ)) {
             return heightAccessor.getMinY();
         }
         double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
@@ -774,12 +779,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Computes the ocean island's shallow-to-deep seabed depth at one column (GOALS 01,
-     * DESIGN §24.5). Only ever called once {@link #island} is confirmed enabled.
+     * Computes the ocean island's shallow-to-deep seabed depth at one column (GOALS 01, 03,
+     * DESIGN §24.5, §25.2). Only ever called once {@link #island} is confirmed enabled. When
+     * {@link IslandPlan#hasLand} is {@code false} there is no shore ring to subtract, so the
+     * raw distance from origin stands in for "distance beyond the shore" directly.
      */
     private int islandOceanDepthAt(int relativeX, int relativeZ) {
         double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
-        double beyondShore = distance - this.island.shoreWidthBlocks();
+        double beyondShore = this.island.hasLand() ? distance - this.island.shoreWidthBlocks() : distance;
         return IslandOceanProfile.floorDepthBelowSeaLevel(
             beyondShore,
             this.island.oceanShallowWidthBlocks(),

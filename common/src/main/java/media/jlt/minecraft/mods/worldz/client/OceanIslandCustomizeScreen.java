@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.client;
 
+import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.OceanIslandCustomization;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
@@ -26,6 +27,8 @@ final class OceanIslandCustomizeScreen extends Screen implements
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
     private final CreateWorldScreen parent;
+    private IslandSource islandSource;
+    private Button islandSourceButton;
     private EditBox islandBiome;
     private EditBox radiusBlocks;
     private EditBox shapeAmplitude;
@@ -57,6 +60,7 @@ final class OceanIslandCustomizeScreen extends Screen implements
     OceanIslandCustomizeScreen(CreateWorldScreen parent, OceanIslandCustomization initial) {
         super(TITLE);
         this.parent = parent;
+        this.islandSource = initial.islandSource();
         this.islandBiomeText = initial.islandBiome();
         this.radiusBlocksText = Integer.toString(initial.radiusBlocks());
         this.shapeAmplitudeText = Double.toString(initial.shapeAmplitude());
@@ -80,6 +84,11 @@ final class OceanIslandCustomizeScreen extends Screen implements
         LinearLayout content = this.layout.addToContents(LinearLayout.vertical());
         LinearLayout form = LinearLayout.vertical().spacing(4);
         form.defaultCellSetting().alignHorizontallyCenter();
+
+        this.islandSourceButton = Button.builder(islandSourceLabel(this.islandSource), button -> cycleIslandSource())
+            .width(FORM_WIDTH)
+            .build();
+        form.addChild(this.islandSourceButton);
 
         this.islandBiome = textField(Component.translatable("jlt_worldz.ocean_island.island_biome"), this.islandBiomeText);
         this.islandBiome.setResponder(value -> this.islandBiomeText = value);
@@ -188,6 +197,19 @@ final class OceanIslandCustomizeScreen extends Screen implements
         this.repositionElements();
     }
 
+    private void cycleIslandSource() {
+        IslandSource[] values = IslandSource.values();
+        this.islandSource = values[(this.islandSource.ordinal() + 1) % values.length];
+        this.islandSourceButton.setMessage(islandSourceLabel(this.islandSource));
+    }
+
+    private static Component islandSourceLabel(IslandSource source) {
+        return Component.translatable(
+            "jlt_worldz.ocean_island.island_source",
+            Component.translatable("jlt_worldz.ocean_island.island_source." + source.serializedName())
+        );
+    }
+
     private EditBox textField(Component narration, String value) {
         EditBox field = new EditBox(this.font, FORM_WIDTH, 20, narration);
         field.setMaxLength(256);
@@ -198,6 +220,7 @@ final class OceanIslandCustomizeScreen extends Screen implements
     private void apply() {
         try {
             OceanIslandCustomization customization = OceanIslandCustomization.fromText(
+                this.islandSource,
                 this.islandBiome.getValue(),
                 this.radiusBlocks.getValue(),
                 this.shapeAmplitude.getValue(),
