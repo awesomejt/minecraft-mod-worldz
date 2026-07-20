@@ -62,7 +62,7 @@ class IslandPlanTest {
     @Test
     void withinExclusionZoneRespectsTheConfiguredRadiusWhenEnabled() {
         IslandPlan plan = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, true, 2000, true
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, true, 2000, true, true
         );
         assertTrue(plan.withinExclusionZone(2000, 0));
         assertTrue(plan.withinExclusionZone(-2000, 2000));
@@ -82,13 +82,18 @@ class IslandPlanTest {
 
     private static IslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int shoreWidthBlocks) {
         return new IslandPlan(
-            true, radiusBlocks, shapeAmplitude, islandBiome, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000, true
+            true, radiusBlocks, shapeAmplitude, islandBiome, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000, true, true
         );
     }
 
     @Test
     void hasLandDefaultsTrueForFromConfig() {
         assertTrue(IslandPlan.fromConfig(new OceanIslandConfig()).hasLand());
+    }
+
+    @Test
+    void syntheticLandDefaultsTrueForFromConfig() {
+        assertTrue(IslandPlan.fromConfig(new OceanIslandConfig()).syntheticLand());
     }
 
     @Test
@@ -100,6 +105,22 @@ class IslandPlanTest {
 
         assertTrue(plan.enabled());
         assertFalse(plan.hasLand());
+        assertTrue(plan.syntheticLand());
+        assertEquals(5, plan.shoreWidthBlocks());
+    }
+
+    @Test
+    void fromConfigNaturalResolvesWithSyntheticLandFalse() {
+        OceanIslandConfig config = new OceanIslandConfig();
+        config.radiusBlocks = 96;
+        config.shoreWidthBlocks = 5;
+
+        IslandPlan plan = IslandPlan.fromConfigNatural(config);
+
+        assertTrue(plan.enabled());
+        assertTrue(plan.hasLand());
+        assertFalse(plan.syntheticLand());
+        assertEquals(96, plan.radiusBlocks());
         assertEquals(5, plan.shoreWidthBlocks());
     }
 }

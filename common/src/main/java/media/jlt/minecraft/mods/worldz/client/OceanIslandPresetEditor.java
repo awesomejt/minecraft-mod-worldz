@@ -121,10 +121,9 @@ public final class OceanIslandPresetEditor implements PresetEditor {
         IslandPlan island = source.island();
         WorldLimitPlan plan = source.worldLimits();
         var exterior = source.exteriorPlan();
-        // NATURAL (GOALS 02, TODO 8.2) is indistinguishable from ARTIFICIAL by IslandPlan alone
-        // once resolved (both have hasLand=true); the Customize screen will fall back to
-        // ARTIFICIAL for a re-opened NATURAL world until 8.2 adds a way to tell them apart.
-        IslandSource islandSource = island.hasLand() ? IslandSource.ARTIFICIAL : IslandSource.CHEST_BOAT;
+        IslandSource islandSource = !island.hasLand() ? IslandSource.CHEST_BOAT
+            : !island.syntheticLand() ? IslandSource.NATURAL
+                : IslandSource.ARTIFICIAL;
         return new OceanIslandCustomization(
             islandSource,
             island.islandBiome(),

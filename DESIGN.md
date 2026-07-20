@@ -2631,4 +2631,80 @@ escape hatch rather than open-endedly iterating.
   chest-boat world with no borders/objective configured would otherwise
   never reach the code that spawns it.
 
+### 25.6 As-built notes (TODO 8.2)
+
+- **Simpler than §25.4 sketched, found during implementation**: the design
+  pass assumed a `naturalDelegate`-style biome-passthrough mechanism
+  would be needed for GOALS 02's real-terrain biome variety. Re-reading
+  `LimitedBiomeSource.getNoiseBiome`'s existing fallthrough chain showed
+  this wasn't necessary: `ocean_island`'s `allowed` biome set is already
+  the *full* `#minecraft:is_overworld` tag (`OceanIslandPresetEditor
+  .apply()` always resolves it that way, restriction comes entirely from
+  `islandBiomeAt`'s explicit override, not from a narrowed allowed set),
+  and `getNoiseBiome`'s final fallback (`this.resolution.get().delegate()
+  .getNoiseBiome(...)`) already samples the real climate for any column
+  `islandBiomeAt` doesn't override. So `NATURAL` mode only needed
+  `islandBiomeAt` to return `Optional.empty()` within `radiusBlocks`
+  instead of a fixed biome id -- the existing "no override, fall
+  through" pattern already used for the starter-zone/pass-through checks
+  above it in the same method -- and the real biome shows through
+  automatically, with zero new biome-sampling machinery.
+- **`IslandPlan.syntheticLand`** (new 14th field, alongside `hasLand`)
+  captures the distinction cleanly: `hasLand` answers "is there land at
+  all" (false only for `CHEST_BOAT`), `syntheticLand` answers "is that
+  land artificially shaped" (false only for `NATURAL`). Both default
+  `true` for `ARTIFICIAL`/`disabled()`, preserving every already-shipped
+  behavior unchanged. Threaded through the same four call sites §25.2
+  already identified for `hasLand`, plus `islandOceanDepthAt`'s
+  `beyondShore` calculation generalized to `hasLand && syntheticLand`
+  (true only for `ARTIFICIAL`) rather than `hasLand` alone, since
+  `NATURAL` has no shore-ring width to subtract either.
+- **No separate shore ring for `NATURAL`**: setting `shapeAmplitude = 0`
+  for the natural-land plan makes `IslandShapeProfile.distanceFromShore`
+  degenerate to a perfect circle (`radiusAt` with amplitude 0 always
+  returns the base radius), so `distance <= 0.0` is exactly "within
+  `radiusBlocks` of origin" with no separate width parameter needed --
+  reused directly as the interior/passthrough test in both
+  `LimitedBiomeSource.islandBiomeAt` and `EnvelopedChunkGenerator
+  .effectiveModeAt` (whose land-mask width becomes `0` instead of
+  `shoreWidthBlocks` when `!syntheticLand`).
+- **Terrain never raised for natural land**: `islandTargetHeight` no-ops
+  whenever `!syntheticLand`, on top of its existing `!hasLand` no-op --
+  the real seed already generated real land there (confirmed non-ocean
+  by the isolation search before that location was ever chosen), so
+  there's nothing to guarantee-raise, and doing so anyway would risk
+  visibly altering terrain GOALS 02 explicitly wants left alone.
+- **Search**: new pure-logic `NaturalIslandSearch.isIsolatedLand` (ring
+  of `RING_SAMPLE_COUNT = 8` samples at the candidate's own `radiusBlocks`,
+  `75%` ocean threshold) takes a `BiPredicate<Integer, Integer>` for "is
+  this point ocean," keeping the geometry itself fully Minecraft-runtime-
+  free and JUnit-testable. `SpawnOriginManager` wires it into a new
+  `resolveNaturalIslandOrigin`/`searchNaturalIsland` pair mirroring the
+  existing `PREFERRED_NATURAL_BIOME` search's `RandomState`/
+  `MultiNoiseBiomeSource` construction exactly, reusing
+  `SpawnSearchPlan.defaults().offsetsInSearchOrder()`'s same concentric-
+  ring point sequence -- just with the new isolation predicate instead of
+  a single-biome match. Dispatched from a new, independent check at the
+  top of `resolveFreshOrigin` (`island.enabled() && island.hasLand() &&
+  !island.syntheticLand()`), not through the shared `spawnStrategy`
+  dispatch, since `ocean_island` always keeps `spawnStrategy` at
+  `STARTER_AT_ORIGIN` regardless of `islandSource` (DESIGN §24.8) --
+  `NATURAL` needed its own entry point that runs anyway despite that.
+  Failure path matches every existing search-failure branch in this
+  class exactly: log a warning, fall back to the plain world origin
+  (real terrain there is used as-is, whatever it happens to be).
+- **Read-back fixed**: `OceanIslandPresetEditor.currentCustomization()`
+  (reopening Customize on an already-generated world) now distinguishes
+  all three sources correctly via `hasLand`/`syntheticLand`, closing the
+  gap §25.5 flagged as a known limitation of the 8.1 commit.
+- **Not implemented, deliberately out of scope**: the isolation search's
+  reliability against real, varied seeds has not been evaluated beyond
+  the pure-logic unit tests for `NaturalIslandSearch.isIsolatedLand`
+  itself (which use synthetic predicates, not a real climate sampler) --
+  this is exactly the "time-boxed, park if unreliable" territory TODO
+  8.2 anticipated. If Jason's acceptance testing finds the search rarely
+  succeeds or picks poor candidates on real seeds, the response is
+  tuning `ISOLATION_FRACTION`/`RING_SAMPLE_COUNT` or widening
+  `SpawnSearchPlan`'s search radius, not a redesign.
+
 

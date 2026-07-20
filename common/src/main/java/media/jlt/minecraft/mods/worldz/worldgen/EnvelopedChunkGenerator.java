@@ -237,12 +237,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             // shaping releases entirely and falls through to strip/envelope below, which stay
             // disabled/normal for this preset -- so natural terrain resumes there. Land-free
             // (GOALS 03, DESIGN §25.2) never has a NORMAL branch here at all -- every column
-            // within the exclusion zone is OCEAN.
+            // within the exclusion zone is OCEAN. Natural land (GOALS 02, DESIGN §25.4) has no
+            // separate shore-ring width -- the real seed's own terrain is left completely
+            // unmasked out to radiusBlocks, then ocean begins immediately past it.
             if (!this.island.hasLand()) {
                 return ExteriorMode.OCEAN;
             }
             double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
-            return distance > this.island.shoreWidthBlocks() ? ExteriorMode.OCEAN : ExteriorMode.NORMAL;
+            int landMaskWidth = this.island.syntheticLand() ? this.island.shoreWidthBlocks() : 0;
+            return distance > landMaskWidth ? ExteriorMode.OCEAN : ExteriorMode.NORMAL;
         }
         ExteriorMode stripMode = this.strip.modeAt(relativeZ);
         return stripMode != ExteriorMode.NORMAL ? stripMode : this.envelope.modeAt(relativeX, relativeZ);
@@ -762,7 +765,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         int relativeX = x - originX();
         int relativeZ = z - originZ();
-        if (!this.island.enabled() || !this.island.hasLand() || !this.island.withinExclusionZone(relativeX, relativeZ)) {
+        // Natural land (GOALS 02) is never artificially raised -- the real seed's own terrain
+        // is left completely unmodified, unlike the artificially shaped island (GOALS 01).
+        if (!this.island.enabled() || !this.island.hasLand() || !this.island.syntheticLand()
+            || !this.island.withinExclusionZone(relativeX, relativeZ)) {
             return heightAccessor.getMinY();
         }
         double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
@@ -779,14 +785,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Computes the ocean island's shallow-to-deep seabed depth at one column (GOALS 01, 03,
-     * DESIGN §24.5, §25.2). Only ever called once {@link #island} is confirmed enabled. When
-     * {@link IslandPlan#hasLand} is {@code false} there is no shore ring to subtract, so the
-     * raw distance from origin stands in for "distance beyond the shore" directly.
+     * Computes the ocean island's shallow-to-deep seabed depth at one column (GOALS 01, 02, 03,
+     * DESIGN §24.5, §25.2, §25.4). Only ever called once {@link #island} is confirmed enabled.
+     * When {@link IslandPlan#hasLand} is {@code false} (GOALS 03) or {@link
+     * IslandPlan#syntheticLand} is {@code false} (GOALS 02) there is no shore ring to subtract,
+     * so the raw distance from origin stands in for "distance beyond the shore" directly.
      */
     private int islandOceanDepthAt(int relativeX, int relativeZ) {
         double distance = this.island.distanceFromShore(relativeX, relativeZ, islandSeed());
-        double beyondShore = this.island.hasLand() ? distance - this.island.shoreWidthBlocks() : distance;
+        boolean hasShoreRing = this.island.hasLand() && this.island.syntheticLand();
+        double beyondShore = hasShoreRing ? distance - this.island.shoreWidthBlocks() : distance;
         return IslandOceanProfile.floorDepthBelowSeaLevel(
             beyondShore,
             this.island.oceanShallowWidthBlocks(),

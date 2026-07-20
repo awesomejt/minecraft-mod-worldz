@@ -269,9 +269,11 @@ public final class LimitedBiomeSource extends BiomeSource {
             if (!oceanIslandDefaults) {
                 return IslandPlan.disabled();
             }
-            return config.oceanIsland.islandSource == IslandSource.CHEST_BOAT
-                ? IslandPlan.fromConfigWithoutLand(config.oceanIsland)
-                : IslandPlan.fromConfig(config.oceanIsland);
+            return switch (config.oceanIsland.islandSource) {
+                case CHEST_BOAT -> IslandPlan.fromConfigWithoutLand(config.oceanIsland);
+                case NATURAL -> IslandPlan.fromConfigNatural(config.oceanIsland);
+                case ARTIFICIAL -> IslandPlan.fromConfig(config.oceanIsland);
+            };
         });
 
         return new LimitedBiomeSource(
@@ -858,31 +860,41 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
-     * Resolves the ocean-island biome at one column (GOALS 01, 03, DESIGN §24, §25.2): the
-     * island's own biome inside the coastline, a beach/stony-shore pick in the shore ring, or
-     * the shallow-to-deep ocean gradient beyond it. {@link IslandPlan#hasLand} {@code false}
-     * (GOALS 03, {@code CHEST_BOAT}) skips the interior/shore-ring branches entirely -- every
-     * column falls straight to the ocean gradient, with the raw distance from origin standing
-     * in for "distance beyond the shore" since there is no shore ring to subtract. Shares
-     * {@link #effectiveLayoutPlan}'s already-resolved real seed with {@code
-     * EnvelopedChunkGenerator}'s terrain code (DESIGN §24.2), so biome and terrain height can
-     * never disagree about where the coastline is.
+     * Resolves the ocean-island biome at one column (GOALS 01, 02, 03, DESIGN §24, §25.2,
+     * §25.4): the island's own biome inside the coastline, a beach/stony-shore pick in the
+     * shore ring, or the shallow-to-deep ocean gradient beyond it. {@link IslandPlan#hasLand}
+     * {@code false} (GOALS 03, {@code CHEST_BOAT}) skips the interior/shore-ring branches
+     * entirely -- every column falls straight to the ocean gradient, with the raw distance from
+     * origin standing in for "distance beyond the shore" since there is no shore ring to
+     * subtract. {@link IslandPlan#syntheticLand} {@code false} (GOALS 02, {@code NATURAL})
+     * resolves to {@link Optional#empty()} within {@code radiusBlocks} instead -- signaling "no
+     * override," so {@link #getNoiseBiome} falls through to the real seed's own biome for that
+     * column -- and likewise skips the shore ring beyond it (real terrain already has whatever
+     * natural coastline it has). Shares {@link #effectiveLayoutPlan}'s already-resolved real
+     * seed with {@code EnvelopedChunkGenerator}'s terrain code (DESIGN §24.2), so biome and
+     * terrain height can never disagree about where the coastline is.
      *
      * @param relativeX block X relative to the origin
      * @param relativeZ block Z relative to the origin
-     * @return the resolved island biome, empty only if the registry lookup for it failed
+     * @return the resolved island biome; empty when the real seed's own biome should show
+     *     through instead (GOALS 02), or if the registry lookup for a resolved id failed
      */
     private Optional<Holder<Biome>> islandBiomeAt(int relativeX, int relativeZ) {
         long seed = this.effectiveLayoutPlan.seed();
         double distance = this.island.distanceFromShore(relativeX, relativeZ, seed);
+        boolean hasLand = this.island.hasLand();
+        boolean syntheticLand = this.island.syntheticLand();
+        if (hasLand && !syntheticLand && distance <= 0.0) {
+            return Optional.empty();
+        }
         Map<String, Holder<Biome>> islandBiomes = this.resolution.get().islandBiomes();
         String biomeId;
-        if (this.island.hasLand() && distance <= 0.0) {
+        if (hasLand && syntheticLand && distance <= 0.0) {
             biomeId = this.island.islandBiome();
-        } else if (this.island.hasLand() && distance <= this.island.shoreWidthBlocks()) {
+        } else if (hasLand && syntheticLand && distance <= this.island.shoreWidthBlocks()) {
             biomeId = IslandOceanProfile.shoreBiomeAt(relativeX, relativeZ, this.island.radiusBlocks(), seed);
         } else {
-            double beyondShore = this.island.hasLand() ? distance - this.island.shoreWidthBlocks() : distance;
+            double beyondShore = (hasLand && syntheticLand) ? distance - this.island.shoreWidthBlocks() : distance;
             biomeId = IslandOceanProfile.biomeAt(
                 relativeX, relativeZ, beyondShore, this.island.oceanShallowWidthBlocks(),
                 this.island.oceanRegionScaleBlocks(), seed

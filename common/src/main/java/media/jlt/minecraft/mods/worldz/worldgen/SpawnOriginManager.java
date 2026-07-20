@@ -1,6 +1,8 @@
 package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
+import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.NaturalIslandSearch;
 import media.jlt.minecraft.mods.worldz.logic.SpawnSearchPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.WorldSnapshotWriter;
@@ -10,6 +12,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
@@ -95,6 +98,15 @@ public final class SpawnOriginManager {
             // levelData.setInitialized(true) committed). Re-apply and defer to vanilla.
             limitedSource.setOrigin(existing.originBlockX(), existing.originBlockZ());
             return Optional.empty();
+        }
+
+        IslandPlan island = limitedSource.island();
+        if (island.enabled() && island.hasLand() && !island.syntheticLand()) {
+            // GOALS 02: ocean_island's own NATURAL source. Independent of spawnStrategy (which
+            // stays STARTER_AT_ORIGIN for every ocean_island source, DESIGN §24.8) since this
+            // needs an isolation-aware search PREFERRED_NATURAL_BIOME's simple point-match
+            // can't do -- see DESIGN §25.4.
+            return resolveNaturalIslandOrigin(overworld, limitedSource, island.radiusBlocks());
         }
 
         if (limitedSource.spawnStrategy() == SpawnStrategy.VANILLA_SPAWN) {
@@ -213,6 +225,78 @@ public final class SpawnOriginManager {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Resolves the origin for GOALS 02's {@code NATURAL} island source (DESIGN §25.4): searches
+     * for an isolated natural landmass instead of a specific target biome, falling back to the
+     * world origin (real terrain there is used as-is, whatever it happens to be) exactly like
+     * every other search failure path in this class.
+     */
+    private static Optional<BlockPos> resolveNaturalIslandOrigin(
+        ServerLevel overworld, LimitedBiomeSource limitedSource, int radiusBlocks
+    ) {
+        ChunkGenerator generator = overworld.getChunkSource().getGenerator();
+        ChunkGenerator delegate = generator instanceof EnvelopedChunkGenerator enveloped ? enveloped.delegate() : generator;
+        if (!(delegate instanceof NoiseBasedChunkGenerator noiseGenerator)) {
+            WorldzCommon.LOGGER.warn(
+                "Cannot build a real climate sampler for the natural island search; using the origin instead."
+            );
+            markResolved(overworld, limitedSource, 0, 0);
+            return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
+        }
+
+        Optional<BlockPos> found = searchNaturalIsland(overworld, noiseGenerator, radiusBlocks);
+        if (found.isEmpty()) {
+            WorldzCommon.LOGGER.warn(
+                "Natural island search found no isolated land within {} blocks of the origin; using the origin instead.",
+                SpawnSearchPlan.DEFAULT_MAX_RADIUS_BLOCKS
+            );
+            markResolved(overworld, limitedSource, 0, 0);
+            return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
+        }
+
+        int originX = found.get().getX();
+        int originZ = found.get().getZ();
+        markResolved(overworld, limitedSource, originX, originZ);
+        return Optional.of(safeSpawnNear(overworld, limitedSource, originX, originZ));
+    }
+
+    private static Optional<BlockPos> searchNaturalIsland(
+        ServerLevel overworld, NoiseBasedChunkGenerator noiseGenerator, int radiusBlocks
+    ) {
+        HolderGetter<Biome> biomeGetter = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
+        RandomState realRandomState = RandomState.create(
+            noiseGenerator.generatorSettings().value(),
+            overworld.registryAccess().lookupOrThrow(Registries.NOISE),
+            overworld.getSeed()
+        );
+        Climate.Sampler sampler = realRandomState.sampler();
+        Climate.ParameterList<Holder<Biome>> overworldParameters = new MultiNoiseBiomeSourceParameterList(
+            MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD,
+            biomeGetter
+        ).parameters();
+        MultiNoiseBiomeSource naturalView = MultiNoiseBiomeSource.createFromList(overworldParameters);
+        int sampleQuartY = QuartPos.fromBlock(overworld.getSeaLevel());
+
+        for (SpawnSearchPlan.Offset offset : SpawnSearchPlan.defaults().offsetsInSearchOrder()) {
+            boolean centerIsOcean = isOceanBiomeAt(naturalView, sampler, sampleQuartY, offset.x(), offset.z());
+            boolean isolated = NaturalIslandSearch.isIsolatedLand(
+                offset.x(), offset.z(), radiusBlocks, centerIsOcean,
+                (ringX, ringZ) -> isOceanBiomeAt(naturalView, sampler, sampleQuartY, ringX, ringZ)
+            );
+            if (isolated) {
+                return Optional.of(new BlockPos(offset.x(), 0, offset.z()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean isOceanBiomeAt(
+        MultiNoiseBiomeSource naturalView, Climate.Sampler sampler, int sampleQuartY, int x, int z
+    ) {
+        Holder<Biome> biome = naturalView.getNoiseBiome(QuartPos.fromBlock(x), sampleQuartY, QuartPos.fromBlock(z), sampler);
+        return biome.is(BiomeTags.IS_OCEAN);
     }
 
     private static void markResolved(ServerLevel overworld, LimitedBiomeSource source, int originX, int originZ) {

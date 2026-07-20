@@ -29,6 +29,12 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  *     {@code CHEST_BOAT} island source (GOALS 03): the interior and shore-ring branches never
  *     fire, and the ocean gradient starts right at the origin instead of past a shore ring that
  *     doesn't exist. {@code radiusBlocks}/{@code islandBiome} are unused placeholders in that case.
+ * @param syntheticLand whether the land within {@code radiusBlocks} is artificially shaped
+ *     (DESIGN §25.4). {@code false} only for the {@code NATURAL} island source (GOALS 02): no
+ *     interior biome override, no shore ring, no terrain raise -- the real seed's own terrain
+ *     and biome show through unmodified within {@code radiusBlocks}, and the ocean gradient
+ *     begins immediately past it (no separate shore-ring width to subtract). Meaningless
+ *     (harmless placeholder {@code true}) whenever {@link #hasLand} is {@code false}.
  */
 public record IslandPlan(
     boolean enabled,
@@ -43,7 +49,8 @@ public record IslandPlan(
     int oceanRegionScaleBlocks,
     boolean exclusionZoneEnabled,
     int exclusionZoneRadiusBlocks,
-    boolean hasLand
+    boolean hasLand,
+    boolean syntheticLand
 ) {
     /** Fixture-verified default shore-ring width; see DESIGN §24.4. */
     public static final int DEFAULT_SHORE_WIDTH_BLOCKS = 12;
@@ -99,7 +106,7 @@ public record IslandPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0, "minecraft:plains",
             DEFAULT_SHORE_WIDTH_BLOCKS, DEFAULT_OCEAN_SHALLOW_WIDTH_BLOCKS, DEFAULT_OCEAN_DEEPEN_WIDTH_BLOCKS,
             DEFAULT_OCEAN_SHALLOW_DEPTH_BLOCKS, DEFAULT_OCEAN_DEEP_DEPTH_BLOCKS, DEFAULT_OCEAN_REGION_SCALE_BLOCKS,
-            false, DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS, true
+            false, DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS, true, true
         );
     }
 
@@ -107,7 +114,7 @@ public record IslandPlan(
      * Resolves a plan from sanitized YAML configuration.
      *
      * @param config sanitized ocean-island configuration
-     * @return resolved, enabled plan with land present
+     * @return resolved, enabled plan with artificially shaped land present
      */
     public static IslandPlan fromConfig(OceanIslandConfig config) {
         return new IslandPlan(
@@ -123,6 +130,7 @@ public record IslandPlan(
             config.oceanRegionScaleBlocks,
             config.exclusionZoneEnabled,
             config.exclusionZoneRadiusBlocks,
+            true,
             true
         );
     }
@@ -150,6 +158,37 @@ public record IslandPlan(
             config.oceanRegionScaleBlocks,
             config.exclusionZoneEnabled,
             config.exclusionZoneRadiusBlocks,
+            false,
+            true
+        );
+    }
+
+    /**
+     * Resolves a natural-land plan from sanitized YAML configuration (GOALS 02, {@code
+     * IslandSource.NATURAL}): {@link #hasLand} is {@code true} but {@link #syntheticLand} is
+     * {@code false} -- no interior biome or shore ring is ever selected, and the ocean gradient
+     * begins immediately past {@code radiusBlocks} with no separate ring to subtract.
+     * {@code shapeAmplitude}/{@code islandBiome} become unused placeholders (the real seed's own
+     * terrain provides the shape and biome variety).
+     *
+     * @param config sanitized ocean-island configuration
+     * @return resolved, enabled plan with real, natural land
+     */
+    public static IslandPlan fromConfigNatural(OceanIslandConfig config) {
+        return new IslandPlan(
+            true,
+            config.radiusBlocks,
+            0.0,
+            "minecraft:plains",
+            config.shoreWidthBlocks,
+            config.oceanShallowWidthBlocks,
+            config.oceanDeepenWidthBlocks,
+            config.oceanShallowDepthBlocks,
+            config.oceanDeepDepthBlocks,
+            config.oceanRegionScaleBlocks,
+            config.exclusionZoneEnabled,
+            config.exclusionZoneRadiusBlocks,
+            true,
             false
         );
     }

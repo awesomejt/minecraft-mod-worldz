@@ -1090,12 +1090,33 @@ rectangular shape.
       resolves identically to `ARTIFICIAL` until 8.2 (documented gap in
       DESIGN §25.5, including the `currentCustomization()` read-back
       ambiguity 8.2 will need to address). Full suite green; clean build.
-- [ ] 8.2 Natural island by seed (02): search the real seed's unmodified
+- [x] 8.2 Natural island by seed (02): search the real seed's unmodified
       climate/terrain for a small natural island, set world spawn/origin
       there, replace everything else with ocean beyond it. Reuses the 16.3
       spawn-search + recentering machinery. This is the hardest ocean item —
       keep it last and time-boxed; if the search proves unreliable, park it
       with findings in DESIGN and move on.
+      **Done (0.2.38):** turned out simpler than the design pass expected
+      (full detail in DESIGN §25.6, MEMORY.md 2026-07-20) — `ocean_island`'s
+      allowed biome set is already the full vanilla tag, and
+      `LimitedBiomeSource.getNoiseBiome`'s existing fallthrough already
+      samples the real climate for any unoverridden column, so `NATURAL`
+      mode only needed `islandBiomeAt` to return empty within
+      `radiusBlocks` — no separate natural-biome-passthrough machinery.
+      New `IslandPlan.syntheticLand` (alongside 8.1's `hasLand`)
+      threaded through the same call sites, plus `islandOceanDepthAt`'s
+      shore-ring subtraction generalized. New pure-logic
+      `NaturalIslandSearch.isIsolatedLand` (8-point ring sample, 75%
+      ocean threshold) wired into a new `SpawnOriginManager
+      .resolveNaturalIslandOrigin`, dispatched independently of the
+      shared `spawnStrategy` mechanism since `ocean_island` always keeps
+      that at `STARTER_AT_ORIGIN`. Also closed the `currentCustomization()`
+      read-back gap flagged after 8.1. **Not validated against real
+      seeds** — only pure-logic unit tests with synthetic predicates;
+      this is exactly the "time-boxed, park if unreliable" allowance
+      this task grants, and Jason's acceptance testing will tell us if
+      the isolation threshold needs tuning. Full suite green (386
+      tests); clean build.
 - [ ] 8.3 Test configs; docs; **[Jason]** acceptance.
 
 ## Phase 9 — Ocean fluid variants: lava ocean + dry world (GOALS 28, 31)

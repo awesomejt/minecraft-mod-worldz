@@ -177,17 +177,20 @@ public record OceanIslandCustomization(
     /**
      * Resolves this world's island plan. {@code CHEST_BOAT} (GOALS 03) resolves with
      * {@link IslandPlan#hasLand} {@code false} and placeholder island-shape values (radius,
-     * amplitude, biome) that are never actually consulted -- see DESIGN §25.2.
+     * amplitude, biome) that are never actually consulted -- see DESIGN §25.2. {@code NATURAL}
+     * (GOALS 02) resolves with {@link IslandPlan#syntheticLand} {@code false} and a placeholder
+     * amplitude/biome (the real seed provides both) -- see DESIGN §25.4.
      *
      * @return immutable, always-enabled island plan
      */
     public IslandPlan islandPlan() {
         boolean hasLand = islandSource != IslandSource.CHEST_BOAT;
+        boolean syntheticLand = islandSource != IslandSource.NATURAL;
         return new IslandPlan(
             true,
             hasLand ? radiusBlocks : WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS,
-            hasLand ? shapeAmplitude : 0.0,
-            hasLand ? islandBiome : "minecraft:plains",
+            syntheticLand ? shapeAmplitude : 0.0,
+            syntheticLand ? islandBiome : "minecraft:plains",
             shoreWidthBlocks,
             oceanShallowWidthBlocks,
             oceanDeepenWidthBlocks,
@@ -196,7 +199,8 @@ public record OceanIslandCustomization(
             oceanRegionScaleBlocks,
             exclusionZoneEnabled,
             exclusionZoneRadiusBlocks,
-            hasLand
+            hasLand,
+            syntheticLand
         );
     }
 

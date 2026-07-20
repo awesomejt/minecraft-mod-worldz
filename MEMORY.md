@@ -1483,6 +1483,41 @@ Durable decisions, verified API notes, and rationale that should survive across 
   addition (`needsChestBoat`) to that method's early-return gate, since a
   chest-boat world with no borders/objective configured would otherwise
   never reach the spawn code at all. Full suite green; clean build.
+- 2026-07-20 (Phase 8.2 implemented: natural island by seed, GOALS 02) —
+  Simpler than the design pass expected: re-reading
+  `LimitedBiomeSource.getNoiseBiome`'s fallthrough chain showed
+  `ocean_island`'s `allowed` biome set is already the full
+  `#minecraft:is_overworld` tag (restriction comes entirely from
+  `islandBiomeAt`'s explicit override), and the method's final fallback
+  already samples the real climate for any column not overridden -- so
+  `NATURAL` mode only needed `islandBiomeAt` to return `Optional.empty()`
+  within `radiusBlocks` (the same "no override, fall through" pattern
+  the pass-through checks above it already use), no separate
+  `naturalDelegate`-based passthrough machinery needed at all. New
+  `IslandPlan.syntheticLand` (alongside `hasLand`): `hasLand` = "is
+  there land," `syntheticLand` = "is it artificially shaped" (false only
+  for `NATURAL`). `shapeAmplitude=0` makes the shape-profile math
+  degenerate to a perfect circle for natural land, so `distance<=0`
+  directly means "within radiusBlocks," no separate shore-ring width
+  needed. `islandTargetHeight` no-ops for natural land too (real,
+  already-verified-non-ocean terrain needs no guarantee-raise). New pure
+  `NaturalIslandSearch.isIsolatedLand` (8-point ring sample, 75% ocean
+  threshold, `BiPredicate` for testability without a real climate
+  sampler) wired into a new `SpawnOriginManager.resolveNaturalIslandOrigin`
+  dispatched independently of the shared `spawnStrategy` mechanism
+  (`ocean_island` always keeps that at `STARTER_AT_ORIGIN` regardless of
+  `islandSource`, DESIGN §24.8), reusing `PREFERRED_NATURAL_BIOME`'s
+  exact `RandomState`/`MultiNoiseBiomeSource` construction and
+  `SpawnSearchPlan`'s search-ring order. Also fixed
+  `OceanIslandPresetEditor.currentCustomization()`'s read-back ambiguity
+  flagged in the 8.1 entry above -- now a clean 3-way switch on
+  `hasLand`/`syntheticLand`. **Not validated against real seeds** --
+  `NaturalIslandSearch`'s own pure-logic tests use synthetic predicates,
+  not a real climate sampler; this is the "time-boxed, park if
+  unreliable" territory TODO 8.2 explicitly anticipated, and Jason's
+  in-game acceptance testing is what will actually tell us whether the
+  isolation threshold/ring sample count need tuning. Full suite green
+  (386 tests); clean build.
 
 ## Reference Log
 

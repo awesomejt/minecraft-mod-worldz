@@ -137,7 +137,7 @@ class ObjectiveSiteTest {
         // report an unlimited normal world -- silently skipping the fallback End-portal
         // guarantee for every ocean_island world.
         IslandPlan island = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, true
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, true, true
         );
         assertTrue(ObjectiveSite.supportiveRadius(false, 512, ExteriorPlan.DimensionEnvelope.normal()).isEmpty());
         assertEquals(
@@ -148,7 +148,7 @@ class ObjectiveSiteTest {
     @Test
     void islandAwareSupportiveRadiusUsesTheTightestOfBorderEnvelopeAndIsland() {
         IslandPlan island = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, true
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, true, true
         );
         var voidEnvelope = new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, 384, 0);
 
@@ -174,7 +174,7 @@ class ObjectiveSiteTest {
         // false (DESIGN §25.2) -- treating it as a real bound would wrongly shrink the fallback
         // End portal's search to the configured minimum island radius.
         IslandPlan landFree = new IslandPlan(
-            true, 8, 0.0, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, false
+            true, 8, 0.0, "minecraft:plains", 12, 64, 128, 8, 32, 128, false, 2000, false, true
         );
         assertEquals(
             512, ObjectiveSite.supportiveRadius(true, 512, ExteriorPlan.DimensionEnvelope.normal(), landFree).orElseThrow()

@@ -130,5 +130,17 @@ class OceanIslandCustomizationTest {
 
         assertTrue(plan.enabled());
         assertFalse(plan.hasLand());
+        assertTrue(plan.syntheticLand());
+    }
+
+    @Test
+    void islandPlanHasNaturalLandForNaturalSource() {
+        OceanIslandCustomization customization = create(IslandSource.NATURAL, "minecraft:desert", 128, 0.3, 12);
+        IslandPlan plan = customization.islandPlan();
+
+        assertTrue(plan.enabled());
+        assertTrue(plan.hasLand());
+        assertFalse(plan.syntheticLand());
+        assertEquals(128, plan.radiusBlocks());
     }
 }

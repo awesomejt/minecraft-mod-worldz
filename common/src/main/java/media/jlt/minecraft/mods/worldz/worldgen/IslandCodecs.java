@@ -19,7 +19,8 @@ final class IslandCodecs {
         Codec.INT.fieldOf("ocean_region_scale").forGetter(IslandPlan::oceanRegionScaleBlocks),
         Codec.BOOL.fieldOf("exclusion_zone_enabled").forGetter(IslandPlan::exclusionZoneEnabled),
         Codec.INT.fieldOf("exclusion_zone_radius").forGetter(IslandPlan::exclusionZoneRadiusBlocks),
-        Codec.BOOL.fieldOf("has_land").forGetter(IslandPlan::hasLand)
+        Codec.BOOL.fieldOf("has_land").forGetter(IslandPlan::hasLand),
+        Codec.BOOL.fieldOf("synthetic_land").forGetter(IslandPlan::syntheticLand)
     ).apply(instance, IslandPlan::new));
 
     private IslandCodecs() {

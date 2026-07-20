@@ -867,6 +867,16 @@ class WorldzConfigTest {
     }
 
     @Test
+    void oceanIslandSourceLoadsNatural() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              islandSource: natural
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(IslandSource.NATURAL, config.oceanIsland.islandSource);
+    }
+
+    @Test
     void starterKitSettingsLoadIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             oceanIsland:
