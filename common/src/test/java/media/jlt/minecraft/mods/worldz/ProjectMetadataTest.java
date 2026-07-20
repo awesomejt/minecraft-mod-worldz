@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.42", properties.getProperty("version"));
+        assertEquals("0.2.43", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -166,6 +166,25 @@ class ProjectMetadataTest {
             ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
         )).getAsJsonObject();
         assertEquals("Worldz: Ocean Island", lang.get("generator.jlt_worldz.ocean_island").getAsString());
+    }
+
+    @Test
+    void skyIslandTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("SkyIslandPresetEditor.SKY_ISLAND_PRESET"));
+        assertTrue(fabricMixin.contains("SkyIslandPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(SkyIslandPresetEditor.SKY_ISLAND_PRESET, SkyIslandPresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Sky Island", lang.get("generator.jlt_worldz.sky_island").getAsString());
     }
 
     @Test
@@ -473,7 +492,7 @@ class ProjectMetadataTest {
                 + "                    ? config.singleBiome.spawn.strategy\n"
                 + "                    : stripWorldDefaults\n"
                 + "                        ? config.stripWorld.spawn.strategy\n"
-                + "                        : oceanIslandDefaults\n"
+                + "                        : oceanIslandDefaults || skyIslandDefaults\n"
                 + "                            ? SpawnStrategy.STARTER_AT_ORIGIN\n"
                 + "                            : config.spawn.strategy);"
         ));

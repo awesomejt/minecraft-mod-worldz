@@ -190,4 +190,33 @@ class ObjectiveSiteTest {
             ObjectiveSite.supportiveRadius(false, 512, ExteriorPlan.DimensionEnvelope.normal(), landFree).orElseThrow()
         );
     }
+
+    @Test
+    void skyIslandAwareSupportiveRadiusReportsTheIslandEvenWithNoBorderOrEnvelope() {
+        // Same regression class as the ocean island (GOALS 05, DESIGN §27.5): a sky island's
+        // Overworld exterior is also never expressed through ExteriorPlan, so the
+        // border/envelope-only overload alone would wrongly report an unlimited normal world.
+        SkyIslandPlan skyIsland = new SkyIslandPlan(true, 16, 0.3, "minecraft:plains", 64, 6);
+        assertEquals(
+            16, ObjectiveSite.supportiveRadius(false, 512, ExteriorPlan.DimensionEnvelope.normal(), skyIsland).orElseThrow()
+        );
+    }
+
+    @Test
+    void skyIslandAwareSupportiveRadiusUsesTheTightestOfBorderEnvelopeAndIsland() {
+        SkyIslandPlan skyIsland = new SkyIslandPlan(true, 128, 0.3, "minecraft:plains", 64, 6);
+        var voidEnvelope = new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, 384, 0);
+
+        assertEquals(64, ObjectiveSite.supportiveRadius(true, 64, voidEnvelope, skyIsland).orElseThrow());
+        assertEquals(128, ObjectiveSite.supportiveRadius(false, 64, ExteriorPlan.DimensionEnvelope.normal(), skyIsland).orElseThrow());
+        assertEquals(64, ObjectiveSite.supportiveRadius(true, 64, ExteriorPlan.DimensionEnvelope.normal(), skyIsland).orElseThrow());
+    }
+
+    @Test
+    void skyIslandAwareSupportiveRadiusFallsBackToTheBorderEnvelopeOverloadWhenDisabled() {
+        assertEquals(
+            ObjectiveSite.supportiveRadius(true, 256, ExteriorPlan.DimensionEnvelope.normal()),
+            ObjectiveSite.supportiveRadius(true, 256, ExteriorPlan.DimensionEnvelope.normal(), SkyIslandPlan.disabled())
+        );
+    }
 }

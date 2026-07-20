@@ -1,0 +1,80 @@
+package media.jlt.minecraft.mods.worldz.logic;
+
+import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class SkyIslandPlanTest {
+    @Test
+    void disabledPlanHasSafePlaceholderValues() {
+        SkyIslandPlan disabled = SkyIslandPlan.disabled();
+        assertFalse(disabled.enabled());
+        assertEquals(SkyIslandPlan.DEFAULT_SURFACE_Y, disabled.surfaceY());
+        assertEquals(SkyIslandPlan.DEFAULT_THICKNESS_BLOCKS, disabled.thicknessBlocks());
+    }
+
+    @Test
+    void fromConfigResolvesAnEnabledPlan() {
+        SkyIslandConfig config = new SkyIslandConfig();
+        config.islandBiome = "minecraft:desert";
+        config.radiusBlocks = 32;
+        config.surfaceY = 80;
+        config.thicknessBlocks = 10;
+
+        SkyIslandPlan plan = SkyIslandPlan.fromConfig(config);
+
+        assertTrue(plan.enabled());
+        assertEquals("minecraft:desert", plan.islandBiome());
+        assertEquals(32, plan.radiusBlocks());
+        assertEquals(80, plan.surfaceY());
+        assertEquals(10, plan.thicknessBlocks());
+    }
+
+    @Test
+    void invalidRadiusIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> plan(7, 0.3, "minecraft:plains", 64, 6));
+        assertThrows(IllegalArgumentException.class, () -> plan(100_000, 0.3, "minecraft:plains", 64, 6));
+    }
+
+    @Test
+    void invalidAmplitudeIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> plan(16, -0.1, "minecraft:plains", 64, 6));
+        assertThrows(IllegalArgumentException.class, () -> plan(16, 0.7, "minecraft:plains", 64, 6));
+    }
+
+    @Test
+    void invalidIslandBiomeIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> plan(16, 0.3, "", 64, 6));
+        assertThrows(IllegalArgumentException.class, () -> plan(16, 0.3, null, 64, 6));
+    }
+
+    @Test
+    void invalidThicknessIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> plan(16, 0.3, "minecraft:plains", 64, 0));
+        assertThrows(IllegalArgumentException.class, () -> plan(16, 0.3, "minecraft:plains", 64, 65));
+    }
+
+    @Test
+    void distanceFromShoreDelegatesToIslandShapeProfile() {
+        SkyIslandPlan plan = plan(16, 0.0, "minecraft:plains", 64, 6);
+        assertEquals(
+            IslandShapeProfile.distanceFromShore(20, 0, 16, 0.0, 42L),
+            plan.distanceFromShore(20, 0, 42L),
+            0.000_001
+        );
+    }
+
+    @Test
+    void bottomYIsSurfaceYMinusThickness() {
+        SkyIslandPlan plan = plan(16, 0.0, "minecraft:plains", 70, 8);
+        assertEquals(62, plan.bottomY());
+    }
+
+    private static SkyIslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int surfaceY, int thicknessBlocks) {
+        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks);
+    }
+}

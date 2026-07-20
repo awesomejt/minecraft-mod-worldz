@@ -9,6 +9,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import org.slf4j.Logger;
@@ -116,6 +117,8 @@ public final class WorldzConfig {
     public StripWorldConfig stripWorld = new StripWorldConfig();
     /** Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 04; DESIGN §24). */
     public OceanIslandConfig oceanIsland = new OceanIslandConfig();
+    /** Defaults for the {@code jlt_worldz:sky_island} typed preset (GOALS 05; DESIGN §27). */
+    public SkyIslandConfig skyIsland = new SkyIslandConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -221,6 +224,9 @@ public final class WorldzConfig {
         if (object.containsKey("oceanIsland")) {
             config.oceanIsland = readOceanIslandConfig(object.get("oceanIsland"), "oceanIsland", logger);
         }
+        if (object.containsKey("skyIsland")) {
+            config.skyIsland = readSkyIslandConfig(object.get("skyIsland"), "skyIsland");
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -277,6 +283,7 @@ public final class WorldzConfig {
         chaosBiomes = sanitizeChaosBiomes(chaosBiomes, logger);
         stripWorld = sanitizeStripWorld(stripWorld, logger);
         oceanIsland = sanitizeOceanIsland(oceanIsland, logger);
+        skyIsland = sanitizeSkyIsland(skyIsland, logger);
         return this;
     }
 
@@ -403,6 +410,31 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static SkyIslandConfig sanitizeSkyIsland(SkyIslandConfig config, Logger logger) {
+        SkyIslandConfig sanitized = config == null ? new SkyIslandConfig() : config;
+
+        String originalBiome = sanitized.islandBiome;
+        sanitized.islandBiome = sanitizeSingleBiomeId(sanitized.islandBiome, "skyIsland.islandBiome", logger);
+        if (sanitized.islandBiome.isEmpty()) {
+            sanitized.islandBiome = new SkyIslandConfig().islandBiome;
+            logger.warn("Invalid skyIsland.islandBiome '{}'; using the default instead.", originalBiome);
+        }
+
+        sanitized.radiusBlocks = clampWithWarning(
+            sanitized.radiusBlocks, MIN_ISLAND_RADIUS_BLOCKS, MAX_ISLAND_RADIUS_BLOCKS, "skyIsland.radiusBlocks", logger
+        );
+        double clampedAmplitude = Math.clamp(sanitized.shapeAmplitude, 0.0, IslandShapeProfile.MAX_AMPLITUDE);
+        if (clampedAmplitude != sanitized.shapeAmplitude) {
+            logger.warn("Clamped skyIsland.shapeAmplitude from {} to {}.", sanitized.shapeAmplitude, clampedAmplitude);
+            sanitized.shapeAmplitude = clampedAmplitude;
+        }
+        sanitized.thicknessBlocks = clampWithWarning(
+            sanitized.thicknessBlocks, SkyIslandPlan.MIN_THICKNESS_BLOCKS, SkyIslandPlan.MAX_THICKNESS_BLOCKS,
+            "skyIsland.thicknessBlocks", logger
+        );
+        return sanitized;
+    }
+
     private static StarterKitConfig sanitizeStarterKit(StarterKitConfig config, Logger logger) {
         StarterKitConfig sanitized = config == null ? new StarterKitConfig() : config;
         if (sanitized.essentials == null) {
@@ -489,6 +521,7 @@ public final class WorldzConfig {
             + ", chaosBiomes=" + chaosBiomesSummary(chaosBiomes)
             + ", stripWorld=" + stripWorldSummary(stripWorld)
             + ", oceanIsland=" + oceanIslandSummary(oceanIsland)
+            + ", skyIsland=" + skyIslandSummary(skyIsland)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -513,6 +546,7 @@ public final class WorldzConfig {
         values.put("chaosBiomes", chaosBiomesMap(chaosBiomes));
         values.put("stripWorld", stripWorldMap(stripWorld));
         values.put("oceanIsland", oceanIslandMap(oceanIsland));
+        values.put("skyIsland", skyIslandMap(skyIsland));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -805,6 +839,29 @@ public final class WorldzConfig {
         }
         if (map.containsKey("starterKit")) {
             config.starterKit = readStarterKitConfig(map.get("starterKit"), name + ".starterKit", logger);
+        }
+        return config;
+    }
+
+    private static SkyIslandConfig readSkyIslandConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        SkyIslandConfig config = new SkyIslandConfig();
+        if (map.containsKey("islandBiome")) {
+            config.islandBiome = readString(map.get("islandBiome"), name + ".islandBiome");
+        }
+        if (map.containsKey("radiusBlocks")) {
+            config.radiusBlocks = readInt(map.get("radiusBlocks"), name + ".radiusBlocks");
+        }
+        if (map.containsKey("shapeAmplitude")) {
+            config.shapeAmplitude = readDouble(map.get("shapeAmplitude"), name + ".shapeAmplitude");
+        }
+        if (map.containsKey("surfaceY")) {
+            config.surfaceY = readInt(map.get("surfaceY"), name + ".surfaceY");
+        }
+        if (map.containsKey("thicknessBlocks")) {
+            config.thicknessBlocks = readInt(map.get("thicknessBlocks"), name + ".thicknessBlocks");
         }
         return config;
     }
@@ -1182,6 +1239,16 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> skyIslandMap(SkyIslandConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("islandBiome", config.islandBiome);
+        values.put("radiusBlocks", config.radiusBlocks);
+        values.put("shapeAmplitude", config.shapeAmplitude);
+        values.put("surfaceY", config.surfaceY);
+        values.put("thicknessBlocks", config.thicknessBlocks);
+        return values;
+    }
+
     private static Map<String, Object> starterKitMap(StarterKitConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("essentials", config.essentials);
@@ -1283,6 +1350,14 @@ public final class WorldzConfig {
                 ? "radius=" + config.exclusionZoneRadiusBlocks
                 : "<disabled>")
             + ", starterKit=" + starterKitSummary(config.starterKit);
+    }
+
+    private static String skyIslandSummary(SkyIslandConfig config) {
+        return "islandBiome=" + config.islandBiome
+            + ", radiusBlocks=" + config.radiusBlocks
+            + ", shapeAmplitude=" + config.shapeAmplitude
+            + ", surfaceY=" + config.surfaceY
+            + ", thicknessBlocks=" + config.thicknessBlocks;
     }
 
     private static String starterKitSummary(StarterKitConfig config) {

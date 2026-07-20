@@ -19,6 +19,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.StarterZone;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
@@ -71,10 +72,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         LayoutCodecs.PLAN_CODEC.optionalFieldOf("world_layout").forGetter(source -> Optional.of(source.worldLayoutPlan)),
         Codec.STRING.optionalFieldOf("spawn_strategy")
             .forGetter(source -> Optional.of(source.spawnStrategy.serializedName())),
-        Codec.BOOL.optionalFieldOf("allow_rivers").forGetter(source -> Optional.of(source.allowRivers)),
-        Codec.BOOL.optionalFieldOf("allow_oceans").forGetter(source -> Optional.of(source.allowOceans)),
-        Codec.BOOL.optionalFieldOf("allow_beaches").forGetter(source -> Optional.of(source.allowBeaches)),
+        // Nested rather than three flat optional booleans (DESIGN §27.9/PassThroughCodecs):
+        // this codec's instance.group(...) was already at the 14-field Function14 ceiling, and
+        // the three toggles are always encoded together anyway.
+        PassThroughCodecs.FLAGS_CODEC.optionalFieldOf("pass_through")
+            .forGetter(source -> Optional.of(new PassThroughCodecs.Flags(source.allowRivers, source.allowOceans, source.allowBeaches))),
         IslandCodecs.PLAN_CODEC.optionalFieldOf("island").forGetter(source -> Optional.of(source.island)),
+        SkyIslandCodecs.PLAN_CODEC.optionalFieldOf("sky_island").forGetter(source -> Optional.of(source.skyIsland)),
         Codec.STRING.optionalFieldOf("world_type").forGetter(source -> Optional.<String>empty()),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
@@ -90,6 +94,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final boolean allowOceans;
     private final boolean allowBeaches;
     private final IslandPlan island;
+    private final SkyIslandPlan skyIsland;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
@@ -110,6 +115,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowOceans,
         boolean allowBeaches,
         IslandPlan island,
+        SkyIslandPlan skyIsland,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -125,6 +131,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.allowOceans = allowOceans;
         this.allowBeaches = allowBeaches;
         this.island = island;
+        this.skyIsland = skyIsland;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -134,7 +141,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // asks this biome source for its possible biomes or an actual biome.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
             allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan,
-            allowRivers, allowOceans, allowBeaches, island, biomeGetter
+            allowRivers, allowOceans, allowBeaches, island, skyIsland, biomeGetter
         ));
     }
 
@@ -147,10 +154,9 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<ExteriorPlan> encodedExteriorPlan,
         Optional<WorldLayoutPlan> encodedWorldLayout,
         Optional<String> encodedSpawnStrategy,
-        Optional<Boolean> encodedAllowRivers,
-        Optional<Boolean> encodedAllowOceans,
-        Optional<Boolean> encodedAllowBeaches,
+        Optional<PassThroughCodecs.Flags> encodedPassThrough,
         Optional<IslandPlan> encodedIsland,
+        Optional<SkyIslandPlan> encodedSkyIsland,
         Optional<String> encodedWorldType,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -174,6 +180,11 @@ public final class LimitedBiomeSource extends BiomeSource {
         // island at all (IslandPlan.disabled() fallback further down).
         boolean oceanIslandDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("ocean_island"::equals).orElse(false);
+        // Same fix, same reason, for sky_island (GOALS 05, DESIGN §27): without this branch a
+        // config-only "select preset, Create World" world would silently get no island at all
+        // (SkyIslandPlan.disabled() fallback further down).
+        boolean skyIslandDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("sky_island"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -181,7 +192,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : stripWorldDefaults || oceanIslandDefaults
+                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults
                         ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                         : () -> resolveConfiguredBiomes(config, biomeGetter));
 
@@ -191,7 +202,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // not a biome restriction) -- Optional.empty() directly, not a fallback lookup.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : stripWorldDefaults || oceanIslandDefaults
+            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -229,7 +240,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                         LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
                         WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
                     )
-                    : oceanIslandDefaults
+                    : oceanIslandDefaults || skyIslandDefaults
                         ? WorldLayoutPlan.legacy()
                         : stripWorldDefaults && config.stripWorld.bands.enabled
                             ? WorldLayoutPlan.resolveBands(
@@ -247,7 +258,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     ? config.singleBiome.spawn.strategy
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
-                        : oceanIslandDefaults
+                        : oceanIslandDefaults || skyIslandDefaults
                             ? SpawnStrategy.STARTER_AT_ORIGIN
                             : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config
@@ -256,15 +267,18 @@ public final class LimitedBiomeSource extends BiomeSource {
         // back to its own top-level fields (allow_beaches has no such field, so false).
         // ocean_island never uses this pass-through mechanism at all (its own IslandPlan
         // logic resolves every biome directly), so it always stays false here.
-        boolean allowRivers = encodedAllowRivers.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowRivers
-            : singleBiomeDefaults ? config.singleBiome.allowRivers
-                : stripWorldDefaults ? config.stripWorld.bands.allowRivers : config.allowRivers);
-        boolean allowOceans = encodedAllowOceans.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowOceans
-            : singleBiomeDefaults ? config.singleBiome.allowOceans
-                : stripWorldDefaults ? config.stripWorld.bands.allowOceans : config.allowOceans);
-        boolean allowBeaches = encodedAllowBeaches.orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowBeaches
-            : singleBiomeDefaults ? config.singleBiome.allowBeaches
-                : stripWorldDefaults ? config.stripWorld.bands.allowBeaches : false);
+        boolean allowRivers = encodedPassThrough.map(PassThroughCodecs.Flags::allowRivers)
+            .orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowRivers
+                : singleBiomeDefaults ? config.singleBiome.allowRivers
+                    : stripWorldDefaults ? config.stripWorld.bands.allowRivers : config.allowRivers);
+        boolean allowOceans = encodedPassThrough.map(PassThroughCodecs.Flags::allowOceans)
+            .orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowOceans
+                : singleBiomeDefaults ? config.singleBiome.allowOceans
+                    : stripWorldDefaults ? config.stripWorld.bands.allowOceans : config.allowOceans);
+        boolean allowBeaches = encodedPassThrough.map(PassThroughCodecs.Flags::allowBeaches)
+            .orElseGet(() -> chaosBiomesDefaults ? config.chaosBiomes.allowBeaches
+                : singleBiomeDefaults ? config.singleBiome.allowBeaches
+                    : stripWorldDefaults ? config.stripWorld.bands.allowBeaches : false);
         IslandPlan island = encodedIsland.orElseGet(() -> {
             if (!oceanIslandDefaults) {
                 return IslandPlan.disabled();
@@ -275,10 +289,13 @@ public final class LimitedBiomeSource extends BiomeSource {
                 case ARTIFICIAL -> IslandPlan.fromConfig(config.oceanIsland);
             };
         });
+        SkyIslandPlan skyIsland = encodedSkyIsland.orElseGet(
+            () -> skyIslandDefaults ? SkyIslandPlan.fromConfig(config.skyIsland) : SkyIslandPlan.disabled()
+        );
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
-            allowRivers, allowOceans, allowBeaches, island, encodedStarterRadius.isEmpty(), biomeGetter
+            allowRivers, allowOceans, allowBeaches, island, skyIsland, encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -353,6 +370,49 @@ public final class LimitedBiomeSource extends BiomeSource {
         IslandPlan island,
         HolderGetter<Biome> biomeGetter
     ) {
+        return customized(
+            allowedBiomes, starterBiome, starterRadiusBlocks, starterLandPlan, worldLimits, exteriorPlan,
+            worldLayoutPlan, spawnStrategy, allowRivers, allowOceans, allowBeaches, island,
+            SkyIslandPlan.disabled(), biomeGetter
+        );
+    }
+
+    /**
+     * Creates a source from values selected in the world-creation screen, including an
+     * explicit sky-island plan (GOALS 05, DESIGN §27).
+     *
+     * @param allowedBiomes resolved direct allowed-biome holders
+     * @param starterBiome optional resolved starter biome
+     * @param starterRadiusBlocks starter-zone radius
+     * @param starterLandPlan persisted terrain guarantee
+     * @param worldLimits persisted border plan
+     * @param exteriorPlan persisted exterior-terrain plan
+     * @param worldLayoutPlan persisted coordinated-layout plan
+     * @param spawnStrategy persisted layout-origin and spawn strategy
+     * @param allowRivers let vanilla's own river biomes generate naturally
+     * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+     * @param allowBeaches let vanilla's own beach/stony-shore biomes generate naturally
+     * @param island resolved ocean-island plan, disabled for every other preset
+     * @param skyIsland resolved sky-island plan, disabled for every other preset
+     * @param biomeGetter biome registry lookup used for vanilla climate parameters
+     * @return a fully explicit source independent of later YAML changes
+     */
+    public static LimitedBiomeSource customized(
+        HolderSet<Biome> allowedBiomes,
+        Optional<Holder<Biome>> starterBiome,
+        int starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        WorldLimitPlan worldLimits,
+        ExteriorPlan exteriorPlan,
+        WorldLayoutPlan worldLayoutPlan,
+        SpawnStrategy spawnStrategy,
+        boolean allowRivers,
+        boolean allowOceans,
+        boolean allowBeaches,
+        IslandPlan island,
+        SkyIslandPlan skyIsland,
+        HolderGetter<Biome> biomeGetter
+    ) {
         return new LimitedBiomeSource(
             () -> allowedBiomes,
             starterBiome,
@@ -366,6 +426,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             allowOceans,
             allowBeaches,
             island,
+            skyIsland,
             false,
             biomeGetter
         );
@@ -380,6 +441,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowOceans,
         boolean allowBeaches,
         IslandPlan island,
+        SkyIslandPlan skyIsland,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -451,10 +513,33 @@ public final class LimitedBiomeSource extends BiomeSource {
             possible.addAll(islandBiomes.values());
         }
 
+        Map<String, Holder<Biome>> skyIslandBiomes = resolveSkyIslandBiomes(skyIsland, biomeGetter);
+        if (skyIsland.enabled()) {
+            possible.addAll(skyIslandBiomes.values());
+        }
+
         return new Resolution(
             HolderSet.direct(List.copyOf(allowedSet)), delegate, naturalDelegate, Set.copyOf(possible),
-            layoutBiomes, islandBiomes
+            layoutBiomes, islandBiomes, skyIslandBiomes
         );
+    }
+
+    /**
+     * Resolves the one biome id a sky island can ever select (GOALS 05, DESIGN §27) -- unlike
+     * {@link #resolveIslandBiomes} there is no shore ring or ocean-gradient set, since the sky
+     * island's exterior is void, not a gradient.
+     */
+    private static Map<String, Holder<Biome>> resolveSkyIslandBiomes(SkyIslandPlan skyIsland, HolderGetter<Biome> biomeGetter) {
+        if (!skyIsland.enabled()) {
+            return Map.of();
+        }
+        Map<String, Holder<Biome>> resolved = new LinkedHashMap<>();
+        ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(skyIsland.islandBiome()));
+        biomeGetter.get(key).ifPresentOrElse(
+            holder -> resolved.put(skyIsland.islandBiome(), holder),
+            () -> WorldzCommon.LOGGER.warn("Unknown sky island biome '{}'; it will never be selected.", skyIsland.islandBiome())
+        );
+        return resolved;
     }
 
     /**
@@ -766,6 +851,16 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
+     * Returns the sky-island plan baked into this world (GOALS 05, DESIGN §27), disabled for
+     * every preset except {@code sky_island}.
+     *
+     * @return resolved sky island plan
+     */
+    public SkyIslandPlan skyIsland() {
+        return this.skyIsland;
+    }
+
+    /**
      * Returns the current layout origin's X coordinate. Always {@code 0} unless
      * {@link #setOrigin(int, int)} has been called (see {@code SpawnOriginManager}).
      *
@@ -955,6 +1050,17 @@ public final class LimitedBiomeSource extends BiomeSource {
                 return islandResult.get();
             }
         }
+        if (this.skyIsland.enabled()) {
+            double distance = this.skyIsland.distanceFromShore(blockX - originX, blockZ - originZ, this.effectiveLayoutPlan.seed());
+            if (distance <= 0.0) {
+                Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(this.skyIsland.islandBiome());
+                if (biome != null) {
+                    return biome;
+                }
+            }
+            // Outside the footprint (or the lookup failed): fall through to whatever the rest of
+            // this method would normally report -- harmless, since nothing ever generates there.
+        }
         if (this.exteriorPlan.overworld().modeAt(blockX - originX, blockZ - originZ) == ExteriorMode.OCEAN) {
             return this.oceanBiome.orElseThrow(() -> new IllegalStateException("Deep ocean biome is unavailable."));
         }
@@ -989,7 +1095,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<MultiNoiseBiomeSource> naturalDelegate,
         Set<Holder<Biome>> possibleBiomes,
         Map<String, Holder<Biome>> layoutBiomes,
-        Map<String, Holder<Biome>> islandBiomes
+        Map<String, Holder<Biome>> islandBiomes,
+        Map<String, Holder<Biome>> skyIslandBiomes
     ) {
     }
 }

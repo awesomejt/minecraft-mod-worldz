@@ -1230,28 +1230,95 @@ island's 7.1–7.4/8.1–8.3 split):
       no new `ExteriorMode` value and no `applyTerrainAdjustments`
       involvement at all (no natural floor is ever raised; the whole
       footprint is synthesized directly, immune to vanilla carvers the
-      same way `OCEAN`/`VOID` already are). Beatability needs zero new
-      `ObjectiveSite` code, narrower than the 8.1 lesson predicted:
-      confirmed by reading `ObjectiveSite`/`ProgressionGuarantees` that the
-      existing 3-arg `supportiveRadius(borderEnabled, finalBorderRadius,
-      envelope)` overload already narrows correctly once the sky island's
-      exterior reports as `DimensionEnvelope(VOID, radiusBlocks, 0)` —
-      `IslandPlan` needed its own 4-arg overload only because ocean
-      island's shape isn't expressible through `DimensionEnvelope` at all,
-      which isn't true here. Nether variant (10.4) reuses the same
+      same way `OCEAN`/`VOID` already are). Beatability's gate turned out to
+      need the exact same fix shape as ocean island's after all (10.2 found
+      this during implementation, corrected in DESIGN §27.5 before any
+      in-game testing): `WorldLimitManager` reads
+      `LimitedBiomeSource.exteriorPlan()`, not `EnvelopedChunkGenerator
+      .envelope()`, so a new `ObjectiveSite.supportiveRadius(..., SkyIslandPlan)`
+      overload plus an `overworldSkyIsland.enabled()` gate arm (mirroring
+      `IslandPlan`'s own pair exactly) were both genuinely required — an
+      initial draft assuming the envelope-forcing trick alone would cover
+      it was wrong (confirmed by grepping for callers of `envelope()`: none
+      exist). Nether variant (10.4) reuses the same
       mechanism dimension-generically; only the sampling seed needs
       threading in at codec-resolve time, since `originSource` (today's
       seed source) is Overworld-only. End (10.5) confirmed genuinely
       harder than Overworld/Nether — no existing End wrapper to extend at
       all, plus the End's own already-floating-islands terrain shape — so
       it stays a dedicated spike task, not folded into this one.
-- [ ] 10.2 Implement the `sky_island` world type core (Overworld only):
+- [x] 10.2 Implement the `sky_island` world type core (Overworld only):
       `SkyIslandPlan`, config/customization/preset-editor/screen scaffolding,
       world-type registration, the bounded-below terrain synthesis in
       `EnvelopedChunkGenerator`/`LimitedBiomeSource`, default Y ≥ 64 spawn,
       beatability (`ObjectiveSite.supportiveRadius` overload for
       `SkyIslandPlan`, proactively wired this time per the 8.1 lesson — see
       DESIGN §27). GOALS 05's core.
+      **Done (0.2.43):** new `logic.SkyIslandPlan` (enabled, radiusBlocks,
+      shapeAmplitude, islandBiome, surfaceY, thicknessBlocks; reuses
+      `IslandShapeProfile.distanceFromShore` directly) and pure
+      `logic.SkyIslandProfile` (Layer/BiomeFamily classification for the
+      slab's block palette, since a sky island chunk never runs vanilla's
+      biome-aware surface builder — DESIGN §27.3). `EnvelopedChunkGenerator`
+      gained a `skyIsland` field (read live via `originSource`, same as
+      `island`); `effectiveModeAt` classifies it uniformly `VOID`, and new
+      `skyIslandStateAt`/`skyIslandBaseHeight` methods (wired into
+      `getBaseHeight`/`getBaseColumn`/`applyEnvelope`) distinguish the
+      footprint's slab from true void one level down — no new
+      `ExteriorMode`, no `applyTerrainAdjustments` involvement, no carver
+      special-casing needed (the trailing `applyEnvelope` call after every
+      generation stage re-stamps the slab regardless of what vanilla
+      carved into the delegate's unused terrain underneath, exactly like
+      `OCEAN`/`VOID` already do). `LimitedBiomeSource` gained a matching
+      `skyIsland` field/codec entry/`resolveSkyIslandBiomes` helper/
+      `getNoiseBiome` branch and a `skyIslandDefaults` flag wired into every
+      branch `oceanIslandDefaults` already had (the fieldless-preset lesson
+      applied from the start this time, not discovered as a bug afterward).
+      **Codec note:** `LimitedBiomeSource.CODEC`'s `instance.group(...)` was
+      already at the 14-field `Function14` ceiling (DESIGN §26.1's DFU
+      limit) before this task — freed two slots by nesting the three
+      independent `allow_rivers`/`allow_oceans`/`allow_beaches` booleans
+      into one new `PassThroughCodecs.Flags` record (they're always encoded
+      together anyway), landing at 13 fields with `sky_island` added and one
+      slot to spare. **Real beatability defect found and fixed during this
+      task, before any in-game testing** (full account in DESIGN §27.5): an
+      initial draft assumed forcing `EnvelopedChunkGenerator`'s own
+      `envelope` field to `VOID` (mirroring the `LayoutMode.VOID`
+      `resolveEnvelope` trick) would be enough for
+      `ObjectiveSite.supportiveRadius`'s existing envelope-based overload to
+      narrow correctly — wrong, since `WorldLimitManager.onServerStarted`
+      actually builds `ensureEndPortal`'s envelope argument from
+      `LimitedBiomeSource.exteriorPlan()`, a separate plan that (like ocean
+      island's) always stays `normal` for the Overworld. Fixed with the same
+      shape `IslandPlan` already has: a new `ObjectiveSite.supportiveRadius
+      (..., SkyIslandPlan)` overload, `ProgressionGuarantees.ensureEndPortal`
+      threading a `SkyIslandPlan` parameter through, and an
+      `overworldSkyIsland.enabled()` arm on `WorldLimitManager`'s
+      `exteriorObjective` gate, mirroring `overworldIsland.enabled()`'s
+      existing one exactly. New preset scaffolding
+      (`SkyIslandConfig`/`SkyIslandCustomization`/`SkyIslandPresetEditor`/
+      `SkyIslandCustomizeScreen`, `sky_island.json`, `normal` tag entry, lang
+      keys, both loaders' registration) mirrors `ocean_island`'s shape —
+      no spawn-strategy field, no separate Overworld Exterior field (the
+      island supplies its own exterior unconditionally). Default radius 16
+      (Skyblock-scale, smaller than ocean island's 128 default) with the
+      same shared `MIN_ISLAND_RADIUS_BLOCKS`/`MAX_ISLAND_RADIUS_BLOCKS`
+      bounds. Surface-material palette is a deliberately non-exhaustive
+      biome-family approximation (desert→sand, snowy→snow, mushroom→
+      mycelium, else grass), documented as such, not a real `SurfaceRules`
+      reimplementation. **Known, deliberately deferred gap** (same one the
+      pre-existing `LayoutMode.VOID`/`FALLBACK_PORTAL_TARGET_Y` doc comment
+      already flags): the fallback End-portal vault sits at a fixed
+      `Y = -32`, disconnected from the island's own `surfaceY` by 90+ blocks
+      of open void — not fixed now, following the same "wait for Jason's
+      in-game testing before chasing vault-placement issues" pattern
+      ocean island's own §24.10-§24.13 fixes actually followed. 36 new
+      tests (`SkyIslandPlanTest`, `SkyIslandProfileTest`,
+      `SkyIslandCustomizationTest`, `ObjectiveSiteTest` additions,
+      `WorldzConfigTest`/`WorldPresetResourcesTest`/`ProjectMetadataTest`
+      additions); full suite green (431 tests); clean build across all
+      modules (fabric + neoforge registration compiles and resolves
+      correctly). No chest/starter-kit yet — that's 10.3.
 - [ ] 10.3 Chest tiers: extend `StarterKitPlan`/`StarterKitConfig` with
       easy/medium/hard tiers and the biome-driven water-item swap; wire into
       `sky_island`'s chest deployment (reuses `StarterKitDeployment`). GOALS

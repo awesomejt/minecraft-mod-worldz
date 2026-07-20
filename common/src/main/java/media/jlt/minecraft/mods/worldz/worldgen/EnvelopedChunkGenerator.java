@@ -14,6 +14,8 @@ import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
@@ -103,6 +105,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * there is nothing to keep in sync by duplicating it here.
      */
     private final IslandPlan island;
+    /**
+     * A true floating island (GOALS 05, DESIGN §27), read live from {@link #originSource} the
+     * same way {@link #island} is -- disabled for every preset except {@code sky_island}.
+     */
+    private final SkyIslandPlan skyIsland;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -121,6 +128,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             ? Optional.of(source)
             : Optional.empty();
         this.island = this.originSource.map(LimitedBiomeSource::island).orElse(IslandPlan.disabled());
+        this.skyIsland = this.originSource.map(LimitedBiomeSource::skyIsland).orElse(SkyIslandPlan.disabled());
     }
 
     /**
@@ -231,6 +239,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * @return terrain to generate at the column
      */
     private ExteriorMode effectiveModeAt(int relativeX, int relativeZ) {
+        if (this.skyIsland.enabled()) {
+            // Uniformly VOID both inside and outside the footprint (DESIGN §27.2) -- the
+            // slab-vs-void distinction happens one level down, in skyIslandStateAt/
+            // skyIslandBaseHeight, exactly like OCEAN varies its seabed depth per column
+            // via islandOceanDepthAt without ever needing a second ExteriorMode value.
+            return ExteriorMode.VOID;
+        }
         if (this.island.enabled() && this.island.withinExclusionZone(relativeX, relativeZ)) {
             // Inside the exclusion zone (or it's disabled, the GOALS 01 default): the island
             // interior and its shore ring are real, unmasked generation (NORMAL); only open
@@ -259,7 +274,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * @return whether any exterior masking is active
      */
     private boolean hasActiveExterior() {
-        return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled() || this.island.enabled();
+        return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled()
+            || this.island.enabled() || this.skyIsland.enabled();
     }
 
     /**
@@ -269,6 +285,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * which itself is only ever true when {@link #originSource} is present.
      */
     private long islandSeed() {
+        return this.originSource.orElseThrow().effectiveLayoutPlan().seed();
+    }
+
+    /**
+     * Returns the real Minecraft world seed shared with {@code LimitedBiomeSource}'s biome
+     * classification -- only ever called when {@link #skyIsland} is enabled, which itself is
+     * only ever true when {@link #originSource} is present (sky island is Overworld-only in
+     * this phase; see DESIGN §27.6 for the Nether variant's own seed plumbing).
+     */
+    private long skyIslandSeed() {
         return this.originSource.orElseThrow().effectiveLayoutPlan().seed();
     }
 
@@ -446,6 +472,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             int raisedHeight = Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
             return Math.max(raisedHeight, islandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
         }
+        if (this.skyIsland.enabled()) {
+            return skyIslandBaseHeight(x - originX(), z - originZ(), heightAccessor);
+        }
         return this.island.enabled()
             ? ExteriorTerrainProfile.baseHeight(
                 mode, isOceanFloor(type), heightAccessor.getMinY(), heightAccessor.getMaxY(), getSeaLevel(),
@@ -454,6 +483,20 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             : ExteriorTerrainProfile.baseHeight(
                 mode, isOceanFloor(type), heightAccessor.getMinY(), heightAccessor.getMaxY(), getSeaLevel()
             );
+    }
+
+    /**
+     * Returns the sky island's first-free height (GOALS 05, DESIGN §27.2): {@code surfaceY}
+     * inside the footprint (so spawn search, structure placement, and heightmaps all see the
+     * slab's top as "the ground"), or true void ({@code heightAccessor.getMinY()}) outside it --
+     * the same shape {@link ExteriorTerrainProfile#baseHeight}'s {@code VOID} case already
+     * returns unconditionally today, just no longer uniform across the whole dimension.
+     */
+    private int skyIslandBaseHeight(int relativeX, int relativeZ, LevelHeightAccessor heightAccessor) {
+        double distance = this.skyIsland.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+        return distance <= 0.0
+            ? Math.min(this.skyIsland.surfaceY(), heightAccessor.getMaxY() + 1)
+            : heightAccessor.getMinY();
     }
 
     @Override
@@ -509,6 +552,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
             return states == null ? naturalColumn : new NoiseColumn(heightAccessor.getMinY(), states);
         }
+        if (this.skyIsland.enabled()) {
+            double distance = this.skyIsland.distanceFromShore(x - originX(), z - originZ(), skyIslandSeed());
+            BlockState[] skyStates = new BlockState[heightAccessor.getHeight()];
+            int skyMinY = heightAccessor.getMinY();
+            for (int index = 0; index < skyStates.length; index++) {
+                skyStates[index] = skyIslandStateAt(distance, skyMinY + index);
+            }
+            return new NoiseColumn(skyMinY, skyStates);
+        }
         int depthBlocks = this.island.enabled()
             ? islandOceanDepthAt(x - originX(), z - originZ())
             : ExteriorTerrainProfile.OCEAN_DEPTH;
@@ -538,6 +590,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     + ", shoreWidth=" + this.island.shoreWidthBlocks()
                     + ", exclusionZone=" + (this.island.exclusionZoneEnabled()
                         ? "radius=" + this.island.exclusionZoneRadiusBlocks() : "<disabled>")
+            );
+        }
+        if (this.skyIsland.enabled()) {
+            result.add(
+                "Worldz sky island: radius=" + this.skyIsland.radiusBlocks()
+                    + ", surfaceY=" + this.skyIsland.surfaceY()
+                    + ", thickness=" + this.skyIsland.thicknessBlocks()
             );
         }
         this.starterLand.ifPresent(context -> result.add(
@@ -588,6 +647,21 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 int relativeZ = z - originZ();
                 ExteriorMode mode = this.effectiveModeAt(relativeX, relativeZ);
                 if (mode != ExteriorMode.NORMAL) {
+                    if (this.skyIsland.enabled()) {
+                        double distance = this.skyIsland.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+                        for (int y = minY; y <= maxY; y++) {
+                            pos.set(x, y, z);
+                            BlockState state = skyIslandStateAt(distance, y);
+                            BlockState oldState = chunk.getBlockState(pos);
+                            if (oldState != state) {
+                                if (oldState.hasBlockEntity()) {
+                                    chunk.removeBlockEntity(pos);
+                                }
+                                chunk.setBlockState(pos, state, 0);
+                            }
+                        }
+                        continue;
+                    }
                     int depthBlocks = this.island.enabled()
                         ? islandOceanDepthAt(relativeX, relativeZ)
                         : ExteriorTerrainProfile.OCEAN_DEPTH;
@@ -920,6 +994,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (dimension != Dimension.OVERWORLD || !(delegate.getBiomeSource() instanceof LimitedBiomeSource source)) {
             return configured;
         }
+        // Sky island (GOALS 05, DESIGN §27.5): reporting envelope() as a plain VOID envelope at
+        // the island's own radius costs nothing extra and, for free, makes ObjectiveSite's
+        // existing envelope-based supportiveRadius overload narrow the fallback End-portal
+        // guarantee correctly -- no new ObjectiveSite code needed, unlike ocean island's IslandPlan
+        // (which needed its own 4-arg overload because its shape isn't expressible this way).
+        if (source.skyIsland().enabled()) {
+            return new ExteriorPlan.DimensionEnvelope(ExteriorMode.VOID, Math.max(source.skyIsland().radiusBlocks(), 1), 0);
+        }
         if (source.worldLayoutPlan().mode() != LayoutMode.VOID) {
             return configured;
         }
@@ -988,6 +1070,40 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             };
             case AIR -> Blocks.AIR.defaultBlockState();
         };
+    }
+
+    /**
+     * Classifies one sky island block (GOALS 05, DESIGN §27.2/27.3): air outside the footprint
+     * or outside the slab's vertical band, otherwise the biome-driven top/subsoil/core block
+     * {@link SkyIslandProfile} chooses -- the sky island's own surface-material choice, since its
+     * chunk never runs the delegate's biome-aware surface builder (§27.3).
+     */
+    private BlockState skyIslandStateAt(double distance, int y) {
+        if (distance > 0.0) {
+            return Blocks.AIR.defaultBlockState();
+        }
+        SkyIslandProfile.BiomeFamily family = SkyIslandProfile.familyFor(this.skyIsland.islandBiome());
+        return switch (SkyIslandProfile.layerAt(y, this.skyIsland.surfaceY(), this.skyIsland.thicknessBlocks())) {
+            case VOID -> Blocks.AIR.defaultBlockState();
+            case TOP -> skyIslandTopBlock(family);
+            case SUBSOIL -> skyIslandSubsoilBlock(family);
+            case CORE -> Blocks.STONE.defaultBlockState();
+        };
+    }
+
+    private static BlockState skyIslandTopBlock(SkyIslandProfile.BiomeFamily family) {
+        return switch (family) {
+            case DESERT -> Blocks.SAND.defaultBlockState();
+            case SNOWY -> Blocks.SNOW_BLOCK.defaultBlockState();
+            case MUSHROOM -> Blocks.MYCELIUM.defaultBlockState();
+            case DEFAULT -> Blocks.GRASS_BLOCK.defaultBlockState();
+        };
+    }
+
+    private static BlockState skyIslandSubsoilBlock(SkyIslandProfile.BiomeFamily family) {
+        return family == SkyIslandProfile.BiomeFamily.DESERT
+            ? Blocks.SANDSTONE.defaultBlockState()
+            : Blocks.DIRT.defaultBlockState();
     }
 
     private static boolean isOceanFloor(Heightmap.Types type) {

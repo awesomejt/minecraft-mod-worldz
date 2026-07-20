@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ObjectiveSite;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
@@ -48,6 +49,7 @@ final class ProgressionGuarantees {
         ExteriorPlan.DimensionEnvelope envelope,
         StripPlan strip,
         IslandPlan island,
+        SkyIslandPlan skyIsland,
         WorldLayoutPlan layoutPlan,
         int originX,
         int originZ
@@ -55,9 +57,12 @@ final class ProgressionGuarantees {
         if (!limit.ensureObjective()) {
             return;
         }
-        OptionalInt supportiveRadius = ObjectiveSite.supportiveRadius(
-            limit.enabled(), limit.finalRadiusBlocks(), envelope, island
-        );
+        // Only one of island/skyIsland is ever enabled for a given world (they back mutually
+        // exclusive typed presets); each overload falls back to the plain envelope-only check
+        // when its own plan is disabled, so this always resolves to the one that actually applies.
+        OptionalInt supportiveRadius = island.enabled()
+            ? ObjectiveSite.supportiveRadius(limit.enabled(), limit.finalRadiusBlocks(), envelope, island)
+            : ObjectiveSite.supportiveRadius(limit.enabled(), limit.finalRadiusBlocks(), envelope, skyIsland);
         if (supportiveRadius.isEmpty()) {
             return;
         }

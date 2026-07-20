@@ -176,6 +176,37 @@ public final class ObjectiveSite {
     }
 
     /**
+     * Narrows a supportive radius to also respect a sky island's own radius (GOALS 05, DESIGN
+     * §27.5), which -- like the ocean island -- is never expressed through {@link
+     * ExteriorPlan.DimensionEnvelope} (a sky island's Overworld exterior plan always stays
+     * {@code normal}; {@link SkyIslandPlan} supplies the entire Overworld exterior itself), so
+     * the border/envelope-only overload above would otherwise report a sky-island world as an
+     * unlimited normal world and silently skip the fallback End-portal guarantee entirely.
+     *
+     * @param borderEnabled whether the final border is a reachability bound
+     * @param finalBorderRadius final border half-width
+     * @param envelope exterior terrain bound
+     * @param skyIsland the world's sky-island plan
+     * @return effective supportive radius, empty only when border, envelope, and the sky island
+     *     are all inactive
+     */
+    public static OptionalInt supportiveRadius(
+        boolean borderEnabled,
+        int finalBorderRadius,
+        ExteriorPlan.DimensionEnvelope envelope,
+        SkyIslandPlan skyIsland
+    ) {
+        if (!skyIsland.enabled()) {
+            return supportiveRadius(borderEnabled, finalBorderRadius, envelope);
+        }
+        int radius = borderEnabled ? finalBorderRadius : Integer.MAX_VALUE;
+        if (envelope.mode() != ExteriorMode.NORMAL) {
+            radius = Math.min(radius, envelope.solidRadiusBlocks());
+        }
+        return OptionalInt.of(Math.min(radius, skyIsland.radiusBlocks()));
+    }
+
+    /**
      * Narrows an X-axis supportive radius to also respect a strip world's width (GOALS 32),
      * whose Z bound is normally much smaller than the border/envelope's own radius. The
      * strip's length (X axis) already rides the same {@link #supportiveRadius} unmodified.

@@ -6,6 +6,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -47,8 +48,15 @@ public final class WorldLimitManager {
         // deep gradient (§24.5) -- so this gate must check it separately, or an ocean-island
         // world looks like an unlimited normal world here and skips the fallback End portal.
         IslandPlan overworldIsland = limitedSource.island();
+        // Same reasoning, same fix shape, for the sky island (GOALS 05, DESIGN §27.5): it also
+        // never expresses itself through ExteriorPlan (Overworld side always stays normal;
+        // SkyIslandPlan supplies the entire Overworld exterior itself), so it needs the same
+        // explicit gate as the ocean island or a sky-island world silently never gets its
+        // fallback End portal either.
+        SkyIslandPlan overworldSkyIsland = limitedSource.skyIsland();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
-            && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled() || overworldIsland.enabled()))
+            && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()
+                || overworldIsland.enabled() || overworldSkyIsland.enabled()))
             || (plan.nether().ensureObjective() && exterior.nether().mode() != ExteriorMode.NORMAL);
         // GOALS 03's chest-boat spawn is unrelated to borders/the End-portal guarantee -- gated
         // in here anyway so it still runs (once) for a chest-boat world with no border/objective
@@ -67,7 +75,7 @@ public final class WorldLimitManager {
         int originZ = limitedSource.originBlockZ();
         BorderInitResult overworldResult = initializeBorder(overworld, plan.overworld(), "Overworld", originX, originZ);
         ProgressionGuarantees.ensureEndPortal(
-            overworld, plan.overworld(), exterior.overworld(), overworldStrip, overworldIsland,
+            overworld, plan.overworld(), exterior.overworld(), overworldStrip, overworldIsland, overworldSkyIsland,
             limitedSource.worldLayoutPlan(), originX, originZ
         );
         if (needsChestBoat) {

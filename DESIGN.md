@@ -2997,22 +2997,56 @@ void exactly as designed — it was already built to not lean on natural
 ground.
 
 What does need attention is the *gate* that decides whether the guarantee
-fires at all. `ObjectiveSite.supportiveRadius`'s existing 3-arg overload
-(`borderEnabled, finalBorderRadius, envelope`) already narrows correctly to
-`envelope.solidRadiusBlocks()` whenever the exterior mode isn't `NORMAL` —
-and since §27.2 classifies a sky island world's Overworld exterior as a
-plain, uniform `VOID` (no separate ocean-gradient concept the way
-`IslandPlan` needed its own 4-arg overload for), **the existing envelope-
-based overload already reports the correct supportive radius with no new
-`ObjectiveSite` code at all**, as long as `EnvelopedChunkGenerator` reports
-its `envelope()` as `DimensionEnvelope(VOID, skyIsland.radiusBlocks(), 0)`
-whenever the sky island plan is active — mirroring the exact
-`resolveEnvelope` trick §17/§15.5 already built for `LayoutMode.VOID`, just
-driven by the new preset instead of that legacy layout mode. This is a
-narrower, simpler fix than ocean island's 8.1 lesson ("proactively audit
-every `IslandPlan` consumer") predicted would be needed again — confirmed
-by reading `ObjectiveSite`/`ProgressionGuarantees` directly rather than
-assuming another overload is required.
+fires at all — and here the 8.1 lesson ("proactively audit every consumer")
+turned out to matter after all, in a way only found by tracing the real
+call path rather than reasoning from `EnvelopedChunkGenerator` alone.
+`WorldLimitManager.onServerStarted` does not read
+`EnvelopedChunkGenerator.envelope()` at all: it builds `ensureEndPortal`'s
+`envelope` argument from `LimitedBiomeSource.exteriorPlan().overworld()`, a
+*separate*, independently-persisted plan that — exactly like the ocean
+island (§24.1) — always stays `normal` for a sky island world
+(`SkyIslandCustomization.exteriorPlan()` mirrors `OceanIslandCustomization`'s
+own "Overworld side always normal" shape). An earlier draft of this section
+assumed forcing `EnvelopedChunkGenerator`'s own `envelope` field to `VOID`
+(mirroring the `LayoutMode.VOID` `resolveEnvelope` trick from §17/§15.5)
+would be enough; it compiles and is harmless (it does make the F3 debug
+line read `void` correctly), but grepping for callers of
+`EnvelopedChunkGenerator.envelope()` found none in production code —
+nothing was actually reading it for beatability purposes, so that alone
+would have silently shipped the exact "guarantee never fires" defect
+Phase 7.2's own follow-up fix (§24.9) found and fixed for the ocean island.
+
+The real fix mirrors `IslandPlan`'s own shape exactly, just as a sibling
+overload rather than a shared one (only one of `island`/`skyIsland` is ever
+enabled per world, so combining them into one signature would only add
+complexity): a new `ObjectiveSite.supportiveRadius(borderEnabled,
+finalBorderRadius, envelope, SkyIslandPlan)` overload narrowing to
+`skyIsland.radiusBlocks()` the same way the `IslandPlan` overload narrows to
+`island.radiusBlocks()`; `ProgressionGuarantees.ensureEndPortal` gains a
+`SkyIslandPlan skyIsland` parameter and picks whichever of the two overloads
+applies (`island.enabled() ? ...(..., island) : ...(..., skyIsland)`); and
+`WorldLimitManager.onServerStarted` gains an `overworldSkyIsland.enabled()`
+arm on `exteriorObjective`'s condition, exactly parallel to
+`overworldIsland.enabled()`'s existing one. Found and fixed during 10.2's
+own implementation, before any in-game testing — the same "proactive, not
+reactive" posture the 8.1 lesson asked for, just requiring one more level of
+call-graph tracing to actually apply correctly this time.
+
+One known, deliberately deferred gap carried over unchanged from the
+pre-existing `LayoutMode.VOID` precedent (§17's `FALLBACK_PORTAL_TARGET_Y`
+doc comment already flags it): the fallback vault is built at a fixed
+`Y = -32`, independent of the sky island's own `surfaceY`. For a typical
+island (surface 64, thickness 6) the vault lands roughly 90+ blocks straight
+down through open void, disconnected from the island itself — reachable
+only by building/digging a long way down, not attached to the starter
+island the way ocean island's vault (DESIGN §24.12) sits directly beneath
+its starter land. Not fixed here: this is the same accepted limitation the
+codebase already documents for any void-exterior floating island, and
+ocean island's own vault-placement fixes (§24.10–§24.13) were all found and
+resolved *after* Jason's in-game testing, not guessed at up front — if this
+reads as a real problem once Jason tests a sky island world, the fix shape
+(anchor the vault relative to `surfaceY` instead of a fixed absolute Y) is
+the same kind of targeted follow-up, not a design change.
 
 `ObjectiveSite.isSupportiveColumn`/`supportiveFallbackZ` already treat
 `LayoutMode.VOID` as universally supportive (§17 comment: "bounded by its

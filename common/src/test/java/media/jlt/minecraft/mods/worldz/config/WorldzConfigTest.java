@@ -6,6 +6,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
+import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -554,6 +555,8 @@ class WorldzConfigTest {
                 + ", starterKit=essentials=[minecraft:lily_pad:1, minecraft:dirt:4, minecraft:grass_block:2,"
                 + " minecraft:oak_sapling:3], extras=[minecraft:bread:3, minecraft:wooden_axe:1,"
                 + " minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:water_bucket:1], extrasCount=2"
+                + ", skyIsland=islandBiome=minecraft:plains, radiusBlocks=16, shapeAmplitude=0.3"
+                + ", surfaceY=64, thicknessBlocks=6"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -901,6 +904,88 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(IslandFluid.NONE, config.oceanIsland.fluid);
+    }
+
+    @Test
+    void skyIslandSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              islandBiome: desert
+              radiusBlocks: 32
+              shapeAmplitude: 0.4
+              surfaceY: 80
+              thicknessBlocks: 10
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:desert", config.skyIsland.islandBiome);
+        assertEquals(32, config.skyIsland.radiusBlocks);
+        assertEquals(0.4, config.skyIsland.shapeAmplitude);
+        assertEquals(80, config.skyIsland.surfaceY);
+        assertEquals(10, config.skyIsland.thicknessBlocks);
+    }
+
+    @Test
+    void skyIslandDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals("minecraft:plains", config.skyIsland.islandBiome);
+        assertEquals(SkyIslandPlan.DEFAULT_SURFACE_Y, config.skyIsland.surfaceY);
+        assertEquals(SkyIslandPlan.DEFAULT_THICKNESS_BLOCKS, config.skyIsland.thicknessBlocks);
+    }
+
+    @Test
+    void skyIslandRadiusIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            skyIsland:
+              radiusBlocks: 1
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            skyIsland:
+              radiusBlocks: 9999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, tooSmall.skyIsland.radiusBlocks);
+        assertEquals(WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS, tooLarge.skyIsland.radiusBlocks);
+    }
+
+    @Test
+    void skyIslandShapeAmplitudeIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            skyIsland:
+              shapeAmplitude: -0.5
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            skyIsland:
+              shapeAmplitude: 5.0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0.0, tooSmall.skyIsland.shapeAmplitude);
+        assertEquals(IslandShapeProfile.MAX_AMPLITUDE, tooLarge.skyIsland.shapeAmplitude);
+    }
+
+    @Test
+    void skyIslandThicknessIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            skyIsland:
+              thicknessBlocks: 0
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            skyIsland:
+              thicknessBlocks: 999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(SkyIslandPlan.MIN_THICKNESS_BLOCKS, tooSmall.skyIsland.thicknessBlocks);
+        assertEquals(SkyIslandPlan.MAX_THICKNESS_BLOCKS, tooLarge.skyIsland.thicknessBlocks);
+    }
+
+    @Test
+    void skyIslandInvalidIslandBiomeFallsBackToDefault() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              islandBiome: '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:plains", config.skyIsland.islandBiome);
     }
 
     @Test
