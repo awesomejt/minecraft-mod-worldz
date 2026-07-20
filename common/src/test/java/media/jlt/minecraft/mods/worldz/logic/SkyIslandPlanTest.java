@@ -77,7 +77,7 @@ class SkyIslandPlanTest {
     @Test
     void invalidChestTierIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new SkyIslandPlan(
-            true, 16, 0.3, "minecraft:plains", 64, 6, null
+            true, 16, 0.3, "minecraft:plains", 64, 6, null, FloatingIslandsPlan.disabled()
         ));
     }
 
@@ -89,6 +89,8 @@ class SkyIslandPlanTest {
     }
 
     private static SkyIslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int surfaceY, int thicknessBlocks) {
-        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM);
+        return new SkyIslandPlan(
+            true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled()
+        );
     }
 }

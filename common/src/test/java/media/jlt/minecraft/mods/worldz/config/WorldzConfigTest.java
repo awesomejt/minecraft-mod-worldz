@@ -566,6 +566,7 @@ class WorldzConfigTest {
                 + ", hardKit=essentials=[minecraft:oak_sapling:2], extras=[minecraft:bread:2, minecraft:torch:4],"
                 + " extrasCount=1"
                 + ", applyToNether=false"
+                + ", floatingIslands=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -995,6 +996,89 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.skyIsland.islandBiome);
+    }
+
+    @Test
+    void floatingIslandsSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                enabled: true
+                minRadiusBlocks: 20
+                maxRadiusBlocks: 50
+                shapeAmplitude: 0.4
+                cellSizeBlocks: 300
+                spawnChance: 0.8
+                biomeVariety: false
+                islandBiomes:
+                  - desert
+                  - taiga
+                exclusionZoneEnabled: true
+                exclusionZoneRadiusBlocks: 400
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.skyIsland.floatingIslands.enabled);
+        assertEquals(20, config.skyIsland.floatingIslands.minRadiusBlocks);
+        assertEquals(50, config.skyIsland.floatingIslands.maxRadiusBlocks);
+        assertEquals(0.4, config.skyIsland.floatingIslands.shapeAmplitude);
+        assertEquals(300, config.skyIsland.floatingIslands.cellSizeBlocks);
+        assertEquals(0.8, config.skyIsland.floatingIslands.spawnChance);
+        assertFalse(config.skyIsland.floatingIslands.biomeVariety);
+        assertEquals(List.of("minecraft:desert", "minecraft:taiga"), config.skyIsland.floatingIslands.islandBiomes);
+        assertTrue(config.skyIsland.floatingIslands.exclusionZoneEnabled);
+        assertEquals(400, config.skyIsland.floatingIslands.exclusionZoneRadiusBlocks);
+    }
+
+    @Test
+    void floatingIslandsDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.skyIsland.floatingIslands.enabled);
+        assertTrue(config.skyIsland.floatingIslands.biomeVariety);
+        assertFalse(config.skyIsland.floatingIslands.islandBiomes.isEmpty());
+    }
+
+    @Test
+    void floatingIslandsMaxRadiusIsClampedToAtLeastMinRadius() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                minRadiusBlocks: 100
+                maxRadiusBlocks: 50
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(100, config.skyIsland.floatingIslands.minRadiusBlocks);
+        assertEquals(100, config.skyIsland.floatingIslands.maxRadiusBlocks);
+    }
+
+    @Test
+    void floatingIslandsSpawnChanceIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                spawnChance: -0.5
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                spawnChance: 5.0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0.0, tooSmall.skyIsland.floatingIslands.spawnChance);
+        assertEquals(1.0, tooLarge.skyIsland.floatingIslands.spawnChance);
+    }
+
+    @Test
+    void floatingIslandsBiomeVarietyWithNoUsableBiomesIsDisabled() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                biomeVariety: true
+                islandBiomes:
+                  - '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.skyIsland.floatingIslands.biomeVariety);
     }
 
     @Test

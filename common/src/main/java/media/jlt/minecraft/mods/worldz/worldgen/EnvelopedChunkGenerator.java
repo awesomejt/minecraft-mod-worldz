@@ -8,6 +8,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.FloatingIslandsPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
@@ -580,10 +581,32 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     private int skyIslandBaseHeight(int relativeX, int relativeZ, LevelHeightAccessor heightAccessor) {
         SkyIslandPlan active = activeSkyIsland();
-        double distance = active.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
-        return distance <= 0.0
+        SkyIslandHit hit = skyIslandHitAt(relativeX, relativeZ, active);
+        return hit.present()
             ? Math.min(active.surfaceY(), heightAccessor.getMaxY() + 1)
             : heightAccessor.getMinY();
+    }
+
+    /**
+     * One column's result against the sky island footprint (GOALS 05/06) or, failing that, the
+     * scattered floating-island grid beyond it (GOALS 07-08, DESIGN §28.1) -- the starter island
+     * always wins when both would apply (it never does, since scattered islands respect their own
+     * exclusion zone, but checking the starter first is cheaper and needs no coordination either
+     * way). {@code distanceFromShore} and {@code biome} are meaningless when {@link #present} is
+     * {@code false}.
+     */
+    private record SkyIslandHit(boolean present, double distanceFromShore, String biome) {
+    }
+
+    private SkyIslandHit skyIslandHitAt(int relativeX, int relativeZ, SkyIslandPlan active) {
+        double starterDistance = active.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+        if (starterDistance <= 0.0) {
+            return new SkyIslandHit(true, starterDistance, active.islandBiome());
+        }
+        FloatingIslandsPlan.Hit scattered = active.floatingIslands().at(relativeX, relativeZ, skyIslandSeed(), active.islandBiome());
+        return scattered.present()
+            ? new SkyIslandHit(true, scattered.distanceFromShore(), scattered.biome())
+            : new SkyIslandHit(false, starterDistance, active.islandBiome());
     }
 
     @Override
@@ -640,11 +663,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return states == null ? naturalColumn : new NoiseColumn(heightAccessor.getMinY(), states);
         }
         if (activeSkyIsland().enabled()) {
-            double distance = activeSkyIsland().distanceFromShore(x - originX(), z - originZ(), skyIslandSeed());
+            SkyIslandHit hit = skyIslandHitAt(x - originX(), z - originZ(), activeSkyIsland());
             BlockState[] skyStates = new BlockState[heightAccessor.getHeight()];
             int skyMinY = heightAccessor.getMinY();
             for (int index = 0; index < skyStates.length; index++) {
-                skyStates[index] = skyIslandStateAt(distance, skyMinY + index);
+                skyStates[index] = skyIslandStateAt(hit, skyMinY + index);
             }
             return new NoiseColumn(skyMinY, skyStates);
         }
@@ -736,10 +759,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 ExteriorMode mode = this.effectiveModeAt(relativeX, relativeZ);
                 if (mode != ExteriorMode.NORMAL) {
                     if (activeSkyIsland().enabled()) {
-                        double distance = activeSkyIsland().distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+                        SkyIslandHit hit = skyIslandHitAt(relativeX, relativeZ, activeSkyIsland());
                         for (int y = minY; y <= maxY; y++) {
                             pos.set(x, y, z);
-                            BlockState state = skyIslandStateAt(distance, y);
+                            BlockState state = skyIslandStateAt(hit, y);
                             BlockState oldState = chunk.getBlockState(pos);
                             if (oldState != state) {
                                 if (oldState.hasBlockEntity()) {
@@ -1161,16 +1184,18 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Classifies one sky island block (GOALS 05/06, DESIGN §27.2/27.3/27.6): air outside the
-     * footprint or outside the slab's vertical band, otherwise a top/subsoil/core block. The
-     * Overworld picks its palette from {@link SkyIslandProfile}'s biome-family classification
-     * (§27.3); the Nether has no meaningful biome to key off (DESIGN §27.6 deliberately doesn't
-     * force one) and always uses a simple netherrack-family palette instead. Neither dimension's
-     * chunk ever runs the delegate's biome-aware surface builder (§27.2), so this is the sky
-     * island's own surface-material choice either way.
+     * Classifies one sky island block (GOALS 05/06/07/08, DESIGN §27.2/27.3/27.6/28.2): air
+     * outside every footprint (starter or scattered) or outside the slab's vertical band,
+     * otherwise a top/subsoil/core block. The Overworld picks its palette from {@link
+     * SkyIslandProfile}'s biome-family classification (§27.3), keyed off {@code hit}'s own biome
+     * so a scattered island with biome variety (GOALS 08) gets its own palette instead of always
+     * reusing the starter island's; the Nether has no meaningful biome to key off (DESIGN §27.6
+     * deliberately doesn't force one) and always uses a simple netherrack-family palette instead.
+     * Neither dimension's chunk ever runs the delegate's biome-aware surface builder (§27.2), so
+     * this is the sky island's own surface-material choice either way.
      */
-    private BlockState skyIslandStateAt(double distance, int y) {
-        if (distance > 0.0) {
+    private BlockState skyIslandStateAt(SkyIslandHit hit, int y) {
+        if (!hit.present()) {
             return Blocks.AIR.defaultBlockState();
         }
         SkyIslandPlan active = activeSkyIsland();
@@ -1182,7 +1207,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 case CORE -> Blocks.BASALT.defaultBlockState();
             };
         }
-        SkyIslandProfile.BiomeFamily family = SkyIslandProfile.familyFor(active.islandBiome());
+        SkyIslandProfile.BiomeFamily family = SkyIslandProfile.familyFor(hit.biome());
         return switch (layer) {
             case VOID -> Blocks.AIR.defaultBlockState();
             case TOP -> skyIslandTopBlock(family);

@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.client;
 
+import media.jlt.minecraft.mods.worldz.logic.FloatingIslandsPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandCustomization;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
@@ -7,6 +8,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.ScrollableLayout;
 import net.minecraft.client.gui.components.Tooltip;
@@ -46,6 +48,23 @@ final class SkyIslandCustomizeScreen extends Screen implements
     private WorldzCustomization.BorderSettings netherBorder;
     private WorldzCustomization.EndBorderSettings endBorder;
     private WorldzCustomization.ExteriorSettings netherExterior;
+    private boolean floatingIslandsEnabled;
+    private EditBox floatingMinRadiusBlocks;
+    private EditBox floatingMaxRadiusBlocks;
+    private EditBox floatingShapeAmplitude;
+    private EditBox floatingCellSizeBlocks;
+    private EditBox floatingSpawnChance;
+    private boolean floatingBiomeVariety;
+    private MultiLineEditBox floatingIslandBiomes;
+    private boolean floatingExclusionZoneEnabled;
+    private EditBox floatingExclusionZoneRadiusBlocks;
+    private String floatingMinRadiusBlocksText;
+    private String floatingMaxRadiusBlocksText;
+    private String floatingShapeAmplitudeText;
+    private String floatingCellSizeBlocksText;
+    private String floatingSpawnChanceText;
+    private String floatingIslandBiomesText;
+    private String floatingExclusionZoneRadiusBlocksText;
 
     SkyIslandCustomizeScreen(CreateWorldScreen parent, SkyIslandCustomization initial) {
         super(TITLE);
@@ -61,6 +80,17 @@ final class SkyIslandCustomizeScreen extends Screen implements
         this.netherBorder = initial.netherBorder();
         this.endBorder = initial.endBorder();
         this.netherExterior = initial.netherExterior();
+        FloatingIslandsPlan floatingIslands = initial.floatingIslands();
+        this.floatingIslandsEnabled = floatingIslands.enabled();
+        this.floatingMinRadiusBlocksText = Integer.toString(floatingIslands.minRadiusBlocks());
+        this.floatingMaxRadiusBlocksText = Integer.toString(floatingIslands.maxRadiusBlocks());
+        this.floatingShapeAmplitudeText = Double.toString(floatingIslands.shapeAmplitude());
+        this.floatingCellSizeBlocksText = Integer.toString(floatingIslands.cellSizeBlocks());
+        this.floatingSpawnChanceText = Double.toString(floatingIslands.spawnChance());
+        this.floatingBiomeVariety = floatingIslands.biomeVariety();
+        this.floatingIslandBiomesText = floatingIslands.islandBiomesText();
+        this.floatingExclusionZoneEnabled = floatingIslands.exclusionZone().enabled();
+        this.floatingExclusionZoneRadiusBlocksText = Integer.toString(floatingIslands.exclusionZone().radiusBlocks());
     }
 
     @Override
@@ -106,6 +136,75 @@ final class SkyIslandCustomizeScreen extends Screen implements
             .onValueChange((checkbox, selected) -> this.applyToNether = selected)
             .maxWidth(FORM_WIDTH)
             .build());
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_island.floating_islands_enabled"), this.font)
+            .selected(this.floatingIslandsEnabled)
+            .onValueChange((checkbox, selected) -> this.floatingIslandsEnabled = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        this.floatingMinRadiusBlocks = textField(
+            Component.translatable("jlt_worldz.sky_island.floating_min_radius"), this.floatingMinRadiusBlocksText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingMinRadiusBlocks, Component.translatable("jlt_worldz.sky_island.floating_min_radius")
+        ));
+
+        this.floatingMaxRadiusBlocks = textField(
+            Component.translatable("jlt_worldz.sky_island.floating_max_radius"), this.floatingMaxRadiusBlocksText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingMaxRadiusBlocks, Component.translatable("jlt_worldz.sky_island.floating_max_radius")
+        ));
+
+        this.floatingShapeAmplitude = textField(
+            Component.translatable("jlt_worldz.sky_island.floating_shape_amplitude"), this.floatingShapeAmplitudeText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingShapeAmplitude, Component.translatable("jlt_worldz.sky_island.floating_shape_amplitude")
+        ));
+
+        this.floatingCellSizeBlocks = textField(
+            Component.translatable("jlt_worldz.sky_island.floating_cell_size"), this.floatingCellSizeBlocksText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingCellSizeBlocks, Component.translatable("jlt_worldz.sky_island.floating_cell_size")
+        ));
+
+        this.floatingSpawnChance = textField(
+            Component.translatable("jlt_worldz.sky_island.floating_spawn_chance"), this.floatingSpawnChanceText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingSpawnChance, Component.translatable("jlt_worldz.sky_island.floating_spawn_chance")
+        ));
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_island.floating_biome_variety"), this.font)
+            .selected(this.floatingBiomeVariety)
+            .onValueChange((checkbox, selected) -> this.floatingBiomeVariety = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        this.floatingIslandBiomes = MultiLineEditBox.builder()
+            .setPlaceholder(Component.translatable("jlt_worldz.sky_island.floating_island_biomes.hint"))
+            .build(this.font, FORM_WIDTH, 40, Component.translatable("jlt_worldz.sky_island.floating_island_biomes"));
+        this.floatingIslandBiomes.setCharacterLimit(4096);
+        this.floatingIslandBiomes.setValue(this.floatingIslandBiomesText);
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingIslandBiomes, Component.translatable("jlt_worldz.sky_island.floating_island_biomes")
+        ));
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_island.floating_exclusion_zone_enabled"), this.font)
+            .selected(this.floatingExclusionZoneEnabled)
+            .onValueChange((checkbox, selected) -> this.floatingExclusionZoneEnabled = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
+        this.floatingExclusionZoneRadiusBlocks = textField(
+            Component.translatable("jlt_worldz.sky_island.floating_exclusion_zone_radius"), this.floatingExclusionZoneRadiusBlocksText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.floatingExclusionZoneRadiusBlocks, Component.translatable("jlt_worldz.sky_island.floating_exclusion_zone_radius")
+        ));
 
         Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
@@ -167,6 +266,18 @@ final class SkyIslandCustomizeScreen extends Screen implements
 
     private void apply() {
         try {
+            FloatingIslandsPlan floatingIslands = FloatingIslandsPlan.fromText(
+                this.floatingIslandsEnabled,
+                this.floatingMinRadiusBlocks.getValue(),
+                this.floatingMaxRadiusBlocks.getValue(),
+                this.floatingShapeAmplitude.getValue(),
+                this.floatingCellSizeBlocks.getValue(),
+                this.floatingSpawnChance.getValue(),
+                this.floatingBiomeVariety,
+                this.floatingIslandBiomes.getValue(),
+                this.floatingExclusionZoneEnabled,
+                this.floatingExclusionZoneRadiusBlocks.getValue()
+            );
             SkyIslandCustomization customization = SkyIslandCustomization.fromText(
                 this.islandBiome.getValue(),
                 this.radiusBlocks.getValue(),
@@ -178,7 +289,8 @@ final class SkyIslandCustomizeScreen extends Screen implements
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,
-                this.netherExterior
+                this.netherExterior,
+                floatingIslands
             );
             this.parent.getUiState().updateDimensions(
                 (registries, dimensions) -> SkyIslandPresetEditor.apply(registries, dimensions, customization)

@@ -143,7 +143,8 @@ public final class SkyIslandPresetEditor implements PresetEditor {
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
             fromPlan(plan.end()),
-            fromPlan(exterior.nether())
+            fromPlan(exterior.nether()),
+            skyIsland.floatingIslands()
         );
     }
 

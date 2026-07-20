@@ -1481,7 +1481,7 @@ in full per the Phase 10 header's own note.
       option). Overworld only this phase (GOALS 08's text has no Nether
       component); Nether floating islands noted as a straightforward future
       extension in DESIGN §28.5, not scheduled.
-- [ ] 11.2 Core: `FloatingIslandsPlan` (pure logic — grid placement,
+- [x] 11.2 Core: `FloatingIslandsPlan` (pure logic — grid placement,
       jittered island centers/radii, exclusion zone, biome-variety
       selection; JUnit-covered), config/codec/customization plumbing on
       `SkyIslandConfig`/`SkyIslandCustomization`, the sub-screen on
@@ -1490,6 +1490,48 @@ in full per the Phase 10 header's own note.
       actually generate (reusing `SkyIslandProfile`'s surface-material
       palette). No resource layers or village yet — void-with-empty-islands
       is this task's acceptance bar.
+      **Done (0.2.48):** new `logic.FloatingIslandsPlan` (jittered
+      grid — a cell is present or empty via hash-picked `spawnChance`,
+      jittered center bounded to 0.3x cell size so `at()` only ever needs
+      to check the query cell's 3x3 neighborhood, hash-picked radius,
+      reuses `IslandShapeProfile.distanceFromShore` for the coastline,
+      reuses `IslandPlan.ExclusionZone` directly for the void buffer) +
+      `config.FloatingIslandsConfig`; `SkyIslandPlan` gained a
+      `floatingIslands` field (nested entirely inside `SkyIslandCodecs`'
+      own group — the "one slot to spare" left after `sky_island`, per
+      DESIGN §28.4, no `LimitedBiomeSource` ceiling impact) and
+      `SkyIslandConfig` gained a `floatingIslands:` section.
+      `EnvelopedChunkGenerator` gained a `skyIslandHitAt` helper (checks
+      the starter island first, then the scattered grid) that every
+      existing `distanceFromShore`-based call site
+      (`skyIslandBaseHeight`, `getBaseColumn`, `applyEnvelope`) now goes
+      through instead of calling `activeSkyIsland().distanceFromShore`
+      directly; `skyIslandStateAt` takes the hit's own biome instead of
+      always `active.islandBiome()`, so a biome-variety scattered island
+      gets its own surface palette. `LimitedBiomeSource.resolveSkyIslandBiomes`
+      now resolves every biome in the floating-islands pool too (not just
+      the starter island's one), and `getNoiseBiome`'s sky-island branch
+      falls through to `floatingIslands().at(...)` when the starter
+      island's own distance is positive. Nether floating islands
+      deliberately out of scope (DESIGN §28.5) —
+      `netherSkyIslandPlan()` always resolves `FloatingIslandsPlan.disabled()`
+      regardless of the configured value. **Revised the sub-screen call in
+      DESIGN §28.4 during implementation:** inlined the new fields
+      directly into `SkyIslandCustomizeScreen`'s existing scrollable form
+      instead of a dedicated sub-screen — `StripWorldCustomizeScreen`'s
+      own "bands" feature (near-identical shape: enabled toggle,
+      multi-line biome list, several more fields) is the closer precedent
+      and inlines rather than opening one; the Border/EndBorder/Exterior
+      sub-screens exist specifically because they're reused across
+      four-plus different presets, a reuse need floating islands (sky-
+      island-only) doesn't share. 14 new tests (`FloatingIslandsPlanTest`,
+      `WorldzConfigTest` additions); full suite green (474 tests); clean
+      build across all modules. README gained a "Floating resource
+      islands" subsection documenting the placement mechanism, explicitly
+      flagged as core-mechanism-only (no resources/village yet — those
+      land in 11.3-11.5). Not yet deployed/tested in-game — nothing
+      walkable-and-different-from-void to show Jason until 11.3+ add
+      actual resources; the whole slice waits for 11.6's acceptance pass.
 - [ ] 11.3 Ore deposits: `ResourceConfig.oreDepositsEnabled`/`oreFeatureIds`,
       per-island hash-picked `ConfiguredFeature` placement clamped to the
       slab's own thickness (DESIGN §28.2).

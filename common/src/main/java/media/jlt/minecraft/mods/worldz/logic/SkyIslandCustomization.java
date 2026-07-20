@@ -24,6 +24,8 @@ import java.util.List;
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
  * @param netherExterior Nether exterior-terrain selection
+ * @param floatingIslands scattered small floating islands beyond this island's own footprint
+ *     (GOALS 07-08, DESIGN §28)
  */
 public record SkyIslandCustomization(
     String islandBiome,
@@ -36,7 +38,8 @@ public record SkyIslandCustomization(
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
-    WorldzCustomization.ExteriorSettings netherExterior
+    WorldzCustomization.ExteriorSettings netherExterior,
+    FloatingIslandsPlan floatingIslands
 ) {
     /** Validates and canonicalizes customization values. */
     public SkyIslandCustomization {
@@ -84,7 +87,8 @@ public record SkyIslandCustomization(
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
-            WorldzCustomization.ExteriorSettings.fromConfig(config.netherExterior)
+            WorldzCustomization.ExteriorSettings.fromConfig(config.netherExterior),
+            FloatingIslandsPlan.fromConfig(config.skyIsland.floatingIslands)
         );
     }
 
@@ -102,6 +106,7 @@ public record SkyIslandCustomization(
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
      * @param netherExterior validated Nether exterior values
+     * @param floatingIslands validated scattered-floating-islands values (GOALS 07-08)
      * @return canonical immutable customization values
      */
     public static SkyIslandCustomization fromText(
@@ -115,7 +120,8 @@ public record SkyIslandCustomization(
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
-        WorldzCustomization.ExteriorSettings netherExterior
+        WorldzCustomization.ExteriorSettings netherExterior,
+        FloatingIslandsPlan floatingIslands
     ) {
         return new SkyIslandCustomization(
             islandBiome,
@@ -128,7 +134,8 @@ public record SkyIslandCustomization(
             overworldBorder,
             netherBorder,
             endBorder,
-            netherExterior
+            netherExterior,
+            floatingIslands
         );
     }
 
@@ -138,7 +145,7 @@ public record SkyIslandCustomization(
      * @return immutable, always-enabled sky island plan
      */
     public SkyIslandPlan skyIslandPlan() {
-        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier);
+        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, floatingIslands);
     }
 
     /**
@@ -146,12 +153,16 @@ public record SkyIslandCustomization(
      * Overworld's, but disabled entirely unless {@link #applyToNether} is set. {@code islandBiome}/
      * {@code chestTier} are unused placeholders on the Nether side -- the block palette is fixed
      * (netherrack-family, DESIGN §27.6) and only the Overworld ever gets a starter chest.
+     * {@link #floatingIslands} never applies here either -- GOALS 08's scattered islands are
+     * Overworld-only this phase (DESIGN §28.5).
      *
      * @return resolved Nether sky island plan, disabled unless {@link #applyToNether}
      */
     public SkyIslandPlan netherSkyIslandPlan() {
         return applyToNether
-            ? new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier)
+            ? new SkyIslandPlan(
+                true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, FloatingIslandsPlan.disabled()
+            )
             : SkyIslandPlan.disabled();
     }
 

@@ -3430,10 +3430,18 @@ reason `IslandPlan.ExclusionZone`/`PassThroughCodecs.Flags` already
 established, not because `FloatingIslandsPlan` itself is anywhere near a
 ceiling.
 
-`SkyIslandCustomizeScreen` gains one new sub-screen (mirroring
-`WorldzBorderScreen`/`EndBorderScreen`'s existing "button opens a small
-dedicated screen" pattern) rather than flattening ten-plus new fields onto
-the already-busy top-level sky-island screen.
+**Revised during 11.2 implementation:** `SkyIslandCustomizeScreen` inlines
+the new fields directly into its existing scrollable form instead of a
+dedicated sub-screen -- on reflection, `StripWorldCustomizeScreen`'s own
+"bands" feature (a near-identical shape: an enabled toggle, a multi-line
+biome-id list, a width field, and three more toggles, 7 fields total) is
+the closer precedent, and it inlines rather than opening a sub-screen. The
+Border/EndBorder/Exterior sub-screens exist because `WorldzBorderScreen`/
+`EndBorderScreen`/`WorldzExteriorScreen` are *reused* across four-plus
+different typed presets (`LimitEditorHosts`, TODO 5.3) -- a real reuse
+need floating islands doesn't share, being sky-island-only. Follows
+`islandBiomes`' text-field shape exactly on `bandBiomes`' own precedent
+(`islandBiomesText()`/newline-or-comma-split `fromText` parsing).
 
 ### 28.5 Deferred, not in this phase's scope
 

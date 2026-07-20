@@ -12,7 +12,7 @@ class SkyIslandCustomizationTest {
         return new SkyIslandCustomization(
             islandBiome, radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
-            WorldzCustomization.ExteriorSettings.normal()
+            WorldzCustomization.ExteriorSettings.normal(), FloatingIslandsPlan.disabled()
         );
     }
 
@@ -99,7 +99,7 @@ class SkyIslandCustomizationTest {
         SkyIslandCustomization customization = SkyIslandCustomization.fromText(
             "minecraft:desert", "256", "0.4", "72", "8", StarterKitTier.HARD, true,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
-            WorldzCustomization.ExteriorSettings.normal()
+            WorldzCustomization.ExteriorSettings.normal(), FloatingIslandsPlan.disabled()
         );
 
         assertEquals("minecraft:desert", customization.islandBiome());
@@ -116,7 +116,7 @@ class SkyIslandCustomizationTest {
         assertThrows(IllegalArgumentException.class, () -> SkyIslandCustomization.fromText(
             "minecraft:plains", "not-a-number", "0.3", "64", "6", StarterKitTier.MEDIUM, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
-            WorldzCustomization.ExteriorSettings.normal()
+            WorldzCustomization.ExteriorSettings.normal(), FloatingIslandsPlan.disabled()
         ));
     }
 
@@ -125,12 +125,12 @@ class SkyIslandCustomizationTest {
         SkyIslandCustomization off = new SkyIslandCustomization(
             "minecraft:plains", 16, 0.3, 64, 6, StarterKitTier.MEDIUM, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
-            WorldzCustomization.ExteriorSettings.normal()
+            WorldzCustomization.ExteriorSettings.normal(), FloatingIslandsPlan.disabled()
         );
         SkyIslandCustomization on = new SkyIslandCustomization(
             "minecraft:plains", 16, 0.3, 64, 6, StarterKitTier.MEDIUM, true,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
-            WorldzCustomization.ExteriorSettings.normal()
+            WorldzCustomization.ExteriorSettings.normal(), FloatingIslandsPlan.disabled()
         );
 
         assertEquals(SkyIslandPlan.disabled(), off.netherSkyIslandPlan());

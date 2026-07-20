@@ -13,6 +13,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.FloatingIslandsPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
@@ -525,20 +526,29 @@ public final class LimitedBiomeSource extends BiomeSource {
     }
 
     /**
-     * Resolves the one biome id a sky island can ever select (GOALS 05, DESIGN §27) -- unlike
-     * {@link #resolveIslandBiomes} there is no shore ring or ocean-gradient set, since the sky
-     * island's exterior is void, not a gradient.
+     * Resolves every biome id a sky island can ever select (GOALS 05, DESIGN §27): the starter
+     * island's own single biome, plus every biome in the scattered floating-island pool (GOALS
+     * 07-08, DESIGN §28.2) when that's enabled. Unlike {@link #resolveIslandBiomes} there is no
+     * shore ring or ocean-gradient set, since the sky island's exterior is void, not a gradient.
      */
     private static Map<String, Holder<Biome>> resolveSkyIslandBiomes(SkyIslandPlan skyIsland, HolderGetter<Biome> biomeGetter) {
         if (!skyIsland.enabled()) {
             return Map.of();
         }
+        Set<String> ids = new LinkedHashSet<>();
+        ids.add(skyIsland.islandBiome());
+        if (skyIsland.floatingIslands().enabled()) {
+            ids.addAll(skyIsland.floatingIslands().islandBiomes());
+        }
+
         Map<String, Holder<Biome>> resolved = new LinkedHashMap<>();
-        ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(skyIsland.islandBiome()));
-        biomeGetter.get(key).ifPresentOrElse(
-            holder -> resolved.put(skyIsland.islandBiome(), holder),
-            () -> WorldzCommon.LOGGER.warn("Unknown sky island biome '{}'; it will never be selected.", skyIsland.islandBiome())
-        );
+        for (String id : ids) {
+            ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.parse(id));
+            biomeGetter.get(key).ifPresentOrElse(
+                holder -> resolved.put(id, holder),
+                () -> WorldzCommon.LOGGER.warn("Unknown sky island biome '{}'; it will never be selected.", id)
+            );
+        }
         return resolved;
     }
 
@@ -1051,14 +1061,27 @@ public final class LimitedBiomeSource extends BiomeSource {
             }
         }
         if (this.skyIsland.enabled()) {
-            double distance = this.skyIsland.distanceFromShore(blockX - originX, blockZ - originZ, this.effectiveLayoutPlan.seed());
+            long skyIslandSeed = this.effectiveLayoutPlan.seed();
+            double distance = this.skyIsland.distanceFromShore(blockX - originX, blockZ - originZ, skyIslandSeed);
+            String biomeId = this.skyIsland.islandBiome();
+            if (distance > 0.0) {
+                // Outside the starter island's own footprint: check the scattered floating-island
+                // grid beyond it (GOALS 07-08, DESIGN §28.1) before giving up.
+                FloatingIslandsPlan.Hit hit = this.skyIsland.floatingIslands().at(
+                    blockX - originX, blockZ - originZ, skyIslandSeed, this.skyIsland.islandBiome()
+                );
+                if (hit.present()) {
+                    distance = hit.distanceFromShore();
+                    biomeId = hit.biome();
+                }
+            }
             if (distance <= 0.0) {
-                Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(this.skyIsland.islandBiome());
+                Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(biomeId);
                 if (biome != null) {
                     return biome;
                 }
             }
-            // Outside the footprint (or the lookup failed): fall through to whatever the rest of
+            // Outside every footprint (or the lookup failed): fall through to whatever the rest of
             // this method would normally report -- harmless, since nothing ever generates there.
         }
         if (this.exteriorPlan.overworld().modeAt(blockX - originX, blockZ - originZ) == ExteriorMode.OCEAN) {

@@ -510,6 +510,55 @@ skyIsland:
 | `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
 | `easyKit`/`mediumKit`/`hardKit` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
 
+### Floating resource islands (GOALS 07-08)
+
+Enable `skyIsland.floatingIslands` to fill the void beyond the starter
+island with scattered small floating islands instead of leaving it empty —
+a jittered grid of cells, each independently rolling whether it holds an
+island (`spawnChance`), with a hash-picked center offset, radius
+(`minRadiusBlocks`..`maxRadiusBlocks`), and coastline shape reusing the
+exact same perturbation as every other island shape in this mod. A
+configurable void buffer (`exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`)
+keeps the immediate area around the starter island empty before scattered
+islands begin, so reaching them always takes real bridging.
+
+```yaml
+skyIsland:
+  floatingIslands:
+    enabled: false
+    minRadiusBlocks: 12
+    maxRadiusBlocks: 32
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 256
+    spawnChance: 0.6
+    biomeVariety: true
+    islandBiomes:
+      - 'minecraft:plains'
+      - 'minecraft:forest'
+      - 'minecraft:desert'
+      - 'minecraft:taiga'
+      - 'minecraft:savanna'
+    exclusionZoneEnabled: true
+    exclusionZoneRadiusBlocks: 256
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Whether scattered floating islands generate at all. |
+| `minRadiusBlocks`/`maxRadiusBlocks` | `12`/`32` | Range a scattered island's radius is hash-picked from. Same shared `8..65536` bound as every other island radius. |
+| `shapeAmplitude` | `0.3` | Coastline perturbation strength, same shape as the starter island's own. |
+| `cellSizeBlocks` | `256` | Grid-cell edge length — the primary "how far apart" knob. |
+| `spawnChance` | `0.6` | Probability (`0..1`) that a given grid cell holds an island, independent of spacing. |
+| `biomeVariety` | `true` | Whether each island hash-picks its own biome from `islandBiomes`, instead of every scattered island sharing the starter island's single `islandBiome`. |
+| `islandBiomes` | plains/forest/desert/taiga/savanna | Candidate biome pool when `biomeVariety` is `true`. Concrete biome ids only, no `#tags`. |
+| `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` | `true`/`256` | Void buffer around the starter island before scattered islands begin. |
+
+**Current scope:** this ships the placement/terrain mechanism only — every
+scattered island is bare terrain with no ore deposits, loot chests, or
+guaranteed village yet (GOALS 07's own village-beyond-the-exclusion-zone
+piece is still to come). Those land in later tasks of the same phase; see
+`TODO.md` Phase 11.
+
 Not exposed on the Customize screen beyond the tier selector and the Nether
 checkbox — the kit contents themselves are YAML-only, matching every other
 variable-length list in this mod's config.

@@ -36,6 +36,8 @@ public final class SkyIslandConfig {
     public StarterKitConfig mediumKit = mediumDefaults();
     /** Bare-essentials starter-chest contents. */
     public StarterKitConfig hardKit = hardDefaults();
+    /** Scattered floating islands beyond the starter island's own footprint (GOALS 07-08, DESIGN §28). */
+    public FloatingIslandsConfig floatingIslands = new FloatingIslandsConfig();
 
     /** Creates a config populated with defaults. */
     public SkyIslandConfig() {

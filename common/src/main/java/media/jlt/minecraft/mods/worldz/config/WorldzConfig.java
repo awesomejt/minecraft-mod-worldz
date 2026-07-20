@@ -437,6 +437,59 @@ public final class WorldzConfig {
         sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "skyIsland.easyKit", logger);
         sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "skyIsland.mediumKit", logger);
         sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "skyIsland.hardKit", logger);
+        sanitized.floatingIslands = sanitizeFloatingIslands(sanitized.floatingIslands, logger);
+        return sanitized;
+    }
+
+    private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
+        FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
+
+        sanitized.minRadiusBlocks = clampWithWarning(
+            sanitized.minRadiusBlocks, MIN_ISLAND_RADIUS_BLOCKS, MAX_ISLAND_RADIUS_BLOCKS, "skyIsland.floatingIslands.minRadiusBlocks", logger
+        );
+        sanitized.maxRadiusBlocks = clampWithWarning(
+            sanitized.maxRadiusBlocks, sanitized.minRadiusBlocks, MAX_ISLAND_RADIUS_BLOCKS,
+            "skyIsland.floatingIslands.maxRadiusBlocks", logger
+        );
+        double clampedAmplitude = Math.clamp(sanitized.shapeAmplitude, 0.0, IslandShapeProfile.MAX_AMPLITUDE);
+        if (clampedAmplitude != sanitized.shapeAmplitude) {
+            logger.warn("Clamped skyIsland.floatingIslands.shapeAmplitude from {} to {}.", sanitized.shapeAmplitude, clampedAmplitude);
+            sanitized.shapeAmplitude = clampedAmplitude;
+        }
+        sanitized.cellSizeBlocks = clampWithWarning(
+            sanitized.cellSizeBlocks, MIN_LAYOUT_REGION_SCALE_BLOCKS, MAX_LAYOUT_REGION_SCALE_BLOCKS,
+            "skyIsland.floatingIslands.cellSizeBlocks", logger
+        );
+        double clampedChance = Math.clamp(sanitized.spawnChance, 0.0, 1.0);
+        if (clampedChance != sanitized.spawnChance) {
+            logger.warn("Clamped skyIsland.floatingIslands.spawnChance from {} to {}.", sanitized.spawnChance, clampedChance);
+            sanitized.spawnChance = clampedChance;
+        }
+
+        BiomeListSpec biomeSpec = BiomeListSpec.parse(sanitized.islandBiomes);
+        for (String invalid : biomeSpec.invalidEntries()) {
+            logger.warn("Ignoring invalid skyIsland.floatingIslands.islandBiomes biome '{}'.", invalid);
+        }
+        for (BiomeListSpec.Entry entry : biomeSpec.entries()) {
+            if (entry.tag()) {
+                logger.warn(
+                    "Ignoring skyIsland.floatingIslands.islandBiomes biome tag '#{}'; floating islands require concrete biome ids.",
+                    entry.id()
+                );
+            }
+        }
+        sanitized.islandBiomes = new ArrayList<>(
+            biomeSpec.entries().stream().filter(entry -> !entry.tag()).map(BiomeListSpec.Entry::id).toList()
+        );
+        if (sanitized.biomeVariety && sanitized.islandBiomes.isEmpty()) {
+            logger.warn("skyIsland.floatingIslands.biomeVariety is set but has no usable biomes; disabling biome variety.");
+            sanitized.biomeVariety = false;
+        }
+
+        if (sanitized.exclusionZoneRadiusBlocks < 1) {
+            logger.warn("Clamped skyIsland.floatingIslands.exclusionZoneRadiusBlocks from {} to 1.", sanitized.exclusionZoneRadiusBlocks);
+            sanitized.exclusionZoneRadiusBlocks = 1;
+        }
         return sanitized;
     }
 
@@ -883,6 +936,47 @@ public final class WorldzConfig {
         if (map.containsKey("applyToNether")) {
             config.applyToNether = readBoolean(map.get("applyToNether"), name + ".applyToNether");
         }
+        if (map.containsKey("floatingIslands")) {
+            config.floatingIslands = readFloatingIslandsConfig(map.get("floatingIslands"), name + ".floatingIslands", logger);
+        }
+        return config;
+    }
+
+    private static FloatingIslandsConfig readFloatingIslandsConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        FloatingIslandsConfig config = new FloatingIslandsConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("minRadiusBlocks")) {
+            config.minRadiusBlocks = readInt(map.get("minRadiusBlocks"), name + ".minRadiusBlocks");
+        }
+        if (map.containsKey("maxRadiusBlocks")) {
+            config.maxRadiusBlocks = readInt(map.get("maxRadiusBlocks"), name + ".maxRadiusBlocks");
+        }
+        if (map.containsKey("shapeAmplitude")) {
+            config.shapeAmplitude = readDouble(map.get("shapeAmplitude"), name + ".shapeAmplitude");
+        }
+        if (map.containsKey("cellSizeBlocks")) {
+            config.cellSizeBlocks = readInt(map.get("cellSizeBlocks"), name + ".cellSizeBlocks");
+        }
+        if (map.containsKey("spawnChance")) {
+            config.spawnChance = readDouble(map.get("spawnChance"), name + ".spawnChance");
+        }
+        if (map.containsKey("biomeVariety")) {
+            config.biomeVariety = readBoolean(map.get("biomeVariety"), name + ".biomeVariety");
+        }
+        if (map.containsKey("islandBiomes")) {
+            config.islandBiomes = readStringList(map.get("islandBiomes"), name + ".islandBiomes", logger);
+        }
+        if (map.containsKey("exclusionZoneEnabled")) {
+            config.exclusionZoneEnabled = readBoolean(map.get("exclusionZoneEnabled"), name + ".exclusionZoneEnabled");
+        }
+        if (map.containsKey("exclusionZoneRadiusBlocks")) {
+            config.exclusionZoneRadiusBlocks = readInt(map.get("exclusionZoneRadiusBlocks"), name + ".exclusionZoneRadiusBlocks");
+        }
         return config;
     }
 
@@ -1271,6 +1365,22 @@ public final class WorldzConfig {
         values.put("mediumKit", starterKitMap(config.mediumKit));
         values.put("hardKit", starterKitMap(config.hardKit));
         values.put("applyToNether", config.applyToNether);
+        values.put("floatingIslands", floatingIslandsMap(config.floatingIslands));
+        return values;
+    }
+
+    private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("minRadiusBlocks", config.minRadiusBlocks);
+        values.put("maxRadiusBlocks", config.maxRadiusBlocks);
+        values.put("shapeAmplitude", config.shapeAmplitude);
+        values.put("cellSizeBlocks", config.cellSizeBlocks);
+        values.put("spawnChance", config.spawnChance);
+        values.put("biomeVariety", config.biomeVariety);
+        values.put("islandBiomes", config.islandBiomes);
+        values.put("exclusionZoneEnabled", config.exclusionZoneEnabled);
+        values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
         return values;
     }
 
@@ -1387,7 +1497,21 @@ public final class WorldzConfig {
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
             + ", hardKit=" + starterKitSummary(config.hardKit)
-            + ", applyToNether=" + config.applyToNether;
+            + ", applyToNether=" + config.applyToNether
+            + ", floatingIslands=" + floatingIslandsSummary(config.floatingIslands);
+    }
+
+    private static String floatingIslandsSummary(FloatingIslandsConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "radius=" + config.minRadiusBlocks + ".." + config.maxRadiusBlocks
+            + ", shapeAmplitude=" + config.shapeAmplitude
+            + ", cellSizeBlocks=" + config.cellSizeBlocks
+            + ", spawnChance=" + config.spawnChance
+            + ", biomeVariety=" + config.biomeVariety
+            + ", islandBiomes=" + config.islandBiomes
+            + ", exclusionZone=" + (config.exclusionZoneEnabled ? "radius=" + config.exclusionZoneRadiusBlocks : "<disabled>");
     }
 
     private static String starterKitSummary(StarterKitConfig config) {
