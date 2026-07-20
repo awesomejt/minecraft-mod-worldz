@@ -2856,4 +2856,243 @@ justify threading real climate sampling through the exterior mechanism.
   `depthBlocks`-parallel pattern, not a unit test; real in-game
   verification is Jason's acceptance pass.
 
+## 27. Sky island challenge (GOALS 05–06) — design pass (TODO 10.1)
+
+A small, genuinely floating island at the origin: solid only for a thin,
+fixed-thickness band around a configurable surface Y, void everywhere else
+within its own footprint and beyond it. Scope for this phase decided with
+Jason 2026-07-20 (see TODO Phase 10's header): Overworld + Nether this
+phase; the End is a spike-only task (10.5); villages beyond the exclusion
+zone (GOALS 07) defer in full to Phase 11.
+
+### 27.1 Why this needs a new mechanism, not a reuse of `IslandPlan`
+
+Today's closest built machinery is `LayoutMode.VOID` (§17/§15.5): choosing
+it forces the Overworld exterior to `ExteriorMode.VOID` with a boundary at
+the starter radius, but *within* that boundary nothing overrides the
+delegate's real vanilla terrain at all — `resolveLayout` explicitly excludes
+`VOID` from the terrain-adjustment pass ("its placeholder sample would
+otherwise raise the whole world instead of leaving it void"). Combined with
+the ordinary starter-land guarantee (which raises a natural ocean floor up
+to a target height with a stone foundation reaching down to bedrock), the
+practical result is a full-depth column from bedrock to the surface — the
+"full-depth terrain plug" TODO 10.1 already flagged as wrong for a true
+floating island. This is exactly the deferred "sky-island overlay" §15.5's
+own comments pointed at; this phase builds it, as a new dedicated preset
+rather than finishing out `LayoutMode.VOID`.
+
+`IslandPlan` (ocean island, DESIGN §24) is not a fit either: its entire
+model is a horizontal shore/ocean-gradient classification layered on top of
+real, full-depth vanilla terrain (`effectiveModeAt` returns `NORMAL` inside
+the island and lets the delegate generate real ground, then only raises it).
+A sky island needs the opposite: the interior of its own footprint must
+*never* delegate to vanilla terrain, because vanilla carvers/caves/aquifers
+running underneath a 6-block slab would routinely punch through it. So:
+
+Decision: **`SkyIslandPlan`, a new, additive, sky-island-only record**
+mirroring `IslandPlan`/`StripPlan`'s precedent, threaded through
+`EnvelopedChunkGenerator` and `LimitedBiomeSource` the same way. Reuses
+`IslandShapeProfile.distanceFromShore` directly for a natural-looking
+(non-circular) footprint — that class is already seed/shape-pure with no
+dependency on `IslandPlan` itself, so borrowing it costs nothing and keeps
+every island-shaped preset's coastline/footprint edge visually consistent.
+No ocean/fluid axis, no shore ring, no exclusion zone: GOALS 05 surrounds
+the island with void, not a gradient, and GOALS 07's exclusion-zone-driven
+villages are deferred to Phase 11 entirely (§ TODO Phase 10 header).
+
+### 27.2 The bounded-below mechanism: classify as VOID everywhere, then carve out the slab
+
+`effectiveModeAt` gains a new top-of-method check, ahead of the existing
+`island`/`strip`/`envelope` dispatch:
+
+```java
+if (this.skyIsland.enabled()) {
+    return ExteriorMode.VOID;
+}
+```
+
+Sky island columns are *uniformly* `VOID` from `effectiveModeAt`'s point of
+view, both inside and outside the footprint — matching how ocean island
+reuses a single `OCEAN` classification and varies the seabed depth per
+column via `islandOceanDepthAt` rather than inventing a new `ExteriorMode`.
+The footprint distinction lives one level down, in the block-filling
+functions:
+
+- `getBaseColumn`'s and `applyEnvelope`'s per-Y loops call a new
+  `skyIslandStateAt(relativeX, relativeZ, y)` instead of `exteriorState(...)`
+  whenever `skyIsland.enabled()`. It computes
+  `distance = skyIsland.distanceFromShore(relativeX, relativeZ, seed)` once
+  per column; outside the footprint (`distance > 0`) it returns air for
+  every `y`. Inside, it returns air above `surfaceY` and below
+  `surfaceY - thicknessBlocks`, and a biome-driven fill (§27.4) for the band
+  between.
+- `getBaseHeight` gains a parallel `skyIslandBaseHeight(relativeX,
+  relativeZ, heightAccessor)`: `surfaceY` inside the footprint (so spawn
+  search, structure placement, and heightmaps all see the slab's top as
+  "the ground"), `heightAccessor.getMinY()` (true void) outside it — the
+  same shape `ExteriorTerrainProfile.baseHeight`'s `VOID` case already
+  returns unconditionally today, just no longer uniform across the whole
+  dimension.
+
+Because `applyEnvelope` runs again, unconditionally, after every generation
+stage (carvers, `fillFromNoise`, `buildSurface`, decoration —  the exact
+mechanism that already makes `OCEAN`/`VOID` immune to whatever the vanilla
+delegate did underneath), the slab needs no carver exclusion of its own:
+whatever vanilla carved into the *delegate's* real terrain in that chunk is
+irrelevant, because the delegate's terrain for this footprint is never
+looked at in the first place — every stage's trailing `applyEnvelope` call
+stamps the exact slab shape over it regardless. This also means, unlike
+ocean island, sky island needs **no `applyTerrainAdjustments` involvement at
+all** — there is no "raise/lower the natural floor" step, because there is
+no natural floor being used.
+
+`hasActiveExterior()` gains `|| this.skyIsland.enabled()` alongside the
+existing `island`/`strip`/`envelope` checks.
+
+Vanilla decoration/mobs/structures (`applyBiomeDecoration`,
+`spawnOriginalMobs`, `createStructures`) stay fully suppressed for a sky
+island chunk, unlike ocean island's `decoratesExteriorOcean` carve-out —
+there is deliberately no vegetation/mob decoration pass to opt back into
+for a Skyblock-style island; the starter kit (§27.7) is the intended
+source of "getting started" materials, and empty resource scarcity is a
+defining trait of the challenge, not a gap to fill.
+
+### 27.3 Surface material without vanilla's own surface pass
+
+Because the sky island's chunk never runs the delegate's biome-aware
+surface builder over its own terrain (§27.2's `applyEnvelope`-after-every-
+stage trick intentionally bypasses it, exactly like `OCEAN`/`VOID` always
+have), `skyIslandStateAt` needs its own top-block choice instead of relying
+on vanilla to paint it later. A new pure `SkyIslandProfile.fillAt(y,
+surfaceY, thicknessBlocks, islandBiome)` classifies three layers by depth
+from the top (top block, 2 blocks of subsoil, then stone for the rest) and
+picks a block family from the configured biome id via a small, deliberately
+non-exhaustive set of substring/id checks — desert/badlands/beach-family
+biomes get sand-over-sandstone, snowy-family biomes get snow-block-over-
+dirt, mushroom fields gets mycelium, everything else gets the plains
+default of grass-block-over-dirt. This is a scoped approximation, not a
+reimplementation of vanilla's real per-biome `SurfaceRules` — good enough
+to make a desert sky island visually read as sand rather than grass,
+without chasing every one of vanilla's ~60 overworld biomes. Documented as
+an intentional simplification in code, not silently incomplete.
+
+### 27.4 Natural footprint shape
+
+`SkyIslandPlan.distanceFromShore(x, z, seed)` delegates straight to
+`IslandShapeProfile.distanceFromShore(x, z, radiusBlocks, shapeAmplitude,
+seed)` — the exact function ocean island's coastline already uses, so a
+sky island gets the same natural "lumpy, jagged-edged blob" shape (§24.3,
+§24.13) for free, at whatever radius/amplitude the player configures.
+Unlike ocean island there is no shore ring or ocean-gradient width to
+subtract — the footprint's edge simply drops to void.
+
+### 27.5 Beatability: the fallback vault needs no ground, but the guarantee gate does
+
+`ProgressionGuarantees.buildEndPortalSite`/`buildBlazeSite` already build a
+**fully enclosed** shell (floor, ceiling, all four walls — the Phase 7
+test-2 follow-up fix, DESIGN §24.12) at a fixed Y, independent of whatever
+terrain (or lack of it) surrounds that point. A sky island's fallback vault
+therefore needs zero new code to actually place correctly, floating in the
+void exactly as designed — it was already built to not lean on natural
+ground.
+
+What does need attention is the *gate* that decides whether the guarantee
+fires at all. `ObjectiveSite.supportiveRadius`'s existing 3-arg overload
+(`borderEnabled, finalBorderRadius, envelope`) already narrows correctly to
+`envelope.solidRadiusBlocks()` whenever the exterior mode isn't `NORMAL` —
+and since §27.2 classifies a sky island world's Overworld exterior as a
+plain, uniform `VOID` (no separate ocean-gradient concept the way
+`IslandPlan` needed its own 4-arg overload for), **the existing envelope-
+based overload already reports the correct supportive radius with no new
+`ObjectiveSite` code at all**, as long as `EnvelopedChunkGenerator` reports
+its `envelope()` as `DimensionEnvelope(VOID, skyIsland.radiusBlocks(), 0)`
+whenever the sky island plan is active — mirroring the exact
+`resolveEnvelope` trick §17/§15.5 already built for `LayoutMode.VOID`, just
+driven by the new preset instead of that legacy layout mode. This is a
+narrower, simpler fix than ocean island's 8.1 lesson ("proactively audit
+every `IslandPlan` consumer") predicted would be needed again — confirmed
+by reading `ObjectiveSite`/`ProgressionGuarantees` directly rather than
+assuming another overload is required.
+
+`ObjectiveSite.isSupportiveColumn`/`supportiveFallbackZ` already treat
+`LayoutMode.VOID` as universally supportive (§17 comment: "bounded by its
+own sky-island exterior instead") — a sky island world's `WorldLayoutPlan`
+stays `LEGACY` (no coordinated layout runs for it, same as ocean island),
+so this path is unaffected and needs no change either.
+
+### 27.6 Nether sky variant (GOALS 06, Nether only — TODO 10.4)
+
+The Nether already supports a `VOID` exterior (`netherExterior` accepts
+`normal | void`, §14) but, like the Overworld before this phase, only as a
+uniform horizontal cutoff over full-depth delegate terrain — the same
+bounded-below gap applies. `EnvelopedChunkGenerator`'s `skyIsland` handling
+is dimension-generic in the code (`effectiveModeAt`/`skyIslandStateAt` don't
+themselves care which dimension they're wrapping), but the *seed* source
+does: §27.2/24.2's `islandSeed()`-style helper reads
+`originSource.orElseThrow().effectiveLayoutPlan().seed()`, and
+`originSource` is Overworld-only (`EnvelopedChunkGenerator`'s constructor:
+`dimension == Dimension.OVERWORLD && ... instanceof LimitedBiomeSource`) —
+the Nether's biome source was never a `LimitedBiomeSource` needing seed-
+aware layout sampling. Plan: thread the resolved Overworld seed into the
+Nether generator's own `SkyIslandPlan` construction at codec-resolve time
+(the world seed is already available wherever `EnvelopedChunkGenerator`s
+for both dimensions are constructed together — the Worldz preset/Customize
+wiring already builds both), rather than requiring a second live-seed
+plumbing path — a fixed, resolved seed baked in at creation is sufficient
+since (unlike the Overworld's real-seed-sampling requirement, DESIGN
+§20.4) nothing requires the Nether sky island to reproduce specifically
+*the Minecraft seed string's* shape, only to be deterministic per world.
+Fortress retention reuses `ProgressionGuarantees.ensureBlazeAccess`
+unchanged (its blaze-spawner fallback is exactly as self-contained as the
+End-portal vault, §27.5) — the existing 2-arg `supportiveRadius(borderEnabled,
+finalBorderRadius, envelope)` overload already covers it once the Nether's
+`envelope()` reports the same `VOID`-at-island-radius shape.
+
+### 27.7 End sky island — explicitly out of scope this phase (TODO 10.5)
+
+The End has never been touched by this mod (§14: "leaving the End vanilla").
+Wrapping it the same way as the Overworld/Nether is a materially bigger
+lift than either: there is no existing `EnvelopedChunkGenerator` wiring for
+the End preset slot at all today (not "extend an existing wrapper," but
+"build the wrapper's End registration from nothing"), and the End's actual
+terrain shape (floating islands already, a central island plus scattered
+outer islands, no contiguous "delegate terrain" the way Overworld/Nether
+noise generation has) makes "bounded-below slab over void" a different
+problem than a square/void cutover on noise terrain — the existing
+End-border carry-over (§5.2) only ever added a `WorldBorder` limit, never
+touched generation. Per Jason's decision (TODO Phase 10 header), 10.5 is a
+throwaway-branch-OK spike: confirm what, if anything, in `EnvelopedChunkGenerator`
+generalizes to wrapping the End's generator, and report findings rather
+than attempting an implementation now. Findings go here once 10.5 runs.
+
+### 27.8 Chest tiers (GOALS 05, TODO 10.3)
+
+Phase 8's `StarterKitPlan` (essentials + seed-picked extras, DESIGN §25.3)
+is reused, not replaced. Per Jason's decision, three built-in tiers
+(easy/medium/hard) each get their own essentials/extras lists (mirroring
+`StarterKitConfig`'s existing shape three times over, one per tier, plus a
+tier selector on the Customize screen and in config); the only
+biome-driven substitution is the single item GOALS 05 names by name — a
+water bucket in wet/ocean-adjacent biomes, a cauldron in dry ones (same
+substring-family classification as §27.3's surface-block choice, reused
+rather than inventing a second one). Everything else about the kit
+(deterministic seed-based extras picking, config-overridability) is
+unchanged from Phase 8.
+
+### 27.9 New typed preset shape (`jlt_worldz:sky_island`)
+
+Mirrors `ocean_island`'s scaffolding exactly (DESIGN §24.8): `SkyIslandConfig`
+(YAML defaults), `SkyIslandCustomization` (record: tier, islandBiome,
+radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks, applyToNether,
+netherRadiusBlocks/shapeAmplitude, border/exterior/end-border settings
+reused from `WorldzCustomization` the same way `OceanIslandCustomization`
+does), `SkyIslandPresetEditor`, `SkyIslandCustomizeScreen`, world-preset
+JSON + `normal` tag entry + lang keys, both loaders' registration — each
+verified by the same structural-test pattern every prior typed preset
+established (`WorldPresetResourcesTest`, `ProjectMetadataTest`). Like
+`ocean_island`, no spawn-strategy field (the island only ever exists at the
+origin) and no separate Overworld Exterior field (`SkyIslandPlan`
+unconditionally supplies the entire Overworld — and, when enabled, Nether
+— exterior itself, the same reasoning as DESIGN §24.8).
+
 

@@ -1191,17 +1191,85 @@ Right after the ocean phases: the ocean-island shape with the fluid swapped
       underneath. Full reasoning in DESIGN §26.3. Test config
       `37-ocean-island-dry.yaml`. **[Jason] acceptance outstanding.**
 
-## Phase 10 — Sky island challenge (GOALS 05–07)
+## Phase 10 — Sky island challenge (GOALS 05–06)
 
-- [ ] 10.1 Design pass: true floating island (bounded below — not the
-      current full-depth terrain plug), default spawn platform Y ≥ 64 (slime
-      rule), necessities-chest presets easy/medium/hard informed by island
-      biome (water bucket vs cauldron etc.), all beatable;
-      stronghold/structure option reusing progression guarantees (05).
-      Nether/End sky-island options with structure retention (06). Villages
-      beyond the exclusion zone (07).
-- [ ] 10.2 Implement `sky_island` world type per the design; test configs;
-      docs; **[Jason]** acceptance per sub-case.
+**Scope decided with Jason (2026-07-20)**, splitting the original 10.1/10.2
+pair into the granularity this phase actually needs (same reasoning as ocean
+island's 7.1–7.4/8.1–8.3 split):
+
+- **Island shape:** a true floating island — a thin, fixed-thickness slab
+  (surface Y plus a configurable thickness below it), void everywhere else
+  within the footprint and beyond it. Not the full-depth terrain plug the
+  original TODO text flagged as wrong.
+- **Nether/End (GOALS 06):** Overworld + Nether sky islands this phase.
+  The End is a separate, spike-first task (10.5) — findings only, no
+  implementation, mirroring the soft-void border (5c) and Nether-start
+  (14.1) "spike before committing" pattern. End sky islands may become
+  their own later phase depending on what the spike finds.
+- **Villages beyond the exclusion zone (GOALS 07): deferred to Phase 11**
+  in full — it's a narrow slice of Phase 11's dedicated "seed-driven
+  scattered floating islands" scope, not this phase's core single-island
+  case. Not tracked as a task here; see Phase 11.
+- **Chest tiers:** three built-in tiers (easy/medium/hard) on top of
+  Phase 8's `StarterKitPlan`; biome informs only the one water-source item
+  GOALS 05 names by name (bucket of water vs. cauldron in dry biomes) —
+  everything else stays config-overridable like the existing kit.
+
+- [x] 10.1 Design pass (DESIGN §27): `SkyIslandPlan` (new, additive record
+      mirroring `IslandPlan`/`StripPlan` — reuses `IslandShapeProfile` for a
+      natural-looking footprint, adds the new vertical bounded-below
+      mechanism no earlier phase needed), default spawn/surface Y ≥ 64
+      (slime rule, configurable), stronghold/beatability approach (reuses
+      the existing fallback End-portal vault unchanged — it already builds
+      its own fully enclosed shell, so it needs no ground to sit on), and
+      the Nether sky variant's shape. **Commit** design before implementing.
+      **Done (0.2.42):** full design in DESIGN §27. Key call: classify a
+      sky island's footprint as uniformly `VOID` from `effectiveModeAt`
+      (like ocean island reuses a uniform `OCEAN`), then distinguish
+      slab-vs-void one level down in the block-filling functions — needs
+      no new `ExteriorMode` value and no `applyTerrainAdjustments`
+      involvement at all (no natural floor is ever raised; the whole
+      footprint is synthesized directly, immune to vanilla carvers the
+      same way `OCEAN`/`VOID` already are). Beatability needs zero new
+      `ObjectiveSite` code, narrower than the 8.1 lesson predicted:
+      confirmed by reading `ObjectiveSite`/`ProgressionGuarantees` that the
+      existing 3-arg `supportiveRadius(borderEnabled, finalBorderRadius,
+      envelope)` overload already narrows correctly once the sky island's
+      exterior reports as `DimensionEnvelope(VOID, radiusBlocks, 0)` —
+      `IslandPlan` needed its own 4-arg overload only because ocean
+      island's shape isn't expressible through `DimensionEnvelope` at all,
+      which isn't true here. Nether variant (10.4) reuses the same
+      mechanism dimension-generically; only the sampling seed needs
+      threading in at codec-resolve time, since `originSource` (today's
+      seed source) is Overworld-only. End (10.5) confirmed genuinely
+      harder than Overworld/Nether — no existing End wrapper to extend at
+      all, plus the End's own already-floating-islands terrain shape — so
+      it stays a dedicated spike task, not folded into this one.
+- [ ] 10.2 Implement the `sky_island` world type core (Overworld only):
+      `SkyIslandPlan`, config/customization/preset-editor/screen scaffolding,
+      world-type registration, the bounded-below terrain synthesis in
+      `EnvelopedChunkGenerator`/`LimitedBiomeSource`, default Y ≥ 64 spawn,
+      beatability (`ObjectiveSite.supportiveRadius` overload for
+      `SkyIslandPlan`, proactively wired this time per the 8.1 lesson — see
+      DESIGN §27). GOALS 05's core.
+- [ ] 10.3 Chest tiers: extend `StarterKitPlan`/`StarterKitConfig` with
+      easy/medium/hard tiers and the biome-driven water-item swap; wire into
+      `sky_island`'s chest deployment (reuses `StarterKitDeployment`). GOALS
+      05.
+- [ ] 10.4 Nether sky island variant: same bounded-below mechanism applied
+      to the Nether exterior, with a fortress/structure-retention toggle
+      reusing `ProgressionGuarantees.ensureBlazeAccess`'s existing
+      self-built fallback. GOALS 06 (Nether only — End is 10.5).
+- [ ] 10.5 End sky island — design spike only (throwaway branch OK, same
+      posture as 5c.1/14.1): investigate whether/how `EnvelopedChunkGenerator`-
+      style wrapping extends to the End (untouched by this mod so far),
+      report findings in DESIGN §27, **[Jason]** go/no-go on scheduling a
+      real implementation task. Not scheduled to this phase's completion
+      gate.
+- [ ] 10.6 Test configs (small/default/huge island, each chest tier, Nether
+      sky variant on/off, stronghold-fallback beatability check); docs
+      (README, MANUAL_TESTING.md); **[Jason]** acceptance per GOALS 05/06
+      sub-case.
 
 ## Phase 11 — Floating resource islands (GOALS 08)
 

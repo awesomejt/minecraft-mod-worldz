@@ -65,6 +65,13 @@ Client only mod loaders:
 05. Sky island challenge - similar to Skyblock. Configuarable necessities starting chest - depending on starting conditions. Can choose from easy, medium, and hard starting materials - all should be beatable given enough time. For example, giving the user a bucket of water vs a couldren to capture rain water. Biome of sky island is configurable but informs what is necessities chest. Sky island is surrounded by void (no ocean). Option to generate structures - specifically a stronghold so game remains beatable. By default, spawn at Y 64 to avoid slimes (may be configurable).
 06. Same as 5 but Nether/End is a sky island too. Configuarable to retain structures so game is still beatable.
 07. Same as 5/8 but villages can be generated outside of an exclusion zone - requiring significant bridging to reach.
+
+    **Scope note (2026-07-20):** deferred in full to Phase 11 — it's a
+    narrow slice of 08's own "scattered floating islands" mechanism (a
+    village needs *something* to stand on beyond the exclusion zone), so
+    it's built once there rather than twice. Phase 10 (05–06) ships the
+    single starter sky island only; End sky islands (part of 06) are
+    spike-first, see TODO Phase 10.5.
 08. Same as 7, but instead of pure void. Random, small floating islands generate containing different resources with various sizes. Use seed as a way to randomize generatation. Islands should be sufficiently far away to require a lot of bridging.
 
 ### Sky Chunk challenge:
