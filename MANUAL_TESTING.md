@@ -456,6 +456,41 @@ finding" entry.
    — both deliberately absent for this preset, see DESIGN §24.8) and a
    customized world reflects the chosen values in-game.
 
+## Phase 8 acceptance (ocean island extras, GOALS 02/03, TODO 8.1-8.2)
+
+Uses configs `34`-`35` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Ocean Island"** for both. Requires 0.2.37+ for
+`islandSource: chest_boat` (34), 0.2.38+ for `islandSource: natural` (35).
+Both extend the same preset config 30-33 already used (DESIGN §25.1) —
+there is no separate World Type for either.
+
+1. **Chest boat, no land**, `34-ocean-island-chest-boat.yaml` (GOALS 03).
+   Confirm no land is visible anywhere near spawn. Confirm a chest boat
+   exists at/very near spawn and the player starts on or immediately next
+   to it. Open its inventory: confirm 2 lily pads, 6 dirt (this file's
+   configured essentials), plus exactly 1 random extra (bread or a water
+   bucket, this file's configured extras pool/count) — proves the YAML
+   `starterKit` override actually took effect, not just the shipped
+   defaults. Confirm the ocean still reads shallow near spawn, deepening
+   further out (same gradient as the artificial island). Confirm a
+   compact, buried, enclosed fallback End portal exists and the dragon
+   fight is winnable. Confirm the Nether is completely ordinary vanilla.
+2. **Natural island by seed**, `35-ocean-island-natural.yaml` (GOALS 02).
+   **This search is not guaranteed to succeed on every seed** — it's
+   explicitly time-boxed and unvalidated against real seeds (DESIGN
+   §25.6). Check the log for either "Natural island search found..."
+   (succeeded — note the coordinates) or "...using the origin instead"
+   (the documented fallback, not a bug). If it succeeded: confirm the
+   land within ~48 blocks of spawn looks like ordinary, unmodified
+   vanilla terrain — varied biomes/elevation, no single flattened biome,
+   no raised platform, real ocean beginning right at the edge of that
+   radius. Confirm the ocean gradient beyond it still reads shallow near
+   the coastline, deepening further out. Confirm a compact, buried,
+   enclosed fallback End portal exists and the dragon fight is winnable.
+   **If it's unreliable across a few different seeds**, note which
+   seeds/outcomes so the isolation threshold/ring sample count
+   (`NaturalIslandSearch`) can be tuned rather than redesigned.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

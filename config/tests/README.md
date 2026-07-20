@@ -36,9 +36,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
    reads the shared top-level `strip:` section (corridor width, same as
    any other Worldz preset) plus its own `stripWorld:` section (spawn
    strategy and the optional `bands:` biome-sequence subsection, GOALS 36);
-   "Worldz: Ocean Island" (files `30`-`33`) reads only its own
-   `oceanIsland:` section (GOALS 01, 04) plus the shared `overworldBorder`/
-   `netherBorder`/`endBorder`/`netherExterior` sections if set. Each
+   "Worldz: Ocean Island" (files `30`-`35`) reads only its own
+   `oceanIsland:` section (GOALS 01, 02, 03, 04) plus the shared
+   `overworldBorder`/`netherBorder`/`endBorder`/`netherExterior` sections
+   if set. `oceanIsland.islandSource` (`artificial`/`natural`/
+   `chest_boat`, Phase 8) picks between three ways of sourcing the land
+   within one preset, not three separate World Types. Each preset
    ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
@@ -81,6 +84,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `31-ocean-island-tiny.yaml` | GOALS 01's "1 chunk" floor: an 8-block-radius island. Exercises the documented tiny-island trade-off — the compact fallback End portal consumes most of the surface, since its safety margin can never "fit" at this scale. **Select "Worldz: Ocean Island"**. |
 | `32-ocean-island-huge.yaml` | GOALS 01's "huge" ceiling: a 4096-block-radius island, where the default 30% coastline perturbation should read as dramatic bays/headlands rather than a slightly-uneven circle. **Select "Worldz: Ocean Island"**. |
 | `33-ocean-island-distant-natural-islands.yaml` | GOALS 04: `oceanIsland.exclusionZoneEnabled: true` at a (deliberately test-friendly, smaller-than-default) 512-block radius — island/ocean shaping releases beyond it and the seed's own natural terrain resumes. **Select "Worldz: Ocean Island"**. |
+| `34-ocean-island-chest-boat.yaml` | GOALS 03 (Phase 8.1): `oceanIsland.islandSource: chest_boat` — no land anywhere, player starts on/near an oak chest boat at the origin with a custom (config-overridden) starter kit. **Select "Worldz: Ocean Island"**. Requires 0.2.37+. |
+| `35-ocean-island-natural.yaml` | GOALS 02 (Phase 8.2): `oceanIsland.islandSource: natural` — searches the real seed for an isolated natural landmass instead of shaping one; real terrain shows through completely unmodified within `radiusBlocks`. Not guaranteed to find a candidate on every seed (documented, time-boxed search) — check the log either way. **Select "Worldz: Ocean Island"**. Requires 0.2.38+. |
 
 ### Why `01` showed ocean labeled as river
 

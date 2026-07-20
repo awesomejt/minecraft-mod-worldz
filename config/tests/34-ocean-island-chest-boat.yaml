@@ -1,0 +1,44 @@
+# GOALS 03: no-land ocean world (DESIGN §25.2, §25.3, TODO 8.1). **Select
+# "Worldz: Ocean Island"** and, if opening Customize, choose "Chest boat
+# (no land)" for Island source -- this file sets it directly via
+# `oceanIsland.islandSource: chest_boat` so a config-only "Create World"
+# with no Customize visit works too.
+#
+# There is no land anywhere: `IslandPlan.hasLand` is false, so the
+# interior/shore-ring biome and terrain-raise logic never fires. The
+# ocean's shallow-to-deep gradient still applies, just starting right at
+# the world origin instead of past a shore ring that doesn't exist --
+# nearby water should read as shallow warm/lukewarm ocean, deepening
+# further out exactly like the artificial-island preset's own gradient.
+#
+# The player starts on/near an oak chest boat floating at the origin.
+# This file also overrides the starter kit to prove the YAML config path
+# works, rather than just checking the shipped defaults.
+#
+# Steps once in-game:
+#  1. Confirm there is no land visible anywhere near spawn -- open water
+#     in every direction.
+#  2. Confirm a chest boat exists at/very near the spawn point, and the
+#     player starts on or immediately next to it.
+#  3. Open the chest boat's inventory: confirm the two essentials below
+#     (2 lily pads, 6 dirt) plus exactly 1 random extra drawn from the
+#     configured extras pool (bread or a water bucket).
+#  4. Confirm the ocean reads as shallow near spawn, deepening further
+#     out, same as the artificial island's own gradient (config 30).
+#  5. Confirm a compact, buried, enclosed fallback End portal exists
+#     somewhere reachable and the dragon fight is winnable.
+#  6. Confirm the Nether is completely ordinary, unrestricted vanilla
+#     Nether generation.
+oceanIsland:
+  islandSource: chest_boat
+  starterKit:
+    essentials:
+      - 'minecraft:lily_pad:2'
+      - 'minecraft:dirt:6'
+    extras:
+      - 'minecraft:bread:3'
+      - 'minecraft:water_bucket:1'
+    extrasCount: 1
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -1518,6 +1518,19 @@ Durable decisions, verified API notes, and rationale that should survive across 
   in-game acceptance testing is what will actually tell us whether the
   isolation threshold/ring sample count need tuning. Full suite green
   (386 tests); clean build.
+- 2026-07-20 (Phase 8.3, ocean island extras docs/configs, 0.2.39) — Two
+  new `config/tests/34`-`35` files (chest-boat with a config-overridden
+  starter kit, proving the YAML override path actually works rather than
+  just checking shipped defaults; natural island at a tighter 48-block
+  radius, more likely to find a qualifying candidate than the 128-block
+  artificial default) plus a new "Phase 8 acceptance" section in
+  MANUAL_TESTING.md. `config/tests/README.md` and README.md's "Ocean
+  island challenge" section both rewritten to cover all three
+  `islandSource` values and the new `starterKit` config. This closes out
+  every non-Jason item in Phase 8 (8.1 chest boat/no-land ocean, 8.2
+  natural island by seed, 8.3 docs/configs) — awaiting Jason's in-game
+  acceptance testing before Phase 9 (GOALS 28/31, lava ocean/dry world)
+  can start.
 
 ## Reference Log
 

@@ -1117,7 +1117,19 @@ rectangular shape.
       this task grants, and Jason's acceptance testing will tell us if
       the isolation threshold needs tuning. Full suite green (386
       tests); clean build.
-- [ ] 8.3 Test configs; docs; **[Jason]** acceptance.
+- [x] 8.3 Test configs; docs; **[Jason]** acceptance.
+      **Configs and docs done (0.2.39):** `config/tests/34`-`35`
+      (chest-boat with a config-overridden starter kit; natural island
+      at a tighter 48-block search radius). New "Phase 8 acceptance"
+      section in MANUAL_TESTING.md. `config/tests/README.md` updated
+      (file count, `islandSource` explanation). README.md's "Ocean
+      island challenge" section rewritten to cover all three
+      `islandSource` values, plus a new `starterKit` config table
+      section. **[Jason] acceptance still outstanding** — this note
+      only covers docs/configs being ready. This completes every
+      non-[Jason] item in Phase 8 (8.1 chest boat/no-land ocean, 8.2
+      natural island by seed, 8.3 docs/configs) — **do not start Phase
+      9 without Jason's explicit go-ahead.**
 
 ## Phase 9 — Ocean fluid variants: lava ocean + dry world (GOALS 28, 31)
 

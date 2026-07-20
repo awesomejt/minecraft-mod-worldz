@@ -36,7 +36,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Single Biome** | One land biome fills the entire world, everything else (structures, caves, seed-based randomness) generates normally; optional different starter biome; optional seed-chosen starter location; optional natural rivers/oceans. See [Single-biome challenge](#single-biome-challenge) below. | Small screen: land biome, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Chaos Biomes** | Seed-shuffled land biome regions over completely untouched vanilla terrain — deserts beside ice spikes beside jungles; configurable region size; optional starter zone; optional natural rivers/oceans. See [Chaos biomes challenge](#chaos-biomes-challenge) below. | Small screen: weighted biome list, region size, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor; optional ordered biome-band sequence along its length. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, biome bands toggle/list/width/shuffle, spawn strategy, borders, exteriors. |
-| **Worldz: Ocean Island** | A small, natural-looking artificial island of one chosen biome at the origin, surrounded by an endless generated ocean that gradually deepens from shore to open water; optional distant natural islands beyond an exclusion zone. See [Ocean island challenge](#ocean-island-challenge) below. | Small screen: island biome, radius, coastline shape, shore-ring width, ocean gradient widths/depths, exclusion zone toggle/radius, borders, Nether exterior. |
+| **Worldz: Ocean Island** | An island surrounded by an endless generated ocean that gradually deepens from shore to open water: an `artificial` natural-looking island of one chosen biome, a `natural` island found in the seed's own unmodified terrain, or `chest_boat` — no land at all, spawn on a stocked chest boat. Optional distant natural islands beyond an exclusion zone. See [Ocean island challenge](#ocean-island-challenge) below. | Small screen: island source, island biome, radius, coastline shape, shore-ring width, ocean gradient widths/depths, exclusion zone toggle/radius, borders, Nether exterior. |
 
 ## Supported loaders
 
@@ -277,11 +277,30 @@ oceans, and beaches) with nothing to configure.
 
 ## Ocean island challenge
 
-Select **Worldz: Ocean Island** under **World Type** for a small artificial
-island of one chosen biome at the origin, surrounded by an endless generated
-ocean. Unlike every other typed preset, there is no spawn-strategy option —
-the island only ever exists artificially at the origin, so spawn is always
-the island's own safe surface point near `(0, 0)`.
+Select **Worldz: Ocean Island** under **World Type** for a small island
+surrounded by an endless generated ocean. Unlike every other typed preset,
+there is no spawn-strategy option — the island only ever exists at the
+origin, so spawn is always the island's own safe surface point near
+`(0, 0)`. `islandSource` (in Customize, or `oceanIsland.islandSource` in
+config) picks between three ways of sourcing the land itself:
+
+- **`artificial`** (default, GOALS 01) — a natural-looking synthetic island
+  of one chosen biome, described below.
+- **`natural`** (GOALS 02) — searches the seed's own unmodified terrain for
+  a small, isolated real landmass and centers the world there instead;
+  nothing about the land itself is synthesized — the real biome and terrain
+  show through completely unmodified within `radiusBlocks`, and the same
+  ocean gradient begins immediately past it. Not guaranteed to find a
+  candidate on every seed; falls back to a plain world origin (real terrain
+  used as-is) if the search comes up empty.
+- **`chest_boat`** (GOALS 03) — no land at all. The player starts on/next to
+  an oak chest boat floating at the origin, stocked with a configurable
+  starter kit (see `starterKit` below): a fixed list of essentials (a lily
+  pad, some dirt, grass blocks, saplings by default) plus a handful of
+  random extras drawn from a configurable pool. The ocean gradient starts
+  right at the origin instead of past a shore ring.
+
+The rest of this section describes the `artificial` source's own shape.
 
 The island's coastline is deliberately not a perfect circle: a handful of
 seed-derived sine harmonics perturb the radius by direction, giving a
@@ -310,6 +329,7 @@ Configure its defaults with an `oceanIsland:` section in
 
 ```yaml
 oceanIsland:
+  islandSource: artificial
   islandBiome: 'minecraft:plains'
   radiusBlocks: 128
   shapeAmplitude: 0.3
@@ -321,13 +341,27 @@ oceanIsland:
   oceanRegionScaleBlocks: 128
   exclusionZoneEnabled: false
   exclusionZoneRadiusBlocks: 2000
+  starterKit:
+    essentials:
+      - 'minecraft:lily_pad:1'
+      - 'minecraft:dirt:4'
+      - 'minecraft:grass_block:2'
+      - 'minecraft:oak_sapling:3'
+    extras:
+      - 'minecraft:bread:3'
+      - 'minecraft:wooden_axe:1'
+      - 'minecraft:wooden_pickaxe:1'
+      - 'minecraft:torch:8'
+      - 'minecraft:water_bucket:1'
+    extrasCount: 2
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior. |
-| `radiusBlocks` | `128` | Configured (unperturbed) island radius. Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
-| `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius. `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |
+| `islandSource` | `"artificial"` | `artificial`, `natural`, or `chest_boat` — see above. |
+| `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior (`artificial` only). |
+| `radiusBlocks` | `128` | Configured (unperturbed) island radius (`artificial`), or the search-isolation/land radius around whatever the search finds (`natural`). Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
+| `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius (`artificial` only). `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |
 | `shoreWidthBlocks` | `12` | Width of the beach/stony-shore ring measured from the true coastline; also the terrain-height taper width from the island's full guaranteed height down to sea level. |
 | `oceanShallowWidthBlocks` | `64` | Width of the shallow ocean band immediately beyond the shore ring. |
 | `oceanDeepenWidthBlocks` | `128` | Width over which the seabed smoothly ramps from shallow to deep. |
@@ -336,6 +370,12 @@ oceanIsland:
 | `oceanRegionScaleBlocks` | `128` | Grid-cell edge length for the ocean biome's per-region pick, so the ocean reads as patches of variety rather than per-block dithering. |
 | `exclusionZoneEnabled` | `false` | GOALS 04: when set, island/ocean shaping releases entirely beyond `exclusionZoneRadiusBlocks`, letting the seed's own natural terrain resume — small natural islands then occur wherever the seed's terrain noise happens to poke above sea level, far from the artificial island. Off by default, matching GOALS 01's core "endless ocean, no natural land ever" behavior. |
 | `exclusionZoneRadiusBlocks` | `2000` | Radius beyond which shaping releases, when enabled. |
+| `starterKit.essentials` | lily pad, dirt x4, grass block x2, oak sapling x3 | Always-included chest-boat items (`chest_boat` only). Each entry is `"<item id>"` (count 1) or `"<item id>:<count>"`. |
+| `starterKit.extras` | bread x3, wooden axe, wooden pickaxe, torch x8, water bucket | Candidate items the random picks draw from (`chest_boat` only, same shorthand format). |
+| `starterKit.extrasCount` | `2` | How many extras to pick, with replacement, deterministically from the world seed. |
+
+Not exposed on the Customize screen — YAML-only, matching every other
+variable-length list in this mod's config (biome lists, etc.).
 
 Underground structures beneath the island itself generate normally — Worldz
 never suppresses structure placement, only exterior terrain far from the
