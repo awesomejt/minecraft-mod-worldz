@@ -1054,6 +1054,9 @@ rectangular shape.
       lengths). Full suite green (354 tests); clean build. Re-deployed as
       0.2.35 — **awaiting Jason's re-test of the coastline specifically
       before Phase 8 starts.**
+      **[Jason] acceptance (2026-07-20): confirmed** — shore biomes read
+      as a natural mix of beach and stony shore on 0.2.35. **Phase 7 is
+      fully complete and approved; proceeding to Phase 8.**
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 

@@ -2437,3 +2437,137 @@ per-block coin-flip would produce; `shoreArcLengthsVary` sweeps a larger
 radius and asserts the resulting contiguous run lengths are not all
 identical. Full suite green (354 tests); clean build. Re-deployed as
 0.2.35.
+
+## 25. Ocean island extras (GOALS 02, 03) — design pass (TODO 8.1, 8.2)
+
+### 25.1 Scope and structural decision
+
+GOALS 02 (natural island by seed) and 03 (chest boat, no land) are both
+"same as 1 [ocean_island], but..." variants: they reuse the entire ocean
+gradient (`IslandOceanProfile`), beatability guarantees, exclusion zone
+(GOALS 04), and unchanged Nether/End — only *how the land is sourced*
+changes. **Confirmed with Jason: extend the existing `ocean_island`
+preset with a new "Island Source" choice, rather than ship three
+separate presets.** One World Type entry, one set of
+JSON/lang/Customize-screen/test scaffolding to maintain, matching how
+other presets already express a variant as a sub-choice (e.g.
+`SpawnStrategy`) rather than a sibling preset.
+
+New `logic.IslandSource` enum: `ARTIFICIAL` (existing, default — unchanged
+behavior byte-for-byte), `NATURAL` (GOALS 02), `CHEST_BOAT` (GOALS 03).
+Added to `OceanIslandCustomization` as a new field; every already-shipped
+`config/tests/30`-`33` file and prior test coverage keeps working
+unchanged since it decodes as `ARTIFICIAL` by default (legacy-overload/
+fieldless-default pattern, same discipline as every prior addition this
+phase).
+
+### 25.2 `IslandPlan.hasLand` (backs GOALS 03)
+
+New boolean `hasLand` field on `IslandPlan` (14th component), defaulting
+`true` everywhere except `CHEST_BOAT` mode's own island plan. When
+`false`, every consumer treats the column as "beyond the shore" even at
+distance `0` from the (nonexistent) coastline -- no interior biome, no
+shore ring, ever:
+
+- `LimitedBiomeSource.islandBiomeAt`: the interior (`distance <= 0`) and
+  shore-ring (`distance <= shoreWidthBlocks`) branches are skipped when
+  `!hasLand`; every column goes straight to `IslandOceanProfile.biomeAt`,
+  with `beyondShore = distance` (not `distance - shoreWidthBlocks`,
+  since there is no shore ring to subtract) -- the shallow-to-deep
+  gradient starts right at the spawn point instead of past a ring that
+  doesn't exist.
+- `EnvelopedChunkGenerator.effectiveModeAt`'s island branch returns
+  `OCEAN` unconditionally (never `NORMAL`) whenever `!hasLand`.
+- `islandTargetHeight`/`applyTerrainAdjustments`'s per-column raise
+  no-ops immediately when `!hasLand`, mirroring the existing
+  `!island.enabled()` no-op path exactly.
+- `islandOceanDepthAt` uses raw `distance` instead of
+  `distance - shoreWidthBlocks` when `!hasLand`, for the same "no ring to
+  subtract" reason as the biome pick above.
+
+This reuses the entire existing gradient/depth/biome-pool machinery
+unchanged; only the "is there land at this column at all" branch varies.
+Every one of these four call sites is exactly the kind of "is anything
+special active here" gate this session has repeatedly found broken by a
+new mechanism (Phase 6.2a, Phase 7.2's `hasActiveExterior`/
+`applyTerrainAdjustments`, the 0.2.30 beatability bug) -- auditing all
+four up front here, before writing any code, is deliberate.
+
+`OceanIslandCustomization.islandPlan()` builds the `IslandPlan` with
+`hasLand = (islandSource != CHEST_BOAT)`; `islandBiome`/`radiusBlocks`
+still need *some* valid value even when land is absent (the record's own
+validation still runs), so `CHEST_BOAT` mode reuses the exact
+placeholder convention `IslandPlan.disabled()` already established
+(minimum radius, `minecraft:plains`) -- harmless, since `hasLand=false`
+guarantees that biome is never actually selected anywhere.
+
+### 25.3 Starter chest infrastructure (TODO 8.1, backs GOALS 03)
+
+New pure-logic `logic.StarterKitPlan` (JUnit-testable, no Minecraft
+runtime needed for its own logic): an "essentials" list (fixed item/count
+pairs, always included) plus a YAML-configurable "extras" pool (a list of
+possible item/count pairs) and an extras-pick count, resolved
+deterministically from the world seed so a given world always hands out
+the same kit. Kept general enough that a later phase (10 sky island, 25
+cave, 27 Nether, 34 End) can layer a tier concept (easy/medium/hard) on
+top later without retrofitting this record -- **but no tier enum is
+built now**, since GOALS 03 itself never asks for one and speculative
+tiering today would be unused code (judgment call, documented here so it
+isn't re-litigated later).
+
+Default essentials (GOALS 03's own named list): 1 lily pad, 4 dirt, 2
+grass blocks, 3 oak saplings. Default extras pool: a small, clearly
+"nice to have, not essential" set (a loaf of bread, a wooden axe/pickaxe,
+a torch stack, a water bucket) with a default extras-pick count of 2 --
+proposed defaults, reviewed here for Jason rather than blocked on his
+sign-off; adjustable via YAML like every other Worldz default, and easy
+to correct from his in-game testing feedback.
+
+Placement: `EntityTypes.OAK_CHEST_BOAT` (confirmed via `javap` against
+the compiled 26.2 jar -- 26.2 has a separate chest-boat entity type per
+wood species, e.g. `OAK_CHEST_BOAT`/`BIRCH_CHEST_BOAT`/etc., all
+extending `AbstractChestBoat implements ContainerEntity`, with a plain
+`setItem(int, ItemStack)` on a fixed-size container) spawned at the
+resolved spawn point in the water, its inventory populated from the
+resolved `StarterKitPlan`. Player spawn position is placed at/adjacent
+to the boat (GOALS 03: "spawn on/next to a chest boat"). Oak chosen as
+the one fixed wood species -- GOALS 03 doesn't ask for a configurable
+boat material, and picking one avoids a needless extra config knob.
+
+### 25.4 Natural island by seed (TODO 8.2, backs GOALS 02)
+
+Reuses `SpawnOriginManager`'s existing `PREFERRED_NATURAL_BIOME`
+machinery -- the same real `RandomState`/`Climate.Sampler` construction,
+the same `SpawnSearchPlan.defaults().offsetsInSearchOrder()` concentric
+ring search -- but with a new predicate. The existing search only checks
+"is the biome at this exact point the target biome"; natural-island
+search additionally needs "is this point plausibly a small, isolated
+landmass," which needs its own new isolation check: sample several
+points on a ring at `radiusBlocks` around the candidate and require most
+of them to be ocean-family biomes.
+
+Once a candidate is found, origin recenters there exactly like
+`PREFERRED_NATURAL_BIOME` already does (`markResolved` and friends).
+Terrain: within `radiusBlocks` of the found origin, real vanilla
+terrain/biome generation is left completely untouched (`effectiveModeAt`
+returns `NORMAL`) -- there is no synthetic shape to apply, the real seed
+already generated the island. Beyond `radiusBlocks`, the same ocean
+gradient as `ARTIFICIAL` mode applies, keyed on plain Euclidean distance
+from the origin (not a coastline-distance formula -- there is no
+`distanceFromShore` for real, irregular terrain, just a hard radius
+cutoff, the same reference-radius pattern `withinExclusionZone` already
+uses elsewhere).
+
+**Honest, upfront limitation** (matches TODO 8.2's own "time-boxed; if
+the search proves unreliable, park it with findings and move on"
+allowance): this is a search-plus-fixed-radius *approximation*, not true
+landmass flood-fill/connectivity detection, which isn't tractable for
+infinite procedural terrain. It can clip a real coastline unevenly --
+part of a real peninsula kept within the radius, or a stray inlet of
+un-ocean-ified water left just past it. Accepted rather than chased
+further. If the isolation search rarely finds a good candidate within
+`SpawnSearchPlan`'s default 2048-block range, the response is tuning
+(wider search, relaxed isolation threshold), not a redesign; if still
+unreliable after reasonable tuning, park per TODO's own sanctioned
+escape hatch rather than open-endedly iterating.
+

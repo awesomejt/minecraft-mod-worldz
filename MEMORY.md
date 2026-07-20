@@ -1423,6 +1423,35 @@ Durable decisions, verified API notes, and rationale that should survive across 
   properties (mostly-contiguous transitions; non-uniform run lengths)
   without hardcoding hash-dependent exact values. Full suite green (354
   tests); clean build. Re-deployed as 0.2.35.
+- 2026-07-20 (Phase 7 accepted; Phase 8.1/8.2 design pass, 0.2.36) —
+  Jason confirmed the shore-arc fix on 0.2.35 ("shore biomes look more
+  natural"); Phase 7 (7.1-7.4 plus all three test-round follow-up fixes)
+  is fully complete and approved. Proceeding to Phase 8 (GOALS 02, 03).
+  Design decision confirmed with Jason before implementation: GOALS 02
+  (natural island by seed) and 03 (chest boat, no land) extend the
+  existing `ocean_island` preset with a new `IslandSource` choice
+  (`ARTIFICIAL`/`NATURAL`/`CHEST_BOAT`) rather than shipping as three
+  separate presets — one World Type entry, one set of scaffolding to
+  maintain, matching how other presets already express variants as
+  sub-choices. Full design in DESIGN §25: a new `IslandPlan.hasLand`
+  boolean (default true) backs GOALS 03's no-land ocean, threaded
+  through all four column-classification call sites the island touches
+  (biome pick, exterior mode, terrain raise, ocean depth) — audited
+  proactively this time, before writing any code, given how often this
+  session has found a new mechanism silently skipped by an un-updated
+  gate. GOALS 02 (natural island) reuses `SpawnOriginManager`'s
+  `PREFERRED_NATURAL_BIOME` search machinery with a new isolation
+  predicate (most of a sampled ring around the candidate must be ocean),
+  then leaves real vanilla terrain alone within a fixed radius of the
+  found origin and applies the same ocean gradient beyond it — explicitly
+  documented as a search-plus-radius approximation, not true landmass
+  flood-fill, with TODO 8.2's own "time-boxed, park if unreliable"
+  allowance carried into the design. Starter-chest infrastructure
+  (`StarterKitPlan`) deliberately ships without a tier concept now (no
+  GOALS 03 need for one yet); default kit and chest-boat placement
+  mechanics (`EntityTypes.OAK_CHEST_BOAT`, confirmed via `javap` against
+  the compiled jar) recorded in DESIGN §25.3 for Jason's review rather
+  than blocked on sign-off.
 
 ## Reference Log
 
