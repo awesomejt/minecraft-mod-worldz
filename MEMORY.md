@@ -1531,6 +1531,41 @@ Durable decisions, verified API notes, and rationale that should survive across 
   natural island by seed, 8.3 docs/configs) — awaiting Jason's in-game
   acceptance testing before Phase 9 (GOALS 28/31, lava ocean/dry world)
   can start.
+- 2026-07-20 (Phase 9.1 design pass: ocean fluid variants, 0.2.40) —
+  Jason: proceed to Phase 9 without waiting on Phase 8's test results
+  (he'll test both later the same day); gathered Phase 9's one real
+  design question up front per the usual workflow. Confirmed: new
+  `fluid` field (`water`/`lava`/`none`) on the existing `ocean_island`
+  preset, independent of Phase 8's `islandSource` axis, rather than a
+  shared-exterior-mechanism change or a new preset — same "one preset,
+  orthogonal axes" precedent as `islandSource` itself. Mechanically a
+  single substitution point: `EnvelopedChunkGenerator.exteriorState()`'s
+  existing `WATER` case maps to `Blocks.WATER`/`LAVA`/`AIR` depending on
+  `island.fluid()`, only when `island.enabled()` — every other preset's
+  own exterior ocean keeps mapping to water unconditionally, zero
+  behavior change elsewhere. GOALS 31's beatability requirement
+  (structures/aquifers still provide water) holds automatically since
+  nothing about `fluid` touches structure/aquifer generation at all.
+  **GOALS 31's "harder" difficulty option (remove rivers/lakes) is
+  deferred, not implemented** — investigated during implementation:
+  changing only the reported biome for a would-be river column isn't
+  sufficient, since `effectiveModeAt` would still classify it `NORMAL`
+  and vanilla's own below-sea-level water fill runs independent of the
+  reported biome ID, so the river's water would still physically
+  generate regardless of the label. Correctly fixing it needs real
+  climate-biome sampling threaded through `effectiveModeAt` and every
+  caller of it (`getBaseHeight`/`getBaseColumn`/`applyEnvelope`/
+  `isEntirelyExterior`/`hasActiveExterior`) — a capability that doesn't
+  exist at that layer today. Built and then deliberately reverted rather
+  than ship a config option that only changes a label while the real
+  water stays — full detail and the reasoning trail in DESIGN §26.3.
+  IslandPlan's `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` had to
+  be consolidated into a nested `ExclusionZone` record to make room for
+  `fluid`: `RecordCodecBuilder.create`'s `instance.group(...)` tops out
+  at exactly 14 fields in this DFU version (confirmed by compiler error,
+  not assumption), and `IslandPlan` was already at 14 before Phase 9.
+  Convenience accessor methods keep every existing call site
+  source-compatible.
 
 ## Reference Log
 

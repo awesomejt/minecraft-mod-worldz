@@ -1136,7 +1136,7 @@ rectangular shape.
 Right after the ocean phases: the ocean-island shape with the fluid swapped
 (lava) or removed (dry), so the infrastructure is fresh.
 
-- [ ] 9.1 Design pass (DESIGN §20.10/§20.11): parameterize the ocean
+- [x] 9.1 Design pass (DESIGN §20.10/§20.11): parameterize the ocean
       exterior/cap fluid — water / lava / none. For lava (28): verify 26.2
       surface-lava-at-scale behavior (light, fire spread at the shore ring,
       fluid ticking, map color) and shore safety so the transition ring
@@ -1146,6 +1146,24 @@ Right after the ocean phases: the ocean-island shape with the fluid swapped
       harder options remove more (rivers, surface lakes). Beatability:
       potions and water-dependent progression obtainable at every offered
       difficulty.
+      **Done (0.2.40):** full design in DESIGN §26. Confirmed with Jason:
+      new `fluid` field (`water`/`lava`/`none`) on the existing
+      `ocean_island` preset, orthogonal to `islandSource` — same
+      precedent as Phase 8, not a shared-mechanism change or a new
+      preset. Mechanically a single substitution point in
+      `EnvelopedChunkGenerator.exteriorState()`'s existing `WATER` case.
+      GOALS 31's core beatability requirement (structures/aquifers still
+      provide water) holds automatically, no special casing needed.
+      **The "harder" difficulty option (remove rivers/lakes) is
+      deliberately deferred, not implemented** — investigated, found to
+      need real climate-biome sampling threaded through
+      `effectiveModeAt` and every caller of it, a capability that
+      doesn't exist at that layer; shipping a label-only version would
+      be actively misleading (the real water would still generate).
+      Full reasoning trail in DESIGN §26.3 and MEMORY.md's 2026-07-20
+      entry. `IslandPlan`'s exclusion-zone fields consolidated into a
+      nested record to make room for `fluid` under the 14-field codec
+      ceiling this DFU version enforces (confirmed by compiler error).
 - [ ] 9.2 Implement lava ocean (as an `ocean_island` fluid option or its own
       type — 9.1 decides); test configs; **[Jason]** acceptance including
       strider/bridging travel viability.

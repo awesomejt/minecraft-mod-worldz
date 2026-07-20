@@ -2707,4 +2707,98 @@ escape hatch rather than open-endedly iterating.
   tuning `ISOLATION_FRACTION`/`RING_SAMPLE_COUNT` or widening
   `SpawnSearchPlan`'s search radius, not a redesign.
 
+## 26. Ocean fluid variants: lava ocean + dry world (GOALS 28, 31) — design pass (TODO 9.1)
+
+### 26.1 Structural decision: a `fluid` axis on the existing Ocean Island preset
+
+GOALS 28's own text ties itself explicitly to "the ocean island challenge
+(01/04)," and TODO 9's phase intro frames both 28 and 31 as "the
+ocean-island shape with the fluid swapped (lava) or removed (dry)."
+**Confirmed with Jason: a new `fluid` field (`water`/`lava`/`none`) on
+the existing `ocean_island` preset, independent of Phase 8's
+`islandSource` axis** -- any island source can pair with any fluid --
+rather than a change to the shared exterior mechanism other presets'
+own "ocean" option uses, or a new preset. Matches the precedent set by
+`islandSource` itself: one preset, orthogonal axes, instead of
+proliferating near-identical presets.
+
+Mechanically, this is a single substitution point:
+`EnvelopedChunkGenerator.exteriorState()`'s classification of an ocean
+column already funnels through `ExteriorTerrainProfile.oceanLayerAt`'s
+four-case enum (`BEDROCK`/`STONE`/`WATER`/`AIR`) regardless of preset;
+only the block the `WATER` case maps to needs to vary
+(`Blocks.WATER`/`Blocks.LAVA`/`Blocks.AIR`), and only when the column is
+island-driven (`island.enabled()`) -- every other preset's own exterior
+ocean keeps mapping `WATER` to `Blocks.WATER` unconditionally, zero
+behavior change. `ExteriorTerrainProfile.oceanLayerAt` itself needs no
+change at all -- it stays a pure "is this position submerged" classifier,
+oblivious to which actual fluid fills that classification.
+
+### 26.2 GOALS 28 (lava): what does and doesn't need new code
+
+- **Island shape, shore ring, ocean gradient bands, exclusion zone**: all
+  completely unchanged -- GOALS 28 explicitly wants "the island remains a
+  normal land biome with a transition shore," which falls out for free
+  from touching only the fluid substitution point above.
+- **No boats, striders/bridging travel**: already true of vanilla lava
+  physics (boats cannot be placed on lava; striders already walk on it
+  unaided) -- no new code, just a documentation/manual-testing note.
+- **Fire hazards near the shore**: the shore ring (beach/stony-shore, both
+  non-flammable) already sits between the island's land and the lava at
+  `shoreWidthBlocks` (12 blocks by default) -- comfortably beyond
+  vanilla fire spread's effective range from a lava source. Not a new
+  mechanism to build; a property to verify holds at the default and to
+  spot-check at a narrow custom `shoreWidthBlocks` during acceptance
+  testing, not something feasible to verify without booting the game.
+- **Nether/End, beatability**: already dimension- and radius-scoped
+  independent of fluid (`ObjectiveSite.supportiveRadius`'s island
+  overload keys off `radiusBlocks`, never fluid) -- no change needed.
+- **Not independently verified by this design pass**: "surface-lava-at-
+  scale behavior (light, fire spread, fluid ticking, map color)" per
+  TODO 9.1's own phrasing -- these are exactly the kind of in-game-only
+  observations no amount of code review can substitute for; flagged
+  explicitly for Jason's acceptance pass rather than asserted as safe.
+
+### 26.3 GOALS 31 (dry): scope, and the "harder" difficulty option
+
+The core deliverable -- "oceans generate as drained, empty basins" --
+falls out of `fluid: none` exactly like lava does: the `WATER` layer
+case maps to `Blocks.AIR` instead, exposing the (already-existing,
+always-stone) seabed floor. **Water-scarcity beatability is automatic,
+not something to build**: structures (village wells, strongholds,
+aquifer pockets, springs) are generated entirely outside this
+mechanism's reach (nothing about `fluid` touches structure generation
+or aquifer noise), so GOALS 31's explicit "by default, water still
+appears where it naturally spawns as part of structures and features"
+requirement, and its beatability note ("potions... must remain
+obtainable at every offered difficulty"), both hold without any special
+casing.
+
+**The "harder settings remove more (e.g. no rivers or surface lakes)"
+difficulty option is deferred, not implemented in this phase.**
+Investigated during implementation: reporting an ocean/dry biome for a
+would-be river column (achievable cheaply, mirroring how `NATURAL`
+land's passthrough already works) is not sufficient on its own --
+`EnvelopedChunkGenerator.effectiveModeAt` would still classify that
+column as `NORMAL` (real, unmasked terrain), and vanilla's own
+below-sea-level water fill runs independent of which biome ID
+`getNoiseBiome` reports, so the real river's water would still
+generate regardless of the biome label. Correctly removing it needs
+`effectiveModeAt` (and everything that calls it: `getBaseHeight`,
+`getBaseColumn`, `applyEnvelope`, `isEntirelyExterior`,
+`hasActiveExterior`) to also mask such columns, which requires real
+climate-biome sampling to be threaded through all of them -- a
+capability that doesn't currently exist at that layer (`RandomState`/
+`Climate.Sampler` reach `EnvelopedChunkGenerator` only where vanilla's
+own pipeline already hands one in, not inside `effectiveModeAt`
+itself). Shipping a config option that only changes the reported biome
+label while the real water physically remains would be actively
+misleading, not a smaller version of the feature -- worse than not
+having it. Parked with these findings rather than guessed at, matching
+this task's own "if [it] proves [more complex than scoped], park it
+with findings in DESIGN and move on" allowance (originally written
+about 8.2's search reliability, the same spirit applies here). Revisit
+as a dedicated task if Jason wants the harder tier badly enough to
+justify threading real climate sampling through the exterior mechanism.
+
 
