@@ -1347,10 +1347,39 @@ island's 7.1–7.4/8.1–8.3 split):
       with no accounting for `safeSpawnOffsetBlocks()`'s own spawn
       offset — worth checking specifically on a small-radius (8-16 block)
       island.
-- [ ] 10.4 Nether sky island variant: same bounded-below mechanism applied
+- [x] 10.4 Nether sky island variant: same bounded-below mechanism applied
       to the Nether exterior, with a fortress/structure-retention toggle
       reusing `ProgressionGuarantees.ensureBlazeAccess`'s existing
       self-built fallback. GOALS 06 (Nether only — End is 10.5).
+      **Done (0.2.45):** since the Nether has no `LimitedBiomeSource` at
+      all, its sky island plan (`netherSkyIsland`) is persisted directly
+      on `EnvelopedChunkGenerator`'s own codec instead — mirrors
+      `StripPlan`'s exact precedent, not a new mechanism. New
+      `activeSkyIsland()` helper (`dimension == OVERWORLD ? skyIsland :
+      netherSkyIsland`) is the single thing every existing sky-island call
+      site now goes through, so the vertical-slab mechanism itself needed
+      no duplication. Two real design decisions beyond plumbing: (a) the
+      Nether has no meaningful "biome" concept, so its block palette is a
+      fixed netherrack/basalt one (`skyIslandStateAt` branches on
+      `this.dimension`), not a biome-family lookup; (b) the seed genuinely
+      needed new plumbing (`netherSkyIslandSeed` + `setSkyIslandSeed`,
+      called from the same `ChunkMapMixin` injection on both loaders that
+      already resolves the Overworld's `LimitedBiomeSource.setLayoutSeed`).
+      **Beatability needed the same gate fix as 10.2's Overworld finding,
+      caught this time by applying that lesson proactively** (DESIGN
+      §27.6 has the full account): `WorldLimitManager`'s Nether generator
+      fetch had to move earlier (before the `exteriorObjective` gate
+      check, not just before `ensureBlazeAccess`) so a
+      `netherSkyIsland.enabled()` arm could join that gate exactly like
+      the Overworld's own arm; `ProgressionGuarantees.ensureBlazeAccess`
+      gained a `SkyIslandPlan` parameter mirroring `ensureEndPortal`'s.
+      One `applyToNether` Customize-screen checkbox (mirrors
+      `StripWorldCustomizeScreen`'s) reuses the Overworld's own shape
+      fields rather than exposing independent Nether dimensions, matching
+      `StripConfig.applyToNether`'s precedent. 4 new tests
+      (`SkyIslandCustomizationTest`/`WorldzConfigTest`/
+      `WorldPresetResourcesTest` additions); full suite green (441 tests);
+      clean build across all modules.
 - [ ] 10.5 End sky island — design spike only (throwaway branch OK, same
       posture as 5c.1/14.1): investigate whether/how `EnvelopedChunkGenerator`-
       style wrapping extends to the End (untouched by this mod so far),

@@ -18,6 +18,8 @@ import java.util.List;
  * @param surfaceY the island's walkable surface Y (GOALS 05 default 64, slime rule)
  * @param thicknessBlocks how many blocks of solid ground extend below {@code surfaceY}
  * @param chestTier the necessities-chest difficulty tier (GOALS 05, DESIGN §27.8)
+ * @param applyToNether whether the Nether is also a sky island, reusing this same shape
+ *     (GOALS 06, DESIGN §27.6)
  * @param overworldBorder optional Overworld size limit, composed on top of the island shape
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
@@ -30,6 +32,7 @@ public record SkyIslandCustomization(
     int surfaceY,
     int thicknessBlocks,
     StarterKitTier chestTier,
+    boolean applyToNether,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
@@ -77,6 +80,7 @@ public record SkyIslandCustomization(
             config.skyIsland.surfaceY,
             config.skyIsland.thicknessBlocks,
             config.skyIsland.chestTier,
+            config.skyIsland.applyToNether,
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
@@ -93,6 +97,7 @@ public record SkyIslandCustomization(
      * @param surfaceY decimal surface Y
      * @param thicknessBlocks decimal slab thickness
      * @param chestTier the necessities-chest difficulty tier
+     * @param applyToNether whether the Nether is also a sky island
      * @param overworldBorder validated Overworld border values
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
@@ -106,6 +111,7 @@ public record SkyIslandCustomization(
         String surfaceY,
         String thicknessBlocks,
         StarterKitTier chestTier,
+        boolean applyToNether,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
@@ -118,6 +124,7 @@ public record SkyIslandCustomization(
             parseInteger(surfaceY, "Surface Y"),
             parseInteger(thicknessBlocks, "Slab thickness"),
             chestTier,
+            applyToNether,
             overworldBorder,
             netherBorder,
             endBorder,
@@ -132,6 +139,20 @@ public record SkyIslandCustomization(
      */
     public SkyIslandPlan skyIslandPlan() {
         return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier);
+    }
+
+    /**
+     * Resolves the Nether's own sky island plan (GOALS 06, DESIGN §27.6): the same shape as the
+     * Overworld's, but disabled entirely unless {@link #applyToNether} is set. {@code islandBiome}/
+     * {@code chestTier} are unused placeholders on the Nether side -- the block palette is fixed
+     * (netherrack-family, DESIGN §27.6) and only the Overworld ever gets a starter chest.
+     *
+     * @return resolved Nether sky island plan, disabled unless {@link #applyToNether}
+     */
+    public SkyIslandPlan netherSkyIslandPlan() {
+        return applyToNether
+            ? new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier)
+            : SkyIslandPlan.disabled();
     }
 
     /**

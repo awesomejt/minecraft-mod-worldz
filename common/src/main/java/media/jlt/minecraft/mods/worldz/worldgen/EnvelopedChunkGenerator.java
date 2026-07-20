@@ -74,7 +74,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
         Dimension.CODEC.fieldOf("dimension").forGetter(generator -> generator.dimension),
         ExteriorCodecs.DIMENSION_CODEC.optionalFieldOf("exterior").forGetter(generator -> Optional.of(generator.envelope)),
-        StripCodecs.PLAN_CODEC.optionalFieldOf("strip").forGetter(generator -> Optional.of(generator.strip))
+        StripCodecs.PLAN_CODEC.optionalFieldOf("strip").forGetter(generator -> Optional.of(generator.strip)),
+        SkyIslandCodecs.PLAN_CODEC.optionalFieldOf("nether_sky_island")
+            .forGetter(generator -> Optional.of(generator.netherSkyIsland))
     ).apply(instance, EnvelopedChunkGenerator::resolve));
 
     private final ChunkGenerator delegate;
@@ -108,14 +110,33 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     /**
      * A true floating island (GOALS 05, DESIGN §27), read live from {@link #originSource} the
      * same way {@link #island} is -- disabled for every preset except {@code sky_island}.
+     * Overworld-only, unlike {@link #netherSkyIsland}: this dimension always has a real {@link
+     * LimitedBiomeSource} to read from, since only the Overworld ever wraps one.
      */
     private final SkyIslandPlan skyIsland;
+    /**
+     * The Nether half of a sky island world (GOALS 06, DESIGN §27.6). Unlike {@link #skyIsland},
+     * the Nether has no {@code LimitedBiomeSource} to read a live plan from (its biome source is
+     * plain vanilla {@code MultiNoiseBiomeSource}), so this is persisted directly on this
+     * generator's own codec instead -- mirroring {@link #strip}'s exact precedent (a per-
+     * dimension-resolved plan requiring no biome-source involvement at all).
+     */
+    private final SkyIslandPlan netherSkyIsland;
+    /**
+     * The real Minecraft world seed for the Nether sky island's footprint shape, set once at
+     * {@code ChunkMap} construction (mirrors {@code LimitedBiomeSource.setLayoutSeed}'s timing
+     * exactly, DESIGN §27.6) -- there is no {@code LimitedBiomeSource} on this dimension to hold
+     * it instead. Irrelevant (never read) for the Overworld instance, which sources its seed from
+     * {@link #originSource} unchanged.
+     */
+    private volatile long netherSkyIslandSeed;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
         Dimension dimension,
         ExteriorPlan.DimensionEnvelope envelope,
-        StripPlan strip
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
@@ -129,6 +150,38 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             : Optional.empty();
         this.island = this.originSource.map(LimitedBiomeSource::island).orElse(IslandPlan.disabled());
         this.skyIsland = this.originSource.map(LimitedBiomeSource::skyIsland).orElse(SkyIslandPlan.disabled());
+        this.netherSkyIsland = dimension == Dimension.NETHER ? netherSkyIsland : SkyIslandPlan.disabled();
+    }
+
+    /**
+     * Returns the sky island plan actually active for this dimension instance: the Overworld's
+     * own (read live from {@link #originSource}) or the Nether's (persisted directly on this
+     * generator). Exactly one of {@link #skyIsland}/{@link #netherSkyIsland} is ever enabled for
+     * a given instance, since each is only ever populated for its own dimension.
+     */
+    private SkyIslandPlan activeSkyIsland() {
+        return this.dimension == Dimension.OVERWORLD ? this.skyIsland : this.netherSkyIsland;
+    }
+
+    /**
+     * Returns the sky island plan active for this dimension (GOALS 05/06, DESIGN §27.6),
+     * disabled for every other preset.
+     *
+     * @return resolved sky island plan for this dimension
+     */
+    public SkyIslandPlan skyIsland() {
+        return activeSkyIsland();
+    }
+
+    /**
+     * Resolves the real Minecraft world seed for the Nether sky island's footprint shape.
+     * Mirrors {@code LimitedBiomeSource.setLayoutSeed(long)}'s timing exactly -- called from the
+     * same {@code ChunkMapMixin} injection, once per level load.
+     *
+     * @param seed the real Minecraft world seed
+     */
+    public void setSkyIslandSeed(long seed) {
+        this.netherSkyIslandSeed = seed;
     }
 
     /**
@@ -184,7 +237,31 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ExteriorPlan.DimensionEnvelope envelope,
         StripPlan strip
     ) {
-        return new EnvelopedChunkGenerator(delegate, overworld ? Dimension.OVERWORLD : Dimension.NETHER, envelope, strip);
+        return customized(delegate, overworld, envelope, strip, SkyIslandPlan.disabled());
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope, strip-world plan, and Nether sky island plan
+     * selected during world creation (GOALS 06, DESIGN §27.6).
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param overworld whether this is the Overworld rather than the Nether
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @param netherSkyIsland resolved Nether sky island plan, disabled for every other preset
+     *     and ignored entirely for the Overworld instance
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        boolean overworld,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland
+    ) {
+        return new EnvelopedChunkGenerator(
+            delegate, overworld ? Dimension.OVERWORLD : Dimension.NETHER, envelope, strip, netherSkyIsland
+        );
     }
 
     /**
@@ -239,7 +316,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * @return terrain to generate at the column
      */
     private ExteriorMode effectiveModeAt(int relativeX, int relativeZ) {
-        if (this.skyIsland.enabled()) {
+        if (activeSkyIsland().enabled()) {
             // Uniformly VOID both inside and outside the footprint (DESIGN §27.2) -- the
             // slab-vs-void distinction happens one level down, in skyIslandStateAt/
             // skyIslandBaseHeight, exactly like OCEAN varies its seabed depth per column
@@ -275,7 +352,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     private boolean hasActiveExterior() {
         return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled()
-            || this.island.enabled() || this.skyIsland.enabled();
+            || this.island.enabled() || activeSkyIsland().enabled();
     }
 
     /**
@@ -289,20 +366,23 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Returns the real Minecraft world seed shared with {@code LimitedBiomeSource}'s biome
-     * classification -- only ever called when {@link #skyIsland} is enabled, which itself is
-     * only ever true when {@link #originSource} is present (sky island is Overworld-only in
-     * this phase; see DESIGN §27.6 for the Nether variant's own seed plumbing).
+     * Returns the real Minecraft world seed for {@link #activeSkyIsland()}'s footprint shape:
+     * the Overworld shares {@code LimitedBiomeSource}'s biome-classification seed exactly
+     * (only ever called when {@link #originSource} is present); the Nether has no such source
+     * to read from, so it uses its own {@link #netherSkyIslandSeed} instead (DESIGN §27.6).
      */
     private long skyIslandSeed() {
-        return this.originSource.orElseThrow().effectiveLayoutPlan().seed();
+        return this.dimension == Dimension.OVERWORLD
+            ? this.originSource.orElseThrow().effectiveLayoutPlan().seed()
+            : this.netherSkyIslandSeed;
     }
 
     private static EnvelopedChunkGenerator resolve(
         ChunkGenerator delegate,
         Dimension dimension,
         Optional<ExteriorPlan.DimensionEnvelope> encodedEnvelope,
-        Optional<StripPlan> encodedStrip
+        Optional<StripPlan> encodedStrip,
+        Optional<SkyIslandPlan> encodedNetherSkyIsland
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
         ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(
@@ -311,7 +391,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StripPlan strip = encodedStrip.orElseGet(
             () -> StripPlan.fromConfig(WorldzCommon.config().strip, dimension == Dimension.OVERWORLD)
         );
-        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip);
+        SkyIslandPlan netherSkyIsland = encodedNetherSkyIsland.orElseGet(() -> {
+            var skyIslandConfig = WorldzCommon.config().skyIsland;
+            return dimension == Dimension.NETHER && skyIslandConfig.applyToNether
+                ? SkyIslandPlan.fromConfig(skyIslandConfig)
+                : SkyIslandPlan.disabled();
+        });
+        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland);
     }
 
     @Override
@@ -472,7 +558,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             int raisedHeight = Math.max(layoutHeight, starterLandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
             return Math.max(raisedHeight, islandTargetHeight(x, z, heightAccessor, randomState, naturalFloor, layoutFloor));
         }
-        if (this.skyIsland.enabled()) {
+        if (activeSkyIsland().enabled()) {
             return skyIslandBaseHeight(x - originX(), z - originZ(), heightAccessor);
         }
         return this.island.enabled()
@@ -493,9 +579,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * returns unconditionally today, just no longer uniform across the whole dimension.
      */
     private int skyIslandBaseHeight(int relativeX, int relativeZ, LevelHeightAccessor heightAccessor) {
-        double distance = this.skyIsland.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+        SkyIslandPlan active = activeSkyIsland();
+        double distance = active.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
         return distance <= 0.0
-            ? Math.min(this.skyIsland.surfaceY(), heightAccessor.getMaxY() + 1)
+            ? Math.min(active.surfaceY(), heightAccessor.getMaxY() + 1)
             : heightAccessor.getMinY();
     }
 
@@ -552,8 +639,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
             return states == null ? naturalColumn : new NoiseColumn(heightAccessor.getMinY(), states);
         }
-        if (this.skyIsland.enabled()) {
-            double distance = this.skyIsland.distanceFromShore(x - originX(), z - originZ(), skyIslandSeed());
+        if (activeSkyIsland().enabled()) {
+            double distance = activeSkyIsland().distanceFromShore(x - originX(), z - originZ(), skyIslandSeed());
             BlockState[] skyStates = new BlockState[heightAccessor.getHeight()];
             int skyMinY = heightAccessor.getMinY();
             for (int index = 0; index < skyStates.length; index++) {
@@ -592,11 +679,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                         ? "radius=" + this.island.exclusionZoneRadiusBlocks() : "<disabled>")
             );
         }
-        if (this.skyIsland.enabled()) {
+        if (activeSkyIsland().enabled()) {
+            SkyIslandPlan active = activeSkyIsland();
             result.add(
-                "Worldz sky island: radius=" + this.skyIsland.radiusBlocks()
-                    + ", surfaceY=" + this.skyIsland.surfaceY()
-                    + ", thickness=" + this.skyIsland.thicknessBlocks()
+                "Worldz sky island: radius=" + active.radiusBlocks()
+                    + ", surfaceY=" + active.surfaceY()
+                    + ", thickness=" + active.thicknessBlocks()
             );
         }
         this.starterLand.ifPresent(context -> result.add(
@@ -647,8 +735,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 int relativeZ = z - originZ();
                 ExteriorMode mode = this.effectiveModeAt(relativeX, relativeZ);
                 if (mode != ExteriorMode.NORMAL) {
-                    if (this.skyIsland.enabled()) {
-                        double distance = this.skyIsland.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+                    if (activeSkyIsland().enabled()) {
+                        double distance = activeSkyIsland().distanceFromShore(relativeX, relativeZ, skyIslandSeed());
                         for (int y = minY; y <= maxY; y++) {
                             pos.set(x, y, z);
                             BlockState state = skyIslandStateAt(distance, y);
@@ -1073,17 +1161,29 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Classifies one sky island block (GOALS 05, DESIGN §27.2/27.3): air outside the footprint
-     * or outside the slab's vertical band, otherwise the biome-driven top/subsoil/core block
-     * {@link SkyIslandProfile} chooses -- the sky island's own surface-material choice, since its
-     * chunk never runs the delegate's biome-aware surface builder (§27.3).
+     * Classifies one sky island block (GOALS 05/06, DESIGN §27.2/27.3/27.6): air outside the
+     * footprint or outside the slab's vertical band, otherwise a top/subsoil/core block. The
+     * Overworld picks its palette from {@link SkyIslandProfile}'s biome-family classification
+     * (§27.3); the Nether has no meaningful biome to key off (DESIGN §27.6 deliberately doesn't
+     * force one) and always uses a simple netherrack-family palette instead. Neither dimension's
+     * chunk ever runs the delegate's biome-aware surface builder (§27.2), so this is the sky
+     * island's own surface-material choice either way.
      */
     private BlockState skyIslandStateAt(double distance, int y) {
         if (distance > 0.0) {
             return Blocks.AIR.defaultBlockState();
         }
-        SkyIslandProfile.BiomeFamily family = SkyIslandProfile.familyFor(this.skyIsland.islandBiome());
-        return switch (SkyIslandProfile.layerAt(y, this.skyIsland.surfaceY(), this.skyIsland.thicknessBlocks())) {
+        SkyIslandPlan active = activeSkyIsland();
+        SkyIslandProfile.Layer layer = SkyIslandProfile.layerAt(y, active.surfaceY(), active.thicknessBlocks());
+        if (this.dimension == Dimension.NETHER) {
+            return switch (layer) {
+                case VOID -> Blocks.AIR.defaultBlockState();
+                case TOP, SUBSOIL -> Blocks.NETHERRACK.defaultBlockState();
+                case CORE -> Blocks.BASALT.defaultBlockState();
+            };
+        }
+        SkyIslandProfile.BiomeFamily family = SkyIslandProfile.familyFor(active.islandBiome());
+        return switch (layer) {
             case VOID -> Blocks.AIR.defaultBlockState();
             case TOP -> skyIslandTopBlock(family);
             case SUBSOIL -> skyIslandSubsoilBlock(family);

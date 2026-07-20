@@ -98,13 +98,14 @@ final class ProgressionGuarantees {
         ServerLevel nether,
         WorldLimitPlan.DimensionLimit limit,
         ExteriorPlan.DimensionEnvelope envelope,
-        StripPlan strip
+        StripPlan strip,
+        SkyIslandPlan skyIsland
     ) {
         if (!limit.ensureObjective()) {
             return;
         }
         OptionalInt supportiveRadius = ObjectiveSite.supportiveRadius(
-            limit.enabled(), limit.finalRadiusBlocks(), envelope
+            limit.enabled(), limit.finalRadiusBlocks(), envelope, skyIsland
         );
         if (supportiveRadius.isEmpty()) {
             return;

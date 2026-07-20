@@ -107,6 +107,9 @@ abstract class ChunkMapMixin {
             if (enveloped.getBiomeSource() instanceof LimitedBiomeSource source) {
                 source.setLayoutSeed(level.getSeed());
             }
+            // The Nether sky island (GOALS 06, DESIGN §27.6) has no LimitedBiomeSource to hold
+            // its own seed, unlike the Overworld above -- harmless no-op otherwise.
+            enveloped.setSkyIslandSeed(level.getSeed());
         }
         // Pass this.randomState explicitly (now fixed above when applicable) rather than
         // the redirect's own captured randomState argument, which is this call's original,

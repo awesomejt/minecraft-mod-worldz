@@ -880,6 +880,9 @@ public final class WorldzConfig {
         if (map.containsKey("hardKit")) {
             config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
         }
+        if (map.containsKey("applyToNether")) {
+            config.applyToNether = readBoolean(map.get("applyToNether"), name + ".applyToNether");
+        }
         return config;
     }
 
@@ -1267,6 +1270,7 @@ public final class WorldzConfig {
         values.put("easyKit", starterKitMap(config.easyKit));
         values.put("mediumKit", starterKitMap(config.mediumKit));
         values.put("hardKit", starterKitMap(config.hardKit));
+        values.put("applyToNether", config.applyToNether);
         return values;
     }
 
@@ -1382,7 +1386,8 @@ public final class WorldzConfig {
             + ", chestTier=" + config.chestTier.serializedName()
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
-            + ", hardKit=" + starterKitSummary(config.hardKit);
+            + ", hardKit=" + starterKitSummary(config.hardKit)
+            + ", applyToNether=" + config.applyToNether;
     }
 
     private static String starterKitSummary(StarterKitConfig config) {

@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.ScrollableLayout;
@@ -38,6 +39,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
     private String shapeAmplitudeText;
     private String surfaceYText;
     private String thicknessBlocksText;
+    private boolean applyToNether;
     private MultiLineTextWidget errorMessage;
     private ScrollableLayout scrollArea;
     private WorldzCustomization.BorderSettings overworldBorder;
@@ -54,6 +56,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
         this.shapeAmplitudeText = Double.toString(initial.shapeAmplitude());
         this.surfaceYText = Integer.toString(initial.surfaceY());
         this.thicknessBlocksText = Integer.toString(initial.thicknessBlocks());
+        this.applyToNether = initial.applyToNether();
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
         this.endBorder = initial.endBorder();
@@ -97,6 +100,12 @@ final class SkyIslandCustomizeScreen extends Screen implements
         form.addChild(CommonLayouts.labeledElement(
             this.font, this.thicknessBlocks, Component.translatable("jlt_worldz.sky_island.thickness")
         ));
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_island.apply_to_nether"), this.font)
+            .selected(this.applyToNether)
+            .onValueChange((checkbox, selected) -> this.applyToNether = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
 
         Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
@@ -165,6 +174,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
                 this.surfaceY.getValue(),
                 this.thicknessBlocks.getValue(),
                 this.chestTier,
+                this.applyToNether,
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,

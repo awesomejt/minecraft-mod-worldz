@@ -24,6 +24,12 @@ public final class SkyIslandConfig {
     public int thicknessBlocks = SkyIslandPlan.DEFAULT_THICKNESS_BLOCKS;
     /** Which of {@link #easyKit}/{@link #mediumKit}/{@link #hardKit} the starter chest uses. */
     public StarterKitTier chestTier = StarterKitTier.MEDIUM;
+    /**
+     * Whether the Nether is also a sky island (GOALS 06), reusing this same radius/shapeAmplitude/
+     * surfaceY/thicknessBlocks shape -- one corridor-width-style toggle, not independently
+     * configurable Nether dimensions (DESIGN §27.6, mirroring {@code StripConfig.applyToNether}).
+     */
+    public boolean applyToNether = false;
     /** Generous starter-chest contents (DESIGN §27.8). */
     public StarterKitConfig easyKit = easyDefaults();
     /** Middle-ground starter-chest contents. */

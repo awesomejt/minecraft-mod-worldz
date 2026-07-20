@@ -3054,33 +3054,72 @@ own sky-island exterior instead") — a sky island world's `WorldLayoutPlan`
 stays `LEGACY` (no coordinated layout runs for it, same as ocean island),
 so this path is unaffected and needs no change either.
 
-### 27.6 Nether sky variant (GOALS 06, Nether only — TODO 10.4)
+### 27.6 Nether sky variant (GOALS 06, Nether only — TODO 10.4) — as-built
 
-The Nether already supports a `VOID` exterior (`netherExterior` accepts
-`normal | void`, §14) but, like the Overworld before this phase, only as a
-uniform horizontal cutoff over full-depth delegate terrain — the same
-bounded-below gap applies. `EnvelopedChunkGenerator`'s `skyIsland` handling
-is dimension-generic in the code (`effectiveModeAt`/`skyIslandStateAt` don't
-themselves care which dimension they're wrapping), but the *seed* source
-does: §27.2/24.2's `islandSeed()`-style helper reads
-`originSource.orElseThrow().effectiveLayoutPlan().seed()`, and
-`originSource` is Overworld-only (`EnvelopedChunkGenerator`'s constructor:
-`dimension == Dimension.OVERWORLD && ... instanceof LimitedBiomeSource`) —
-the Nether's biome source was never a `LimitedBiomeSource` needing seed-
-aware layout sampling. Plan: thread the resolved Overworld seed into the
-Nether generator's own `SkyIslandPlan` construction at codec-resolve time
-(the world seed is already available wherever `EnvelopedChunkGenerator`s
-for both dimensions are constructed together — the Worldz preset/Customize
-wiring already builds both), rather than requiring a second live-seed
-plumbing path — a fixed, resolved seed baked in at creation is sufficient
-since (unlike the Overworld's real-seed-sampling requirement, DESIGN
-§20.4) nothing requires the Nether sky island to reproduce specifically
-*the Minecraft seed string's* shape, only to be deterministic per world.
-Fortress retention reuses `ProgressionGuarantees.ensureBlazeAccess`
-unchanged (its blaze-spawner fallback is exactly as self-contained as the
-End-portal vault, §27.5) — the existing 2-arg `supportiveRadius(borderEnabled,
-finalBorderRadius, envelope)` overload already covers it once the Nether's
-`envelope()` reports the same `VOID`-at-island-radius shape.
+The Nether has no `LimitedBiomeSource` at all (plain vanilla
+`MultiNoiseBiomeSource`), so its half of the sky island can't be sourced the
+way the Overworld's is (`originSource`, §27.2). Decision: mirror `StripPlan`'s
+exact precedent instead of inventing a new mechanism — a per-dimension-
+resolved plan persisted directly on `EnvelopedChunkGenerator`'s own codec,
+needing no biome-source involvement at all. `EnvelopedChunkGenerator` gained
+a `netherSkyIsland` field (own `SkyIslandCodecs.PLAN_CODEC.optionalFieldOf
+("nether_sky_island")` entry, resolved from `config.skyIsland.applyToNether`
+when absent, exactly like `strip` resolves from `config.strip`) and a new
+`activeSkyIsland()` helper (`dimension == OVERWORLD ? skyIsland :
+netherSkyIsland`) that every existing sky-island call site
+(`effectiveModeAt`, `hasActiveExterior`, `getBaseHeight`, `getBaseColumn`,
+`applyEnvelope`, `skyIslandStateAt`, `addDebugScreenInfo`) now goes through
+instead of reading `this.skyIsland` directly — since exactly one of the two
+fields is ever enabled per instance (each is only ever populated for its own
+dimension), this needed no branching at any of those call sites beyond the
+one method swap.
+
+**One real design choice, not just plumbing:** the Nether's block palette
+can't reuse `SkyIslandProfile`'s biome-family classification the way the
+Overworld's does, because the Nether sky island has no meaningful "biome"
+concept at all — GOALS 06 never asks for one, and reusing `SkyIslandPlan`'s
+`islandBiome` field there would only ever hold an unused placeholder (the
+same harmless-placeholder pattern `IslandPlan`'s `hasLand`-false case already
+established). `skyIslandStateAt` branches directly on `this.dimension`
+instead: the Nether always gets a fixed netherrack-family palette
+(netherrack top/subsoil, basalt core), the Overworld keeps its existing
+biome-family logic unchanged.
+
+**The seed plumbing needed a genuinely new mechanism** (correctly
+anticipated in the original design pass): `EnvelopedChunkGenerator` gained
+a `volatile long netherSkyIslandSeed` field and a public `setSkyIslandSeed
+(long)` setter, called unconditionally from the same `ChunkMapMixin`
+injection that already resolves `LimitedBiomeSource.setLayoutSeed(long)`
+for the Overworld (both loaders) — harmless no-op for every other preset
+and for the Overworld's own instance, which still sources its seed from
+`originSource` unchanged. `skyIslandSeed()` branches by dimension to pick
+whichever source applies.
+
+**Beatability needed the exact same gate fix as the Overworld's own 10.2
+finding, discovered by applying the same scrutiny proactively this time**
+(DESIGN §27.5's lesson applied without waiting to rediscover it): the
+Nether sky island's exterior also never expresses itself through
+`ExteriorPlan` (`SkyIslandCustomization.exteriorPlan()`'s Nether side is the
+ordinary, independent `netherExterior` toggle, unrelated to
+`netherSkyIsland`), so `WorldLimitManager.onServerStarted`'s
+`exteriorObjective` gate needed a `netherSkyIsland.enabled()` arm exactly
+parallel to the Overworld's `overworldSkyIsland.enabled()` one — this
+required fetching the Nether's live `EnvelopedChunkGenerator` *before* that
+gate check runs (previously only fetched inside the `nether != null` block
+further down, too late to influence the gate), not just at the point
+`ensureBlazeAccess` is called. `ObjectiveSite.supportiveRadius`'s existing
+`SkyIslandPlan` overload (added in 10.2) already covers the radius
+narrowing once `ProgressionGuarantees.ensureBlazeAccess` gained the same
+`SkyIslandPlan skyIsland` parameter `ensureEndPortal` already has.
+
+**Customize-screen shape**: one `applyToNether` checkbox (mirrors
+`StripWorldCustomizeScreen`'s Nether toggle) reusing the *same*
+radius/shapeAmplitude/surfaceY/thicknessBlocks shape as the Overworld —
+not independently configurable Nether dimensions, matching GOALS 06's own
+framing ("Nether... is a sky island too") and `StripConfig.applyToNether`'s
+precedent exactly. `SkyIslandCustomization.netherSkyIslandPlan()` resolves
+the Nether's plan from the same fields, disabled entirely unless the
+checkbox is set.
 
 ### 27.7 End sky island — explicitly out of scope this phase (TODO 10.5)
 

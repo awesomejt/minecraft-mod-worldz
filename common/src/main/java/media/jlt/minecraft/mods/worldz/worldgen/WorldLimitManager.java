@@ -54,10 +54,22 @@ public final class WorldLimitManager {
         // explicit gate as the ocean island or a sky-island world silently never gets its
         // fallback End portal either.
         SkyIslandPlan overworldSkyIsland = limitedSource.skyIsland();
+        // Fetched early (rather than only inside the `nether != null` block below) so its own
+        // sky island plan (GOALS 06, DESIGN §27.6) can join the exteriorObjective gate the same
+        // way the Overworld's does -- it never expresses itself through ExteriorPlan either.
+        ServerLevel nether = server.getLevel(Level.NETHER);
+        ChunkGenerator netherGenerator = nether == null ? null : nether.getChunkSource().getGenerator();
+        StripPlan netherStrip = netherGenerator instanceof EnvelopedChunkGenerator enveloped
+            ? enveloped.strip()
+            : StripPlan.disabled();
+        SkyIslandPlan netherSkyIsland = netherGenerator instanceof EnvelopedChunkGenerator enveloped
+            ? enveloped.skyIsland()
+            : SkyIslandPlan.disabled();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
             && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()
                 || overworldIsland.enabled() || overworldSkyIsland.enabled()))
-            || (plan.nether().ensureObjective() && exterior.nether().mode() != ExteriorMode.NORMAL);
+            || (plan.nether().ensureObjective()
+                && (exterior.nether().mode() != ExteriorMode.NORMAL || netherSkyIsland.enabled()));
         // GOALS 03's chest-boat spawn is unrelated to borders/the End-portal guarantee -- gated
         // in here anyway so it still runs (once) for a chest-boat world with no border/objective
         // configured at all, reusing the same one-time WorldLimitState guard below.
@@ -88,17 +100,12 @@ public final class WorldLimitManager {
         if (needsStarterChest) {
             StarterKitDeployment.spawnStarterChest(overworld, originX, originZ, overworldSkyIsland);
         }
-        ServerLevel nether = server.getLevel(Level.NETHER);
         BorderInitResult netherResult = BorderInitResult.NONE;
         if (nether != null) {
             // Layout origins are Overworld-only (DESIGN §18); the Nether's border and
             // progression objective remain centered at the world origin (0, 0).
             netherResult = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
-            ChunkGenerator netherGenerator = nether.getChunkSource().getGenerator();
-            StripPlan netherStrip = netherGenerator instanceof EnvelopedChunkGenerator enveloped
-                ? enveloped.strip()
-                : StripPlan.disabled();
-            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether(), netherStrip);
+            ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether(), netherStrip, netherSkyIsland);
         }
         ServerLevel end = server.getLevel(Level.END);
         if (end != null) {

@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SkyIslandCustomizationTest {
     private static SkyIslandCustomization create(String islandBiome, int radiusBlocks, double shapeAmplitude, int surfaceY, int thicknessBlocks) {
         return new SkyIslandCustomization(
-            islandBiome, radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM,
+            islandBiome, radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -97,7 +97,7 @@ class SkyIslandCustomizationTest {
     @Test
     void fromTextParsesDecimalAndDoubleFields() {
         SkyIslandCustomization customization = SkyIslandCustomization.fromText(
-            "minecraft:desert", "256", "0.4", "72", "8", StarterKitTier.HARD,
+            "minecraft:desert", "256", "0.4", "72", "8", StarterKitTier.HARD, true,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -108,14 +108,33 @@ class SkyIslandCustomizationTest {
         assertEquals(72, customization.surfaceY());
         assertEquals(8, customization.thicknessBlocks());
         assertEquals(StarterKitTier.HARD, customization.chestTier());
+        assertTrue(customization.applyToNether());
     }
 
     @Test
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> SkyIslandCustomization.fromText(
-            "minecraft:plains", "not-a-number", "0.3", "64", "6", StarterKitTier.MEDIUM,
+            "minecraft:plains", "not-a-number", "0.3", "64", "6", StarterKitTier.MEDIUM, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         ));
+    }
+
+    @Test
+    void netherSkyIslandPlanDisabledUnlessApplyToNether() {
+        SkyIslandCustomization off = new SkyIslandCustomization(
+            "minecraft:plains", 16, 0.3, 64, 6, StarterKitTier.MEDIUM, false,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal()
+        );
+        SkyIslandCustomization on = new SkyIslandCustomization(
+            "minecraft:plains", 16, 0.3, 64, 6, StarterKitTier.MEDIUM, true,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal()
+        );
+
+        assertEquals(SkyIslandPlan.disabled(), off.netherSkyIslandPlan());
+        assertTrue(on.netherSkyIslandPlan().enabled());
+        assertEquals(16, on.netherSkyIslandPlan().radiusBlocks());
     }
 }

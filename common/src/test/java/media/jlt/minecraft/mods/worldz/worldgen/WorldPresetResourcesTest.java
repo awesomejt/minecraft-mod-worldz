@@ -215,6 +215,11 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.sky_island.shape_amplitude"));
         assertTrue(language.has("jlt_worldz.sky_island.surface_y"));
         assertTrue(language.has("jlt_worldz.sky_island.thickness"));
+        assertTrue(language.has("jlt_worldz.sky_island.chest_tier"));
+        assertTrue(language.has("jlt_worldz.sky_island.chest_tier.easy"));
+        assertTrue(language.has("jlt_worldz.sky_island.chest_tier.medium"));
+        assertTrue(language.has("jlt_worldz.sky_island.chest_tier.hard"));
+        assertTrue(language.has("jlt_worldz.sky_island.apply_to_nether"));
     }
 
     private static JsonObject resource(String path) throws IOException {

@@ -58,6 +58,7 @@
   "jlt_worldz.sky_island.chest_tier.easy": "Easy",
   "jlt_worldz.sky_island.chest_tier.medium": "Medium",
   "jlt_worldz.sky_island.chest_tier.hard": "Hard",
+  "jlt_worldz.sky_island.apply_to_nether": "Also make the Nether a sky island",
   "jlt_worldz.sky_island.island_biome": "Island biome",
   "jlt_worldz.sky_island.radius": "Island radius in blocks (8–65536)",
   "jlt_worldz.sky_island.shape_amplitude": "Coastline perturbation strength (0–0.6)",

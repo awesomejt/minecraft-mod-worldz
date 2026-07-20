@@ -7,6 +7,7 @@ import media.jlt.minecraft.mods.worldz.logic.SkyIslandCustomization;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
+import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
@@ -106,7 +107,13 @@ public final class SkyIslandPresetEditor implements PresetEditor {
         if (nether != null) {
             replaced.put(
                 LevelStem.NETHER,
-                new LevelStem(nether.type(), EnvelopedChunkGenerator.customized(unwrap(nether.generator()), false, exterior.nether()))
+                new LevelStem(
+                    nether.type(),
+                    EnvelopedChunkGenerator.customized(
+                        unwrap(nether.generator()), false, exterior.nether(),
+                        StripPlan.disabled(), customization.netherSkyIslandPlan()
+                    )
+                )
             );
         }
         return new WorldDimensions(Map.copyOf(replaced));
@@ -121,6 +128,10 @@ public final class SkyIslandPresetEditor implements PresetEditor {
         SkyIslandPlan skyIsland = source.skyIsland();
         WorldLimitPlan plan = source.worldLimits();
         var exterior = source.exteriorPlan();
+        boolean applyToNether = settings.selectedDimensions().get(LevelStem.NETHER)
+            .map(LevelStem::generator)
+            .filter(netherGenerator -> netherGenerator instanceof EnvelopedChunkGenerator enveloped && enveloped.skyIsland().enabled())
+            .isPresent();
         return new SkyIslandCustomization(
             skyIsland.islandBiome(),
             skyIsland.radiusBlocks(),
@@ -128,6 +139,7 @@ public final class SkyIslandPresetEditor implements PresetEditor {
             skyIsland.surfaceY(),
             skyIsland.thicknessBlocks(),
             skyIsland.chestTier(),
+            applyToNether,
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
             fromPlan(plan.end()),

@@ -565,6 +565,7 @@ class WorldzConfigTest {
                 + " extras=[minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:cobblestone:16], extrasCount=2"
                 + ", hardKit=essentials=[minecraft:oak_sapling:2], extras=[minecraft:bread:2, minecraft:torch:4],"
                 + " extrasCount=1"
+                + ", applyToNether=false"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1035,6 +1036,18 @@ class WorldzConfigTest {
         assertEquals(List.of("minecraft:oak_sapling:1"), config.skyIsland.hardKit.essentials);
         // Untouched kit keeps its own defaults.
         assertEquals(new SkyIslandConfig().mediumKit.essentials, config.skyIsland.mediumKit.essentials);
+    }
+
+    @Test
+    void skyIslandApplyToNetherDefaultsToFalseAndLoads() {
+        WorldzConfig defaults = new WorldzConfig().sanitize(LOGGER);
+        WorldzConfig enabled = WorldzConfig.parse("""
+            skyIsland:
+              applyToNether: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(defaults.skyIsland.applyToNether);
+        assertTrue(enabled.skyIsland.applyToNether);
     }
 
     @Test
