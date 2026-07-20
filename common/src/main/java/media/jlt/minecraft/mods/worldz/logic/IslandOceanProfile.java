@@ -62,11 +62,16 @@ public final class IslandOceanProfile {
         return (int) Math.round(shallowDepthBlocks + (deepDepthBlocks - shallowDepthBlocks) * smoothstep);
     }
 
+    /** Fraction of a cell's edge the jittered feature point is confined to, centered in the cell. */
+    private static final double JITTER_MARGIN = 0.2;
+    private static final double JITTER_SPAN = 1.0 - 2.0 * JITTER_MARGIN;
+
     /**
      * Selects a deterministic ocean biome at one column: the shallow warm/lukewarm/ocean pool
      * within the shallow band, otherwise the complete vanilla ocean-biome set (GOALS 01's "all
-     * ocean biomes available"). Sampled at a coarse region scale so the ocean reads as patches
-     * of variety rather than per-block dithering.
+     * ocean biomes available"). Sampled as jittered-grid Voronoi regions (each grid cell gets a
+     * randomly offset feature point; the nearest one wins) rather than a plain axis-aligned
+     * grid, so the ocean reads as organic patches of variety instead of a visible checkerboard.
      *
      * @param x block X relative to the origin
      * @param z block Z relative to the origin
@@ -87,11 +92,50 @@ public final class IslandOceanProfile {
         List<String> pool = distanceBeyondShoreBlocks <= shallowWidthBlocks
             ? SHALLOW_OCEAN_IDS
             : BiomeRoles.oceanIds();
-        int scale = Math.max(1, regionScaleBlocks);
-        long cellX = Math.floorDiv(x, scale);
-        long cellZ = Math.floorDiv(z, scale);
-        int index = (int) Math.floorMod(hashIndex(seed, cellX, cellZ), (long) pool.size());
+        long[] cell = nearestFeatureCell(x, z, regionScaleBlocks, seed);
+        int index = (int) Math.floorMod(hashIndex(seed, cell[0], cell[1]), (long) pool.size());
         return pool.get(index);
+    }
+
+    /**
+     * Finds the grid cell whose jittered feature point is nearest to {@code (x, z)}, searching
+     * the query cell and its eight neighbors (the jitter margin guarantees the true nearest
+     * feature point can never fall outside that 3x3 neighborhood).
+     *
+     * @return {@code {cellX, cellZ}} of the winning cell
+     */
+    private static long[] nearestFeatureCell(int x, int z, int regionScaleBlocks, long seed) {
+        int scale = Math.max(1, regionScaleBlocks);
+        long originCellX = Math.floorDiv(x, scale);
+        long originCellZ = Math.floorDiv(z, scale);
+        long bestCellX = originCellX;
+        long bestCellZ = originCellZ;
+        double bestDistanceSq = Double.MAX_VALUE;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                long cellX = originCellX + dx;
+                long cellZ = originCellZ + dz;
+                double featureX = (cellX + JITTER_MARGIN + jitter01(seed, cellX, cellZ, 0) * JITTER_SPAN) * scale;
+                double featureZ = (cellZ + JITTER_MARGIN + jitter01(seed, cellX, cellZ, 1) * JITTER_SPAN) * scale;
+                double deltaX = x - featureX;
+                double deltaZ = z - featureZ;
+                double distanceSq = deltaX * deltaX + deltaZ * deltaZ;
+                if (distanceSq < bestDistanceSq) {
+                    bestDistanceSq = distanceSq;
+                    bestCellX = cellX;
+                    bestCellZ = cellZ;
+                }
+            }
+        }
+        return new long[] {bestCellX, bestCellZ};
+    }
+
+    private static double jitter01(long seed, long cellX, long cellZ, int axis) {
+        long h = splitmix64(seed);
+        h = splitmix64(h ^ cellX);
+        h = splitmix64(h ^ cellZ);
+        h = splitmix64(h ^ axis);
+        return (h >>> 11) * 0x1.0p-53;
     }
 
     private static long hashIndex(long seed, long cellX, long cellZ) {

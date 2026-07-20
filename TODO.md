@@ -982,6 +982,24 @@ rectangular shape.
       every non-[Jason] item in Phase 7 (7.1 design, 7.2 core + GOALS-04
       mechanism, the 7.2 beatability follow-up fix, 7.4 docs/configs) —
       **do not start Phase 8 without Jason's explicit go-ahead.**
+      **Test-1 findings and fixes (0.2.32):** Jason tested config 30
+      (default island) and found three issues, all root-caused against
+      the real server log/screenshots before fixing (full detail in
+      DESIGN §24.10, MEMORY.md 2026-07-19): (a) the fallback End portal
+      always built at `y = -64` (world floor) — a real, general,
+      pre-existing bug (`Level#getHeight` returns `getMinY()` for an
+      unloaded chunk, and `ensureEndPortal` queried it before its own
+      target chunk had ever loaded), not ocean_island-specific, fixed by
+      force-loading the chunk first; (b) the ocean's biome patches formed
+      a visible checkerboard (`IslandOceanProfile.biomeAt` used a raw
+      unblended grid), fixed with jittered-grid Voronoi cells; (c) the
+      coastline read as an unnaturally smooth single-lobed blob
+      (angle-only sine harmonics can't produce coves or fractal
+      roughness), fixed by adding a second hashed-lattice value-noise
+      term directly to the distance-from-shore field. All three are
+      pure-logic fixes with new/updated JUnit coverage; full suite green;
+      clean build. Re-deployed as 0.2.32 — **awaiting Jason's re-test of
+      config 30 specifically before Phase 8 starts.**
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 

@@ -396,7 +396,14 @@ plain "Worldz". Requires 0.2.29+ (the dedicated preset did not exist before
 it); requires 0.2.30+ for the fallback End-portal guarantee to actually
 work (see [`MEMORY.md`](MEMORY.md) — 0.2.29 shipped with a real
 beatability bug found and fixed before this acceptance pass, so don't
-bother testing beatability on exactly 0.2.29).
+bother testing beatability on exactly 0.2.29). **Requires 0.2.32+** for a
+usable fallback End portal (0.2.29-0.2.31 always built it at the world
+floor, `y = -64`, encased in bedrock — confirmed via config 30's first
+test pass), a non-checkerboard ocean, and coastline detail noise (config
+30's first pass also found the coastline read as an unnaturally smooth
+single-lobed blob and the ocean's biome patches formed a visible grid —
+both fixed in 0.2.32; see MEMORY.md's 2026-07-19 "Phase 7 test-1
+findings" entry).
 
 1. **Default island**, `30-ocean-island-default.yaml`. Confirm: the
    coastline reads as natural/irregular, not a circle or square; a narrow

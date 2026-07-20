@@ -1291,6 +1291,49 @@ Durable decisions, verified API notes, and rationale that should survive across 
   mechanism that shipped alongside it, the 7.2 beatability follow-up fix,
   7.4 docs/configs) -- awaiting Jason's in-game acceptance testing before
   Phase 8 (GOALS 02/03, more ocean-island variants) can start.
+- 2026-07-19 (Phase 7 test-1 findings and fixes, config 30, 0.2.32) —
+  Jason's first in-game pass surfaced three issues, each confirmed against
+  the real server log/screenshots before writing any fix (see DESIGN
+  §24.10 for full detail):
+  **(1) Fallback End portal always built at `y = -64` (world floor,
+  encased in bedrock) — a real, general, pre-existing bug, not
+  ocean_island-specific.** Root cause confirmed against decompiled
+  `Level.java`: `Level#getHeight(Heightmap.Types, x, z)` returns
+  `getMinY()` outright when the target chunk isn't already loaded --
+  it never forces generation. `ProgressionGuarantees.ensureEndPortal`
+  queries height at world-creation time, before its own fallback site's
+  chunk has ever loaded, so it hit this every single time (confirmed:
+  every prior test session's log shows the identical
+  `BlockPos{x=32, y=-64, z=0}`, at both radius 128 and radius 2048).
+  Fixed with `overworld.getChunk(x >> 4, z >> 4)` immediately before the
+  height query, forcing synchronous `ChunkStatus.FULL` generation first.
+  **Lesson: any `Level#getHeight`/heightmap query made outside normal
+  per-column chunk generation (i.e. anything that isn't already running
+  inside `fillFromNoise`/`applyCarvers`/`buildSurface`) must force-load
+  its target chunk first, or it silently reads `getMinY()` instead of
+  real terrain.** `SpawnOriginManager.safeSpawnNear`'s own `getHeight`
+  call has the identical shape but is guarded behind a
+  `height < overworld.getMinY()` condition real generators essentially
+  never trigger -- left alone rather than speculatively touched with no
+  reproduction; worth re-checking if a spawn-height bug ever surfaces.
+  **(2) Ocean biome patches formed a visible checkerboard** (confirmed in
+  both first-person and map screenshots) -- `IslandOceanProfile.biomeAt`
+  picked per raw axis-aligned grid cell with zero blending. Replaced with
+  jittered-grid Voronoi (seed-hashed feature point per cell, nearest
+  feature point wins) so patch boundaries read as organic edges instead
+  of a grid line. **(3) Island coastline read as an unnaturally smooth
+  single-lobed blob** -- `IslandShapeProfile`'s angle-only sine-harmonic
+  radius can only ever produce a "lumpy circle," never coves or
+  fractal-scale roughness. Added a second, independent hashed-lattice
+  value-noise term applied directly to the *distance* field (not the
+  angle-based radius), wavelength/amplitude both scaled off the island's
+  own base radius, riding the same `amplitude` dial as the existing
+  harmonics so `amplitude = 0` still gives an exact circle. All three
+  fixes are pure-logic changes (`ProgressionGuarantees`,
+  `IslandOceanProfile`, `IslandShapeProfile`); none touched
+  `EnvelopedChunkGenerator`, `LimitedBiomeSource`, or any codec. Full
+  suite green; clean build. Re-deployed as 0.2.32 for Jason to re-test
+  config 30 specifically before Phase 8 starts.
 
 ## Reference Log
 

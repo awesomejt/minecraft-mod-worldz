@@ -70,6 +70,11 @@ final class ProgressionGuarantees {
         int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, zRadius, NATURAL_STRUCTURE_MARGIN);
         int x = originX + relativeX;
         int z = originZ + relativeZ;
+        // Level.getHeight silently returns getMinY() for a chunk that has not loaded yet
+        // (LevelReader never forces generation for a plain height query) -- this runs at
+        // world creation, before the fallback site's own chunk has ever loaded, so the
+        // portal must force it to generate first or it always lands on the world floor.
+        overworld.getChunk(x >> 4, z >> 4);
         int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos center = new BlockPos(x, surfaceY, z);
         buildEndPortalSite(overworld, center);

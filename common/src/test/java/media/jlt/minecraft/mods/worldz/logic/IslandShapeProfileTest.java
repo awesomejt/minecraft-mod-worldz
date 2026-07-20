@@ -46,6 +46,30 @@ class IslandShapeProfileTest {
     }
 
     @Test
+    void coastlineDetailIsSilentWhenAmplitudeIsZero() {
+        // zeroAmplitudeIsAnExactCircle already covers this, but assert it explicitly here
+        // since this is specifically what disables the small-scale detail-noise term too.
+        for (int x = 50; x <= 400; x += 73) {
+            assertEquals(x - 128.0, IslandShapeProfile.distanceFromShore(x, 0, 128.0, 0.0, 42L), 0.000_001);
+        }
+    }
+
+    @Test
+    void coastlineDetailPerturbsDistanceWithinItsAmplitudeCap() {
+        double smoothOnly = 200 - IslandShapeProfile.radiusAt(128.0, 0.3, 0.0, 42L);
+        double withDetail = IslandShapeProfile.distanceFromShore(200, 0, 128.0, 0.3, 42L);
+        assertNotEquals(smoothOnly, withDetail, 0.000_001);
+        assertTrue(Math.abs(withDetail - smoothOnly) <= 32.0, "detail term exceeded its documented amplitude cap");
+    }
+
+    @Test
+    void coastlineDetailIsDeterministic() {
+        double first = IslandShapeProfile.distanceFromShore(83, -47, 128.0, 0.3, 42L);
+        double second = IslandShapeProfile.distanceFromShore(83, -47, 128.0, 0.3, 42L);
+        assertEquals(first, second, 0.0);
+    }
+
+    @Test
     void strengthIsFullInsideAndZeroAtTheShoreEdge() {
         assertEquals(1.0, IslandShapeProfile.strengthAt(-10.0, 12), 0.000_001);
         assertEquals(1.0, IslandShapeProfile.strengthAt(0.0, 12), 0.000_001);

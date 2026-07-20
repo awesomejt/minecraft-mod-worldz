@@ -25,6 +25,15 @@ public final class IslandShapeProfile {
     private static final int NATURAL_RELIEF_DIVISOR = 4;
     private static final int MAX_NATURAL_RELIEF_BLOCKS = 8;
     private static final int MAX_NOISE_RELIEF_BLOCKS = 8;
+    /** Divides the base radius to pick the small-scale coastline-detail noise's wavelength. */
+    private static final double DETAIL_WAVELENGTH_DIVISOR = 6.0;
+    private static final double DETAIL_MIN_WAVELENGTH_BLOCKS = 4.0;
+    /** Fraction of the base radius used as the coastline-detail noise's amplitude. */
+    private static final double DETAIL_AMPLITUDE_FRACTION = 0.08;
+    private static final double DETAIL_MIN_AMPLITUDE_BLOCKS = 1.0;
+    private static final double DETAIL_MAX_AMPLITUDE_BLOCKS = 32.0;
+    /** Distinguishes the detail-noise lattice hash from the harmonic-phase hash above it. */
+    private static final long DETAIL_NOISE_SALT = 0x646574616974L;
 
     private IslandShapeProfile() {
     }
@@ -50,7 +59,13 @@ public final class IslandShapeProfile {
     }
 
     /**
-     * Computes the signed distance from the perturbed coastline.
+     * Computes the signed distance from the perturbed coastline. On top of the large-scale
+     * "lumpy circle" from {@link #radiusAt} (a smooth function of angle alone, incapable of
+     * coves or fractal-scale roughness on its own), a small-scale value-noise term is added
+     * directly to the distance field so the coastline gets natural-looking local jaggedness
+     * too -- both terms are pure functions of {@code (x, z, seed)}, so every caller (biome
+     * classification, terrain height, the shore ring, the ocean gradient) still agrees
+     * pixel-for-pixel on where the coastline actually is.
      *
      * @param x block X relative to the origin
      * @param z block Z relative to the origin
@@ -62,7 +77,53 @@ public final class IslandShapeProfile {
     public static double distanceFromShore(int x, int z, double baseRadiusBlocks, double amplitude, long seed) {
         double distance = Math.hypot(x, z);
         double angle = Math.atan2(z, x);
-        return distance - radiusAt(baseRadiusBlocks, amplitude, angle, seed);
+        double clampedAmplitude = Math.clamp(amplitude, 0.0, MAX_AMPLITUDE);
+        double radius = radiusAt(baseRadiusBlocks, clampedAmplitude, angle, seed);
+        // Detail noise rides the same amplitude dial as the large-scale harmonics (rather than
+        // always being on) so amplitude 0 still gives an exact, fully predictable circle --
+        // useful for tiny islands where uncontrolled small-scale noise could eat too much area.
+        double detailScale = clampedAmplitude / MAX_AMPLITUDE;
+        return distance - radius - coastlineDetail(x, z, baseRadiusBlocks, seed) * detailScale;
+    }
+
+    /**
+     * Small-scale value-noise perturbation added directly to the coastline distance field,
+     * layering local roughness (coves, small headlands) on top of {@link #radiusAt}'s
+     * large-scale shape. Both wavelength and amplitude scale with the island's own radius so
+     * a 1-chunk-scale island and a multi-thousand-block one each get proportionate detail.
+     */
+    private static double coastlineDetail(double x, double z, double baseRadiusBlocks, long seed) {
+        double wavelength = Math.max(DETAIL_MIN_WAVELENGTH_BLOCKS, baseRadiusBlocks / DETAIL_WAVELENGTH_DIVISOR);
+        double amplitudeBlocks = Math.clamp(
+            baseRadiusBlocks * DETAIL_AMPLITUDE_FRACTION, DETAIL_MIN_AMPLITUDE_BLOCKS, DETAIL_MAX_AMPLITUDE_BLOCKS
+        );
+        return valueNoise(x, z, seed ^ DETAIL_NOISE_SALT, wavelength) * amplitudeBlocks;
+    }
+
+    /** Classic hashed-lattice value noise, smoothstep-interpolated, in the range {@code -1..1}. */
+    private static double valueNoise(double x, double z, long seed, double wavelength) {
+        double sampleX = x / wavelength;
+        double sampleZ = z / wavelength;
+        long cellX = (long) Math.floor(sampleX);
+        long cellZ = (long) Math.floor(sampleZ);
+        double fractionX = sampleX - cellX;
+        double fractionZ = sampleZ - cellZ;
+        double v00 = latticeValue(seed, cellX, cellZ);
+        double v10 = latticeValue(seed, cellX + 1, cellZ);
+        double v01 = latticeValue(seed, cellX, cellZ + 1);
+        double v11 = latticeValue(seed, cellX + 1, cellZ + 1);
+        double smoothX = fractionX * fractionX * (3.0 - 2.0 * fractionX);
+        double smoothZ = fractionZ * fractionZ * (3.0 - 2.0 * fractionZ);
+        double top = v00 + (v10 - v00) * smoothX;
+        double bottom = v01 + (v11 - v01) * smoothX;
+        return top + (bottom - top) * smoothZ;
+    }
+
+    private static double latticeValue(long seed, long cellX, long cellZ) {
+        long h = splitmix64(seed);
+        h = splitmix64(h ^ cellX);
+        h = splitmix64(h ^ cellZ);
+        return ((h >>> 11) * 0x1.0p-53) * 2.0 - 1.0;
     }
 
     /**

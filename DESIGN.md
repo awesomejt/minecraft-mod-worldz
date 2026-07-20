@@ -2215,3 +2215,65 @@ Decided 2026-07-19; no code yet — 7.2/7.3 implement from this design.
   than chased now given how narrow the actual exposure is -- revisit if
   Jason's acceptance testing (large/oddly-amplituded islands especially)
   ever actually surfaces it.
+
+### 24.10 Test-1 findings and fixes (config 30, 0.2.31 → 0.2.32)
+
+Jason's first in-game pass (config 30, default 128-radius island) surfaced
+three issues, all confirmed against the actual server log and screenshots
+before any fix was written:
+
+- **Fallback End portal always built at the world floor (`y = -64`), a real,
+  general, pre-existing bug -- not ocean_island-specific.** Every single
+  logged `ensureEndPortal` call across every prior test session (radius 128
+  *and* radius 2048 alike) shows the identical `BlockPos{x=32, y=-64, z=0}`.
+  Root cause, confirmed against decompiled `Level.java`:
+  `Level#getHeight(Heightmap.Types, x, z)` returns `getMinY()` outright for
+  any chunk that is not *already loaded* -- `LevelReader`'s plain height
+  query never forces generation the way `getChunk(chunkX, chunkZ)` does.
+  `ProgressionGuarantees.ensureEndPortal` runs at world creation, before the
+  fallback site's own chunk has ever loaded, so it hit this fallback path
+  every time. Fixed with a one-line `overworld.getChunk(x >> 4, z >> 4)`
+  (forces synchronous `ChunkStatus.FULL` generation) immediately before the
+  height query. `ensureBlazeAccess`'s Nether fallback needed no equivalent
+  fix -- its spawner Y is a fixed constant, not a heightmap query.
+  `SpawnOriginManager.safeSpawnNear`'s own `getHeight` call has the same
+  latent shape but is guarded behind a `height < overworld.getMinY()`
+  condition that real generators essentially never trigger; left alone
+  (see MEMORY.md) rather than speculatively touched with no reproduction.
+- **Ocean biome patches formed a visible checkerboard, confirmed in
+  screenshots (both first-person and the map).** `IslandOceanProfile
+  .biomeAt` picked a biome per raw axis-aligned grid cell
+  (`Math.floorDiv(x, scale)`) with zero blending -- literal square regions.
+  Replaced with jittered-grid Voronoi: each grid cell gets a seed-hashed
+  feature point offset within it (`JITTER_MARGIN = 0.2` of the cell edge,
+  so the true nearest feature point is always within the query cell's 3x3
+  neighborhood), and the *nearest* feature point's cell wins the biome
+  pick. Same per-cell deterministic hash as before, just keyed on the
+  jittered cell coordinates instead of the raw grid ones -- boundaries
+  now read as organic patch edges instead of a grid line. `shoreBiomeAt`
+  (already per-block, already fine) is untouched.
+- **Island coastline read as an unnaturally smooth blob.** `IslandShapeProfile`
+  computes radius as a function of angle alone (4 sine harmonics) --
+  mathematically this can only ever produce a smooth, single-lobed "lumpy
+  circle" (star-convex by construction), never coves, inlets, or
+  fractal-scale roughness, regardless of amplitude. Added a second,
+  independent perturbation term: classic hashed-lattice value noise
+  (smoothstep-interpolated), added directly to the *distance* field rather
+  than to the angle-based radius, with wavelength and amplitude both
+  scaled off the island's own base radius (`baseRadiusBlocks / 6`,
+  floored at 4 blocks; `8%` of `baseRadiusBlocks`, clamped to `1..32`
+  blocks) so a 1-chunk-floor island and a multi-thousand-block one each
+  get proportionate small-scale detail. Rides the same `amplitude` dial as
+  the large-scale harmonics (scaled by `clampedAmplitude / MAX_AMPLITUDE`)
+  rather than always being on, so `amplitude = 0` still gives an exact,
+  fully predictable circle -- kept deliberately, since a tiny island with
+  uncontrolled small-scale noise could otherwise lose a large fraction of
+  its own area. Being a pure function of `(x, z, seed)` added to the same
+  `distanceFromShore` every caller already shares, no separate wiring was
+  needed anywhere else -- biome classification, terrain height, the shore
+  ring, and the ocean gradient all inherit the new roughness automatically.
+
+All three fixes are pure-logic changes covered by new/updated JUnit tests
+(see `IslandShapeProfileTest`, `IslandOceanProfileTest`); none required
+touching `EnvelopedChunkGenerator`, `LimitedBiomeSource`, or any codec.
+Re-deployed as 0.2.32 for Jason to re-test config 30 specifically.

@@ -58,6 +58,29 @@ class IslandOceanProfileTest {
     }
 
     @Test
+    void regionBoundariesAreJitteredNotPinnedToTheRawGridLine() {
+        // With a plain axis-aligned grid, every seed would transition biome at exactly the raw
+        // grid line (x = 0, a multiple of the 128-block region scale). Jittered feature points
+        // should scatter that transition point across seeds instead -- proof the boundary reads
+        // as an organic patch edge rather than a checkerboard line.
+        Set<Integer> transitionPoints = new java.util.HashSet<>();
+        for (long seed = 1; seed <= 30; seed++) {
+            String previous = IslandOceanProfile.biomeAt(-10, 0, 300.0, 64, 128, seed);
+            for (int x = -9; x <= 10; x++) {
+                String current = IslandOceanProfile.biomeAt(x, 0, 300.0, 64, 128, seed);
+                if (!current.equals(previous)) {
+                    transitionPoints.add(x);
+                }
+                previous = current;
+            }
+        }
+        assertTrue(
+            transitionPoints.size() > 1,
+            "every seed transitioned biome at the same x, meaning region boundaries are still grid-pinned"
+        );
+    }
+
+    @Test
     void shoreBiomeIsBeachOrStonyShoreAndDeterministic() {
         List<String> shoreIds = List.of("minecraft:beach", "minecraft:stony_shore");
         for (int x = 0; x < 200; x += 17) {
