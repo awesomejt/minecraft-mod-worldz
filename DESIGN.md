@@ -3249,4 +3249,203 @@ origin) and no separate Overworld Exterior field (`SkyIslandPlan`
 unconditionally supplies the entire Overworld — and, when enabled, Nether
 — exterior itself, the same reasoning as DESIGN §24.8).
 
+## 28. Floating resource islands (GOALS 07–08) — design pass (TODO 11.1)
+
+Phase 11 replaces `sky_island`'s pure void beyond the starter island
+(GOALS 05–06, §27) with scattered small floating islands the player must
+bridge to, each carrying resources (GOALS 08), with a guaranteed reachable
+village among them (GOALS 07 — deferred here in full per the Phase 10
+header, since a village needs *something* to stand on beyond the exclusion
+zone and this phase is exactly where that something gets built).
+
+**Scope decided with Jason (2026-07-20):** resources are a configurable
+combination of biome diversity, embedded ore deposits, and loot chests (not
+an either/or); village placement is **guaranteed**, not best-effort; and a
+configurable exclusion-zone buffer of pure void surrounds the starter
+island before scattered islands begin, mirroring `IslandPlan`'s GOALS-04
+mechanism. Overworld only this phase — GOALS 08's text has no Nether
+component, and extending it to `netherSkyIsland` is a straightforward
+future addition (§27.6's precedent) if Jason ever asks, not scoped now.
+
+### 28.1 Placement: a jittered grid, not a `WorldLayoutPlan` region
+
+The starter island's own mechanism (§27.2) is a single circle at the
+origin — it has no notion of "many, sparse, far apart." `WorldLayoutPlan`'s
+per-cell weighted-biome machinery (chaos biomes, §20) colors an entire
+cell one biome; it has no notion of a *localized shape* that can cross a
+cell boundary. Neither fits directly, so this is a new, additive, pure-logic
+mechanism: `FloatingIslandsPlan`, mirroring `IslandPlan`/`StripPlan`/
+`SkyIslandPlan`'s precedent of "new record, not a retrofit."
+
+**Grid:** columns are bucketed into `cellSizeBlocks`-edged square cells
+(`Math.floorDiv`, same primitive `WorldLayoutPlan` already uses for its own
+cells). Each cell deterministically either holds one island or is empty,
+decided by `hash01(seed, "floating_island_present", cellX, cellZ, 0) <
+spawnChance` (reusing the exact `splitmix64`/`hash01` primitives
+`WorldLayoutPlan`/`StarterKitPlan` already have — no `java.util.Random`,
+so results are reproducible and order-independent). A present cell's
+island gets a jittered center (offset from the cell's own center, bounded
+to a fraction of `cellSizeBlocks` so an island can never wander into a
+non-adjacent cell) and a hash-picked radius between `minRadiusBlocks` and
+`maxRadiusBlocks`. `cellSizeBlocks` is therefore the one knob that mostly
+controls "how far apart" (GOALS 08's "sufficiently far away to require a
+lot of bridging"); `spawnChance` separately controls density without
+changing spacing, keeping both a sparse-and-tight and a sparse-and-empty
+layout reachable through config. Defaults are chosen so
+`2 * maxRadiusBlocks` stays comfortably under the minimum possible
+center-to-center distance between adjacent cells' most-jittered islands —
+documented as a config-sanity concern (like `stepped` resize's own
+fail-fast precedent) rather than clamped in code, since nothing stops a
+player from deliberately configuring overlap if they want it.
+
+**Query:** for a column `(x, z)` (relative to the sky island origin, same
+space `distanceFromShore` already uses), check the query cell and its 8
+neighbors (bounded jitter guarantees no island can reach further than
+one cell away) via `IslandShapeProfile.distanceFromShore` — the exact same
+coastline-perturbation primitive `IslandPlan`/`SkyIslandPlan` already use,
+so a scattered island's edge reads exactly like every other island shape
+in this project, keyed by a per-cell seed salt so two islands never look
+identical. If the column falls inside more than one candidate (only
+possible with unusually large `shapeAmplitude`/`maxRadiusBlocks`
+combinations), the nearest wins — a documented, deliberately unenforced
+edge case, same posture as `ObjectiveSite.isSupportiveColumn`'s own
+`LEGACY` fast-path gap (§24.9).
+
+**Exclusion zone:** reuses `IslandPlan.ExclusionZone` directly (the exact
+`(enabled, radiusBlocks)` record, not a new type) — a present cell whose
+jittered center falls inside the zone is treated as empty, so the space
+immediately around the starter island stays pure void exactly like GOALS
+05/06 ship today when this feature is off.
+
+### 28.2 Resources: three independently configurable layers
+
+Every enabled island always has a biome (needed for terrain/decoration
+regardless); the three GOALS-08 resource mechanisms are separate toggles
+on top, so a world can mix and match:
+
+- **Biome diversity** (`biomeVariety`): when `true`, each island hash-picks
+  a biome from a configured `islandBiomes` list (mirrors `chaosBiomes
+  .biomes`' shape); when `false`, every scattered island shares the
+  starter island's own single `islandBiome`, matching §27's existing
+  single-biome behavior. Terrain/surface-material palette reuses
+  `SkyIslandProfile`'s existing biome-family classification unchanged —
+  no new surface logic, only a new biome id feeding the same lookup.
+- **Ore deposits** (`oreDepositsEnabled` + `oreFeatureIds`): one
+  vanilla ore `ConfiguredFeature` (default pool: `ore_coal`, `ore_iron_small`,
+  `ore_gold_buried`, `ore_redstone`, `ore_lapis`, `ore_diamond_small`,
+  `ore_emerald`) hash-picked per island and placed once, at world-init
+  time, at a hash-chosen point within the island's slab via
+  `ConfiguredFeature.place(level, generator, random, pos)` — the exact,
+  verified API `PlaceCommand.placeFeature` uses (`net/minecraft/server/
+  commands/PlaceCommand.java`, confirmed against the real 26.2 decompiled
+  sources), which places a single feature instance directly at a position,
+  bypassing the `PlacedFeature`/`CountPlacement` wrapper's normal
+  biome/height/repeat gating entirely — exactly the "one deposit, exactly
+  here" semantics a synthetic void-slab island needs (normal ore
+  generation never reaches these islands, since there's no real
+  underground for it to run in). A slab only 1–64 blocks thick
+  (`SkyIslandPlan.thicknessBlocks`) can't fit a full-size vein at every
+  requested Y, so placement clamps its target Y to
+  `[bottomY() + 1, surfaceY() - 1]` and accepts that thin slabs sometimes
+  clip a vein's edge into air, no worse than a real vanilla vein hitting a
+  cave.
+- **Loot chest** (`lootChestEnabled` + `lootKit`): reuses `StarterKitPlan`
+  directly (§25.3/§27.8's existing essentials+extras shape, not a new
+  loot mechanism) — one placed `minecraft:chest` per island, seed-resolved
+  contents, config-only item list like every other kit in this project.
+
+### 28.3 Guaranteed village (GOALS 07)
+
+**Jason's decision: guaranteed, not best-effort** — a real, findable
+village must exist beyond the exclusion zone. The safest way to get a
+*real* vanilla village (not a hand-built approximation, unlike the
+fallback End-portal/blaze vaults, which stand in for structures this
+project can't risk depending on vanilla's own placement grid for) is to
+force-generate one with vanilla's own jigsaw machinery at a chosen
+position — verified against `PlaceCommand.placeStructure`
+(`net/minecraft/server/commands/PlaceCommand.java`), the real, public
+`/place structure` implementation:
+
+```java
+StructureStart start = structure.generate(
+    structureHolder, level.dimension(), registryAccess, chunkGenerator,
+    chunkGenerator.getBiomeSource(), level.getChunkSource().randomState(),
+    level.getStructureManager(), level.getSeed(), chunkPos, 0, level, b -> true
+);
+// then start.placeInChunk(...) once per chunk in start.getBoundingBox()
+```
+
+This bypasses the structure's own normal spacing/biome placement checks
+entirely (the `b -> true` predicate) and, critically, is called with
+*our own* `EnvelopedChunkGenerator` as `chunkGenerator` — the same object
+`getBaseHeight`/`getBaseColumn` already override for the sky island slab
+— so a jigsaw piece's terrain-fitting height query lands on the synthetic
+slab surface, not whatever the vanilla delegate would compute underneath
+it. Confirmed real vanilla structure ids exist for every village variant
+(`minecraft:village_plains`/`_desert`/`_savanna`/`_snowy`/`_taiga`, found
+in the real 26.2 client jar's `data/minecraft/worldgen/structure/`).
+
+**One specific cell is reserved for the village, not left to the general
+`spawnChance` roll:** its position is hash-picked (an angle and a radius
+just beyond `exclusionZone.radiusBlocks()`, converted to cell coordinates)
+so it's seed-varied but always present regardless of density settings,
+forced to a village-safe minimum radius (`VILLAGE_MIN_RADIUS_BLOCKS`, new
+constant — big enough that the compact 11×11 fallback-vault situation
+§24.6 accepted as a tiny-island trade-off doesn't recur here), and forced
+to one of the five village-compatible biome ids (hash-picked, independent
+of `islandBiomes`/`biomeVariety`, so a village always has valid terrain to
+generate onto even if the player's configured biome pool has nothing
+matching). Deployment (new `FloatingIslandsDeployment.placeGuaranteedVillage`,
+alongside `StarterKitDeployment`) force-loads every chunk in the
+structure's resolved bounding box first (mirrors `PlaceCommand`'s own
+`checkLoaded` pattern, but force-loads instead of erroring, matching
+`StarterKitDeployment.spawnStarterChest`'s existing `overworld.getChunk(...)`
+call), then places — once, gated by a new `WorldLimitState` one-time flag
+alongside `needsChestBoat`/`needsStarterChest`.
+
+**Known risk, not resolvable before real in-game testing** (flagged for
+11.6, same posture as every other "wait for Jason" item in this project):
+whether a vanilla village's jigsaw pieces, built for continuous natural
+terrain, settle acceptably onto a flat synthetic slab edge — a piece whose
+footprint partially overhangs the slab's own perturbed coastline is a real
+possibility `Structure.generate`'s terrain-fit logic can't be fully
+predicted for from source reading alone.
+
+### 28.4 Config/preset shape
+
+No new preset — `floatingIslands` is a new nested section on the existing
+`SkyIslandConfig`/`SkyIslandCustomization` (GOALS 08 is explicitly "same
+as 7, but..."; this project's precedent for optional composable features on
+an existing preset is `IslandPlan.fluid`/`exclusionZone`, not a new typed
+preset per option). `SkyIslandPlan` gains one new field,
+`FloatingIslandsPlan floatingIslands` — the "one slot to spare" §27.9's own
+codec left after `sky_island` landed at 13 of `LimitedBiomeSource`'s
+14-field ceiling is irrelevant here, since `floatingIslands` nests entirely
+inside `SkyIslandPlan`'s own codec group (currently 7 fields, well under
+any DFU ceiling) rather than adding a new top-level `LimitedBiomeSource`
+field. `FloatingIslandsPlan`'s own codec groups the resource toggles into
+a nested `ResourceConfig(oreDepositsEnabled, oreFeatureIds,
+lootChestEnabled, lootKit)` record for the same field-budget-discipline
+reason `IslandPlan.ExclusionZone`/`PassThroughCodecs.Flags` already
+established, not because `FloatingIslandsPlan` itself is anywhere near a
+ceiling.
+
+`SkyIslandCustomizeScreen` gains one new sub-screen (mirroring
+`WorldzBorderScreen`/`EndBorderScreen`'s existing "button opens a small
+dedicated screen" pattern) rather than flattening ten-plus new fields onto
+the already-busy top-level sky-island screen.
+
+### 28.5 Deferred, not in this phase's scope
+
+- **Nether floating islands** — §28's mechanism could apply to
+  `netherSkyIsland` symmetrically (same `activeSkyIsland()` dispatch
+  §27.6 already built), but GOALS 08's text is Overworld-only and nobody
+  has asked for the Nether variant; noted here as a straightforward future
+  extension, not scheduled.
+- **Beatability guarantees untouched** — this phase doesn't extend
+  `ObjectiveSite.isSupportiveColumn`'s existing `LEGACY`-fast-path gap
+  (§24.9) to scattered islands; the starter island's own guarantee (§27.5)
+  is untouched, since scattered islands are optional exploration content,
+  not part of the progression gate.
+
 

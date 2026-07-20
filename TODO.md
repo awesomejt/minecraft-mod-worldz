@@ -1439,14 +1439,74 @@ island's 7.1–7.4/8.1–8.3 split):
       note 10.5's own outstanding go/no-go on the End (DESIGN §27.7) is
       independent of that phase gate.
 
-## Phase 11 — Floating resource islands (GOALS 08)
+## Phase 11 — Floating resource islands (GOALS 07–08)
 
-- [ ] 11.1 Seed-driven scattered floating islands with varied
-      sizes/resources, far enough apart to force serious bridging; option
-      replaces pure void between them. Design first (placement sampling can
-      reuse the pure hash-cell approach — uniform role, so no
-      coastline-class defects), then implement, test configs, **[Jason]**
-      acceptance.
+Split from the original single 11.1 item into the granularity every other
+multi-part phase in this project has needed (Phase 6.2a/6.2b, Phase 10's
+10.1-10.6 precedent) — logged here rather than silently expanding one task.
+Also folds in GOALS 07 (villages beyond an exclusion zone), deferred here
+in full per the Phase 10 header's own note.
+
+- [x] 11.1 Design pass (DESIGN §28): placement mechanism (jittered grid,
+      reusing `IslandShapeProfile`/hash-cell primitives), the exclusion
+      zone (reusing `IslandPlan.ExclusionZone`), the three resource layers
+      (biome diversity, ore deposits, loot chests), and the guaranteed-
+      village mechanism — verify the real vanilla structure/feature forced-
+      placement APIs against 26.2 sources first. **Commit** design before
+      implementing.
+      **Done (0.2.47):** full design in DESIGN §28. Scope decided with
+      Jason (2026-07-20): resources are a configurable combination of all
+      three layers (not either/or); village placement is **guaranteed**,
+      not best-effort; a configurable exclusion-zone buffer precedes
+      scattered islands, mirroring GOALS 04's mechanism. Verified against
+      the real 26.2 decompiled sources: `PlaceCommand.placeFeature`
+      (`net/minecraft/server/commands/PlaceCommand.java`) confirms
+      `ConfiguredFeature.place(level, generator, random, pos)` is a real,
+      public API for forcing a single vanilla ore vein at an exact
+      position, bypassing normal biome/height/count placement gating —
+      exactly what a synthetic void-slab island needs for ore deposits (no
+      real underground for natural ore gen to run in). `PlaceCommand
+      .placeStructure` confirms `Structure.generate(...)` +
+      `StructureStart.placeInChunk(...)` is the real, public `/place
+      structure` implementation for forcing a real vanilla jigsaw structure
+      (a village) at a chosen position with our own `EnvelopedChunkGenerator`
+      supplying terrain-fit height queries — the mechanism 11.5 will use for
+      the guaranteed village. Confirmed real structure ids exist for every
+      village biome variant in the 26.2 client jar
+      (`village_plains`/`_desert`/`_savanna`/`_snowy`/`_taiga`). No new
+      preset: `floatingIslands` nests onto the existing `sky_island` config/
+      customization (GOALS 08 is explicitly "same as 7, but...", matching
+      the `IslandPlan.fluid`/`exclusionZone` precedent of composable
+      options on an existing preset rather than a new typed preset per
+      option). Overworld only this phase (GOALS 08's text has no Nether
+      component); Nether floating islands noted as a straightforward future
+      extension in DESIGN §28.5, not scheduled.
+- [ ] 11.2 Core: `FloatingIslandsPlan` (pure logic — grid placement,
+      jittered island centers/radii, exclusion zone, biome-variety
+      selection; JUnit-covered), config/codec/customization plumbing on
+      `SkyIslandConfig`/`SkyIslandCustomization`, the sub-screen on
+      `SkyIslandCustomizeScreen`, and the terrain/biome wiring into
+      `EnvelopedChunkGenerator`/`LimitedBiomeSource` so scattered islands
+      actually generate (reusing `SkyIslandProfile`'s surface-material
+      palette). No resource layers or village yet — void-with-empty-islands
+      is this task's acceptance bar.
+- [ ] 11.3 Ore deposits: `ResourceConfig.oreDepositsEnabled`/`oreFeatureIds`,
+      per-island hash-picked `ConfiguredFeature` placement clamped to the
+      slab's own thickness (DESIGN §28.2).
+- [ ] 11.4 Loot chests: `ResourceConfig.lootChestEnabled`/`lootKit` reusing
+      `StarterKitPlan` directly, one placed chest per island.
+- [ ] 11.5 Guaranteed village (GOALS 07): the reserved village cell (hash-
+      picked angle/radius just beyond the exclusion zone, forced radius/
+      biome), `FloatingIslandsDeployment.placeGuaranteedVillage` force-
+      loading the structure's resolved bounding box then placing via
+      `Structure.generate`/`placeInChunk` (DESIGN §28.3), one-time
+      `WorldLimitState` gate alongside `needsChestBoat`/`needsStarterChest`.
+- [ ] 11.6 Test configs (dense/sparse scatter, exclusion-zone-off vs. a
+      real radius, each resource layer individually, guaranteed-village
+      findability); docs (README, MANUAL_TESTING.md); **[Jason]**
+      acceptance including whether a real village's jigsaw pieces settle
+      acceptably onto the synthetic slab edge (DESIGN §28.3's flagged
+      risk).
 
 ## Phase 12 — Sky chunk challenge (GOALS 09, 37)
 
