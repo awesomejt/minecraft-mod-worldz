@@ -408,6 +408,11 @@ never placed vanilla decoration (kelp/seagrass), world-gen-time fish/
 squid population, or structures (shipwrecks/ocean ruins/monuments)
 anywhere past one chunk from shore, confirmed sterile on 0.2.32's
 re-test; see MEMORY.md's 2026-07-19 "Phase 7 test-2 findings" entry.
+**Requires 0.2.34+** for the fallback End portal to be a proper buried,
+enclosed vault (Y-10 to Y-60, full floor/ceiling/walls/doorway) — 0.2.32
+and 0.2.33 correctly reached the terrain surface but built an exposed,
+unenclosed platform there; see MEMORY.md's 2026-07-19 "Phase 7 test-2
+follow-up" entry.
 
 1. **Default island**, `30-ocean-island-default.yaml`. Confirm: the
    coastline reads as natural/irregular, not a circle or square; a narrow

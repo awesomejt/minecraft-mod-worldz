@@ -21,7 +21,6 @@ import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.Structure;
 
@@ -30,6 +29,15 @@ import java.util.OptionalInt;
 /** Creates compact progression sites when vanilla structures do not fit. */
 final class ProgressionGuarantees {
     private static final int NATURAL_STRUCTURE_MARGIN = 128;
+    /**
+     * Target Y for the fallback End portal's vault -- underground like a real stronghold
+     * (Jason: "somewhere between Y-10 and Y-60"), not at the terrain surface. A fixed depth
+     * rather than a surface-relative one, since digging in regardless of what's actually there
+     * (bedrock/stone/water/void) is exactly how this vault is built either way; assumes normal
+     * solid ground extends down to bedrock, which doesn't hold for a VOID-layout world's
+     * floating starter island -- see the docs for that known, narrow, deliberately deferred gap.
+     */
+    private static final int FALLBACK_PORTAL_TARGET_Y = -32;
 
     private ProgressionGuarantees() {
     }
@@ -70,13 +78,11 @@ final class ProgressionGuarantees {
         int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, zRadius, NATURAL_STRUCTURE_MARGIN);
         int x = originX + relativeX;
         int z = originZ + relativeZ;
-        // Level.getHeight silently returns getMinY() for a chunk that has not loaded yet
-        // (LevelReader never forces generation for a plain height query) -- this runs at
-        // world creation, before the fallback site's own chunk has ever loaded, so the
-        // portal must force it to generate first or it always lands on the world floor.
+        // This runs at world creation, before the fallback site's own chunk has ever loaded --
+        // force it to generate first so the vault below can actually be carved and walled in.
         overworld.getChunk(x >> 4, z >> 4);
-        int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-        BlockPos center = new BlockPos(x, surfaceY, z);
+        int y = Math.max(overworld.getMinY() + 5, FALLBACK_PORTAL_TARGET_Y);
+        BlockPos center = new BlockPos(x, y, z);
         buildEndPortalSite(overworld, center);
         WorldzCommon.LOGGER.info(
             "Created compact End portal site at {} because no natural stronghold safely fits radius {}.", center, radius
@@ -124,14 +130,33 @@ final class ProgressionGuarantees {
         );
     }
 
+    /**
+     * Builds a fully enclosed stone-brick portal room (floor, ceiling, and all four walls --
+     * not just corner posts) with a doorway, mirroring {@link #buildBlazeSite}'s shell
+     * approach. Necessary now that the room sits underground at a fixed depth rather than at
+     * the terrain surface (Jason: "like the stronghold"): the old corner-posts-only design
+     * relied on the surrounding natural terrain to act as walls, which only worked by accident
+     * when the site happened to already be buried.
+     */
     private static void buildEndPortalSite(ServerLevel level, BlockPos center) {
         BlockState bricks = Blocks.STONE_BRICKS.defaultBlockState();
         for (int dx = -5; dx <= 5; dx++) {
             for (int dz = -5; dz <= 5; dz++) {
-                level.setBlock(center.offset(dx, -1, dz), bricks, Block.UPDATE_ALL);
-                for (int dy = 0; dy <= 3; dy++) {
-                    level.setBlock(center.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                for (int dy = -1; dy <= 4; dy++) {
+                    boolean shell = dy == -1 || dy == 4 || Math.abs(dx) == 5 || Math.abs(dz) == 5;
+                    level.setBlock(
+                        center.offset(dx, dy, dz),
+                        shell ? bricks : Blocks.AIR.defaultBlockState(),
+                        Block.UPDATE_ALL
+                    );
                 }
+            }
+        }
+
+        // Doorway: a 3-wide, 2-tall opening in the north wall, matching buildBlazeSite's entrance.
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = 0; dy <= 1; dy++) {
+                level.setBlock(center.offset(dx, dy, -5), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             }
         }
 
@@ -139,14 +164,6 @@ final class ProgressionGuarantees {
         placePortalFrames(level, center, Direction.SOUTH, 0, 2, true);
         placePortalFrames(level, center, Direction.EAST, -2, 0, false);
         placePortalFrames(level, center, Direction.WEST, 2, 0, false);
-
-        for (int dx : new int[]{-5, 5}) {
-            for (int dz : new int[]{-5, 5}) {
-                for (int dy = 0; dy <= 3; dy++) {
-                    level.setBlock(center.offset(dx, dy, dz), bricks, Block.UPDATE_ALL);
-                }
-            }
-        }
     }
 
     private static void placePortalFrames(

@@ -1022,6 +1022,24 @@ rectangular shape.
       unchanged — proof the change is a no-op for every non-island
       preset); clean build. Re-deployed as 0.2.33 — **awaiting Jason's
       re-test of the exterior ocean specifically before Phase 8 starts.**
+      **Test-2 follow-up fix (0.2.34):** 0.2.33 re-test confirmed the
+      portal now reaches the surface, but Jason flagged that as the
+      actual problem — the fallback vault was only ever designed to sit
+      underground (floor + corner posts, relying on natural stone as
+      walls), so on the open surface it read as an incomplete, exposed
+      platform. Direction: "below ground like the stronghold... between
+      Y-10 and Y-60... in an enclosed room, like the Portal Room." Fixed
+      (full detail in DESIGN §24.12, MEMORY.md 2026-07-19): placement now
+      uses a fixed `Y = -32` instead of a surface-height query, and
+      `buildEndPortalSite` was rewritten to mirror `buildBlazeSite`'s
+      existing full floor/ceiling/walls/doorway shell instead of its old
+      floor-plus-corner-posts design. One known, deliberately deferred
+      edge case logged: a `LayoutMode.VOID` world's floating starter
+      island might not have solid ground at `Y = -32`, so its fallback
+      vault could float in open void — not fixed now, nobody is testing
+      that path. Clean build, unchanged 352-test suite (no pure-logic
+      class touched). Re-deployed as 0.2.34 — **awaiting Jason's re-test
+      of the portal's depth/enclosure before Phase 8 starts.**
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 

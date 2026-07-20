@@ -2342,3 +2342,55 @@ automated game tests convention); validated by a clean full build and the
 existing 352-test suite passing completely unchanged (proof the change is
 a no-op for every non-island preset). Re-deployed as 0.2.33 for Jason to
 re-test the exterior ocean specifically.
+
+### 24.12 Test-2 follow-up: buried, enclosed portal vault (0.2.33 → 0.2.34)
+
+Confirming the 0.2.32 Y-fix, Jason's 0.2.33 re-test found the fallback
+End portal correctly landing on the terrain surface (`y = 75`/`76`,
+logged) -- but flagged that as itself a new problem: `buildEndPortalSite`
+was only ever designed to sit *underground*, relying on the surrounding
+natural stone to act as walls (it only ever built a floor and four
+corner posts, never real walls or a ceiling). Buried in bedrock (the
+0.2.29-0.2.31 bug), that omission was invisible by accident; sitting on
+the open surface, it read as an incomplete, exposed platform.
+
+Jason's direction: "below ground like the stronghold... somewhere
+between Y-10 and Y-60... in an enclosed room, like the Portal Room."
+Two changes:
+
+- **Placement**: `ProgressionGuarantees.ensureEndPortal` no longer
+  queries surface height at all. A new `FALLBACK_PORTAL_TARGET_Y = -32`
+  constant (mid-band of Jason's requested range, clamped to
+  `overworld.getMinY() + 5`) replaces it -- deliberately a fixed depth,
+  not surface-relative, since the vault is carved and walled in
+  regardless of what's actually there (stone, water, an intersected
+  cave) either way. `overworld.getChunk(x >> 4, z >> 4)` is kept (still
+  needed to safely place blocks in a chunk that hasn't loaded yet at
+  world-creation time), just no longer for a height query.
+- **Structure**: `buildEndPortalSite` rewritten to mirror
+  `buildBlazeSite`'s existing shell approach (which already did this
+  correctly for the Nether blaze-spawner fallback) -- full stone-brick
+  floor, ceiling, and all four walls (not just corner posts), with a
+  3-wide, 2-tall doorway carved into the north wall so the vault isn't
+  sealed. `placePortalFrames` and the portal's own footprint are
+  untouched; only the surrounding shell changed.
+
+**Known, deliberately deferred edge case, not chased further:** a fixed
+`Y = -32` assumes normal solid ground extends continuously down to
+bedrock, which holds for every terrain-generating preset tested so far
+but not necessarily for a `LayoutMode.VOID` world's floating starter
+island (Phase 15.5) -- a thin floating landmass surrounded by empty sky
+void might not have any solid material anywhere near `Y = -32`, and the
+vault would build as a floating brick box in open void instead of a
+buried one. Not fixed now: nobody is currently testing VOID-layout
+fallback portals, Jason's request was specifically about normal/
+ocean_island terrain (where this assumption always holds, matching real
+stronghold generation's own Y-band), and detecting "is there actually
+solid ground here" robustly would need real sampling logic disproportionate
+to how rarely this fallback path is hit for VOID worlds. Revisit if a
+VOID-layout world's fallback portal is ever actually reported floating.
+
+No test file exists for `ProgressionGuarantees` (needs a real server
+runtime); validated by a clean full build and the unchanged 352-test
+suite (this change touches no pure-logic class). Re-deployed as 0.2.34
+for Jason to re-test the fallback portal's depth and enclosure.

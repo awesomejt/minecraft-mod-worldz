@@ -1373,6 +1373,34 @@ Durable decisions, verified API notes, and rationale that should survive across 
   the project's JUnit-only convention); validated by a clean build and
   the full 352-test suite passing completely unchanged, proving the
   change is a no-op for every non-island preset. Re-deployed as 0.2.33.
+- 2026-07-19 (Phase 7 test-2 follow-up: buried, enclosed portal vault,
+  0.2.34) — 0.2.33 re-test confirmed the End portal correctly reaches the
+  terrain surface now (logged `y = 75`/`76`), but Jason flagged that as a
+  new problem: `buildEndPortalSite` was only ever designed to sit
+  underground (floor + four corner posts, relying on surrounding natural
+  stone as walls) — buried in bedrock (the old bug) that omission was
+  invisible by accident; on the open surface it read as an incomplete,
+  exposed platform. Direction given verbatim: "below ground like the
+  stronghold... somewhere between Y-10 and Y-60... in an enclosed room,
+  like the Portal Room." Two changes: (1) placement no longer queries
+  surface height at all — new `FALLBACK_PORTAL_TARGET_Y = -32` constant
+  (mid-band of the requested range, clamped to `getMinY() + 5`), since
+  the vault is carved/walled in regardless of what's actually there
+  either way; (2) `buildEndPortalSite` rewritten to mirror
+  `buildBlazeSite`'s existing shell approach (which already built a
+  proper floor/ceiling/full-walls room with a doorway for the Nether
+  blaze-spawner fallback) instead of duplicating a weaker one-off design.
+  **Known, deliberately deferred edge case:** a fixed `Y = -32` assumes
+  continuous solid ground down to bedrock, which doesn't necessarily hold
+  for a `LayoutMode.VOID` world's floating starter island — the vault
+  could end up as a floating box in open void there. Not fixed now:
+  nobody is testing VOID-layout fallback portals currently, and Jason's
+  request was specifically about normal/ocean_island terrain (where a
+  real stronghold's own Y-band assumption already matches). Revisit only
+  if this is ever actually reported floating. No pure-logic class
+  touched (`ProgressionGuarantees` has no dedicated test, needs a real
+  server runtime); clean build, unchanged 352-test suite. Re-deployed as
+  0.2.34.
 
 ## Reference Log
 
