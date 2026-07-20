@@ -491,6 +491,37 @@ there is no separate World Type for either.
    seeds/outcomes so the isolation threshold/ring sample count
    (`NaturalIslandSearch`) can be tuned rather than redesigned.
 
+## Phase 9 acceptance (ocean fluid variants, GOALS 28/31, TODO 9.2-9.3)
+
+Uses configs `36`-`37` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Ocean Island"** for both. Requires 0.2.41+. Both extend
+the same preset configs 30-35 already used (DESIGN §26.1) — there is no
+separate World Type for either.
+
+1. **Lava ocean**, `36-ocean-island-lava.yaml` (GOALS 28). Confirm the
+   endless ocean is lava, not water, beyond the shore ring. Confirm the
+   shore ring (beach/stony-shore) still separates the island's land from
+   the lava, and walk the coastline checking nothing is on fire or
+   catches fire. Confirm boats cannot be placed on the lava and a
+   strider can walk across it. Confirm the seabed still visibly deepens
+   further from shore. Confirm a compact, buried, enclosed fallback End
+   portal exists and the dragon fight is winnable. Confirm the Nether is
+   completely ordinary vanilla. **None of this phase's design/code
+   review could verify actual in-game lava-at-scale behavior** (light,
+   fire spread, fluid ticking, map color) — this is genuinely new
+   ground for acceptance testing to cover, not a formality.
+2. **Dry world**, `37-ocean-island-dry.yaml` (GOALS 31). Confirm the
+   area beyond the shore ring is an exposed, walkable stone basin with
+   no water anywhere, and that its depth still visibly increases further
+   from shore. If any structure with a water feature (village well,
+   etc.) happens to generate, confirm it still has real water —
+   structures should be completely unaffected. Confirm a compact,
+   buried, enclosed fallback End portal exists and the dragon fight is
+   winnable. Confirm the Nether is completely ordinary vanilla. **Note:
+   the "harder" difficulty option (removing rivers/surface lakes too) is
+   not implemented in this phase** — deliberately deferred, see DESIGN
+   §26.3; this config only exercises the core drained-ocean behavior.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

@@ -1566,6 +1566,23 @@ Durable decisions, verified API notes, and rationale that should survive across 
   not assumption), and `IslandPlan` was already at 14 before Phase 9.
   Convenience accessor methods keep every existing call site
   source-compatible.
+- 2026-07-20 (Phase 9.2/9.3 implemented: lava ocean + dry world, 0.2.41)
+  — Shipped in one commit, not two: both GOALS 28 (lava) and 31 (dry)
+  are the exact same `fluid` substitution point, differing only in
+  which enum value maps to which block (same "ship together" reasoning
+  as GOALS 04 alongside 7.2). New `IslandFluid` enum;
+  `EnvelopedChunkGenerator.exteriorState()` gained a `fluid` param, its
+  `WATER` case now switches to `Blocks.WATER`/`LAVA`/`AIR`, mirroring
+  the exact conditional shape `depthBlocks` already used right next to
+  it (`island.enabled() ? island.fluid() : IslandFluid.WATER`) so every
+  non-island exterior stays provably unaffected. GOALS 31's beatability
+  (structures/aquifers still provide water) holds automatically — the
+  mechanism never touches structure/aquifer generation. Note on the
+  `removeNaturalRivers` false start (built fully, then fully reverted
+  once the terrain-masking gap was found — see the 9.1 entry above):
+  confirmed via grep after reverting that no dead code or inert
+  YAML/Customize-screen fields were left behind. Full suite green (395
+  tests); clean build. Full detail in DESIGN §26.4.
 
 ## Reference Log
 

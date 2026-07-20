@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
@@ -766,6 +767,9 @@ public final class WorldzConfig {
         if (map.containsKey("islandSource")) {
             config.islandSource = IslandSource.parse(readString(map.get("islandSource"), name + ".islandSource"));
         }
+        if (map.containsKey("fluid")) {
+            config.fluid = IslandFluid.parse(readString(map.get("fluid"), name + ".fluid"));
+        }
         if (map.containsKey("islandBiome")) {
             config.islandBiome = readString(map.get("islandBiome"), name + ".islandBiome");
         }
@@ -1162,6 +1166,7 @@ public final class WorldzConfig {
     private static Map<String, Object> oceanIslandMap(OceanIslandConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("islandSource", config.islandSource.serializedName());
+        values.put("fluid", config.fluid.serializedName());
         values.put("islandBiome", config.islandBiome);
         values.put("radiusBlocks", config.radiusBlocks);
         values.put("shapeAmplitude", config.shapeAmplitude);
@@ -1264,6 +1269,7 @@ public final class WorldzConfig {
 
     private static String oceanIslandSummary(OceanIslandConfig config) {
         return "islandSource=" + config.islandSource.serializedName()
+            + ", fluid=" + config.fluid.serializedName()
             + ", islandBiome=" + config.islandBiome
             + ", radiusBlocks=" + config.radiusBlocks
             + ", shapeAmplitude=" + config.shapeAmplitude

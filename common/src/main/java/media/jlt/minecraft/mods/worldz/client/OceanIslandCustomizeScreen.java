@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.client;
 
+import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.OceanIslandCustomization;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
@@ -29,6 +30,8 @@ final class OceanIslandCustomizeScreen extends Screen implements
     private final CreateWorldScreen parent;
     private IslandSource islandSource;
     private Button islandSourceButton;
+    private IslandFluid fluid;
+    private Button fluidButton;
     private EditBox islandBiome;
     private EditBox radiusBlocks;
     private EditBox shapeAmplitude;
@@ -61,6 +64,7 @@ final class OceanIslandCustomizeScreen extends Screen implements
         super(TITLE);
         this.parent = parent;
         this.islandSource = initial.islandSource();
+        this.fluid = initial.fluid();
         this.islandBiomeText = initial.islandBiome();
         this.radiusBlocksText = Integer.toString(initial.radiusBlocks());
         this.shapeAmplitudeText = Double.toString(initial.shapeAmplitude());
@@ -89,6 +93,11 @@ final class OceanIslandCustomizeScreen extends Screen implements
             .width(FORM_WIDTH)
             .build();
         form.addChild(this.islandSourceButton);
+
+        this.fluidButton = Button.builder(fluidLabel(this.fluid), button -> cycleFluid())
+            .width(FORM_WIDTH)
+            .build();
+        form.addChild(this.fluidButton);
 
         this.islandBiome = textField(Component.translatable("jlt_worldz.ocean_island.island_biome"), this.islandBiomeText);
         this.islandBiome.setResponder(value -> this.islandBiomeText = value);
@@ -210,6 +219,19 @@ final class OceanIslandCustomizeScreen extends Screen implements
         );
     }
 
+    private void cycleFluid() {
+        IslandFluid[] values = IslandFluid.values();
+        this.fluid = values[(this.fluid.ordinal() + 1) % values.length];
+        this.fluidButton.setMessage(fluidLabel(this.fluid));
+    }
+
+    private static Component fluidLabel(IslandFluid fluid) {
+        return Component.translatable(
+            "jlt_worldz.ocean_island.fluid",
+            Component.translatable("jlt_worldz.ocean_island.fluid." + fluid.serializedName())
+        );
+    }
+
     private EditBox textField(Component narration, String value) {
         EditBox field = new EditBox(this.font, FORM_WIDTH, 20, narration);
         field.setMaxLength(256);
@@ -232,6 +254,7 @@ final class OceanIslandCustomizeScreen extends Screen implements
                 this.oceanRegionScaleBlocks.getValue(),
                 this.exclusionZoneEnabled,
                 this.exclusionZoneRadiusBlocks.getValue(),
+                this.fluid,
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,

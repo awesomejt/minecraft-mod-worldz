@@ -8,6 +8,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -511,10 +512,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         int depthBlocks = this.island.enabled()
             ? islandOceanDepthAt(x - originX(), z - originZ())
             : ExteriorTerrainProfile.OCEAN_DEPTH;
+        IslandFluid fluid = this.island.enabled() ? this.island.fluid() : IslandFluid.WATER;
         BlockState[] states = new BlockState[heightAccessor.getHeight()];
         int minY = heightAccessor.getMinY();
         for (int index = 0; index < states.length; index++) {
-            states[index] = exteriorState(mode, minY + index, heightAccessor, depthBlocks);
+            states[index] = exteriorState(mode, minY + index, heightAccessor, depthBlocks, fluid);
         }
         return new NoiseColumn(minY, states);
     }
@@ -589,9 +591,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     int depthBlocks = this.island.enabled()
                         ? islandOceanDepthAt(relativeX, relativeZ)
                         : ExteriorTerrainProfile.OCEAN_DEPTH;
+                    IslandFluid fluid = this.island.enabled() ? this.island.fluid() : IslandFluid.WATER;
                     for (int y = minY; y <= maxY; y++) {
                         pos.set(x, y, z);
-                        BlockState state = exteriorState(mode, y, chunk, depthBlocks);
+                        BlockState state = exteriorState(mode, y, chunk, depthBlocks, fluid);
                         BlockState oldState = chunk.getBlockState(pos);
                         if (oldState != state) {
                             if (oldState.hasBlockEntity()) {
@@ -956,7 +959,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return Optional.of(new LayoutContext(source));
     }
 
-    private BlockState exteriorState(ExteriorMode mode, int y, LevelHeightAccessor heightAccessor, int depthBlocks) {
+    /**
+     * Classifies one exterior block, substituting the ocean island's own fluid (GOALS 28/31,
+     * DESIGN §26.1) for the "wet" layer -- lava instead of water, or air for a drained basin.
+     * {@code fluid} is only ever non-{@code WATER} for island-driven columns; every other
+     * exterior mode (strip_world's own OCEAN option, etc.) always passes {@code WATER}
+     * unchanged.
+     */
+    private BlockState exteriorState(
+        ExteriorMode mode, int y, LevelHeightAccessor heightAccessor, int depthBlocks, IslandFluid fluid
+    ) {
         if (mode == ExteriorMode.VOID) {
             return Blocks.AIR.defaultBlockState();
         }
@@ -969,7 +981,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         )) {
             case BEDROCK -> Blocks.BEDROCK.defaultBlockState();
             case STONE -> Blocks.STONE.defaultBlockState();
-            case WATER -> Blocks.WATER.defaultBlockState();
+            case WATER -> switch (fluid) {
+                case WATER -> Blocks.WATER.defaultBlockState();
+                case LAVA -> Blocks.LAVA.defaultBlockState();
+                case NONE -> Blocks.AIR.defaultBlockState();
+            };
             case AIR -> Blocks.AIR.defaultBlockState();
         };
     }

@@ -62,7 +62,8 @@ class IslandPlanTest {
     @Test
     void withinExclusionZoneRespectsTheConfiguredRadiusWhenEnabled() {
         IslandPlan plan = new IslandPlan(
-            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, true, 2000, true, true
+            true, 128, 0.3, "minecraft:plains", 12, 64, 128, 8, 32, 128, true, true,
+            new IslandPlan.ExclusionZone(true, 2000), IslandFluid.WATER
         );
         assertTrue(plan.withinExclusionZone(2000, 0));
         assertTrue(plan.withinExclusionZone(-2000, 2000));
@@ -82,7 +83,8 @@ class IslandPlanTest {
 
     private static IslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int shoreWidthBlocks) {
         return new IslandPlan(
-            true, radiusBlocks, shapeAmplitude, islandBiome, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000, true, true
+            true, radiusBlocks, shapeAmplitude, islandBiome, shoreWidthBlocks, 64, 128, 8, 32, 128, true, true,
+            new IslandPlan.ExclusionZone(false, 2000), IslandFluid.WATER
         );
     }
 
@@ -122,5 +124,31 @@ class IslandPlanTest {
         assertFalse(plan.syntheticLand());
         assertEquals(96, plan.radiusBlocks());
         assertEquals(5, plan.shoreWidthBlocks());
+    }
+
+    @Test
+    void fluidDefaultsToWaterForFromConfig() {
+        assertEquals(IslandFluid.WATER, IslandPlan.fromConfig(new OceanIslandConfig()).fluid());
+    }
+
+    @Test
+    void fromConfigCarriesLavaFluidThrough() {
+        OceanIslandConfig config = new OceanIslandConfig();
+        config.fluid = IslandFluid.LAVA;
+        assertEquals(IslandFluid.LAVA, IslandPlan.fromConfig(config).fluid());
+    }
+
+    @Test
+    void fromConfigWithoutLandCarriesFluidThrough() {
+        OceanIslandConfig config = new OceanIslandConfig();
+        config.fluid = IslandFluid.NONE;
+        assertEquals(IslandFluid.NONE, IslandPlan.fromConfigWithoutLand(config).fluid());
+    }
+
+    @Test
+    void fromConfigNaturalCarriesFluidThrough() {
+        OceanIslandConfig config = new OceanIslandConfig();
+        config.fluid = IslandFluid.NONE;
+        assertEquals(IslandFluid.NONE, IslandPlan.fromConfigNatural(config).fluid());
     }
 }

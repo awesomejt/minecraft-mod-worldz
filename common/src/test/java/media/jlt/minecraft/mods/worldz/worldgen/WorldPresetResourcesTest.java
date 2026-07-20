@@ -180,6 +180,10 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.ocean_island.island_source.artificial"));
         assertTrue(language.has("jlt_worldz.ocean_island.island_source.natural"));
         assertTrue(language.has("jlt_worldz.ocean_island.island_source.chest_boat"));
+        assertTrue(language.has("jlt_worldz.ocean_island.fluid"));
+        assertTrue(language.has("jlt_worldz.ocean_island.fluid.water"));
+        assertTrue(language.has("jlt_worldz.ocean_island.fluid.lava"));
+        assertTrue(language.has("jlt_worldz.ocean_island.fluid.none"));
         assertTrue(language.has("jlt_worldz.ocean_island.island_biome"));
         assertTrue(language.has("jlt_worldz.ocean_island.radius"));
         assertTrue(language.has("jlt_worldz.ocean_island.shape_amplitude"));

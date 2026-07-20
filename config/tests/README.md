@@ -36,12 +36,14 @@ Every field not mentioned in a file falls back to Worldz's documented default
    reads the shared top-level `strip:` section (corridor width, same as
    any other Worldz preset) plus its own `stripWorld:` section (spawn
    strategy and the optional `bands:` biome-sequence subsection, GOALS 36);
-   "Worldz: Ocean Island" (files `30`-`35`) reads only its own
-   `oceanIsland:` section (GOALS 01, 02, 03, 04) plus the shared
+   "Worldz: Ocean Island" (files `30`-`37`) reads only its own
+   `oceanIsland:` section (GOALS 01, 02, 03, 04, 28, 31) plus the shared
    `overworldBorder`/`netherBorder`/`endBorder`/`netherExterior` sections
    if set. `oceanIsland.islandSource` (`artificial`/`natural`/
-   `chest_boat`, Phase 8) picks between three ways of sourcing the land
-   within one preset, not three separate World Types. Each preset
+   `chest_boat`, Phase 8) picks between three ways of sourcing the land,
+   and `oceanIsland.fluid` (`water`/`lava`/`none`, Phase 9) independently
+   picks the exterior ocean's fluid -- both within one preset, not
+   separate World Types. Each preset
    ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
@@ -86,6 +88,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `33-ocean-island-distant-natural-islands.yaml` | GOALS 04: `oceanIsland.exclusionZoneEnabled: true` at a (deliberately test-friendly, smaller-than-default) 512-block radius — island/ocean shaping releases beyond it and the seed's own natural terrain resumes. **Select "Worldz: Ocean Island"**. |
 | `34-ocean-island-chest-boat.yaml` | GOALS 03 (Phase 8.1): `oceanIsland.islandSource: chest_boat` — no land anywhere, player starts on/near an oak chest boat at the origin with a custom (config-overridden) starter kit. **Select "Worldz: Ocean Island"**. Requires 0.2.37+. |
 | `35-ocean-island-natural.yaml` | GOALS 02 (Phase 8.2): `oceanIsland.islandSource: natural` — searches the real seed for an isolated natural landmass instead of shaping one; real terrain shows through completely unmodified within `radiusBlocks`. Not guaranteed to find a candidate on every seed (documented, time-boxed search) — check the log either way. **Select "Worldz: Ocean Island"**. Requires 0.2.38+. |
+| `36-ocean-island-lava.yaml` | GOALS 28 (Phase 9.2): `oceanIsland.fluid: lava` — same island shape/shore ring/gradient as config 30, but the endless ocean is lava. Check fire safety at the shore ring, strider/no-boat travel. **Select "Worldz: Ocean Island"**. Requires 0.2.41+. |
+| `37-ocean-island-dry.yaml` | GOALS 31 (Phase 9.3): `oceanIsland.fluid: none` — same island shape/shore ring/gradient as config 30, but the ocean is a drained, exposed basin (no water). Structures/aquifers unaffected. The "harder" rivers/lakes-removal difficulty option is not implemented (documented, deferred). **Select "Worldz: Ocean Island"**. Requires 0.2.41+. |
 
 ### Why `01` showed ocean labeled as river
 

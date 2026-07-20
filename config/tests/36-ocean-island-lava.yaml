@@ -1,0 +1,39 @@
+# GOALS 28: same shape as the ocean island challenge (01), but the
+# endless ocean is lava instead of water (DESIGN §26.1-26.2, TODO 9.2).
+# **Select "Worldz: Ocean Island"** and, if opening Customize, choose
+# "Lava" for Fluid -- this file sets it directly via
+# `oceanIsland.fluid: lava`.
+#
+# The island shape, shore ring (beach/stony-shore), and ocean gradient
+# bands are completely unchanged from the water version (config 30) --
+# only the fluid the "wet" layer resolves to differs
+# (EnvelopedChunkGenerator.exteriorState()). The island itself remains a
+# normal land biome with a transition shore, per GOALS 28's own text.
+#
+# Not independently verified by design/code review alone (DESIGN
+# §26.2): "surface-lava-at-scale behavior" (light, fire spread, fluid
+# ticking, map color) needs real in-game observation.
+#
+# Steps once in-game:
+#  1. Confirm the "ocean" is lava, not water, in every direction beyond
+#     the shore ring.
+#  2. Confirm the shore ring (beach/stony-shore, non-flammable) still
+#     separates the island's land from the lava -- walk the coastline
+#     and check nothing near it is on fire or catches fire.
+#  3. Confirm you cannot place a boat on the lava; confirm a strider can
+#     walk on it and can be ridden/led across it.
+#  4. Confirm the seabed still visibly deepens further from shore (same
+#     gradient shape as the water version).
+#  5. Confirm a compact, buried, enclosed fallback End portal exists
+#     somewhere reachable and the dragon fight is winnable.
+#  6. Confirm the Nether is completely ordinary, unrestricted vanilla
+#     Nether generation (GOALS 28: "Nether and End unchanged").
+#  7. General light/rendering/performance sanity near the coastline --
+#     nothing this design pass could verify without booting the game.
+oceanIsland:
+  fluid: lava
+  radiusBlocks: 128
+  shapeAmplitude: 0.3
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

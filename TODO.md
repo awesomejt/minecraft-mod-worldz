@@ -1164,11 +1164,32 @@ Right after the ocean phases: the ocean-island shape with the fluid swapped
       entry. `IslandPlan`'s exclusion-zone fields consolidated into a
       nested record to make room for `fluid` under the 14-field codec
       ceiling this DFU version enforces (confirmed by compiler error).
-- [ ] 9.2 Implement lava ocean (as an `ocean_island` fluid option or its own
+- [x] 9.2 Implement lava ocean (as an `ocean_island` fluid option or its own
       type — 9.1 decides); test configs; **[Jason]** acceptance including
       strider/bridging travel viability.
-- [ ] 9.3 Implement dry world with the water-findability difficulty option;
+      **Done (0.2.41):** shipped in one commit together with 9.3 (same
+      `fluid` substitution point, differing only in which enum value
+      maps to which block — full detail in DESIGN §26.4). New
+      `IslandFluid` enum; `EnvelopedChunkGenerator.exteriorState()`
+      gained a `fluid` param, its `WATER` case now switches to
+      `Blocks.WATER`/`LAVA`/`AIR`. Test config `36-ocean-island-lava.yaml`
+      and a new "Phase 9 acceptance" section in MANUAL_TESTING.md.
+      **[Jason] acceptance outstanding** — surface-lava-at-scale
+      behavior (light, fire spread, fluid ticking) needs real in-game
+      verification, not something code review could confirm.
+- [x] 9.3 Implement dry world with the water-findability difficulty option;
       test configs; **[Jason]** acceptance.
+      **Done (0.2.41), partial scope:** the core "drained ocean basin"
+      behavior (`fluid: none`) is implemented and beatability is
+      automatic (structures/aquifers untouched by this mechanism). **The
+      water-findability "harder" difficulty option (removing rivers/
+      surface lakes) is deliberately NOT implemented** — investigated
+      during 9.1/9.2, found to require real climate-biome sampling
+      threaded through `effectiveModeAt` and every caller of it, which
+      doesn't exist at that layer; a label-only version would be
+      actively misleading since the real water would still generate
+      underneath. Full reasoning in DESIGN §26.3. Test config
+      `37-ocean-island-dry.yaml`. **[Jason] acceptance outstanding.**
 
 ## Phase 10 — Sky island challenge (GOALS 05–07)
 

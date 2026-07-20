@@ -1,16 +1,20 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 
 /**
- * Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 02, 03, 04; DESIGN
- * §24, §25), consulted only when that preset resolves without explicit Customize-screen values.
+ * Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 02, 03, 04, 28, 31;
+ * DESIGN §24, §25, §26), consulted only when that preset resolves without explicit
+ * Customize-screen values.
  */
 public final class OceanIslandConfig {
     /** How the land is sourced (DESIGN §25.1): artificial, natural (seed), or chest-boat/none. */
     public IslandSource islandSource = IslandSource.ARTIFICIAL;
+    /** The exterior/ocean gradient's fluid (DESIGN §26.1): water, lava (GOALS 28), or none (GOALS 31). */
+    public IslandFluid fluid = IslandFluid.WATER;
     /** The one biome that fills the island's interior. */
     public String islandBiome = "minecraft:plains";
     /** Configured (unperturbed) island radius. */

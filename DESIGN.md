@@ -2801,4 +2801,59 @@ about 8.2's search reliability, the same spirit applies here). Revisit
 as a dedicated task if Jason wants the harder tier badly enough to
 justify threading real climate sampling through the exterior mechanism.
 
+### 26.4 As-built notes (TODO 9.2, 9.3)
+
+- **9.2 (lava) and 9.3 (dry) shipped in one commit, not two** -- both are
+  the exact same `fluid` substitution point (§26.1), differing only in
+  which enum value maps to which block. Splitting them into separate
+  commits would have meant an artificial, meaningless partition of one
+  three-way `switch` expression. Same reasoning already used for GOALS
+  04 shipping alongside 7.2 rather than as its own change.
+- **`IslandFluid`** (new enum, `WATER`/`LAVA`/`NONE`) follows the exact
+  `parse`/`serializedName` pattern every other Worldz enum uses.
+  `EnvelopedChunkGenerator.exteriorState()` gained a `fluid` parameter;
+  its `WATER` case now switches on it (`Blocks.WATER`/`LAVA`/`AIR`).
+  Both call sites (`applyEnvelope`'s per-column loop, `getBaseColumn`'s
+  non-`NORMAL` branch) compute `this.island.enabled() ? this.island
+  .fluid() : IslandFluid.WATER` -- the exact same conditional shape
+  already used for `depthBlocks` right next to it, so every non-island
+  exterior (strip_world's own `OCEAN` option, etc.) is provably
+  unaffected.
+- **`IslandPlan` codec arity**: confirmed via actual compiler error (not
+  assumption) that `RecordCodecBuilder.create`'s `instance.group(...)`
+  tops out at `P14`/`Function14` in this DFU version (10.0.21).
+  `IslandPlan` was already at exactly 14 fields before Phase 9; adding
+  `fluid` required freeing a slot. Chose to nest `exclusionZoneEnabled`/
+  `exclusionZoneRadiusBlocks` into a new `IslandPlan.ExclusionZone`
+  record (10 external call sites, the fewest of any candidate pairing --
+  checked via grep before choosing, not guessed) rather than the
+  5-field, 16-call-site ocean-gradient group. Convenience accessor
+  methods (`exclusionZoneEnabled()`, `exclusionZoneRadiusBlocks()`) on
+  `IslandPlan` itself keep every pre-existing call site
+  source-compatible; only the handful of direct `new IslandPlan(...)`
+  constructor calls (the record's own factories, plus
+  `OceanIslandCustomization`/tests) needed updating.
+- **The `removeNaturalRivers` false start**: built completely (new
+  `IslandPlan.WaterSettings` nested record, `OceanIslandConfig`/
+  `OceanIslandCustomization` fields, a Customize-screen checkbox, and
+  `LimitedBiomeSource.islandBiomeAt` river-detection logic sampling
+  `resolution.get().delegate()` for `BiomeTags.IS_RIVER`), then fully
+  reverted once the terrain-masking gap described in §26.3 was found by
+  reasoning through what `effectiveModeAt` would still do with the
+  column. Reverting included simplifying `IslandPlan.fluid` back down
+  to a flat field (a `WaterSettings` wrapper was only ever needed to fit
+  two new fields under the 14-field ceiling; with one field removed,
+  nesting only `ExclusionZone` was enough). No dead code or inert
+  YAML/Customize-screen fields were left behind from the false start --
+  confirmed by grepping for `removeNaturalRivers`/`WaterSettings` across
+  the codebase after reverting.
+- Full suite green (395 tests, up from 386 -- new `IslandFluid`
+  coverage across `IslandPlanTest`, `OceanIslandCustomizationTest`,
+  `WorldzConfigTest`); clean build across all modules. No pure-logic
+  test exists for `EnvelopedChunkGenerator`'s block substitution itself
+  (needs a real Minecraft runtime, per the project's established
+  convention) -- validated by code review and the existing
+  `depthBlocks`-parallel pattern, not a unit test; real in-game
+  verification is Jason's acceptance pass.
+
 

@@ -28,6 +28,8 @@ import java.util.List;
  * @param oceanRegionScaleBlocks grid-cell edge length for the ocean biome's per-region pick
  * @param exclusionZoneEnabled whether shaping releases beyond the exclusion radius (GOALS 04)
  * @param exclusionZoneRadiusBlocks radius beyond which shaping releases, when enabled
+ * @param fluid the exterior/ocean gradient's fluid (DESIGN §26.1): water, lava (GOALS 28), or
+ *     none (GOALS 31)
  * @param overworldBorder optional Overworld size limit, composed on top of the island shape
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
@@ -46,6 +48,7 @@ public record OceanIslandCustomization(
     int oceanRegionScaleBlocks,
     boolean exclusionZoneEnabled,
     int exclusionZoneRadiusBlocks,
+    IslandFluid fluid,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
@@ -108,6 +111,7 @@ public record OceanIslandCustomization(
             config.oceanIsland.oceanRegionScaleBlocks,
             config.oceanIsland.exclusionZoneEnabled,
             config.oceanIsland.exclusionZoneRadiusBlocks,
+            config.oceanIsland.fluid,
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
@@ -130,6 +134,7 @@ public record OceanIslandCustomization(
      * @param oceanRegionScaleBlocks decimal ocean biome region scale
      * @param exclusionZoneEnabled whether shaping releases beyond the exclusion radius
      * @param exclusionZoneRadiusBlocks decimal exclusion-zone radius
+     * @param fluid the exterior/ocean gradient's fluid
      * @param overworldBorder validated Overworld border values
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
@@ -149,6 +154,7 @@ public record OceanIslandCustomization(
         String oceanRegionScaleBlocks,
         boolean exclusionZoneEnabled,
         String exclusionZoneRadiusBlocks,
+        IslandFluid fluid,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
@@ -167,6 +173,7 @@ public record OceanIslandCustomization(
             parseInteger(oceanRegionScaleBlocks, "Ocean region scale"),
             exclusionZoneEnabled,
             parseInteger(exclusionZoneRadiusBlocks, "Exclusion zone radius"),
+            fluid,
             overworldBorder,
             netherBorder,
             endBorder,
@@ -197,10 +204,10 @@ public record OceanIslandCustomization(
             oceanShallowDepthBlocks,
             oceanDeepDepthBlocks,
             oceanRegionScaleBlocks,
-            exclusionZoneEnabled,
-            exclusionZoneRadiusBlocks,
             hasLand,
-            syntheticLand
+            syntheticLand,
+            new IslandPlan.ExclusionZone(exclusionZoneEnabled, exclusionZoneRadiusBlocks),
+            fluid
         );
     }
 

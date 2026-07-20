@@ -300,6 +300,25 @@ config) picks between three ways of sourcing the land itself:
   random extras drawn from a configurable pool. The ocean gradient starts
   right at the origin instead of past a shore ring.
 
+Independent of `islandSource`, `fluid` (in Customize, or
+`oceanIsland.fluid` in config) picks what the exterior ocean is made of —
+any island source can pair with any fluid:
+
+- **`water`** (default, GOALS 01/02/03) — an ordinary ocean.
+- **`lava`** (GOALS 28) — the endless ocean is lava instead of water. The
+  island shape, shore ring, and ocean gradient bands are otherwise
+  unchanged; the shore ring's non-flammable blocks (beach/stony-shore)
+  buffer the island's land from the lava. No boats (vanilla already
+  disallows placing them on lava); travel is by strider or bridging.
+- **`none`** (GOALS 31) — the ocean is a drained, exposed basin (no fluid
+  at all, real stone floor). Water-scarcity beatability is automatic —
+  this only changes the exterior ocean's own fluid, so village wells,
+  strongholds, and aquifer pockets still generate with real water exactly
+  as vanilla always has. The "harder" option of also removing rivers and
+  surface lakes elsewhere in the world is not implemented (deferred —
+  doing it correctly needs real climate-biome sampling threaded through
+  the terrain-masking code, which doesn't exist yet at that layer).
+
 The rest of this section describes the `artificial` source's own shape.
 
 The island's coastline is deliberately not a perfect circle: a handful of
@@ -330,6 +349,7 @@ Configure its defaults with an `oceanIsland:` section in
 ```yaml
 oceanIsland:
   islandSource: artificial
+  fluid: water
   islandBiome: 'minecraft:plains'
   radiusBlocks: 128
   shapeAmplitude: 0.3
@@ -359,6 +379,7 @@ oceanIsland:
 | Setting | Default | Description |
 |---|---|---|
 | `islandSource` | `"artificial"` | `artificial`, `natural`, or `chest_boat` — see above. |
+| `fluid` | `"water"` | `water`, `lava`, or `none` — see above. Independent of `islandSource`. |
 | `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior (`artificial` only). |
 | `radiusBlocks` | `128` | Configured (unperturbed) island radius (`artificial`), or the search-isolation/land radius around whatever the search finds (`natural`). Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
 | `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius (`artificial` only). `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |

@@ -18,6 +18,7 @@ class OceanIslandCustomizationTest {
     ) {
         return new OceanIslandCustomization(
             islandSource, islandBiome, radiusBlocks, shapeAmplitude, shoreWidthBlocks, 64, 128, 8, 32, 128, false, 2000,
+            IslandFluid.WATER,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -96,6 +97,7 @@ class OceanIslandCustomizationTest {
     void fromTextParsesDecimalAndDoubleFields() {
         OceanIslandCustomization customization = OceanIslandCustomization.fromText(
             IslandSource.ARTIFICIAL, "minecraft:desert", "256", "0.4", "16", "64", "128", "8", "32", "128", true, "1500",
+            IslandFluid.WATER,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -112,6 +114,7 @@ class OceanIslandCustomizationTest {
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> OceanIslandCustomization.fromText(
             IslandSource.ARTIFICIAL, "minecraft:plains", "not-a-number", "0.3", "12", "64", "128", "8", "32", "128", false, "2000",
+            IslandFluid.WATER,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         ));
@@ -142,5 +145,27 @@ class OceanIslandCustomizationTest {
         assertTrue(plan.hasLand());
         assertFalse(plan.syntheticLand());
         assertEquals(128, plan.radiusBlocks());
+    }
+
+    @Test
+    void islandPlanCarriesLavaFluidThrough() {
+        OceanIslandCustomization customization = new OceanIslandCustomization(
+            IslandSource.ARTIFICIAL, "minecraft:plains", 128, 0.3, 12, 64, 128, 8, 32, 128, false, 2000,
+            IslandFluid.LAVA,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal()
+        );
+        assertEquals(IslandFluid.LAVA, customization.islandPlan().fluid());
+    }
+
+    @Test
+    void islandPlanCarriesDryFluidThrough() {
+        OceanIslandCustomization customization = new OceanIslandCustomization(
+            IslandSource.ARTIFICIAL, "minecraft:plains", 128, 0.3, 12, 64, 128, 8, 32, 128, false, 2000,
+            IslandFluid.NONE,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal()
+        );
+        assertEquals(IslandFluid.NONE, customization.islandPlan().fluid());
     }
 }

@@ -10,6 +10,13 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  * §24.1). Threaded through {@code EnvelopedChunkGenerator} and {@code LimitedBiomeSource}
  * exactly like {@link StripPlan}.
  *
+ * <p>{@code exclusionZone} is a nested record rather than two flat fields (DESIGN §26.1):
+ * {@code RecordCodecBuilder.create}'s {@code instance.group(...)} tops out at 14 fields in this
+ * DFU version, and this record was already at exactly 14 before Phase 9 added {@code fluid} --
+ * nesting the least-widely-used existing pair (exclusion zone) freed a slot without touching any
+ * of the higher-traffic fields. Convenience accessors ({@link #exclusionZoneEnabled()}, {@link
+ * #exclusionZoneRadiusBlocks()}) keep every existing call site source-compatible.
+ *
  * @param enabled whether the island shape applies
  * @param radiusBlocks configured (unperturbed) island radius
  * @param shapeAmplitude coastline perturbation strength, {@code 0} through {@code
@@ -22,9 +29,6 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  * @param oceanShallowDepthBlocks seabed depth below sea level in the shallow band
  * @param oceanDeepDepthBlocks seabed depth below sea level once fully deep
  * @param oceanRegionScaleBlocks grid-cell edge length for the ocean biome's per-region pick
- * @param exclusionZoneEnabled whether island/ocean shaping releases beyond {@link
- *     #exclusionZoneRadiusBlocks}, letting the seed's natural terrain resume (GOALS 04)
- * @param exclusionZoneRadiusBlocks radius beyond which shaping releases, when enabled
  * @param hasLand whether any land exists at all (DESIGN §25.2). {@code false} only for the
  *     {@code CHEST_BOAT} island source (GOALS 03): the interior and shore-ring branches never
  *     fire, and the ocean gradient starts right at the origin instead of past a shore ring that
@@ -35,6 +39,10 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  *     and biome show through unmodified within {@code radiusBlocks}, and the ocean gradient
  *     begins immediately past it (no separate shore-ring width to subtract). Meaningless
  *     (harmless placeholder {@code true}) whenever {@link #hasLand} is {@code false}.
+ * @param exclusionZone whether/where island/ocean shaping releases, letting the seed's natural
+ *     terrain resume beyond it (GOALS 04)
+ * @param fluid the exterior/ocean gradient's fluid (DESIGN §26.1): {@code WATER} (GOALS 01/02/03
+ *     default), {@code LAVA} (GOALS 28), or {@code NONE} (GOALS 31, drained basins)
  */
 public record IslandPlan(
     boolean enabled,
@@ -47,10 +55,10 @@ public record IslandPlan(
     int oceanShallowDepthBlocks,
     int oceanDeepDepthBlocks,
     int oceanRegionScaleBlocks,
-    boolean exclusionZoneEnabled,
-    int exclusionZoneRadiusBlocks,
     boolean hasLand,
-    boolean syntheticLand
+    boolean syntheticLand,
+    ExclusionZone exclusionZone,
+    IslandFluid fluid
 ) {
     /** Fixture-verified default shore-ring width; see DESIGN §24.4. */
     public static final int DEFAULT_SHORE_WIDTH_BLOCKS = 12;
@@ -91,8 +99,14 @@ public record IslandPlan(
         if (oceanRegionScaleBlocks <= 0) {
             throw new IllegalArgumentException("Ocean region scale must be positive.");
         }
-        if (exclusionZoneRadiusBlocks <= 0) {
+        if (exclusionZone == null) {
+            throw new IllegalArgumentException("Exclusion zone settings are required.");
+        }
+        if (exclusionZone.radiusBlocks() <= 0) {
             throw new IllegalArgumentException("Exclusion zone radius must be positive.");
+        }
+        if (fluid == null) {
+            throw new IllegalArgumentException("Fluid is required.");
         }
     }
 
@@ -106,7 +120,9 @@ public record IslandPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0, "minecraft:plains",
             DEFAULT_SHORE_WIDTH_BLOCKS, DEFAULT_OCEAN_SHALLOW_WIDTH_BLOCKS, DEFAULT_OCEAN_DEEPEN_WIDTH_BLOCKS,
             DEFAULT_OCEAN_SHALLOW_DEPTH_BLOCKS, DEFAULT_OCEAN_DEEP_DEPTH_BLOCKS, DEFAULT_OCEAN_REGION_SCALE_BLOCKS,
-            false, DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS, true, true
+            true, true,
+            new ExclusionZone(false, DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS),
+            IslandFluid.WATER
         );
     }
 
@@ -128,10 +144,10 @@ public record IslandPlan(
             config.oceanShallowDepthBlocks,
             config.oceanDeepDepthBlocks,
             config.oceanRegionScaleBlocks,
-            config.exclusionZoneEnabled,
-            config.exclusionZoneRadiusBlocks,
             true,
-            true
+            true,
+            new ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
+            config.fluid
         );
     }
 
@@ -156,10 +172,10 @@ public record IslandPlan(
             config.oceanShallowDepthBlocks,
             config.oceanDeepDepthBlocks,
             config.oceanRegionScaleBlocks,
-            config.exclusionZoneEnabled,
-            config.exclusionZoneRadiusBlocks,
             false,
-            true
+            true,
+            new ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
+            config.fluid
         );
     }
 
@@ -186,10 +202,10 @@ public record IslandPlan(
             config.oceanShallowDepthBlocks,
             config.oceanDeepDepthBlocks,
             config.oceanRegionScaleBlocks,
-            config.exclusionZoneEnabled,
-            config.exclusionZoneRadiusBlocks,
             true,
-            false
+            false,
+            new ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
+            config.fluid
         );
     }
 
@@ -215,10 +231,38 @@ public record IslandPlan(
      * @return whether island/ocean shaping applies at this column
      */
     public boolean withinExclusionZone(int x, int z) {
-        if (!exclusionZoneEnabled) {
+        if (!exclusionZone.enabled()) {
             return true;
         }
         long distance = Math.max(Math.abs((long) x), Math.abs((long) z));
-        return distance <= exclusionZoneRadiusBlocks;
+        return distance <= exclusionZone.radiusBlocks();
+    }
+
+    /**
+     * Whether island/ocean shaping releases beyond {@link #exclusionZoneRadiusBlocks} (GOALS 04).
+     *
+     * @return whether the exclusion zone is enabled
+     */
+    public boolean exclusionZoneEnabled() {
+        return exclusionZone.enabled();
+    }
+
+    /**
+     * Radius beyond which shaping releases, when the exclusion zone is enabled.
+     *
+     * @return exclusion zone radius in blocks
+     */
+    public int exclusionZoneRadiusBlocks() {
+        return exclusionZone.radiusBlocks();
+    }
+
+    /**
+     * Whether/where island/ocean shaping releases, letting the seed's natural terrain resume
+     * beyond it (GOALS 04).
+     *
+     * @param enabled whether the exclusion zone is active
+     * @param radiusBlocks radius beyond which shaping releases, when enabled
+     */
+    public record ExclusionZone(boolean enabled, int radiusBlocks) {
     }
 }

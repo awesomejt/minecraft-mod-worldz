@@ -137,6 +137,7 @@ public final class OceanIslandPresetEditor implements PresetEditor {
             island.oceanRegionScaleBlocks(),
             island.exclusionZoneEnabled(),
             island.exclusionZoneRadiusBlocks(),
+            island.fluid(),
             fromPlan(plan.overworld()),
             fromPlan(plan.nether()),
             fromPlan(plan.end()),

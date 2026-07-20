@@ -1,0 +1,41 @@
+# GOALS 31: oceans generate as drained, empty basins instead of water
+# (DESIGN §26.1, §26.3, TODO 9.3). **Select "Worldz: Ocean Island"** and,
+# if opening Customize, choose "None" for Fluid -- this file sets it
+# directly via `oceanIsland.fluid: none`.
+#
+# The island shape, shore ring, and ocean gradient bands are unchanged
+# from the water version (config 30) -- only the "wet" layer resolves to
+# air instead of water, exposing the (always-stone, same as every other
+# exterior mode) seabed floor. Water-scarcity beatability is automatic,
+# not a special case: nothing about this mechanism touches structure or
+# aquifer generation, so village wells, strongholds, and aquifer pockets
+# should still provide water exactly as vanilla always has.
+#
+# **The "harder" difficulty option (removing rivers/surface lakes too)
+# is NOT implemented** -- deliberately deferred, see DESIGN §26.3 for
+# why. This config only exercises the core "drained ocean" behavior.
+#
+# Steps once in-game:
+#  1. Confirm the area beyond the shore ring is an exposed, walkable
+#     stone basin (a real drop from the shore down to the seabed) with
+#     no water anywhere in it, rather than an ocean.
+#  2. Confirm the basin's depth still visibly increases further from
+#     shore (same gradient shape/shape amplitude as the water version).
+#  3. If any village, ocean ruin, or other structure with a well/water
+#     feature happens to generate, confirm it still has real water --
+#     structures should be completely unaffected by the dry ocean.
+#  4. Confirm a compact, buried, enclosed fallback End portal exists
+#     somewhere reachable and the dragon fight is winnable (confirms
+#     potions/water-dependent progression remain obtainable per GOALS
+#     31's beatability note, at least via the guaranteed End portal --
+#     brewing water access itself depends on whatever structures/
+#     aquifers this seed happens to generate).
+#  5. Confirm the Nether is completely ordinary, unrestricted vanilla
+#     Nether generation.
+oceanIsland:
+  fluid: none
+  radiusBlocks: 128
+  shapeAmplitude: 0.3
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

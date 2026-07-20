@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
@@ -546,7 +547,7 @@ class WorldzConfigTest {
                 + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
                 + ", allowBeaches=false"
                 + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
-                + ", oceanIsland=islandSource=artificial, islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
+                + ", oceanIsland=islandSource=artificial, fluid=water, islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
                 + ", shoreWidthBlocks=12, oceanShallowWidthBlocks=64, oceanDeepenWidthBlocks=128"
                 + ", oceanShallowDepthBlocks=8, oceanDeepDepthBlocks=32, oceanRegionScaleBlocks=128"
                 + ", exclusionZone=<disabled>"
@@ -874,6 +875,32 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(IslandSource.NATURAL, config.oceanIsland.islandSource);
+    }
+
+    @Test
+    void oceanIslandFluidDefaultsToWater() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+        assertEquals(IslandFluid.WATER, config.oceanIsland.fluid);
+    }
+
+    @Test
+    void oceanIslandFluidLoadsLava() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              fluid: lava
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(IslandFluid.LAVA, config.oceanIsland.fluid);
+    }
+
+    @Test
+    void oceanIslandFluidLoadsNone() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              fluid: none
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(IslandFluid.NONE, config.oceanIsland.fluid);
     }
 
     @Test
