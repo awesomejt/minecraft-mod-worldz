@@ -13,23 +13,67 @@ public final class IslandOceanProfile {
         "minecraft:warm_ocean", "minecraft:lukewarm_ocean", "minecraft:ocean"
     );
     private static final List<String> SHORE_IDS = List.of("minecraft:beach", "minecraft:stony_shore");
+    /** Approximate arc length in blocks each contiguous beach/stony-shore stretch targets. */
+    private static final double SHORE_ARC_TARGET_LENGTH_BLOCKS = 32.0;
+    private static final int SHORE_ARC_MIN_SEGMENTS = 4;
+    /** Distinguishes the shore-arc jitter/pick hashes from the ocean-region ones above them. */
+    private static final long SHORE_ARC_SALT = 0x53484F5245415243L;
 
     private IslandOceanProfile() {
     }
 
     /**
      * Selects a deterministic beach/stony-shore biome at one column in the shore ring (GOALS
-     * 01: "a combination of beach and/or stony shore"). Sampled per-block, unlike the wider
-     * ocean gradient, since the shore ring itself is already narrow.
+     * 01: "a combination of beach and/or stony shore"). Sampled as jittered 1D Voronoi arcs
+     * around the island's angle, not per-block, so the shoreline reads as alternating
+     * contiguous stretches of each biome (naturally varying in length, since jittered Voronoi
+     * cells are not uniform) rather than a speckled block-by-block mix.
      *
      * @param x block X relative to the origin
      * @param z block Z relative to the origin
+     * @param baseRadiusBlocks configured (unperturbed) island radius, used only to scale how
+     *     many arc segments fit around the coastline so stretch length stays roughly constant
+     *     in blocks regardless of island size
      * @param seed sampling seed
      * @return {@code minecraft:beach} or {@code minecraft:stony_shore}
      */
-    public static String shoreBiomeAt(int x, int z, long seed) {
-        int index = (int) Math.floorMod(hashIndex(seed, x, z), (long) SHORE_IDS.size());
+    public static String shoreBiomeAt(int x, int z, double baseRadiusBlocks, long seed) {
+        double angle = Math.atan2(z, x);
+        long segment = nearestShoreArcSegment(angle, baseRadiusBlocks, seed);
+        int index = (int) Math.floorMod(hashIndex(seed ^ SHORE_ARC_SALT, segment, 0), (long) SHORE_IDS.size());
         return SHORE_IDS.get(index);
+    }
+
+    /**
+     * Finds the jittered arc segment whose feature angle is nearest {@code angle}, searching
+     * the query segment and its two neighbors (the jitter margin guarantees the true nearest
+     * feature angle can never fall outside that neighborhood), wrapping around the full circle.
+     */
+    private static long nearestShoreArcSegment(double angle, double baseRadiusBlocks, long seed) {
+        int segmentCount = Math.max(
+            SHORE_ARC_MIN_SEGMENTS,
+            (int) Math.round(2.0 * Math.PI * Math.max(1.0, baseRadiusBlocks) / SHORE_ARC_TARGET_LENGTH_BLOCKS)
+        );
+        double segmentWidth = 2.0 * Math.PI / segmentCount;
+        double normalizedAngle = angle < 0.0 ? angle + 2.0 * Math.PI : angle;
+        long originSegment = (long) Math.floor(normalizedAngle / segmentWidth);
+        long bestSegment = originSegment;
+        double bestDistance = Double.MAX_VALUE;
+        for (int offset = -1; offset <= 1; offset++) {
+            long segment = Math.floorMod(originSegment + offset, (long) segmentCount);
+            double featureAngle = (segment + JITTER_MARGIN + jitter01(seed ^ SHORE_ARC_SALT, segment, 0, 0) * JITTER_SPAN) * segmentWidth;
+            double distance = angularDistance(normalizedAngle, featureAngle);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestSegment = segment;
+            }
+        }
+        return bestSegment;
+    }
+
+    private static double angularDistance(double a, double b) {
+        double diff = Math.abs(a - b) % (2.0 * Math.PI);
+        return Math.min(diff, 2.0 * Math.PI - diff);
     }
 
     /**

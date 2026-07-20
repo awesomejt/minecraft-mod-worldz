@@ -1040,6 +1040,20 @@ rectangular shape.
       that path. Clean build, unchanged 352-test suite (no pure-logic
       class touched). Re-deployed as 0.2.34 — **awaiting Jason's re-test
       of the portal's depth/enclosure before Phase 8 starts.**
+      **Test-3 finding and fix (0.2.35):** 0.2.34 re-test confirmed the
+      portal fix and the ocean-life fix; one further finding — the shore
+      ring's beach/stony-shore mix reads as speckled (flips block-by-
+      block) rather than forming stretches. Jason's request: alternate
+      the two in contiguous stretches of varying length. Fixed (full
+      detail in DESIGN §24.13, MEMORY.md 2026-07-19) with a 1D jittered-
+      Voronoi arc pick keyed on the column's angle around the island
+      instead of raw block coordinates — segments sized to average 32
+      blocks of arc length, scaled by the island's own radius, naturally
+      uneven in length since jittered Voronoi cells always are. Two new
+      qualitative tests (mostly-contiguous transitions; non-uniform run
+      lengths). Full suite green (354 tests); clean build. Re-deployed as
+      0.2.35 — **awaiting Jason's re-test of the coastline specifically
+      before Phase 8 starts.**
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 

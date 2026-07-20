@@ -2394,3 +2394,46 @@ No test file exists for `ProgressionGuarantees` (needs a real server
 runtime); validated by a clean full build and the unchanged 352-test
 suite (this change touches no pure-logic class). Re-deployed as 0.2.34
 for Jason to re-test the fallback portal's depth and enclosure.
+
+### 24.13 Test-3 finding and fix: contiguous shore arcs (0.2.34 → 0.2.35)
+
+0.2.34's re-test confirmed both the portal depth/enclosure and (per
+Jason) that the ocean is no longer sterile. One further finding: the
+shore ring's beach/stony-shore mix reads as speckled -- individual
+blocks flip between the two biomes rather than forming stretches. Root
+cause: `IslandOceanProfile.shoreBiomeAt` picked a biome per raw block
+(`hashIndex(seed, x, z)`), completely independent between neighboring
+columns.
+
+Jason's request: alternate beach and stony shore in contiguous stretches
+along the coastline, with the stretches varying in length (not uniform).
+Fixed by reframing the pick in terms of position *along the coastline*
+rather than raw block coordinates: `shoreBiomeAt` now computes the
+column's angle (`atan2(z, x)`, same angle every other island primitive
+already keys off) and runs a 1D analog of `biomeAt`'s jittered-grid
+Voronoi -- the full circle is divided into `segmentCount` angular
+segments (sized so each averages `SHORE_ARC_TARGET_LENGTH_BLOCKS = 32`
+blocks of arc length at the island's own `baseRadiusBlocks`, floored at
+`SHORE_ARC_MIN_SEGMENTS = 4` for very small islands), each segment gets
+a seed-hashed jittered feature angle, and the nearest feature angle's
+segment index picks the biome. Jittered Voronoi cells are inherently
+uneven in size, which is what delivers "varying length" for free without
+a separate length-randomization step. Wraparound handled via
+`angularDistance`'s circular distance rather than a plain angle
+subtraction. New `shoreBiomeAt` parameter `baseRadiusBlocks` (so segment
+density scales with island size, keeping arc length roughly constant in
+blocks rather than in degrees); its one caller,
+`LimitedBiomeSource.islandBiomeAt`, now passes `this.island.radiusBlocks()`.
+`SHORE_ARC_SALT` XORed into both the jitter and final-pick hashes so
+this arc-Voronoi doesn't correlate with the ocean-region one right above
+it in the same file, even though the two operate on different domains
+(angle vs. x/z) anyway.
+
+Two new tests (`IslandOceanProfileTest`) verify the qualitative
+properties Jason asked for without hardcoding hash-dependent exact
+values: `shoreArcsAreContiguousNotSpeckled` sweeps the full coastline at
+a fixed radius and asserts the transition count stays well below what a
+per-block coin-flip would produce; `shoreArcLengthsVary` sweeps a larger
+radius and asserts the resulting contiguous run lengths are not all
+identical. Full suite green (354 tests); clean build. Re-deployed as
+0.2.35.

@@ -84,9 +84,61 @@ class IslandOceanProfileTest {
     void shoreBiomeIsBeachOrStonyShoreAndDeterministic() {
         List<String> shoreIds = List.of("minecraft:beach", "minecraft:stony_shore");
         for (int x = 0; x < 200; x += 17) {
-            String biome = IslandOceanProfile.shoreBiomeAt(x, -x, 42L);
+            String biome = IslandOceanProfile.shoreBiomeAt(x, -x, 128.0, 42L);
             assertTrue(shoreIds.contains(biome), biome + " is not a shore biome");
         }
-        assertEquals(IslandOceanProfile.shoreBiomeAt(5, 5, 42L), IslandOceanProfile.shoreBiomeAt(5, 5, 42L));
+        assertEquals(
+            IslandOceanProfile.shoreBiomeAt(5, 5, 128.0, 42L), IslandOceanProfile.shoreBiomeAt(5, 5, 128.0, 42L)
+        );
+    }
+
+    @Test
+    void shoreArcsAreContiguousNotSpeckled() {
+        // Sweeping the coastline at a fixed radius, a speckled per-block pick would flip
+        // biome roughly every other sample; contiguous arcs should transition rarely.
+        int radius = 128;
+        int samples = 800;
+        String previous = null;
+        int transitions = 0;
+        for (int i = 0; i < samples; i++) {
+            double angle = 2.0 * Math.PI * i / samples;
+            int x = (int) Math.round(radius * Math.cos(angle));
+            int z = (int) Math.round(radius * Math.sin(angle));
+            String biome = IslandOceanProfile.shoreBiomeAt(x, z, radius, 42L);
+            if (previous != null && !biome.equals(previous)) {
+                transitions++;
+            }
+            previous = biome;
+        }
+        assertTrue(transitions < samples / 4, "expected contiguous arcs, but saw " + transitions + " transitions across " + samples + " samples");
+    }
+
+    @Test
+    void shoreArcLengthsVary() {
+        int radius = 512;
+        int samples = 2000;
+        List<Integer> runLengths = new java.util.ArrayList<>();
+        String previous = null;
+        int currentRun = 0;
+        for (int i = 0; i < samples; i++) {
+            double angle = 2.0 * Math.PI * i / samples;
+            int x = (int) Math.round(radius * Math.cos(angle));
+            int z = (int) Math.round(radius * Math.sin(angle));
+            String biome = IslandOceanProfile.shoreBiomeAt(x, z, radius, 7L);
+            if (biome.equals(previous)) {
+                currentRun++;
+            } else {
+                if (previous != null) {
+                    runLengths.add(currentRun);
+                }
+                currentRun = 1;
+            }
+            previous = biome;
+        }
+        runLengths.add(currentRun);
+        assertTrue(
+            runLengths.stream().distinct().count() > 1,
+            "expected coastal arc stretches of varying length, got uniform runs " + runLengths
+        );
     }
 }

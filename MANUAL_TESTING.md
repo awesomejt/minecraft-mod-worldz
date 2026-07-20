@@ -412,7 +412,10 @@ re-test; see MEMORY.md's 2026-07-19 "Phase 7 test-2 findings" entry.
 enclosed vault (Y-10 to Y-60, full floor/ceiling/walls/doorway) — 0.2.32
 and 0.2.33 correctly reached the terrain surface but built an exposed,
 unenclosed platform there; see MEMORY.md's 2026-07-19 "Phase 7 test-2
-follow-up" entry.
+follow-up" entry. **Requires 0.2.35+** for the shore ring to read as
+alternating contiguous beach/stony-shore stretches rather than a
+speckled per-block mix; see MEMORY.md's 2026-07-19 "Phase 7 test-3
+finding" entry.
 
 1. **Default island**, `30-ocean-island-default.yaml`. Confirm: the
    coastline reads as natural/irregular, not a circle or square; a narrow

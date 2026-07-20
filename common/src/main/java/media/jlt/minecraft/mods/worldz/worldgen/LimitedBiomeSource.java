@@ -874,7 +874,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                 this.island.oceanRegionScaleBlocks(), seed
             );
         } else if (distance > 0.0) {
-            biomeId = IslandOceanProfile.shoreBiomeAt(relativeX, relativeZ, seed);
+            biomeId = IslandOceanProfile.shoreBiomeAt(relativeX, relativeZ, this.island.radiusBlocks(), seed);
         } else {
             biomeId = this.island.islandBiome();
         }

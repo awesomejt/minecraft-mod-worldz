@@ -1401,6 +1401,28 @@ Durable decisions, verified API notes, and rationale that should survive across 
   touched (`ProgressionGuarantees` has no dedicated test, needs a real
   server runtime); clean build, unchanged 352-test suite. Re-deployed as
   0.2.34.
+- 2026-07-19 (Phase 7 test-3 finding and fix: contiguous shore arcs,
+  0.2.35) — 0.2.34 re-test confirmed the portal fix and the ocean life
+  fix; one further finding: beach/stony-shore mix reads as speckled
+  (flips block-by-block) instead of forming stretches. Root cause:
+  `IslandOceanProfile.shoreBiomeAt` picked a biome per raw block, fully
+  independent between neighbors. Jason's request: alternate the two in
+  contiguous stretches of varying length along the coastline. Fixed by
+  reframing the pick around the column's *angle* (`atan2(z, x)`) instead
+  of raw x/z, running a 1D analog of `biomeAt`'s jittered-grid Voronoi
+  from the earlier checkerboard fix: the full circle divides into
+  angular segments sized to average `SHORE_ARC_TARGET_LENGTH_BLOCKS = 32`
+  blocks of arc length at the island's own radius (floored at 4 segments
+  for tiny islands), each gets a seed-jittered feature angle, nearest
+  feature angle's segment picks the biome — jittered Voronoi cells are
+  naturally uneven in size, which delivers "varying length" for free.
+  New `shoreBiomeAt` parameter `baseRadiusBlocks` so segment density
+  scales with island size (roughly constant arc length in blocks, not
+  degrees); `LimitedBiomeSource.islandBiomeAt` passes
+  `this.island.radiusBlocks()`. Two new tests assert the qualitative
+  properties (mostly-contiguous transitions; non-uniform run lengths)
+  without hardcoding hash-dependent exact values. Full suite green (354
+  tests); clean build. Re-deployed as 0.2.35.
 
 ## Reference Log
 
