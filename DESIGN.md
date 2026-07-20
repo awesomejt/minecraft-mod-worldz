@@ -3138,6 +3138,60 @@ throwaway-branch-OK spike: confirm what, if anything, in `EnvelopedChunkGenerato
 generalizes to wrapping the End's generator, and report findings rather
 than attempting an implementation now. Findings go here once 10.5 runs.
 
+**Findings (10.5, research only — no code written):**
+
+1. **Wrapping is technically feasible, contrary to the initial "no existing
+   wrapper at all" framing above.** Every world preset this mod ships
+   (`worldz.json`, `ocean_island.json`, `sky_island.json`, ...) leaves the
+   End's generator as `{"type": "minecraft:noise", "biome_source":
+   {"type": "minecraft:the_end"}, "settings": "minecraft:end"}` — the
+   *same* `minecraft:noise` (`NoiseBasedChunkGenerator`) type
+   `EnvelopedChunkGenerator` already wraps for the Overworld and Nether.
+   Nothing about the generator type itself blocks reusing
+   `EnvelopedChunkGenerator.customized(...)` on the End's `LevelStem`
+   exactly the way it's already done for the other two dimensions — this
+   part was never actually a hard blocker, just never attempted (the End
+   has always been left alone by choice, not by necessity, per §5.2).
+
+2. **The real finding, and the one that matters: vanilla End terrain
+   already *is* a bounded-below floating-island world, natively, with no
+   code at all.** Decompiling `TheEndBiomeSource` confirms its entire
+   biome set is `end` (the central island), `end_highlands`,
+   `end_midlands`, `end_barrens`, and `end_islands` (renamed `islands` in
+   the confirmed class) — vanilla's own End generation is *already*
+   "small landmasses surrounded by void," which is exactly the shape
+   GOALS 05/06 spent this whole phase building for the Overworld and
+   Nether from scratch. There is no analogous "the whole dimension is one
+   contiguous landmass" problem to solve here the way there was for the
+   Nether (§27.6) — the bounded-below mechanism this phase built would be
+   solving a problem the End doesn't have.
+
+3. **The "keep it small" lever already exists and needs no new code**:
+   GOALS 17's End-border carry-over (§5.2, shipped well before this
+   phase) already lets a world's End be limited to a configurable radius
+   via ordinary `WorldBorder` — small enough to keep just the central
+   island (or a cluster of nearby outer islands) in scope, with no
+   generation-level changes required. Combined with finding 2, "the End is
+   a sky island too" reads as **already satisfied by existing,
+   already-shipped mechanism** for any world type, sky island included —
+   not a gap this phase (or a future one) needs to close.
+
+4. **Recommendation: no further sky-island-specific End work is needed.**
+   Beatability is unaffected either way — the dragon fight and the
+   fallback End-portal vault (§27.5) both already work regardless of
+   whether the End's own border is limited. If Jason wants the End
+   *visually* themed to match a floating-island Overworld/Nether more
+   tightly (e.g., a forced single-island layout, no outer islands at all),
+   that would be a real, new, deliberately-scoped feature — genuinely
+   similar in shape to what this phase built, technically buildable per
+   finding 1 — but it is solving a stylistic-consistency want, not the
+   "the dimension is one giant landmass" problem GOALS 06 was written
+   against, and nothing here suggests it's worth doing speculatively.
+   **Jason's call:** treat GOALS 06's End component as done via existing
+   mechanism (recommended), or scope a new, narrower "force a single End
+   island" phase later if the stylistic gap turns out to matter once the
+   Overworld/Nether sky island is actually played.
+
 ### 27.8 Chest tiers (GOALS 05, TODO 10.3) — as-built
 
 Phase 8's `StarterKitPlan` (essentials + seed-picked extras, DESIGN §25.3)

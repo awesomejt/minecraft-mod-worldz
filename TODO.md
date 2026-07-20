@@ -1380,12 +1380,36 @@ island's 7.1–7.4/8.1–8.3 split):
       (`SkyIslandCustomizationTest`/`WorldzConfigTest`/
       `WorldPresetResourcesTest` additions); full suite green (441 tests);
       clean build across all modules.
-- [ ] 10.5 End sky island — design spike only (throwaway branch OK, same
+- [x] 10.5 End sky island — design spike only (throwaway branch OK, same
       posture as 5c.1/14.1): investigate whether/how `EnvelopedChunkGenerator`-
       style wrapping extends to the End (untouched by this mod so far),
       report findings in DESIGN §27, **[Jason]** go/no-go on scheduling a
       real implementation task. Not scheduled to this phase's completion
       gate.
+      **Done, research only, no code — full write-up in DESIGN §27.7.**
+      Two findings, one expected and one that changes the shape of this
+      item entirely: (a) wrapping the End's generator the same way as
+      Overworld/Nether is technically feasible after all (every preset's
+      End section uses the same `minecraft:noise` generator type
+      `EnvelopedChunkGenerator` already wraps) — the earlier framing that
+      no wrapper exists at all was about it never being *attempted*, not
+      about a real blocker; (b) far more importantly, decompiling
+      `TheEndBiomeSource` confirms vanilla End generation is *already* a
+      bounded-below floating-island world natively (`end`/`end_highlands`/
+      `end_midlands`/`end_barrens`/`end_islands` — small landmasses in
+      void, no code needed) — there is no "one giant contiguous landmass"
+      problem to solve here the way there was for the Nether (10.4).
+      Combined with the already-shipped End-border carry-over (GOALS 17,
+      §5.2) as the existing "keep it small" lever, GOALS 06's End
+      component reads as **already satisfied by existing mechanism** for
+      every world type, sky island included. **Recommendation: no further
+      End-specific work needed** — beatability (dragon fight, fallback
+      portal vault) is unaffected either way. **[Jason] go/no-go**: accept
+      this as done via existing mechanism (recommended), or scope a
+      narrower "force a single End island" stylistic-consistency phase
+      later if it turns out to matter once the Overworld/Nether sky
+      island is actually played. No version bump (research only, no code
+      or config changed).
 - [ ] 10.6 Test configs (small/default/huge island, each chest tier, Nether
       sky variant on/off, stronghold-fallback beatability check); docs
       (README, MANUAL_TESTING.md); **[Jason]** acceptance per GOALS 05/06
