@@ -403,7 +403,11 @@ test pass), a non-checkerboard ocean, and coastline detail noise (config
 30's first pass also found the coastline read as an unnaturally smooth
 single-lobed blob and the ocean's biome patches formed a visible grid —
 both fixed in 0.2.32; see MEMORY.md's 2026-07-19 "Phase 7 test-1
-findings" entry).
+findings" entry). **Requires 0.2.33+** for a living ocean — 0.2.29-0.2.32
+never placed vanilla decoration (kelp/seagrass), world-gen-time fish/
+squid population, or structures (shipwrecks/ocean ruins/monuments)
+anywhere past one chunk from shore, confirmed sterile on 0.2.32's
+re-test; see MEMORY.md's 2026-07-19 "Phase 7 test-2 findings" entry.
 
 1. **Default island**, `30-ocean-island-default.yaml`. Confirm: the
    coastline reads as natural/irregular, not a circle or square; a narrow

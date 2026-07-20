@@ -53,6 +53,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 /** Delegates vanilla generation, then replaces columns outside a persisted square envelope. */
 public final class EnvelopedChunkGenerator extends ChunkGenerator {
@@ -334,15 +335,24 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
     @Override
     public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structureManager) {
-        if (!isEntirelyExterior(chunk.getPos())) {
+        ChunkPos chunkPos = chunk.getPos();
+        // isEntirelyExteriorOcean already implies isEntirelyExterior (OCEAN != NORMAL).
+        boolean decorateExteriorOcean = decoratesExteriorOcean(chunkPos);
+        if (!isEntirelyExterior(chunkPos) || decorateExteriorOcean) {
             this.delegate.applyBiomeDecoration(level, chunk, structureManager);
         }
-        applyEnvelope(chunk);
+        // Re-painting the exterior profile here would immediately erase whatever decoration
+        // (kelp, seagrass, structure pieces) just placed -- skip it for a chunk we deliberately
+        // decorated; the earlier applyCarvers/buildSurface passes already shaped its terrain.
+        if (!decorateExteriorOcean) {
+            applyEnvelope(chunk);
+        }
     }
 
     @Override
     public void spawnOriginalMobs(WorldGenRegion region) {
-        if (!isEntirelyExterior(region.getCenter())) {
+        ChunkPos center = region.getCenter();
+        if (!isEntirelyExterior(center) || decoratesExteriorOcean(center)) {
             this.delegate.spawnOriginalMobs(region);
         }
     }
@@ -356,9 +366,23 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureTemplateManager structureTemplateManager,
         ResourceKey<Level> level
     ) {
-        if (!isEntirelyExterior(centerChunk.getPos())) {
+        ChunkPos centerPos = centerChunk.getPos();
+        if (!isEntirelyExterior(centerPos) || decoratesExteriorOcean(centerPos)) {
             super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
         }
+    }
+
+    /**
+     * Whether an entirely-exterior chunk should still get vanilla decoration, original mob
+     * population, and structures (kelp/seagrass, fish, shipwrecks, ocean ruins, monuments) --
+     * true only for the ocean island's own artificial ocean (GOALS 01/02/03), which unlike
+     * every other preset's exterior ocean is real, meant-to-be-explored space, not an
+     * incidental boundary. Scoped to {@code island.enabled()} so strip_world/single_biome/
+     * chaos_biomes's existing exterior-ocean behavior (a silent, decoration-free boundary,
+     * unchanged since before this phase) is completely untouched.
+     */
+    private boolean decoratesExteriorOcean(ChunkPos chunkPos) {
+        return this.island.enabled() && isEntirelyExteriorOcean(chunkPos);
     }
 
     @Override
@@ -940,16 +964,25 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     private boolean isEntirelyExterior(ChunkPos chunkPos) {
+        return allCornersMatch(chunkPos, mode -> mode != ExteriorMode.NORMAL);
+    }
+
+    /** Narrower than {@link #isEntirelyExterior}: every corner must specifically be OCEAN, not VOID. */
+    private boolean isEntirelyExteriorOcean(ChunkPos chunkPos) {
+        return allCornersMatch(chunkPos, mode -> mode == ExteriorMode.OCEAN);
+    }
+
+    private boolean allCornersMatch(ChunkPos chunkPos, Predicate<ExteriorMode> predicate) {
         int originX = originX();
         int originZ = originZ();
         int minX = chunkPos.getMinBlockX() - originX;
         int maxX = chunkPos.getMaxBlockX() - originX;
         int minZ = chunkPos.getMinBlockZ() - originZ;
         int maxZ = chunkPos.getMaxBlockZ() - originZ;
-        return this.effectiveModeAt(minX, minZ) != ExteriorMode.NORMAL
-            && this.effectiveModeAt(minX, maxZ) != ExteriorMode.NORMAL
-            && this.effectiveModeAt(maxX, minZ) != ExteriorMode.NORMAL
-            && this.effectiveModeAt(maxX, maxZ) != ExteriorMode.NORMAL;
+        return predicate.test(this.effectiveModeAt(minX, minZ))
+            && predicate.test(this.effectiveModeAt(minX, maxZ))
+            && predicate.test(this.effectiveModeAt(maxX, minZ))
+            && predicate.test(this.effectiveModeAt(maxX, maxZ));
     }
 
     private enum Dimension {

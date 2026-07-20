@@ -1334,6 +1334,45 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `EnvelopedChunkGenerator`, `LimitedBiomeSource`, or any codec. Full
   suite green; clean build. Re-deployed as 0.2.32 for Jason to re-test
   config 30 specifically before Phase 8 starts.
+- 2026-07-19 (Phase 7 test-2 findings and fix: sterile ocean, 0.2.33) —
+  0.2.32 re-test confirmed the End-portal fix but found the exterior
+  ocean itself "sterile": no vegetation, no world-gen-time fish/squid
+  population, no shipwrecks/ocean ruins/monuments. Root cause: this is
+  deliberate, pre-existing, general behavior --
+  `EnvelopedChunkGenerator.applyBiomeDecoration`/`spawnOriginalMobs`/
+  `createStructures` all skip the delegate entirely for any chunk that's
+  "entirely exterior" (DESIGN §14's "masks ... decorations outside" the
+  solid region), shared by every preset with an ocean/void exterior. Low
+  stakes for strip_world/single_biome/chaos_biomes (an incidental
+  boundary), but for ocean_island this guts the entire explorable ocean,
+  undercutting GOALS 01's "all ocean biomes available" premise. Jason
+  chose the full fix (vegetation + mobs + structures), explicitly scoped
+  to `island.enabled()` only so every other preset's already-shipped
+  exterior-ocean behavior stays byte-for-byte unchanged. New
+  `decoratesExteriorOcean(ChunkPos)` check (island enabled AND every
+  corner specifically `OCEAN`, never `VOID`) lets those three overrides
+  run the normal vanilla pass instead of skipping it; `isEntirelyExterior`
+  factored into a shared `allCornersMatch(ChunkPos, Predicate)` helper so
+  the new OCEAN-only variant doesn't duplicate the corner-checking loop.
+  **The subtlety that made this more than a one-line gate flip:**
+  `applyBiomeDecoration` always calls `applyEnvelope(chunk)` *after* the
+  delegate's decoration pass, and that repaint unconditionally overwrites
+  every exterior column back to the flat bedrock/stone/water/air profile
+  -- which would have immediately erased any kelp/seagrass/structure
+  pieces decoration just placed. Fixed by skipping that trailing
+  `applyEnvelope` call specifically when a chunk was just decorated --
+  safe because the earlier `applyEnvelope` calls inside `fillFromNoise`
+  and `applyCarvers`/`buildSurface` (both run before decoration in the
+  generation pipeline) already shaped the column correctly, so there's
+  nothing left to repaint. Structures/decoration both key off
+  `getBiomeSource()`/`getBaseHeight()`/`getBaseColumn()`, which already
+  report correct real ocean biomes and correct synthetic depth for
+  island columns (unchanged since 7.2), so vanilla's own placement logic
+  should work unmodified against the painted terrain. No dedicated test
+  exists for `EnvelopedChunkGenerator` (needs a real server runtime, per
+  the project's JUnit-only convention); validated by a clean build and
+  the full 352-test suite passing completely unchanged, proving the
+  change is a no-op for every non-island preset. Re-deployed as 0.2.33.
 
 ## Reference Log
 

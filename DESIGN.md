@@ -2277,3 +2277,68 @@ All three fixes are pure-logic changes covered by new/updated JUnit tests
 (see `IslandShapeProfileTest`, `IslandOceanProfileTest`); none required
 touching `EnvelopedChunkGenerator`, `LimitedBiomeSource`, or any codec.
 Re-deployed as 0.2.32 for Jason to re-test config 30 specifically.
+
+### 24.11 Test-2 findings and fix: sterile ocean (0.2.32 → 0.2.33)
+
+Jason's 0.2.32 re-test confirmed the portal fix (now surfaces correctly)
+but found the ocean itself "sterile" -- no vegetation, no fish/squid
+population at world-gen time, no shipwrecks/ocean ruins/monuments.
+
+Root cause: `EnvelopedChunkGenerator.applyBiomeDecoration`/
+`spawnOriginalMobs`/`createStructures` all skip the delegate entirely for
+any chunk where `isEntirelyExterior` is true (every corner column is
+`OCEAN` or `VOID`) -- this is deliberate, pre-existing, general behavior
+(DESIGN §14: the wrapper "masks base terrain/surfaces/carvers/decorations
+outside" the solid region), shared by every preset with an ocean/void
+exterior. For strip_world/single_biome/chaos_biomes this was always a
+low-stakes trade-off -- their exterior ocean is an incidental boundary
+nobody is meant to explore. For ocean_island it guts the entire
+explorable ocean (everything past one chunk from shore), which directly
+undercuts GOALS 01's "shallow to deep, but all ocean biomes available"
+premise -- an ocean with zero life reads as broken, not as a boundary.
+
+Jason chose the full fix, scoped to `island.enabled()` only (not a
+blanket change to the shared exterior mechanism, to keep
+strip_world/single_biome/chaos_biomes's own already-shipped, already-
+tested exterior-ocean behavior byte-for-byte unchanged): a new
+`decoratesExteriorOcean(ChunkPos)` check (true only when the island is
+enabled *and* every corner of the chunk is specifically `OCEAN`, never
+`VOID`) now lets `applyBiomeDecoration`/`spawnOriginalMobs`/
+`createStructures` run the normal vanilla pass for those chunks instead
+of skipping it. `isEntirelyExterior`'s corner-checking loop was factored
+out into a small `allCornersMatch(ChunkPos, Predicate<ExteriorMode>)`
+helper so the new OCEAN-only variant (`isEntirelyExteriorOcean`) shares
+it rather than duplicating the loop.
+
+**The subtlety that made this more than a one-line gate flip:**
+`applyBiomeDecoration` calls `applyEnvelope(chunk)` *after* the delegate's
+decoration pass on every invocation -- that repaint unconditionally
+overwrites every exterior column back to the flat bedrock/stone/water/air
+profile, which would immediately erase any kelp/seagrass/structure
+pieces decoration had just placed. The fix skips that trailing
+`applyEnvelope` call specifically when `decorateExteriorOcean` is true --
+safe because the *earlier* `applyEnvelope` calls inside `fillFromNoise`
+and `applyCarvers`/`buildSurface` (all of which run before
+`applyBiomeDecoration` in the generation pipeline) have already shaped
+the column correctly by the time decoration runs; there is nothing left
+to repaint. `spawnOriginalMobs` and `createStructures` needed no
+equivalent change since neither calls `applyEnvelope` at all.
+
+Structures and decoration both rely on `getBiomeSource()`/
+`getBaseHeight()`/`getBaseColumn()` for placement decisions, all of which
+already report correct real ocean biomes and correct synthetic depth for
+island columns (unchanged since 7.2/24.10) -- so shipwrecks, ocean ruins,
+and monuments should place using the same logic vanilla always has,
+just against our painted terrain instead of noise-generated terrain.
+Mixed chunks (partly island, partly ocean -- i.e. not "entirely
+exterior") were already fully decorated before this change and are
+untouched by it; the narrow pre-existing edge case where a mixed chunk's
+ocean-side columns can still lose decoration to the trailing
+`applyEnvelope` repaint was not touched here, out of scope for this fix.
+
+No test file exists for `EnvelopedChunkGenerator` itself (it needs a real
+Minecraft server runtime, consistent with the project's JUnit-only, no
+automated game tests convention); validated by a clean full build and the
+existing 352-test suite passing completely unchanged (proof the change is
+a no-op for every non-island preset). Re-deployed as 0.2.33 for Jason to
+re-test the exterior ocean specifically.

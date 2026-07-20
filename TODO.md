@@ -1000,6 +1000,28 @@ rectangular shape.
       pure-logic fixes with new/updated JUnit coverage; full suite green;
       clean build. Re-deployed as 0.2.32 — **awaiting Jason's re-test of
       config 30 specifically before Phase 8 starts.**
+      **Test-2 findings and fix (0.2.33):** Jason's 0.2.32 re-test
+      confirmed the portal fix but found the exterior ocean "sterile" —
+      no vegetation, no world-gen fish/squid population, no shipwrecks/
+      ocean ruins/monuments. Root cause (full detail in DESIGN §24.11,
+      MEMORY.md 2026-07-19): `EnvelopedChunkGenerator` deliberately skips
+      vanilla decoration/structures/mob-population for any "entirely
+      exterior" chunk — general, pre-existing behavior shared by every
+      preset with an ocean exterior, low-stakes for strip_world/
+      single_biome/chaos_biomes (an incidental boundary) but fatal to
+      ocean_island's whole explorable ocean. Jason chose the full fix
+      (vegetation + mobs + structures), scoped to `island.enabled()` only
+      so every other preset's shipped exterior-ocean behavior is
+      unchanged. New `decoratesExteriorOcean` check lets
+      `applyBiomeDecoration`/`spawnOriginalMobs`/`createStructures` run
+      normally for entirely-ocean chunks when the island is enabled; the
+      trailing `applyEnvelope` repaint (which would otherwise immediately
+      erase whatever decoration just placed) is skipped for those chunks
+      specifically, safe because earlier-pipeline `applyEnvelope` calls
+      already shaped the terrain correctly. Full suite green (352 tests,
+      unchanged — proof the change is a no-op for every non-island
+      preset); clean build. Re-deployed as 0.2.33 — **awaiting Jason's
+      re-test of the exterior ocean specifically before Phase 8 starts.**
 
 ## Phase 8 — Ocean island extras (GOALS 03, 02)
 
