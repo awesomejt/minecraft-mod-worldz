@@ -1,0 +1,22 @@
+# GOALS 05 (Phase 10.3): the hard chest tier, on the default plains biome
+# (not a dry family, so the guaranteed water item is a cauldron -- see
+# config 41 for the desert/water-bucket case). **Select "Worldz: Sky
+# Island"**.
+#
+# Steps once in-game:
+#  1. Confirm the chest contains the hard tier's bare-essentials contents
+#     (2 saplings, plus 1 random extra from bread/torches) and one
+#     cauldron.
+#  2. Confirm the world is still genuinely beatable from this starting
+#     point given enough time -- GOALS 05 requires every tier to be, even
+#     the hardest one.
+skyIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 16
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+  chestTier: hard
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -1,0 +1,49 @@
+# GOALS 05 (Phase 10.2): a default-sized floating sky island (DESIGN §27).
+# **Select "Worldz: Sky Island"** on the creation screen.
+#
+# A thin (6-block) slab floats at surfaceY 64 (the GOALS 05 default, chosen
+# to avoid slimes) with a 16-block radius footprint -- Skyblock-scale, much
+# smaller than ocean island's own 128-block default. Everything else in the
+# Overworld, both inside and outside the footprint's horizontal reach at
+# every Y level, is void: dig straight down off the edge and you fall
+# forever, dig straight down through the slab itself and you break out the
+# bottom into void too. No natural decoration/mobs/structures generate
+# anywhere in this Overworld (deliberate -- GOALS 05's whole point is
+# starting with nothing but the chest).
+#
+# ensureObjective on the Overworld border guarantees a compact fallback End
+# portal even with the border itself disabled, same mechanism as every
+# other typed preset's beatability guarantee (DESIGN §27.5) -- but note the
+# known, deliberately deferred gap: the vault sits at a fixed Y=-32,
+# disconnected from the floating island by 90+ blocks of open void. Confirm
+# it exists and the dragon fight is winnable; getting to it requires
+# building/digging straight down.
+#
+# chestTier defaults to medium when omitted; this file leaves it implicit.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on top of a small, roughly circular grass-topped
+#     island (plains default) at Y 64, with a filled chest nearby.
+#  2. Confirm the chest's necessities-chest contents are the medium tier's
+#     (saplings, bread, a wooden pickaxe, torches, cobblestone -- see
+#     skyIsland.mediumKit in the example config) plus one cauldron (plains
+#     is not a dry/desert-family biome, so this is the "rain will fill it"
+#     case, not a guaranteed bucket -- see 41/42 for the desert case).
+#  3. Confirm the slab is exactly as thick as configured: dig straight down
+#     from the surface and count blocks (grass, dirt x2, stone x3) before
+#     falling into void.
+#  4. Confirm nothing spawns naturally anywhere else in the Overworld --
+#     no trees, no mobs, no structures, just void beyond the island.
+#  5. Confirm a fallback End portal vault exists (check server log for its
+#     coordinates) and the dragon fight is winnable.
+#  6. Confirm the Nether is completely ordinary, unrestricted vanilla
+#     Nether generation (applyToNether is off by default).
+skyIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 16
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -1,0 +1,24 @@
+# GOALS 05's smallest scale (Phase 10.2, DESIGN §27.8): an 8-block-radius
+# island -- the shared MIN_ISLAND_RADIUS_BLOCKS floor every island-shaped
+# preset uses. **Select "Worldz: Sky Island"**.
+#
+# This is specifically the scenario flagged as a known, deliberately
+# deferred risk in TODO 10.3/10.6: the necessities chest is placed at
+# literal world origin (mirroring how ocean island's chest boat is already
+# placed, DESIGN §25.3), with no accounting for the default spawn offset.
+# On an island this small, check carefully whether:
+#  - You spawn ON the island itself, not beyond its edge in the void.
+#  - The chest is actually reachable on foot from where you spawn, not
+#    separated by a fall into the surrounding void.
+# If either of these is wrong, this is the first place it would show up --
+# report exactly what you see (spawn coordinates vs. chest coordinates vs.
+# island center) so the fix (if needed) can target the right mechanism.
+skyIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 8
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

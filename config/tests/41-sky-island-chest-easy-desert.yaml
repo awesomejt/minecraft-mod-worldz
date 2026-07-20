@@ -1,0 +1,28 @@
+# GOALS 05 (Phase 10.3, DESIGN §27.8): the easy chest tier, on a
+# desert-family island biome specifically to exercise the biome-driven
+# water-source item. **Select "Worldz: Sky Island"**.
+#
+# Desert is a dry (no-rain) biome family (DESIGN §27.3's family
+# classification, reused for the water-item choice) -- since it will never
+# rain here, the chest gets a guaranteed water bucket instead of a
+# cauldron (which would otherwise never fill). This is the opposite
+# mapping from a literal reading of GOALS 05's own bucket-vs-cauldron
+# example; see DESIGN §27.8 for why.
+#
+# Steps once in-game:
+#  1. Confirm the island's surface reads as sand-over-sandstone, not
+#     grass-over-dirt (DESIGN §27.3's DESERT family palette).
+#  2. Confirm the chest contains the easy tier's generous contents
+#     (saplings, bread, a crafting table, plus 3 random extras from
+#     pickaxe/axe/torches/cobblestone) **and** a water bucket, not a
+#     cauldron.
+skyIsland:
+  islandBiome: 'minecraft:desert'
+  radiusBlocks: 16
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+  chestTier: easy
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

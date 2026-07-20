@@ -1,0 +1,21 @@
+# GOALS 05's large end of the scale (Phase 10.2): a 256-block-radius
+# island with a thicker (16-block) slab and a taller shapeAmplitude, so the
+# coastline's natural "lumpy" perturbation (DESIGN §27.4, reusing
+# IslandShapeProfile the same way ocean island's coastline does) is easy to
+# see at a glance from above. **Select "Worldz: Sky Island"**.
+#
+# Steps once in-game:
+#  1. Fly above the island (creative or just climb) and confirm the edge
+#     reads as an irregular, natural-looking blob, not a perfect circle.
+#  2. Confirm the slab is a full 16 blocks thick before hitting void.
+#  3. Confirm the void everywhere beyond the footprint is completely empty
+#     at every Y level, even far below/above the island's own band.
+skyIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 256
+  shapeAmplitude: 0.5
+  surfaceY: 80
+  thicknessBlocks: 16
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

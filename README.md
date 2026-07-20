@@ -37,6 +37,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Chaos Biomes** | Seed-shuffled land biome regions over completely untouched vanilla terrain — deserts beside ice spikes beside jungles; configurable region size; optional starter zone; optional natural rivers/oceans. See [Chaos biomes challenge](#chaos-biomes-challenge) below. | Small screen: weighted biome list, region size, starter biome, starter radius, spawn strategy, allow rivers/oceans. |
 | **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor; optional ordered biome-band sequence along its length. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, biome bands toggle/list/width/shuffle, spawn strategy, borders, exteriors. |
 | **Worldz: Ocean Island** | An island surrounded by an endless generated ocean that gradually deepens from shore to open water: an `artificial` natural-looking island of one chosen biome, a `natural` island found in the seed's own unmodified terrain, or `chest_boat` — no land at all, spawn on a stocked chest boat. Optional distant natural islands beyond an exclusion zone. See [Ocean island challenge](#ocean-island-challenge) below. | Small screen: island source, island biome, radius, coastline shape, shore-ring width, ocean gradient widths/depths, exclusion zone toggle/radius, borders, Nether exterior. |
+| **Worldz: Sky Island** | A true floating island: a thin, fixed-thickness slab surrounded by void above, below, and beyond its footprint — Skyblock-style. Necessities chest with easy/medium/hard tiers plus a biome-driven water-source item. Optional matching Nether sky island. See [Sky island challenge](#sky-island-challenge) below. | Small screen: island biome, radius, coastline shape, surface Y, slab thickness, chest tier, apply-to-Nether, borders, Nether exterior. |
 
 ## Supported loaders
 
@@ -408,6 +409,110 @@ the portal's own safety margin can never "fit" at that scale — an accepted
 trade-off, not a defect: GOALS 01 requires the game stay beatable, not that
 a tiny island also stays fully buildable-on. Pick a larger radius if you
 want both.
+
+## Sky island challenge
+
+Select **Worldz: Sky Island** under **World Type** for a true floating
+island, Skyblock-style: a thin, fixed-thickness slab surrounded by void —
+not just outside its radius, but above and below the slab too. Like ocean
+island, there is no spawn-strategy option and no separate Overworld
+Exterior toggle — the island supplies its entire Overworld exterior itself,
+and spawn is always its own safe surface point at `(0, 0)`.
+
+The footprint's edge is deliberately not a perfect circle — it reuses the
+exact same seed-derived coastline perturbation ocean island's shore uses,
+so it reads as a natural "lumpy" shape rather than a disc. Within the
+footprint, the slab runs from `surfaceY` down `thicknessBlocks` deep: solid
+ground (grass/dirt over stone, or a biome-appropriate variant — sand over
+sandstone for desert-family biomes, snow over dirt for snowy ones, mycelium
+for mushroom fields), then open void below. Dig straight down through the
+slab and you fall out the bottom; walk off the edge and you fall forever.
+Nothing generates naturally anywhere else in the Overworld — no trees, no
+mobs, no structures — since the whole point is starting with only what's
+in the chest.
+
+A necessities chest appears on the island at world creation, stocked
+according to `chestTier` (`easy`, `medium`, or `hard` — in Customize, or
+`skyIsland.chestTier` in config): each tier has its own configurable
+essentials/extras list (see `easyKit`/`mediumKit`/`hardKit` below), and
+every tier is intended to remain beatable given enough time. The chest
+always additionally includes exactly one water-source item, chosen from
+the island's biome: a water bucket for a dry, desert-family biome (which
+never gets rain, so a cauldron there would never fill), or a cauldron for
+every other biome (rain will fill it naturally over time).
+
+`applyToNether` (in Customize: "Also make the Nether a sky island", or
+`skyIsland.applyToNether` in config) mirrors the exact same
+radius/coastline-shape/surfaceY/thicknessBlocks shape into the Nether. The
+Nether's island has no biome concept of its own — its surface is always
+netherrack-over-netherrack with a basalt core, regardless of the
+Overworld's `islandBiome`. The End is unaffected either way: vanilla End
+generation is already a bounded-below floating-island world natively (small
+landmasses surrounded by void), so it needs no changes to fit the same
+theme — use the existing End Border option (below) if you want to keep it
+small too.
+
+The fallback End portal (Overworld) and fortress blaze spawner (Nether, if
+`applyToNether` is set) work exactly like every other typed preset's
+beatability guarantee — but note a known trade-off: both sit at a fixed
+depth, disconnected from the floating island itself by open void. Reaching
+them means building or digging straight down.
+
+Configure its defaults with a `skyIsland:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+skyIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 16
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+  chestTier: medium
+  applyToNether: false
+  easyKit:
+    essentials:
+      - 'minecraft:oak_sapling:4'
+      - 'minecraft:bread:8'
+      - 'minecraft:crafting_table:1'
+    extras:
+      - 'minecraft:wooden_pickaxe:1'
+      - 'minecraft:wooden_axe:1'
+      - 'minecraft:torch:16'
+      - 'minecraft:cobblestone:32'
+    extrasCount: 3
+  mediumKit:
+    essentials:
+      - 'minecraft:oak_sapling:3'
+      - 'minecraft:bread:4'
+    extras:
+      - 'minecraft:wooden_pickaxe:1'
+      - 'minecraft:torch:8'
+      - 'minecraft:cobblestone:16'
+    extrasCount: 2
+  hardKit:
+    essentials:
+      - 'minecraft:oak_sapling:2'
+    extras:
+      - 'minecraft:bread:2'
+      - 'minecraft:torch:4'
+    extrasCount: 1
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior and drives its surface-block palette and starter-kit water item. |
+| `radiusBlocks` | `16` | Configured (unperturbed) island radius. Clamped to `8..65536`, the same shared bound ocean island uses — Skyblock scale by default, much smaller than ocean island's own 128-block default. |
+| `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius. `0` is a perfect circle; clamped to `0..0.6`. |
+| `surfaceY` | `64` | The island's walkable surface Y — GOALS 05's own default, chosen to avoid slimes. |
+| `thicknessBlocks` | `6` | How many blocks of solid ground extend below `surfaceY` before hitting void. Clamped to `1..64`. |
+| `chestTier` | `"medium"` | `easy`, `medium`, or `hard` — which of `easyKit`/`mediumKit`/`hardKit` the starter chest uses. |
+| `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
+| `easyKit`/`mediumKit`/`hardKit` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
+
+Not exposed on the Customize screen beyond the tier selector and the Nether
+checkbox — the kit contents themselves are YAML-only, matching every other
+variable-length list in this mod's config.
 
 ## Configuration
 

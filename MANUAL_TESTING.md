@@ -522,6 +522,56 @@ separate World Type for either.
    not implemented in this phase** — deliberately deferred, see DESIGN
    §26.3; this config only exercises the core drained-ocean behavior.
 
+## Phase 10 acceptance (sky island, GOALS 05/06, TODO 10.2-10.4)
+
+Uses configs `38`-`43` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Sky Island"** for all six. Requires 0.2.45+.
+
+1. **Default island**, `38-sky-island-default.yaml` (GOALS 05 core).
+   Confirm you spawn on a small, natural-looking, grass-topped island at
+   Y 64 with a filled chest nearby. Confirm the slab is exactly 6 blocks
+   thick (dig straight down and count) before falling into open void, and
+   that void extends in every direction beyond the island's footprint —
+   at every Y level, not just below. Confirm nothing generates naturally
+   anywhere else in the Overworld (no trees, mobs, or structures beyond
+   the island). Confirm a fallback End portal vault exists (check the
+   server log for its coordinates — it sits at a fixed Y=-32, disconnected
+   from the floating island by open void, a known and accepted gap, see
+   DESIGN §27.5) and the dragon fight is winnable. Confirm the Nether is
+   completely ordinary, unrestricted vanilla.
+2. **Tiny island**, `39-sky-island-tiny.yaml` (the 8-block radius floor).
+   **This is the specific risk DESIGN §27.8/TODO 10.3 flagged as
+   deliberately deferred, not yet confirmed safe** — check carefully
+   whether you spawn on the island itself (not beyond its edge in void)
+   and whether the chest is actually reachable on foot from your spawn
+   point. Report exact spawn/chest/island-center coordinates if anything
+   looks wrong.
+3. **Huge island**, `40-sky-island-huge.yaml`. Confirm the coastline reads
+   as a natural, irregular blob from above (fly or climb to see the whole
+   shape), and that the thicker 16-block slab is correct.
+4. **Chest tiers and the biome water-item swap**, `41-sky-island-chest-easy-desert.yaml`
+   and `42-sky-island-chest-hard.yaml`. On 41 (desert, easy tier): confirm
+   the surface reads as sand-over-sandstone (not grass), and the chest
+   holds the generous easy-tier contents plus a water bucket (not a
+   cauldron — deserts never get rain, DESIGN §27.8). On 42 (plains, hard
+   tier): confirm the chest holds only the bare-essentials hard-tier
+   contents plus a cauldron, and that the world still feels beatable from
+   this minimal a start.
+5. **Nether variant**, `43-sky-island-nether.yaml` (GOALS 06). Build a
+   portal on the Overworld island and step through. Confirm the Nether is
+   also a small floating slab surrounded by void at the same radius —
+   always netherrack-over-netherrack with a basalt core regardless of the
+   Overworld's biome (DESIGN §27.6), nothing generating naturally beyond
+   its footprint (no fortress, vegetation, piglins/hoglins). Confirm a
+   fallback blaze spawner exists and blaze rods are obtainable.
+
+**Not covered by this phase's acceptance, by design:** the End (GOALS 06's
+other dimension). Phase 10.5's research spike concluded vanilla End
+generation already is a bounded-below floating-island world natively, so
+there is nothing new to test there — see DESIGN §27.7 for the full
+reasoning and Jason's outstanding go/no-go on treating it as already
+satisfied.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

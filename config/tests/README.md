@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 7, the World Type dropdown has **five** Worldz
+   new world. Since Phase 10, the World Type dropdown has **six** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -43,8 +43,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
    `chest_boat`, Phase 8) picks between three ways of sourcing the land,
    and `oceanIsland.fluid` (`water`/`lava`/`none`, Phase 9) independently
    picks the exterior ocean's fluid -- both within one preset, not
-   separate World Types. Each preset
-   ignores every other type's dedicated section.
+   separate World Types. "Worldz: Sky Island" (files `38`-`43`, GOALS 05/06,
+   Phase 10) reads only its own `skyIsland:` section -- a thin,
+   fixed-thickness floating slab, void everywhere else; `skyIsland.chestTier`
+   (`easy`/`medium`/`hard`) picks the necessities-chest difficulty, and
+   `skyIsland.applyToNether` mirrors the same shape into the Nether. Each
+   preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -90,6 +94,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `35-ocean-island-natural.yaml` | GOALS 02 (Phase 8.2): `oceanIsland.islandSource: natural` — searches the real seed for an isolated natural landmass instead of shaping one; real terrain shows through completely unmodified within `radiusBlocks`. Not guaranteed to find a candidate on every seed (documented, time-boxed search) — check the log either way. **Select "Worldz: Ocean Island"**. Requires 0.2.38+. |
 | `36-ocean-island-lava.yaml` | GOALS 28 (Phase 9.2): `oceanIsland.fluid: lava` — same island shape/shore ring/gradient as config 30, but the endless ocean is lava. Check fire safety at the shore ring, strider/no-boat travel. **Select "Worldz: Ocean Island"**. Requires 0.2.41+. |
 | `37-ocean-island-dry.yaml` | GOALS 31 (Phase 9.3): `oceanIsland.fluid: none` — same island shape/shore ring/gradient as config 30, but the ocean is a drained, exposed basin (no water). Structures/aquifers unaffected. The "harder" rivers/lakes-removal difficulty option is not implemented (documented, deferred). **Select "Worldz: Ocean Island"**. Requires 0.2.41+. |
+| `38-sky-island-default.yaml` | GOALS 05 (Phase 10.2): a default-sized (16-block radius, medium tier) floating sky island — thin slab, void everywhere else at every Y level, no natural decoration anywhere. **Select "Worldz: Sky Island"**. Requires 0.2.45+. |
+| `39-sky-island-tiny.yaml` | GOALS 05's "1 chunk" floor: an 8-block-radius island, specifically to check the known, deliberately deferred risk that the chest (placed at literal origin) and spawn (offset by the default 8 blocks) might separate on a very small island. **Select "Worldz: Sky Island"**. |
+| `40-sky-island-huge.yaml` | GOALS 05's large end: a 256-block-radius, 16-block-thick island with a taller coastline perturbation, natural-looking from above. **Select "Worldz: Sky Island"**. |
+| `41-sky-island-chest-easy-desert.yaml` | GOALS 05 (Phase 10.3): easy chest tier on a desert-family biome — exercises the biome-driven water-source item (a guaranteed bucket, since deserts never get rain). **Select "Worldz: Sky Island"**. |
+| `42-sky-island-chest-hard.yaml` | GOALS 05 (Phase 10.3): hard chest tier on plains (not a dry family, so a cauldron instead of a bucket) — confirms the bare-essentials tier is still genuinely beatable. **Select "Worldz: Sky Island"**. |
+| `43-sky-island-nether.yaml` | GOALS 06 (Phase 10.4): `skyIsland.applyToNether: true` mirrors the same shape into the Nether — fixed netherrack/basalt palette (no biome concept there), compact fallback blaze spawner. **Select "Worldz: Sky Island"**. Requires 0.2.45+. |
 
 ### Why `01` showed ocean labeled as river
 

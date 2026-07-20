@@ -1414,6 +1414,29 @@ island's 7.1–7.4/8.1–8.3 split):
       sky variant on/off, stronghold-fallback beatability check); docs
       (README, MANUAL_TESTING.md); **[Jason]** acceptance per GOALS 05/06
       sub-case.
+      **Configs and docs done (0.2.46):** `config/tests/38`-`43` (default
+      16-radius island; the 8-block "1 chunk" floor specifically targeting
+      the deliberately-deferred chest/spawn-offset risk logged in 10.3;
+      a 256-radius/16-thick "huge" variant; easy-tier-on-desert and
+      hard-tier-on-plains configs exercising both the chest-tier axis and
+      the biome-driven water-item swap together; the Nether variant via
+      `skyIsland.applyToNether`). New "Phase 10 acceptance" section in
+      MANUAL_TESTING.md covering all six configs plus an explicit note
+      that the End is out of scope per 10.5's findings.
+      `config/tests/README.md`'s intro updated for the sixth World Type
+      entry. README.md gained a full "Sky island challenge" section
+      (challenge-types table row + prose + config example + settings
+      table) mirroring the ocean island section's shape, cross-linking
+      rather than duplicating the shared border/exterior docs.
+      **[Jason] acceptance still outstanding** — this note only covers
+      docs/configs being ready, most importantly including the flagged
+      tiny-island spawn/chest-reachability risk (config 39) which has not
+      yet been confirmed either way. This completes every non-[Jason]
+      item in Phase 10 (10.1 design, 10.2 core, 10.3 chest tiers, 10.4
+      Nether variant, 10.5 End spike findings, 10.6 docs/configs) —
+      **do not start Phase 11 without Jason's explicit go-ahead**, and
+      note 10.5's own outstanding go/no-go on the End (DESIGN §27.7) is
+      independent of that phase gate.
 
 ## Phase 11 — Floating resource islands (GOALS 08)
 

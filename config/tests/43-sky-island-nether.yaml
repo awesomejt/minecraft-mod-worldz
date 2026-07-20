@@ -1,0 +1,36 @@
+# GOALS 06 (Phase 10.4, DESIGN §27.6): the Nether is also a sky island,
+# reusing the same shape as the Overworld's. **Select "Worldz: Sky
+# Island"**, then toggle **"Also make the Nether a sky island"** in
+# Customize (`skyIsland.applyToNether: true` here does the same thing from
+# config directly).
+#
+# The Nether's island has no biome concept of its own (DESIGN §27.6) -- its
+# surface is always netherrack-over-netherrack with a basalt core,
+# regardless of the Overworld's islandBiome. A compact fallback blaze
+# spawner (the same self-built, fully-enclosed shell ProgressionGuarantees
+# already used for every other preset's Nether beatability guarantee)
+# should exist somewhere reachable.
+#
+# Steps once in-game:
+#  1. Build a portal on the Overworld island and step through.
+#  2. Confirm the Nether is also a small floating netherrack/basalt slab
+#     surrounded by void, at the same radius/thickness as the Overworld
+#     island (16 blocks / 6 blocks thick here).
+#  3. Confirm nothing generates naturally beyond the Nether island's
+#     footprint either -- no natural fortress, no nether vegetation, no
+#     piglins/hoglins.
+#  4. Confirm a fallback blaze spawner exists somewhere reachable and
+#     blaze rods are obtainable.
+skyIsland:
+  islandBiome: 'minecraft:plains'
+  radiusBlocks: 16
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+  applyToNether: true
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true
+netherBorder:
+  enabled: false
+  ensureBlazeAccess: true
