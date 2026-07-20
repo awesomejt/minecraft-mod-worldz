@@ -64,6 +64,14 @@ Client only mod loaders:
 
 05. Sky island challenge - similar to Skyblock. Configuarable necessities starting chest - depending on starting conditions. Can choose from easy, medium, and hard starting materials - all should be beatable given enough time. For example, giving the user a bucket of water vs a couldren to capture rain water. Biome of sky island is configurable but informs what is necessities chest. Sky island is surrounded by void (no ocean). Option to generate structures - specifically a stronghold so game remains beatable. By default, spawn at Y 64 to avoid slimes (may be configurable).
 06. Same as 5 but Nether/End is a sky island too. Configuarable to retain structures so game is still beatable.
+
+    **Resolved (2026-07-20):** implemented for the Nether (Phase 10.4,
+    `skyIsland.applyToNether`). The End is **skipped, not implemented** —
+    vanilla End generation already uses the island concept natively
+    (small landmasses surrounded by void), so a dedicated "force a single
+    End island" feature wasn't compelling once investigated (Phase 10.5
+    spike, DESIGN §27.7). Existing GOALS 17 End-border carry-over already
+    covers "keep it small" if wanted.
 07. Same as 5/8 but villages can be generated outside of an exclusion zone - requiring significant bridging to reach.
 
     **Scope note (2026-07-20):** deferred in full to Phase 11 — it's a

@@ -1404,12 +1404,13 @@ island's 7.1–7.4/8.1–8.3 split):
       component reads as **already satisfied by existing mechanism** for
       every world type, sky island included. **Recommendation: no further
       End-specific work needed** — beatability (dragon fight, fallback
-      portal vault) is unaffected either way. **[Jason] go/no-go**: accept
-      this as done via existing mechanism (recommended), or scope a
-      narrower "force a single End island" stylistic-consistency phase
-      later if it turns out to matter once the Overworld/Nether sky
-      island is actually played. No version bump (research only, no code
-      or config changed).
+      portal vault) is unaffected either way. No version bump (research
+      only, no code or config changed).
+      **[Jason] go/no-go resolved (2026-07-20): skip.** Vanilla End
+      generation already uses the island concept natively, so a dedicated
+      "force a single End island" phase isn't compelling. GOALS 06's End
+      component is considered done via existing mechanism, permanently —
+      do not re-open this without a new reason to reconsider.
 - [ ] 10.6 Test configs (small/default/huge island, each chest tier, Nether
       sky variant on/off, stronghold-fallback beatability check); docs
       (README, MANUAL_TESTING.md); **[Jason]** acceptance per GOALS 05/06

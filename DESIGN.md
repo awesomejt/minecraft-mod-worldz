@@ -3187,10 +3187,10 @@ than attempting an implementation now. Findings go here once 10.5 runs.
    finding 1 — but it is solving a stylistic-consistency want, not the
    "the dimension is one giant landmass" problem GOALS 06 was written
    against, and nothing here suggests it's worth doing speculatively.
-   **Jason's call:** treat GOALS 06's End component as done via existing
-   mechanism (recommended), or scope a new, narrower "force a single End
-   island" phase later if the stylistic gap turns out to matter once the
-   Overworld/Nether sky island is actually played.
+   **Resolved (Jason, 2026-07-20): skip.** Vanilla End generation already
+   uses the island concept natively, so a dedicated "force a single End
+   island" phase isn't compelling. GOALS 06's End component is done via
+   existing mechanism — settled, not to be re-opened without a new reason.
 
 ### 27.8 Chest tiers (GOALS 05, TODO 10.3) — as-built
 
