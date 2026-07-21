@@ -1969,7 +1969,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
 
 ## Phase 13 — Cave challenge (GOALS 25–26)
 
-- [ ] 13.1 Design pass (DESIGN §20.10): underground spawn placement
+- [x] 13.1 Design pass (DESIGN §20.10): underground spawn placement
       (configurable depth, safe cavity search — can reuse the spawn-search
       ring pattern from §18), optional sealed surface (solid roof / no sky
       access — decide generation approach and its interaction with
@@ -1978,8 +1978,46 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       cave systems — decide carver vs. feature vs. noise approach against
       real 26.2 sources). Beatability: stronghold and underground structures
       unchanged, portal built underground works.
-- [ ] 13.2 Implement `cave` world type; starter-chest reuse; test configs;
-      docs; **[Jason]** acceptance (25 with/without sealed surface, 26).
+      **Done:** full design in DESIGN §30. Key finding, verified directly
+      against the real 26.2 decompiled sources
+      (`MinecraftServer.setInitialSpawn`/`createLevels`): forcing real chunk
+      generation and placing blocks at the same early spawn-resolution hook
+      `SpawnOriginManager.resolveFreshOrigin` already uses is exactly what
+      vanilla itself does there (`level.getHeight` forces sync generation;
+      the bonus-chest feature is placed directly into the world at that
+      same point) — so the underground cavity search needs only **one**
+      hook, not a two-phase "approximate now, correct later" design
+      originally suspected necessary. `CavePlan` persists entirely on
+      `EnvelopedChunkGenerator`'s own codec (mirrors `StripPlan`'s
+      precedent) rather than `LimitedBiomeSource`, since
+      `LimitedBiomeSource`'s codec is already full (§29.7) and cave needs
+      no biome-source field anyway — full vanilla biome variety, same
+      shape as `strip_world`. Sealed surface and the mega-cavern are both
+      independent additive passes appended to `applyEnvelope` (mirroring
+      `applyChunkIslandDepthCutoff`'s "runs unconditionally" placement),
+      needing a `hasActiveExterior()` gate addition (`|| cave.enabled()`)
+      of the same defect class §29.3 already found and fixed once. No
+      Nether/End variant in scope (Overworld only, per GOALS 25-26's own
+      wording). Split 13.2 into finer subtasks (13.2a-d) mirroring this
+      project's own established precedent for multi-part phases (Phase
+      6.2a/6.2b, 10.1-10.6, 11.1-11.6, 12.1-12.7) — logged here rather than
+      silently expanding one task.
+- [ ] 13.2a Core: `CavePlan` (logic, JUnit-covered), `CaveConfig`/codec/
+      `CaveCustomization` plumbing, the `jlt_worldz:cave` typed preset
+      (editor, Customize screen, world-preset JSON, `normal` tag, lang
+      keys, both loaders' registration), and the underground spawn-cavity
+      search (`SpawnOriginManager.resolveCaveOrigin`, DESIGN §30.3) with
+      its synthetic-capsule fallback. Acceptance bar: a plain cave world
+      (no sealed surface, no cavern) spawns the player underground in a
+      real natural cavity.
+- [ ] 13.2b Sealed surface option (GOALS 25, DESIGN §30.4): the roof pass,
+      `hasActiveExterior()` gate fix, Customize screen field.
+- [ ] 13.2c Mega-cave option (GOALS 26, DESIGN §30.5): the ellipsoid carve
+      pass reusing `IslandShapeProfile`, Customize screen fields.
+- [ ] 13.2d Starter chest reuse (optional, DESIGN §30.3's
+      `getSharedSpawnPos()` timing), test configs, docs
+      (README/MANUAL_TESTING.md); **[Jason]** acceptance (25 with/without
+      sealed surface and with/without chest, 26).
 
 ## Phase 14 — Nether-start challenge (GOALS 27)
 

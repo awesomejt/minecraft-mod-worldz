@@ -3756,3 +3756,175 @@ Phase 13+ doesn't rediscover this the hard way mid-implementation.
   guaranteed Nether fortress/bastion for a chunk-island Nether; not
   attempted, same "don't invent scope" posture as every other phase.
 
+## 30. Cave challenge (GOALS 25–26) — design pass (TODO 13.1)
+
+Unlike every prior typed preset, the cave challenge does not restrict or
+reshape biomes at all — the Overworld generates exactly as vanilla would
+(full biome variety, real seed terrain, `#minecraft:is_overworld`, same as
+`strip_world`'s own biome-source shape, DESIGN §23.2). The entire feature is
+three independent, composable pieces layered on top of otherwise-untouched
+terrain: (a) placing the player's spawn deep underground in a real natural
+cavity instead of on the surface, (b) an optional solid roof sealing off
+sky access everywhere, and (c) an optional large carved cavern around
+spawn. GOALS 25's starter chest is **optional** here (unlike `sky_island`'s
+always-on chest) — reuses `StarterKitTier`/`StarterKitConfig` unchanged.
+
+### 30.1 Why no `LimitedBiomeSource` field at all
+
+`LimitedBiomeSource`'s `instance.group(...)` is already completely full
+(§29.7 — `chunk_island` consumed the last of 14 slots). Cave needs no new
+slot there anyway: nothing about it depends on biome-source classification
+or per-column biome queries. Instead, the entire `CavePlan` (see §30.2)
+persists directly on `EnvelopedChunkGenerator`'s own codec — the exact
+precedent `StripPlan`/`netherSkyIsland`/`nonOverworldChunkIsland` already
+established for generator-owned, non-biome-source state (§23, §27.6, §29.5).
+`EnvelopedChunkGenerator` still has ample room in its own
+`instance.group(...)` (6 fields today). The preset editor still builds an
+ordinary `LimitedBiomeSource.customized(...)` with full vanilla biome
+variety and `StarterLandPlan.disabled()` (mirroring `strip_world`'s own
+construction, DESIGN §23.6) purely so the typed-preset machinery (allowed
+biomes, `worldLimits()`, `safeSpawnOffsetBlocks()`, the per-world snapshot)
+keeps working uniformly — the `CavePlan` itself is read straight off the
+generator, not the biome source.
+
+### 30.2 `CavePlan` shape
+
+```
+CavePlan(
+    boolean enabled,
+    int spawnDepthY,             // GOALS 25 "configurable depth"; default -32
+                                  // (matches ProgressionGuarantees.FALLBACK_PORTAL_TARGET_Y's
+                                  // existing "clearly underground" convention)
+    boolean sealedSurface,       // GOALS 25's "solid roof / no sky access"
+    int sealedSurfaceY,          // roof height; default 128 (comfortably above ordinary
+                                  // hills; true mountains above it are deliberately clipped
+                                  // flat -- documented, not a bug)
+    boolean cavernEnabled,       // GOALS 26
+    int cavernRadiusBlocks,      // horizontal half-width of the mega-cavern
+    int cavernHeightBlocks,      // vertical half-height of the mega-cavern
+    boolean chestEnabled,        // GOALS 25 "optionally"
+    StarterKitTier chestTier
+)
+```
+
+Validated the same way every other plan record is (ranges, non-null tier);
+`disabled()` factory with safe placeholders; `fromConfig(CaveConfig)`.
+`cavernRadiusBlocks`/`cavernHeightBlocks` reuse the same min/max sanity
+bounds already established for `SkyIslandPlan.thicknessBlocks` (a generous
+ceiling, not a tuned limit).
+
+### 30.3 Underground spawn placement — a single-hook search, no two-phase needed
+
+The obvious worry going in: real cave air pockets only exist once a chunk
+is *actually generated* (carvers run per-chunk, unlike the pure climate
+sampling `SpawnOriginManager.search`/`searchNaturalIsland` already use for
+biome-target searches) — so can a genuine block-level cavity search happen
+at the same early hook (`resolveFreshOrigin`, wired before vanilla's own
+spawn selection) those two use? **Yes — verified directly against 26.2
+sources** (`common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`,
+`MinecraftServer.setInitialSpawn`, called from `createLevels()` *before*
+`prepareLevels()`'s chunk-ticket loop): vanilla's own spawn-height lookup
+at that exact point (`level.getHeight(Heightmap.Types.WORLD_SURFACE, ...)`)
+already forces synchronous chunk generation for the heightmap, and the
+same method even places the bonus-chest feature directly into the world
+right there. Forcing full chunk generation and placing blocks this early
+is therefore standard vanilla behavior, not a risky reentrant call —
+`SpawnOriginManager`'s new cave branch can do the same thing
+`StarterKitDeployment` already does later (`overworld.getChunk(x, z)`,
+proven safe), just earlier, with no second corrective hook required.
+
+Mechanism (`SpawnOriginManager.resolveCaveOrigin`, called from
+`resolveFreshOrigin` ahead of every existing branch when
+`generator instanceof EnvelopedChunkGenerator enveloped && enveloped.cave().enabled()`):
+
+1. Walk `SpawnSearchPlan.defaults().offsetsInSearchOrder()` (the existing
+   concentric-ring order, §18) around the origin.
+2. For each offset, force-generate its chunk (`overworld.getChunk(...)`)
+   and scan a vertical window centered on `spawnDepthY` (±24 blocks) for a
+   column where some `y` has a solid, non-air block at `y-1` (a floor) and
+   two clear (non-solid) blocks at `y`/`y+1` (headroom) — the same "just
+   enough to stand" bar `SpawnOriginManager.safeSpawnNear` already applies
+   to surface spawns, not a full cavity-volume search.
+3. First match wins; return that exact `BlockPos`.
+4. If the whole search budget (same default radius as every other
+   `SpawnSearchPlan` use, §18) is exhausted with no natural match, carve a
+   small synthetic safe capsule at `spawnDepthY` directly under the origin
+   — reusing `ProgressionGuarantees`'s "fully enclosed shell regardless of
+   surroundings" shape (§ProgressionGuarantees.buildEndPortalSite) rather
+   than inventing a new fallback pattern — so world creation can never
+   fail to produce a safe spawn.
+
+The optional starter chest (GOALS 25) is **not** placed here — it stays on
+`WorldLimitManager.onServerStarted`'s existing one-shot deployment timing
+(§27.8's precedent), reading the chest position straight from
+`overworld.getSharedSpawnPos()` (already resolved and persisted by the time
+`onServerStarted` runs) instead of threading a second stored coordinate
+through `SpawnOriginState` — one less thing to keep in sync.
+
+### 30.4 Sealed surface — a uniform per-column roof, independent of shape
+
+No footprint/shape concept at all: when `cave.sealedSurface()`, every
+column everywhere gets a thin solid roof at `sealedSurfaceY` (stone, a few
+blocks thick) regardless of X/Z or any border/exterior/island state. This
+is layered as its own additive pass, `applyCaveSealedSurface(chunk)`,
+appended at the end of `applyEnvelope` (mirroring
+`applyChunkIslandDepthCutoff`'s existing "runs again unconditionally,
+independent of the main masking loop" placement, §29.3) — not gated on
+`mode != NORMAL`, since a plain cave world with no border/exterior
+configured still needs its roof. `hasActiveExterior()` gains
+`|| cave.enabled()` so `applyEnvelope` doesn't early-return before reaching
+this pass for a cave-only world with no other exterior mechanism active
+(the same defect class §29.3's own gate fix already caught for chunk
+islands). No custom lighting/heightmap code needed — ordinary
+`chunk.setBlockState` calls already recompute heightmaps and lighting
+automatically during chunk generation, the same finding §21.2's void-border
+spike already confirmed for live block placement. Skylight naturally stops
+propagating below a solid roof, which is what suppresses phantoms/removes
+"sky access" for GOALS 25's rule — no separate phantom-rule code needed.
+
+### 30.5 Mega-cavern — a bounded ellipsoid, carved not replaced
+
+GOALS 26's cavern is centered on the resolved spawn origin (§30.3), sized
+by `cavernRadiusBlocks` (horizontal) and `cavernHeightBlocks` (vertical).
+Reuses `IslandShapeProfile.distanceFromShore`'s existing perturbed-radius
+math for the horizontal edge (so the cavern boundary looks natural and
+"blends into the natural cave systems at its edges" exactly like every
+other footprint in this project reuses that one profile, §24.4/§27.4)
+combined with a simple vertical falloff against `cavernHeightBlocks`. The
+carve is **air-only, one-directional**: a column already air/water/cave
+inside the footprint is left alone; only solid blocks inside the footprint
+become air. Never fills — a natural cave already poking into the footprint
+stays exactly as vanilla generated it, which is what "blended into the
+natural cave systems" means in practice. Applied as another additive pass,
+`applyCaveMegaCavern(chunk)`, alongside §30.4's roof pass at the end of
+`applyEnvelope`, also independent of `mode`.
+
+### 30.6 Beatability
+
+Untouched: `EnvelopedChunkGenerator` delegates `createStructures`/
+`applyBiomeDecoration` to the wrapped `NoiseBasedChunkGenerator` unmodified
+outside the two additive passes above, so mineshafts, dungeons, trial
+chambers, and the stronghold generate exactly as vanilla would (GOALS 25's
+own beatability guarantee). The Nether is reached by an ordinary portal
+built underground — no special-case code needed; portal-frame validation
+and the Nether-side anchor search already work with any enclosing solid
+blocks, underground or not. No Nether/End variant is in scope for GOALS
+25–26 (unlike `sky_island`'s GOALS 06) — Overworld only.
+
+### 30.7 New typed preset shape (`jlt_worldz:cave`)
+
+Mirrors `strip_world`'s scaffolding (§23.6) more than `sky_island`'s, since
+cave needs no `LimitedBiomeSource` field: `CaveConfig` (YAML defaults, plus
+`easyKit`/`mediumKit`/`hardKit` `StarterKitConfig` sections exactly like
+`SkyIslandConfig`, §27.8), `CaveCustomization` (record: spawnDepthY,
+sealedSurface, sealedSurfaceY, cavernEnabled, cavernRadiusBlocks,
+cavernHeightBlocks, chestEnabled, chestTier — no border/exterior/exclusion
+fields of its own beyond the shared ones every typed preset already
+exposes), `CavePresetEditor`, `CaveCustomizeScreen`, world-preset JSON +
+`normal` tag entry + lang keys, both loaders' registration — each verified
+by the same structural-test pattern every prior typed preset established
+(`WorldPresetResourcesTest`, `ProjectMetadataTest`). `EnvelopedChunkGenerator`
+gains a `cave()` accessor and a new trailing `customized(...)` overload
+carrying the resolved `CavePlan`, following the exact chained-overload
+pattern `strip`/`netherSkyIsland`/`chunkIsland` already established.
+
