@@ -12,6 +12,8 @@ public final class ChunkIslandConfig {
     public boolean topOnly;
     /** Depth kept below the real generated surface when {@link #topOnly}. */
     public int topOnlyDepthBlocks = 5;
+    /** Probability (0..1) an ordinary scattered island independently resolves top-only (GOALS 37). */
+    public double scatteredTopOnlyChance;
     /** Whether a void buffer precedes scattered islands around the starter. */
     public boolean exclusionZoneEnabled;
     /** Exclusion-zone radius in blocks. */

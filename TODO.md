@@ -1867,10 +1867,27 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       .netherChunkIslandPlan()`/`endChunkIslandPlan()` were already
       covered in 12.2's own `SkyChunkCustomizationTest`. Full suite
       green; clean build across all modules.
-- [ ] 12.5 Multi-biome scattered chunk islands (37, biome part): beyond the
+- [x] 12.5 Multi-biome scattered chunk islands (37, biome part): beyond the
       starter island, additional chunk islands of different biomes;
       per-island top-only-to-depth vs. full-column choice (independent per
       island, per GOALS 37's exact wording).
+      **Done (0.2.57):** the biome-variety half needed zero code (DESIGN
+      §29.6 predicted this correctly) — a selected scattered chunk's biome
+      is whatever the real seed naturally has there, no override machinery
+      exists to add. The per-island depth-mode half was real, scoped work:
+      `ChunkIslandPlan` gained a 7th field, `scatteredTopOnlyChance` (0..1),
+      hash-picked independently per cell in `at()` — the starter island and
+      the guaranteed portal-room island keep using the plan's fixed
+      `topOnly` deterministically (unchanged from 12.2/12.3, so the player
+      and the forced stronghold both see a predictable shape), only
+      ordinary scattered cells vary. Threaded the new field through
+      `ChunkIslandConfig`/`ChunkIslandCodecs`/`SkyChunkCustomization`
+      (record component, `fromConfig`/`fromText`, feeds
+      `chunkIslandPlan()`) and `SkyChunkCustomizeScreen` (new text field).
+      9 new tests across `ChunkIslandPlanTest` (starter-cell determinism
+      plus zero/one/half scattered-chance behavior) and
+      `SkyChunkCustomizationTest`; full suite green; clean build across
+      all modules.
 - [ ] 12.6 Underground-content showcasing (37): seed-search preferentially
       selects naturally-qualifying chunks (real lush/dripstone/deep-dark
       cave biomes, real structure-bearing chunks) among 12.5's scattered

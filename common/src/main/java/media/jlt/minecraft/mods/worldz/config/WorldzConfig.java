@@ -783,6 +783,9 @@ public final class WorldzConfig {
         if (map.containsKey("exclusionZoneRadiusBlocks")) {
             config.exclusionZoneRadiusBlocks = readInt(map.get("exclusionZoneRadiusBlocks"), name + ".exclusionZoneRadiusBlocks");
         }
+        if (map.containsKey("scatteredTopOnlyChance")) {
+            config.scatteredTopOnlyChance = readDouble(map.get("scatteredTopOnlyChance"), name + ".scatteredTopOnlyChance");
+        }
         if (map.containsKey("applyToNether")) {
             config.applyToNether = readBoolean(map.get("applyToNether"), name + ".applyToNether");
         }
@@ -1205,6 +1208,13 @@ public final class WorldzConfig {
         sanitized.exclusionZoneRadiusBlocks = clampWithWarning(
             sanitized.exclusionZoneRadiusBlocks, 0, MAX_BORDER_RADIUS_BLOCKS, "chunkIsland.exclusionZoneRadiusBlocks", logger
         );
+        double originalScatteredChance = sanitized.scatteredTopOnlyChance;
+        sanitized.scatteredTopOnlyChance = Math.clamp(sanitized.scatteredTopOnlyChance, 0.0, 1.0);
+        if (sanitized.scatteredTopOnlyChance != originalScatteredChance) {
+            logger.warn(
+                "Clamped chunkIsland.scatteredTopOnlyChance from {} to {}.", originalScatteredChance, sanitized.scatteredTopOnlyChance
+            );
+        }
         return sanitized;
     }
 
@@ -1376,6 +1386,7 @@ public final class WorldzConfig {
         values.put("topOnlyDepthBlocks", config.topOnlyDepthBlocks);
         values.put("exclusionZoneEnabled", config.exclusionZoneEnabled);
         values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
+        values.put("scatteredTopOnlyChance", config.scatteredTopOnlyChance);
         values.put("applyToNether", config.applyToNether);
         values.put("applyToEnd", config.applyToEnd);
         return values;
@@ -1550,6 +1561,7 @@ public final class WorldzConfig {
             + ", cellSizeChunks=" + config.cellSizeChunks
             + ", topOnly=" + config.topOnly
             + (config.topOnly ? ", topOnlyDepthBlocks=" + config.topOnlyDepthBlocks : "")
+            + ", scatteredTopOnlyChance=" + config.scatteredTopOnlyChance
             + ", applyToNether=" + config.applyToNether
             + ", applyToEnd=" + config.applyToEnd;
     }

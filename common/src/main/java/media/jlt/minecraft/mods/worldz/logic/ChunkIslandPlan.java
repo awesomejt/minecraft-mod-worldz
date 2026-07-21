@@ -20,12 +20,19 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  * @param cellSizeChunks grid-cell edge length in chunks -- {@code 1} rolls every chunk
  *     independently; a larger value groups chunks into a coarser grid so islands read as
  *     multi-chunk landmasses rather than a single-chunk checkerboard
- * @param topOnly whether a selected island keeps only its top {@link #topOnlyDepthBlocks},
- *     voiding everything below (GOALS 09's "like 5 deep to ensure access to stone"), rather than
- *     the entire natural column down to bedrock
- * @param topOnlyDepthBlocks depth kept below the real generated surface when {@link #topOnly}
+ * @param topOnly whether the starter island (and the guaranteed portal-room island) keeps only
+ *     its top {@link #topOnlyDepthBlocks}, voiding everything below (GOALS 09's "like 5 deep to
+ *     ensure access to stone"), rather than the entire natural column down to bedrock -- a fixed,
+ *     deterministic choice for those two specific islands, unlike {@link #scatteredTopOnlyChance}
+ * @param topOnlyDepthBlocks depth kept below the real generated surface whenever a hit resolves
+ *     {@code topOnly}, shared by every island regardless of which mechanism chose its depth mode
  * @param exclusionZone void buffer around the starter island before scattered islands begin,
  *     reusing {@link IslandPlan.ExclusionZone} directly (same shared mechanism as GOALS 04/07/08)
+ * @param scatteredTopOnlyChance probability ({@code 0..1}) that an ordinary scattered island
+ *     (not the starter, not the guaranteed portal-room island) independently resolves
+ *     {@code topOnly} rather than full-column (GOALS 37: "each island can independently be
+ *     top-only... or the entire chunk column") -- hash-picked per cell, so the same world always
+ *     gives the same island the same depth mode
  */
 public record ChunkIslandPlan(
     boolean enabled,
@@ -33,7 +40,8 @@ public record ChunkIslandPlan(
     int cellSizeChunks,
     boolean topOnly,
     int topOnlyDepthBlocks,
-    IslandPlan.ExclusionZone exclusionZone
+    IslandPlan.ExclusionZone exclusionZone,
+    double scatteredTopOnlyChance
 ) {
     /**
      * Minimum radius (in cells, converted to blocks by the caller) the guaranteed portal-room
@@ -57,6 +65,9 @@ public record ChunkIslandPlan(
         if (exclusionZone == null) {
             throw new IllegalArgumentException("Exclusion zone is required.");
         }
+        if (scatteredTopOnlyChance < 0.0 || scatteredTopOnlyChance > 1.0) {
+            throw new IllegalArgumentException("Chunk island scattered top-only chance must be between 0 and 1.");
+        }
     }
 
     /**
@@ -65,7 +76,7 @@ public record ChunkIslandPlan(
      * @return disabled plan with safe placeholder values
      */
     public static ChunkIslandPlan disabled() {
-        return new ChunkIslandPlan(false, 0.35, 1, false, 5, new IslandPlan.ExclusionZone(false, 256));
+        return new ChunkIslandPlan(false, 0.35, 1, false, 5, new IslandPlan.ExclusionZone(false, 256), 0.0);
     }
 
     /**
@@ -88,7 +99,8 @@ public record ChunkIslandPlan(
         }
         return new ChunkIslandPlan(
             true, config.spawnChance, config.cellSizeChunks, config.topOnly, config.topOnlyDepthBlocks,
-            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks)
+            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
+            config.scatteredTopOnlyChance
         );
     }
 
@@ -117,10 +129,11 @@ public record ChunkIslandPlan(
     }
 
     /**
-     * Classifies one chunk against the grid: whether it is a selected island, and (independent
-     * of {@link #topOnly}'s plan-wide default) its own resolved depth mode -- always the plan's
-     * own {@link #topOnly}/{@link #topOnlyDepthBlocks} today; per-island depth-mode variety
-     * (GOALS 37) is layered on by scattered-island callers, not this base method.
+     * Classifies one chunk against the grid: whether it is a selected island, and its own
+     * resolved depth mode. The starter island and the guaranteed portal-room island always use
+     * the plan's own fixed {@link #topOnly} (deterministic, so the player and the forced
+     * stronghold placement both see a predictable shape); an ordinary scattered island instead
+     * hash-picks its own depth mode independently via {@link #scatteredTopOnlyChance} (GOALS 37).
      *
      * @param chunkX chunk X coordinate, relative to the origin chunk
      * @param chunkZ chunk Z coordinate, relative to the origin chunk
@@ -142,7 +155,11 @@ public record ChunkIslandPlan(
         }
         boolean present = hash01(seed, "chunk_island_present", cellX, cellZ) < spawnChance
             && !withinExclusionZone(cellX, cellZ);
-        return present ? new Hit(true, topOnly, topOnlyDepthBlocks) : Hit.NONE;
+        if (!present) {
+            return Hit.NONE;
+        }
+        boolean cellTopOnly = hash01(seed, "chunk_island_scattered_top_only", cellX, cellZ) < scatteredTopOnlyChance;
+        return new Hit(true, cellTopOnly, topOnlyDepthBlocks);
     }
 
     private boolean isStarterCell(long cellX, long cellZ) {

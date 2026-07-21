@@ -164,6 +164,7 @@ public final class SkyChunkPresetEditor implements PresetEditor {
             chunkIsland.topOnlyDepthBlocks(),
             chunkIsland.exclusionZone().enabled(),
             chunkIsland.exclusionZone().radiusBlocks(),
+            chunkIsland.scatteredTopOnlyChance(),
             applyToNether,
             applyToEnd,
             fromPlan(plan.overworld()), fromPlan(plan.nether()), fromPlan(plan.end()),

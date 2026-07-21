@@ -17,6 +17,8 @@ import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitPlan;
  * @param topOnlyDepthBlocks depth kept below the real generated surface when {@link #topOnly}
  * @param exclusionZoneEnabled whether a void buffer precedes scattered islands around the starter
  * @param exclusionZoneRadiusBlocks exclusion-zone radius in blocks
+ * @param scatteredTopOnlyChance probability (0..1) an ordinary scattered island independently
+ *     resolves top-only instead of full-column (GOALS 37)
  * @param applyToNether whether the same chunk-island mechanism also applies to the Nether
  * @param applyToEnd whether the same chunk-island mechanism also applies to the End (DESIGN
  *     §29.5 -- unlike sky island's Phase 10.5 End-skip, this is a genuinely new capability there)
@@ -32,6 +34,7 @@ public record SkyChunkCustomization(
     int topOnlyDepthBlocks,
     boolean exclusionZoneEnabled,
     int exclusionZoneRadiusBlocks,
+    double scatteredTopOnlyChance,
     boolean applyToNether,
     boolean applyToEnd,
     WorldzCustomization.BorderSettings overworldBorder,
@@ -49,6 +52,9 @@ public record SkyChunkCustomization(
         }
         if (topOnlyDepthBlocks < 1) {
             throw new IllegalArgumentException("Chunk island top-only depth must be positive.");
+        }
+        if (scatteredTopOnlyChance < 0.0 || scatteredTopOnlyChance > 1.0) {
+            throw new IllegalArgumentException("Chunk island scattered top-only chance must be between 0 and 1.");
         }
         if (overworldBorder == null || netherBorder == null || endBorder == null || netherExterior == null) {
             throw new IllegalArgumentException("Border and exterior settings are required.");
@@ -72,6 +78,7 @@ public record SkyChunkCustomization(
             config.chunkIsland.topOnlyDepthBlocks,
             config.chunkIsland.exclusionZoneEnabled,
             config.chunkIsland.exclusionZoneRadiusBlocks,
+            config.chunkIsland.scatteredTopOnlyChance,
             config.chunkIsland.applyToNether,
             config.chunkIsland.applyToEnd,
             WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
@@ -90,6 +97,8 @@ public record SkyChunkCustomization(
      * @param topOnlyDepthBlocks decimal depth kept below the surface
      * @param exclusionZoneEnabled whether a void buffer precedes scattered islands
      * @param exclusionZoneRadiusBlocks decimal exclusion-zone radius
+     * @param scatteredTopOnlyChance decimal probability an ordinary scattered island
+     *     independently resolves top-only
      * @param applyToNether whether the same mechanism also applies to the Nether
      * @param applyToEnd whether the same mechanism also applies to the End
      * @param overworldBorder validated Overworld border values
@@ -105,6 +114,7 @@ public record SkyChunkCustomization(
         String topOnlyDepthBlocks,
         boolean exclusionZoneEnabled,
         String exclusionZoneRadiusBlocks,
+        String scatteredTopOnlyChance,
         boolean applyToNether,
         boolean applyToEnd,
         WorldzCustomization.BorderSettings overworldBorder,
@@ -119,6 +129,7 @@ public record SkyChunkCustomization(
             parseInteger(topOnlyDepthBlocks, "Chunk island top-only depth"),
             exclusionZoneEnabled,
             parseInteger(exclusionZoneRadiusBlocks, "Chunk island exclusion zone radius"),
+            parseDouble(scatteredTopOnlyChance, "Chunk island scattered top-only chance"),
             applyToNether,
             applyToEnd,
             overworldBorder,
@@ -136,7 +147,7 @@ public record SkyChunkCustomization(
     public ChunkIslandPlan chunkIslandPlan() {
         return new ChunkIslandPlan(
             true, spawnChance, cellSizeChunks, topOnly, topOnlyDepthBlocks,
-            new IslandPlan.ExclusionZone(exclusionZoneEnabled, exclusionZoneRadiusBlocks)
+            new IslandPlan.ExclusionZone(exclusionZoneEnabled, exclusionZoneRadiusBlocks), scatteredTopOnlyChance
         );
     }
 

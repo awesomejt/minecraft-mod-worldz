@@ -85,6 +85,7 @@
   "jlt_worldz.sky_chunk.top_only_depth": "Depth kept below the surface in blocks (e.g. 5 for access to stone)",
   "jlt_worldz.sky_chunk.exclusion_zone_enabled": "Void buffer before scattered islands begin",
   "jlt_worldz.sky_chunk.exclusion_zone_radius": "Exclusion zone radius in blocks",
+  "jlt_worldz.sky_chunk.scattered_top_only_chance": "Chance (0-1) a scattered island independently keeps only its top slice",
   "jlt_worldz.sky_chunk.apply_to_nether": "Also make the Nether use chunk islands",
   "jlt_worldz.sky_chunk.apply_to_end": "Also make the End use chunk islands",
   "jlt_worldz.customize.title": "Customize Worldz",

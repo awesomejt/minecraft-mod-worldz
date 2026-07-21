@@ -23,7 +23,8 @@ final class ChunkIslandCodecs {
         Codec.INT.fieldOf("cell_size_chunks").forGetter(ChunkIslandPlan::cellSizeChunks),
         Codec.BOOL.fieldOf("top_only").forGetter(ChunkIslandPlan::topOnly),
         Codec.INT.fieldOf("top_only_depth").forGetter(ChunkIslandPlan::topOnlyDepthBlocks),
-        EXCLUSION_ZONE_CODEC.fieldOf("exclusion_zone").forGetter(ChunkIslandPlan::exclusionZone)
+        EXCLUSION_ZONE_CODEC.fieldOf("exclusion_zone").forGetter(ChunkIslandPlan::exclusionZone),
+        Codec.DOUBLE.fieldOf("scattered_top_only_chance").forGetter(ChunkIslandPlan::scatteredTopOnlyChance)
     ).apply(instance, ChunkIslandPlan::new));
 
     private ChunkIslandCodecs() {

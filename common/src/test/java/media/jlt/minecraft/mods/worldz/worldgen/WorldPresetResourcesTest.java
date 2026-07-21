@@ -258,6 +258,7 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.sky_chunk.top_only_depth"));
         assertTrue(language.has("jlt_worldz.sky_chunk.exclusion_zone_enabled"));
         assertTrue(language.has("jlt_worldz.sky_chunk.exclusion_zone_radius"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.scattered_top_only_chance"));
         assertTrue(language.has("jlt_worldz.sky_chunk.apply_to_nether"));
         assertTrue(language.has("jlt_worldz.sky_chunk.apply_to_end"));
     }

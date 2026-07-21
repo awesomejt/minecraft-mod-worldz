@@ -32,12 +32,14 @@ final class SkyChunkCustomizeScreen extends Screen implements
     private EditBox topOnlyDepthBlocks;
     private boolean exclusionZoneEnabled;
     private EditBox exclusionZoneRadiusBlocks;
+    private EditBox scatteredTopOnlyChance;
     private boolean applyToNether;
     private boolean applyToEnd;
     private String spawnChanceText;
     private String cellSizeChunksText;
     private String topOnlyDepthBlocksText;
     private String exclusionZoneRadiusBlocksText;
+    private String scatteredTopOnlyChanceText;
     private MultiLineTextWidget errorMessage;
     private ScrollableLayout scrollArea;
     private WorldzCustomization.BorderSettings overworldBorder;
@@ -54,6 +56,7 @@ final class SkyChunkCustomizeScreen extends Screen implements
         this.topOnlyDepthBlocksText = Integer.toString(initial.topOnlyDepthBlocks());
         this.exclusionZoneEnabled = initial.exclusionZoneEnabled();
         this.exclusionZoneRadiusBlocksText = Integer.toString(initial.exclusionZoneRadiusBlocks());
+        this.scatteredTopOnlyChanceText = Double.toString(initial.scatteredTopOnlyChance());
         this.applyToNether = initial.applyToNether();
         this.applyToEnd = initial.applyToEnd();
         this.overworldBorder = initial.overworldBorder();
@@ -103,6 +106,13 @@ final class SkyChunkCustomizeScreen extends Screen implements
         );
         form.addChild(CommonLayouts.labeledElement(
             this.font, this.exclusionZoneRadiusBlocks, Component.translatable("jlt_worldz.sky_chunk.exclusion_zone_radius")
+        ));
+
+        this.scatteredTopOnlyChance = textField(
+            Component.translatable("jlt_worldz.sky_chunk.scattered_top_only_chance"), this.scatteredTopOnlyChanceText
+        );
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.scatteredTopOnlyChance, Component.translatable("jlt_worldz.sky_chunk.scattered_top_only_chance")
         ));
 
         form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_chunk.apply_to_nether"), this.font)
@@ -171,6 +181,7 @@ final class SkyChunkCustomizeScreen extends Screen implements
                 this.topOnlyDepthBlocks.getValue(),
                 this.exclusionZoneEnabled,
                 this.exclusionZoneRadiusBlocks.getValue(),
+                this.scatteredTopOnlyChance.getValue(),
                 this.applyToNether,
                 this.applyToEnd,
                 this.overworldBorder,

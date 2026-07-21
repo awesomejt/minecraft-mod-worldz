@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SkyChunkCustomizationTest {
     private static SkyChunkCustomization create(double spawnChance, int cellSizeChunks, boolean applyToNether, boolean applyToEnd) {
         return new SkyChunkCustomization(
-            spawnChance, cellSizeChunks, false, 5, false, 256, applyToNether, applyToEnd,
+            spawnChance, cellSizeChunks, false, 5, false, 256, 0.0, applyToNether, applyToEnd,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal()
         );
@@ -85,9 +85,29 @@ class SkyChunkCustomizationTest {
     @Test
     void oceanExteriorRejectedForNether() {
         assertThrows(IllegalArgumentException.class, () -> new SkyChunkCustomization(
-            0.5, 1, false, 5, false, 256, false, false,
+            0.5, 1, false, 5, false, 256, 0.0, false, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             new WorldzCustomization.ExteriorSettings(ExteriorMode.OCEAN, 512, 64)
+        ));
+    }
+
+    @Test
+    void scatteredTopOnlyChanceFlowsIntoTheResolvedPlan() {
+        SkyChunkCustomization customization = new SkyChunkCustomization(
+            0.5, 1, false, 5, false, 256, 0.75, false, false,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal()
+        );
+
+        assertEquals(0.75, customization.chunkIslandPlan().scatteredTopOnlyChance());
+    }
+
+    @Test
+    void invalidScatteredTopOnlyChanceRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new SkyChunkCustomization(
+            0.5, 1, false, 5, false, 256, 1.5, false, false,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal()
         ));
     }
 }
