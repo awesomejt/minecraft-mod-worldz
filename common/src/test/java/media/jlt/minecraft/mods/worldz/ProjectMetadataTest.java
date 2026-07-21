@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.60", properties.getProperty("version"));
+        assertEquals("0.2.61", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -249,6 +249,24 @@ class ProjectMetadataTest {
         ));
         assertTrue(generator.contains("worldType.filter(\"cave\"::equals).isPresent()"));
         assertTrue(generator.contains("CavePlan.fromConfig(WorldzCommon.config().cave)"));
+    }
+
+    @Test
+    void caveSealedSurfaceIsAppliedUnconditionallyAfterTheMaskingLoop() throws IOException {
+        // GOALS 25's sealed surface has no footprint concept at all -- it must run even for a
+        // plain cave world with no border/exterior/island active, mirroring the same
+        // hasActiveExterior() gate fix §29.3 already needed for the chunk-island depth cutoff.
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains(
+            "return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled()\n"
+                + "            || this.island.enabled() || activeSkyIsland().enabled() || activeChunkIsland().enabled()\n"
+                + "            || this.cave.enabled();"
+        ));
+        assertTrue(generator.contains("if (this.cave.enabled() && this.cave.sealedSurface()) {"));
+        assertTrue(generator.contains("private void applyCaveSealedSurface("));
     }
 
     @Test

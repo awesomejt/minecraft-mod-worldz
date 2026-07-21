@@ -2059,8 +2059,29 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       across all modules. Not yet deployed/tested in-game -- folded into
       13.2d's acceptance pass, same posture Phase 10-12 established for
       their own multi-task builds.
-- [ ] 13.2b Sealed surface option (GOALS 25, DESIGN §30.4): the roof pass,
+- [x] 13.2b Sealed surface option (GOALS 25, DESIGN §30.4): the roof pass,
       `hasActiveExterior()` gate fix, Customize screen field.
+      **Done (0.2.61):** `EnvelopedChunkGenerator.applyCaveSealedSurface`
+      -- a thin (5-block) solid stone roof at `cave.sealedSurfaceY()`,
+      applied uniformly to every column, layered as an additive pass at
+      the end of `applyEnvelope` (mirrors `applyChunkIslandDepthCutoff`'s
+      "runs again unconditionally" placement) gated on
+      `cave.sealedSurface()` alone, independent of `mode`/border/exterior.
+      The `hasActiveExterior()` gate fix (`|| this.cave.enabled()`) and
+      the Customize-screen checkbox/field were already built in 13.2a
+      (the full `CavePlan`/`CaveCustomization`/`CaveCustomizeScreen` shape
+      was implemented whole from the start, same as `SkyIslandPlan`'s own
+      precedent) -- this task was the one remaining piece, the actual
+      terrain-modification pass. No new pure-logic class needed (the
+      roof-Y clamp math is trivial and inline, matching
+      `applyChunkIslandDepthCutoff`'s own precedent of no extraction);
+      instead added a structural regression-guard test
+      (`ProjectMetadataTest.caveSealedSurfaceIsAppliedUnconditionallyAfterTheMaskingLoop`)
+      pinning the gate fix and the pass's existence, since
+      `EnvelopedChunkGenerator` itself can't be unit-tested directly (same
+      `NoClassDefFoundError` limitation as `SpawnOriginManager`/
+      `WorldLimitManager`). Full suite green (533 tests); clean build
+      across all modules.
 - [ ] 13.2c Mega-cave option (GOALS 26, DESIGN §30.5): the ellipsoid carve
       pass reusing `IslandShapeProfile`, Customize screen fields.
 - [ ] 13.2d Starter chest reuse (optional, DESIGN §30.3's

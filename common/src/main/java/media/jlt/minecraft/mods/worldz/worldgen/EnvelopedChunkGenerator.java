@@ -84,6 +84,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static final int DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS = 8;
     /** Fallback sky-void island radius when {@code VOID} mode has no configured starter biome. */
     private static final int DEFAULT_VOID_ISLAND_RADIUS_BLOCKS = 256;
+    /** Cave sealed-surface roof thickness (GOALS 25, DESIGN §30.4) -- just enough to be a real barrier. */
+    private static final int CAVE_SEALED_SURFACE_THICKNESS_BLOCKS = 5;
     /** Codec registered as {@code jlt_worldz:enveloped}. */
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
@@ -1197,6 +1199,39 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         }
         if (activeChunkIsland().enabled() && activeChunkIsland().topOnly()) {
             applyChunkIslandDepthCutoff(chunk, chunkPos, pos, minY);
+        }
+        if (this.cave.enabled() && this.cave.sealedSurface()) {
+            applyCaveSealedSurface(chunk, chunkPos, pos, maxY);
+        }
+    }
+
+    /**
+     * Seals off sky access everywhere (GOALS 25, DESIGN §30.4): a thin solid roof at {@code
+     * cave.sealedSurfaceY()}, applied uniformly to every column regardless of X/Z or any
+     * border/exterior/island state -- unlike every shaped exterior mode, this has no footprint
+     * concept at all. Layered additively after {@link #applyEnvelope}'s ordinary masking loop,
+     * mirroring {@link #applyChunkIslandDepthCutoff}'s "runs again unconditionally" placement.
+     * No custom lighting/heightmap code needed: ordinary {@code setBlockState} calls already
+     * recompute both automatically during chunk generation (DESIGN §21.2's void-border spike
+     * finding), and skylight naturally stops propagating below a solid roof.
+     */
+    private void applyCaveSealedSurface(ChunkAccess chunk, ChunkPos chunkPos, BlockPos.MutableBlockPos pos, int maxY) {
+        int roofY = Math.min(this.cave.sealedSurfaceY(), maxY);
+        int roofTop = Math.min(maxY, roofY + CAVE_SEALED_SURFACE_THICKNESS_BLOCKS - 1);
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
+            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                for (int y = roofY; y <= roofTop; y++) {
+                    pos.set(x, y, z);
+                    BlockState oldState = chunk.getBlockState(pos);
+                    if (oldState != stone) {
+                        if (oldState.hasBlockEntity()) {
+                            chunk.removeBlockEntity(pos);
+                        }
+                        chunk.setBlockState(pos, stone, 0);
+                    }
+                }
+            }
         }
     }
 
