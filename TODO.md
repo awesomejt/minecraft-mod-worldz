@@ -1720,7 +1720,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
 11.3's `ConfiguredFeature.place` mechanism), not depth-aware biome forcing
 (that stays the already-deferred Backlog item from GOALS 15).
 
-- [ ] 12.1 Design pass (DESIGN §29): the chunk-grid selection mechanism (a
+- [x] 12.1 Design pass (DESIGN §29): the chunk-grid selection mechanism (a
       per-chunk hash pick — no jitter/radius needed since the shape *is* the
       chunk, unlike `FloatingIslandsPlan`'s circular islands), full-column
       vs. top-N-blocks-deep masking (a new Y-aware path in `applyEnvelope` —
@@ -1734,6 +1734,25 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       `Structure.generate`/`placeInChunk` still apply unchanged (already
       proven in 11.5) against 26.2 sources. **Commit** design before
       implementing.
+      **Done:** full design in DESIGN §29. Key findings verified against the
+      real 26.2 decompiled sources: every vanilla stronghold always contains
+      a portal-room piece (its generation loop retries until one exists), so
+      "guarantee a portal room" reduces to "guarantee a stronghold"; a
+      stronghold's forced-placement bounding box is large and only known
+      after generation, so the reserved portal-room site will usually pull
+      in several neighboring chunks beyond the void, not stay a single
+      16-block island (documented, not a blocker); `LevelStem.END` is
+      confirmed never wrapped by `EnvelopedChunkGenerator` today (only
+      Overworld/Nether are), so the End toggle (12.4) is new plumbing, not a
+      config flag alone; `LimitedBiomeSource`'s codec has exactly one spare
+      top-level slot left (13 of 14) — `chunk_island` will consume it,
+      leaving zero headroom for any future phase's own new top-level field
+      (flagged for Phase 13+). Underground-content showcasing (37, TODO
+      12.6) reuses two already-proven techniques verified by reading the
+      real call sites: `SpawnOriginManager.searchNaturalIsland`'s biome-at-
+      depth sampling (no generation needed) for cave biomes, and
+      `EnvelopedChunkGenerator.findNearestMapStructure`'s existing delegate
+      passthrough for structure-bearing chunks.
 - [ ] 12.2 Core: `ChunkIslandPlan` (pure logic — per-chunk hash-picked
       presence, JUnit-covered), config/codec/customization plumbing on a new
       dedicated `jlt_worldz:sky_chunk` preset (matching `single_biome`/

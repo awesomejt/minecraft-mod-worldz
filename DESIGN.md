@@ -3456,4 +3456,303 @@ need floating islands doesn't share, being sky-island-only. Follows
   is untouched, since scattered islands are optional exploration content,
   not part of the progression gate.
 
+## 29. Sky chunk challenge (GOALS 09, 37) — design pass (TODO 12.1)
+
+Chunk-shaped islands cut straight from the seed's own natural chunks (not a
+synthetic slab like sky island): every unselected chunk masks to void, every
+selected chunk keeps whatever vanilla would have generated there, unmodified.
+Scope decided with Jason 2026-07-20 (see MEMORY.md's Phase 12 decisions,
+TODO Phase 12's header): "portal room" (09) is a forced, guaranteed
+placement, not best-effort; the End dimension gets its own chunk-island
+toggle; GOALS 37's underground-content showcasing is seed-search-preferred
+selection plus forced geodes, not depth-aware biome forcing.
+
+### 29.1 Why this is simpler than every other island-shaped preset
+
+Every existing island mechanism (`IslandPlan`, `SkyIslandPlan`,
+`FloatingIslandsPlan`) exists specifically because it needs to *replace*
+vanilla terrain with something else — a raised/lowered natural floor, a
+synthetic slab, an ocean gradient. A sky chunk island does the opposite: a
+selected chunk is exactly what vanilla's own delegate generator would have
+produced there anyway. There is no terrain profile to design, no surface
+material palette (§27.3's problem), no coastline shape (§27.4's problem) —
+the "shape" of an island *is* one 16×16 chunk, decided once per chunk
+coordinate, not once per column.
+
+This means the mechanism is almost entirely reuse: `effectiveModeAt`
+already has a proven per-chunk masking path (`ExteriorMode.VOID` for every
+unselected column, real terrain for every `NORMAL` one) exercised daily by
+every other typed preset. The only genuinely new piece is masking *part of*
+an otherwise-selected chunk's own column by Y (§29.3) — every existing
+`ExteriorMode` is uniform across all Y in a masked column; "top N blocks
+deep" is not.
+
+### 29.2 `ChunkIslandPlan`: a per-chunk hash pick, not a jittered grid
+
+New, additive, sky-chunk-only record, `ChunkIslandPlan`, mirroring
+`FloatingIslandsPlan`'s hash-grid precedent but simplified since there is no
+jitter, no radius, and no coastline amplitude to resolve — a chunk cell
+either is or isn't an island:
+
+```java
+public record ChunkIslandPlan(
+    boolean enabled,
+    double spawnChance,
+    int cellSizeChunks,       // 1 = every chunk independently rolled; >1 groups chunks into a coarser grid so islands read as multi-chunk landmasses, not a single-chunk checkerboard
+    int depthMode,            // FULL_COLUMN | TOP_ONLY (an enum in practice, int here for brevity)
+    int topOnlyDepthBlocks,   // only meaningful when depthMode == TOP_ONLY
+    IslandPlan.ExclusionZone exclusionZone,
+    boolean applyToNether,
+    boolean applyToEnd
+) { ... }
+```
+
+`at(chunkX, chunkZ, seed)` is a single `hash01(seed, "chunk_island_present",
+chunkX, chunkZ) < spawnChance` check against the cell the chunk belongs to
+(`Math.floorDiv(chunkX, cellSizeChunks)`, same for Z) — no neighbor-cell
+scan needed (unlike `FloatingIslandsPlan.at`'s 3×3 search), because there is
+no jitter that could push an island's footprint into an adjacent cell. The
+exclusion zone reuses `IslandPlan.ExclusionZone` directly, gating on the
+*cell's* center distance from the origin, same shape as every other
+exclusion-zone consumer.
+
+The starter island (the one the player spawns on) is always the cell
+containing the origin, forced present regardless of `spawnChance` — same
+"always-present starter, probabilistically-present scattered ones" split
+`SkyIslandPlan`/`FloatingIslandsPlan` already established as two different
+records; here it is one record with one always-true special case in
+`resolveCell`, mirroring `FloatingIslandsPlan.resolveCell`'s own village-cell
+special case (§28.3) rather than `SkyIslandPlan`/`FloatingIslandsPlan`'s
+two-separate-records split, since a starter chunk island is *the same kind
+of object* as a scattered one (just guaranteed), unlike a starter sky
+island (a synthetic slab) versus a scattered floating island (also
+synthetic, but a different record entirely for historical reasons).
+
+### 29.3 Masking: chunk-level VOID reuses today's path; the depth cutoff is new
+
+For an unselected chunk, `effectiveModeAt` returns `ExteriorMode.VOID` for
+every column in it — the exact mechanism `LayoutMode.VOID`/`OCEAN`/strip
+worlds already use, so `applyEnvelope`'s existing per-column, per-Y loop
+(`EnvelopedChunkGenerator.java:883`) needs no change for that half of the
+feature.
+
+For a selected chunk under `TOP_ONLY`, the requirement is new: keep
+whatever vanilla generated for `y >= surfaceCutoff`, void everything below.
+This cannot be expressed as a single `ExteriorMode` per column, because the
+*same* column is `NORMAL` above the cutoff and `VOID` below it — every
+existing exterior mode is Y-uniform. `applyEnvelope` gains a narrow,
+additive branch: when the column belongs to a `TOP_ONLY` selected chunk
+island, skip the ordinary `effectiveModeAt` dispatch and instead loop
+`y` from `chunk.getMinY()` to `cutoffY - 1` only, applying `Blocks.AIR`
+(clearing any block entity, exactly like the existing loop bodies already
+do) — the same as the "one used to build the mechanism" model of `applyEnvelope`.
+
+`cutoffY` resolves once per column, not from a fixed absolute Y: it is
+`surfaceOrTerrainHeight - topOnlyDepthBlocks`? No — GOALS 09's own wording
+("only top (land) until a certain depth — like 5 deep to ensure access to
+stone") means the cutoff is measured *down from the real generated surface
+of that specific column*, not a world-absolute Y (a chunk island's surface
+height varies naturally, same as real terrain does). The real per-column
+surface height after vanilla's own generation is already available cheaply
+via `chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z)` — read *after*
+the delegate's stages have run (same ordering `applyEnvelope` already
+executes at, being called once per stage per DESIGN §14/§27.2's "runs again
+after every stage" pattern), so no separate noise query is needed the way
+`naturalOceanFloorHeight` needs one for ocean-island's raise/lower logic —
+the terrain is already there, unmodified, we are only reading its already-
+computed heightmap.
+
+`hasActiveExterior()` gains `|| this.chunkIsland.enabled()`, following
+`skyIsland`'s exact precedent (§27.2).
+
+No `applyTerrainAdjustments` involvement, same reasoning as sky island
+(§27.2's closing paragraph): there is no raise/lower step, because a
+selected chunk's terrain is never touched in the first place. Vanilla
+decoration/mobs/structures run completely normally inside a selected
+chunk (unlike sky island's deliberate full suppression, §27.2) — "the
+seed's natural chunks" (GOALS 09's own wording) means exactly that:
+whatever vanilla would have put there, including its own structures,
+survives untouched. This also means a `TOP_ONLY` chunk island can and will
+show cut-off remnants of whatever vanilla decorated near its own cutoff
+(a partially-buried structure, tree roots with no trunk) — an accepted,
+documented cross-section artifact, not a defect to chase (mirrors GOALS
+09's own "like 5 deep to ensure access to stone" framing: the point is a
+usable slice of the surface, not a pristine one).
+
+### 29.4 Guaranteed portal room (09): a stronghold, forced
+
+**Verified against the real 26.2 decompiled sources
+(`net/minecraft/world/level/levelgen/structure/structures/StrongholdStructure.java`,
+`common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`):** vanilla's
+stronghold generation loop (`generatePieces`) explicitly retries
+(`} while (builder.isEmpty() || startRoom.portalRoomPiece == null);`) until
+the generated structure contains a portal-room piece — every vanilla
+stronghold *always* has one. "Guarantee a portal room" therefore reduces
+exactly to "guarantee a stronghold," with no extra piece-targeting logic
+needed.
+
+Also verified: `net/minecraft/server/commands/PlaceCommand.placeStructure`
+— the real `/place structure` implementation — is fully generic over any
+`Structure` subtype (jigsaw-based village, piece-based stronghold, anything
+else), calling `Structure.generate(...)` then `StructureStart
+.placeInChunk(...)` across every chunk the resolved `BoundingBox` touches.
+This is the exact mechanism `FloatingIslandsDeployment.placeGuaranteedVillage`
+already mirrors for the guaranteed village (§28.3) — a new
+`ChunkIslandDeployment.placeGuaranteedPortalRoom` mirrors it again,
+line-for-line, swapping the structure id to `minecraft:stronghold` and the
+reserved-site resolution to a new `ChunkIslandPlan.reservedPortalCell(seed)`
+(same hash-picked-angle-and-distance-beyond-the-exclusion-zone shape as
+`FloatingIslandsPlan.resolveVillageCell`, §28.3). One-time `WorldLimitState`
+gate alongside the existing guarantees, following `needsGuaranteedVillage`'s
+exact precedent (`WorldLimitManager.onServerStarted`).
+
+**Real finding, worth flagging now rather than after 12.3's own
+implementation:** unlike a village (compact, horizontally self-contained),
+a stronghold's generated `BoundingBox` is large and only known *after*
+`structure.generate(...)` runs — it commonly spans well beyond a single
+16-block chunk (corridors, a spiral staircase, a library, the portal room
+itself, laid out across dozens to low hundreds of blocks). `placeInChunk`
+force-loads and writes into *every* chunk the bounding box touches
+regardless of whether that chunk was itself selected as a "chunk island" —
+meaning the reserved portal-room site is not really a single isolated
+16×16 island the way an ordinary scattered chunk island is; it is however
+many chunks the stronghold happens to need, all pulled out of the void by
+force-placement (the identical thing `FloatingIslandsDeployment` already
+does for villages, §28.3, just at a larger, structure-dependent scale).
+Visually this still reads as "one of the landmasses has the portal room in
+it," matching GOALS 09's plain-language intent — just not literally a
+single chunk. Not a blocker; documented here so it isn't mistaken for a
+regression when Jason's acceptance testing finds a portal-room landmass
+bigger than the game's ordinary scattered chunk islands.
+
+Stronghold generation is more reliable than village placement was: unlike
+jigsaw village search (which can fail — `start.isValid()` can be `false`),
+`StrongholdStructure.findGenerationPoint` always returns a stub and its
+piece-placement loop always eventually succeeds (bounded retries against an
+ever-changing large-feature seed) — there is no realistic "placement
+failed" path to handle, though the deployment code logs and no-ops on
+`!start.isValid()` anyway, matching every other forced-placement call site's
+defensive shape.
+
+### 29.5 Nether/End toggles: wrapping `LevelStem.END` for the first time
+
+GOALS 09's "options for a normal Nether and End, or chunk islands" is a
+per-dimension boolean (`applyToNether`, `applyToEnd` on `ChunkIslandPlan`),
+mirroring `StripPlan.applyToNether`'s exact shape.
+
+**Real architecture finding from reading `WorldzPresetEditor` (confirmed,
+not assumed):** today `EnvelopedChunkGenerator` only ever wraps
+`LevelStem.OVERWORLD` and `LevelStem.NETHER` (`applyPresetChanges`,
+`WorldzPresetEditor.java:100-119`); `LevelStem.END` is left completely
+untouched — `EndBorderConfig`/`EndLimit` only ever manage a `WorldBorder`
+object on the already-vanilla End level, never its chunk generator. This is
+different from sky island's Nether variant (§27.6), which needed a new
+fixed-palette material path because it *synthesizes* terrain; chunk islands
+never synthesize anything (§29.1), so the masking logic itself is 100%
+reusable across all three dimensions unchanged. The only new work is
+plumbing: `replaced.get(LevelStem.END)`, wrap with
+`EnvelopedChunkGenerator.customized(unwrap(end.generator()), false, ...)`
+exactly like the existing Nether branch, gated on `chunkIsland.applyToEnd()`.
+`WorldLimitManager`'s existing `ServerLevel end = server.getLevel(Level.END)`
+branch (already present for `initializeEndBorder`) is where the guaranteed-
+portal-room deployment's End counterpart, if ever wanted, would hook in —
+not needed this phase, since GOALS 09's portal room is explicitly an
+Overworld/stronghold concept.
+
+No End biome-family palette concern (unlike sky island): a selected End
+chunk island shows real vanilla End terrain (end stone, chorus, End cities
+where they'd naturally be) untouched, same as Overworld/Nether.
+
+### 29.6 Multi-biome scattered islands + underground content (37)
+
+**Multi-biome part:** straightforward reuse of §29.2's grid beyond the
+starter cell — every present, non-starter, non-portal-room cell already
+resolves independently; "different biomes" falls out for free since a
+selected chunk's biome is whatever the real seed naturally has there (no
+biome override needed at all, unlike `FloatingIslandsPlan.biomeVariety`,
+which exists only because *that* mechanism synthesizes terrain and has no
+underlying seed biome to read). Per-island top-only-vs-full-column (37's own
+requirement) becomes a per-cell resolved `depthMode`/`topOnlyDepthBlocks`
+pair instead of one plan-wide setting — same hash-pick-per-cell shape as
+everything else in `ChunkIslandPlan.resolveCell`.
+
+**Underground-content showcasing, confirmed feasible via reuse (Jason's
+decision 3, MEMORY.md):**
+
+- **Cave biomes (lush caves, dripstone caves, deep dark):** reuses
+  `SpawnOriginManager.searchNaturalIsland`'s exact technique
+  (`SpawnOriginManager.java:265-293`, itself already proven in Phase 2) —
+  sample the real seed's biome at a
+  candidate chunk center via `MultiNoiseBiomeSource.getNoiseBiome(quartX,
+  quartY, quartZ, sampler)` against a `RandomState` built from the real
+  world seed, no chunk generation required. Instead of `isOceanBiomeAt`'s
+  ocean-tag check, test the biome at several `quartY` samples spanning
+  typical cave-biome depth (`Biomes.LUSH_CAVES`/`DRIPSTONE_CAVES`/
+  `DEEP_DARK`, matched by direct biome key, not a tag — there is no shared
+  vanilla tag grouping just these three the way `BiomeTags.IS_OCEAN`
+  conveniently does for oceans). Candidate chunk coordinates walk outward
+  from the exclusion zone in the same spiral order
+  `SpawnSearchPlan.defaults().offsetsInSearchOrder()` already provides;
+  the first N candidates that qualify (bounded search, same "give up and
+  fall back" shape `searchNaturalIsland` already has for its own
+  worst case) get preferentially selected as chunk islands over an
+  ordinary hash-picked cell.
+- **Structure-bearing chunks:** reuses `ChunkGenerator
+  .findNearestMapStructure` (already delegated straight through by
+  `EnvelopedChunkGenerator`, confirmed at `EnvelopedChunkGenerator.java:864`)
+  against a small search radius around each spiral candidate — the same
+  real vanilla structure-placement query `/locate structure` itself uses,
+  cheap and exact (no chunk generation needed to *find* a structure's
+  claimed position, only to actually build it later).
+- **Amethyst geodes:** forced placement, reusing Phase 11.3's exact
+  mechanism (`ConfiguredFeature.place(level, generator, random, pos)`,
+  verified against `PlaceCommand.placeFeature` in 11.1) — no seed-search
+  needed, since a geode can simply be placed on any selected chunk island
+  the same way an ore vein already is.
+- **Deliberately not attempted:** depth-aware biome forcing (making an
+  *arbitrary* chunk's underground *become* a chosen cave biome, rather than
+  preferring chunks that already naturally have one). This is the same
+  scope as the already-deferred Backlog item from GOALS 15 — a materially
+  bigger `WorldLayoutPlan` change (`getNoiseBiome`'s layout branch is
+  `(blockX, blockZ)`-only today, no `quartY`) — and stays out of scope here
+  too, per Jason's decision.
+
+### 29.7 Config/preset shape, and a codec ceiling now fully spent
+
+New dedicated preset, `jlt_worldz:sky_chunk` (matching `single_biome`/
+`chaos_biomes`/`strip_world`'s own-preset precedent, *not* nested onto an
+existing preset the way `floatingIslands` nested onto `sky_island` — a
+chunk-shaped island is a genuinely different world shape, not an optional
+add-on to an existing one). `SkyChunkConfig`/`SkyChunkCustomization`/
+`SkyChunkPresetEditor`/`SkyChunkCustomizeScreen`, mirroring `StripWorldConfig`'s
+shape exactly, including the same `world_type` fieldless-preset-defaulting
+branch every prior new preset needed (Phase 6.2b/6.3/6.2c's "known gap,"
+fixed properly from day one this time rather than deferred).
+
+`LimitedBiomeSource` gains one new top-level optional field,
+`"chunk_island"`, holding the entire `ChunkIslandPlan` via its own
+dedicated `ChunkIslandCodecs.PLAN_CODEC` (same shape as `island`/
+`sky_island`'s own top-level slots — a `ChunkIslandPlan`'s many internal
+settings cost the *outer* codec only one slot, nesting into `ChunkIslandCodecs`'
+own group instead, exactly like `FloatingIslandsPlan` nests into
+`SkyIslandCodecs`'s group, §28.4). **This consumes the exact last spare
+slot §28.4 already flagged** ("one slot to spare" after `sky_island` landed
+at 13 of the 14-field DFU ceiling) — after this phase, `LimitedBiomeSource`'s
+own `instance.group(...)` is completely full. Any future phase needing a
+new top-level field on `LimitedBiomeSource` itself (not nested inside an
+existing typed-preset plan) will need to nest it into an existing group
+first, the same "was already at the ceiling" move this project has now
+made twice (`pass_through`, §27.9; `chunk_island`, here). Flagged here so
+Phase 13+ doesn't rediscover this the hard way mid-implementation.
+
+### 29.8 Deferred, not in this phase's scope
+
+- **End guaranteed portal room** — GOALS 09's portal room is an Overworld/
+  stronghold concept; if a future request wants an End-chunk-island world
+  to *also* guarantee something End-specific, that is new scope, not
+  implied by anything decided here.
+- **Depth-aware biome forcing** — stays the GOALS-15 Backlog item (§29.6).
+- **Nether guaranteed structure** — GOALS 09 says nothing about a
+  guaranteed Nether fortress/bastion for a chunk-island Nether; not
+  attempted, same "don't invent scope" posture as every other phase.
 
