@@ -59,6 +59,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
     private boolean floatingExclusionZoneEnabled;
     private EditBox floatingExclusionZoneRadiusBlocks;
     private boolean floatingOreDepositsEnabled;
+    private boolean floatingLootChestEnabled;
     private String floatingMinRadiusBlocksText;
     private String floatingMaxRadiusBlocksText;
     private String floatingShapeAmplitudeText;
@@ -93,6 +94,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
         this.floatingExclusionZoneEnabled = floatingIslands.exclusionZone().enabled();
         this.floatingExclusionZoneRadiusBlocksText = Integer.toString(floatingIslands.exclusionZone().radiusBlocks());
         this.floatingOreDepositsEnabled = floatingIslands.oreDepositsEnabled();
+        this.floatingLootChestEnabled = floatingIslands.lootChestEnabled();
     }
 
     @Override
@@ -214,6 +216,12 @@ final class SkyIslandCustomizeScreen extends Screen implements
             .maxWidth(FORM_WIDTH)
             .build());
 
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_island.floating_loot_chest_enabled"), this.font)
+            .selected(this.floatingLootChestEnabled)
+            .onValueChange((checkbox, selected) -> this.floatingLootChestEnabled = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
         Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
         borderButtons.addChild(Button.builder(
@@ -285,7 +293,8 @@ final class SkyIslandCustomizeScreen extends Screen implements
                 this.floatingIslandBiomes.getValue(),
                 this.floatingExclusionZoneEnabled,
                 this.floatingExclusionZoneRadiusBlocks.getValue(),
-                this.floatingOreDepositsEnabled
+                this.floatingOreDepositsEnabled,
+                this.floatingLootChestEnabled
             );
             SkyIslandCustomization customization = SkyIslandCustomization.fromText(
                 this.islandBiome.getValue(),

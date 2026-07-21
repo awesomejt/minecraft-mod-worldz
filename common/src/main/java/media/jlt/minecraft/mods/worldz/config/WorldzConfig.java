@@ -496,6 +496,7 @@ public final class WorldzConfig {
             logger.warn("skyIsland.floatingIslands.oreDepositsEnabled is set but has no usable feature ids; disabling ore deposits.");
             sanitized.oreDepositsEnabled = false;
         }
+        sanitized.lootKit = sanitizeStarterKit(sanitized.lootKit, "skyIsland.floatingIslands.lootKit", logger);
         return sanitized;
     }
 
@@ -989,6 +990,12 @@ public final class WorldzConfig {
         if (map.containsKey("oreFeatureIds")) {
             config.oreFeatureIds = readStringList(map.get("oreFeatureIds"), name + ".oreFeatureIds", logger);
         }
+        if (map.containsKey("lootChestEnabled")) {
+            config.lootChestEnabled = readBoolean(map.get("lootChestEnabled"), name + ".lootChestEnabled");
+        }
+        if (map.containsKey("lootKit")) {
+            config.lootKit = readStarterKitConfig(map.get("lootKit"), name + ".lootKit", logger);
+        }
         return config;
     }
 
@@ -1395,6 +1402,8 @@ public final class WorldzConfig {
         values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
         values.put("oreDepositsEnabled", config.oreDepositsEnabled);
         values.put("oreFeatureIds", config.oreFeatureIds);
+        values.put("lootChestEnabled", config.lootChestEnabled);
+        values.put("lootKit", starterKitMap(config.lootKit));
         return values;
     }
 
@@ -1526,7 +1535,8 @@ public final class WorldzConfig {
             + ", biomeVariety=" + config.biomeVariety
             + ", islandBiomes=" + config.islandBiomes
             + ", exclusionZone=" + (config.exclusionZoneEnabled ? "radius=" + config.exclusionZoneRadiusBlocks : "<disabled>")
-            + ", oreDeposits=" + (config.oreDepositsEnabled ? "features=" + config.oreFeatureIds : "<disabled>");
+            + ", oreDeposits=" + (config.oreDepositsEnabled ? "features=" + config.oreFeatureIds : "<disabled>")
+            + ", lootChest=" + (config.lootChestEnabled ? starterKitSummary(config.lootKit) : "<disabled>");
     }
 
     private static String starterKitSummary(StarterKitConfig config) {

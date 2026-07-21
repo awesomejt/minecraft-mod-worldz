@@ -76,6 +76,7 @@
   "jlt_worldz.sky_island.floating_exclusion_zone_enabled": "Void buffer before scattered islands begin",
   "jlt_worldz.sky_island.floating_exclusion_zone_radius": "Exclusion zone radius in blocks",
   "jlt_worldz.sky_island.floating_ore_deposits_enabled": "Embed one ore deposit on each scattered island",
+  "jlt_worldz.sky_island.floating_loot_chest_enabled": "Place one loot chest on each scattered island",
   "jlt_worldz.customize.title": "Customize Worldz",
   "jlt_worldz.customize.allowed_biomes": "Allowed biomes or #tags (one per line or comma-separated)",
   "jlt_worldz.customize.allowed_biomes.hint": "minecraft:plains\n#minecraft:is_overworld",

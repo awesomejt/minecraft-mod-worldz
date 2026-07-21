@@ -1019,6 +1019,13 @@ class WorldzConfigTest {
                 oreFeatureIds:
                   - 'minecraft:ore_coal'
                   - 'minecraft:ore_diamond_small'
+                lootChestEnabled: true
+                lootKit:
+                  essentials:
+                    - 'minecraft:bread:1'
+                  extras:
+                    - 'minecraft:emerald:1'
+                  extrasCount: 1
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.skyIsland.floatingIslands.enabled);
@@ -1033,6 +1040,10 @@ class WorldzConfigTest {
         assertEquals(400, config.skyIsland.floatingIslands.exclusionZoneRadiusBlocks);
         assertTrue(config.skyIsland.floatingIslands.oreDepositsEnabled);
         assertEquals(List.of("minecraft:ore_coal", "minecraft:ore_diamond_small"), config.skyIsland.floatingIslands.oreFeatureIds);
+        assertTrue(config.skyIsland.floatingIslands.lootChestEnabled);
+        assertEquals(List.of("minecraft:bread:1"), config.skyIsland.floatingIslands.lootKit.essentials);
+        assertEquals(List.of("minecraft:emerald:1"), config.skyIsland.floatingIslands.lootKit.extras);
+        assertEquals(1, config.skyIsland.floatingIslands.lootKit.extrasCount);
     }
 
     @Test
@@ -1058,6 +1069,8 @@ class WorldzConfigTest {
         assertFalse(config.skyIsland.floatingIslands.islandBiomes.isEmpty());
         assertFalse(config.skyIsland.floatingIslands.oreDepositsEnabled);
         assertFalse(config.skyIsland.floatingIslands.oreFeatureIds.isEmpty());
+        assertFalse(config.skyIsland.floatingIslands.lootChestEnabled);
+        assertFalse(config.skyIsland.floatingIslands.lootKit.essentials.isEmpty());
     }
 
     @Test

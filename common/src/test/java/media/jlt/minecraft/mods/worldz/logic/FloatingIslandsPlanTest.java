@@ -17,6 +17,7 @@ class FloatingIslandsPlanTest {
         assertFalse(disabled.enabled());
         assertFalse(disabled.exclusionZone().enabled());
         assertFalse(disabled.oreDepositsEnabled());
+        assertFalse(disabled.lootChestEnabled());
     }
 
     @Test
@@ -24,7 +25,7 @@ class FloatingIslandsPlanTest {
         FloatingIslandsPlan plan = plan(true, 1.0, false, 256, new IslandPlan.ExclusionZone(false, 0));
         FloatingIslandsPlan disabled = new FloatingIslandsPlan(
             false, plan.minRadiusBlocks(), plan.maxRadiusBlocks(), plan.shapeAmplitude(), plan.cellSizeBlocks(),
-            plan.spawnChance(), plan.biomeVariety(), plan.islandBiomes(), plan.exclusionZone(), false
+            plan.spawnChance(), plan.biomeVariety(), plan.islandBiomes(), plan.exclusionZone(), false, false
         );
         for (int x = -2000; x <= 2000; x += 400) {
             assertFalse(disabled.at(x, 0, 42L, "minecraft:plains").present());
@@ -44,7 +45,7 @@ class FloatingIslandsPlanTest {
         // Radius large enough to guarantee the unjittered cell center is covered regardless of
         // where jitter (bounded to 0.3 * cellSizeBlocks per axis) actually placed the island.
         FloatingIslandsPlan plan = new FloatingIslandsPlan(
-            true, 150, 150, 0.0, 256, 1.0, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 150, 150, 0.0, 256, 1.0, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false, false
         );
         for (int cellIndex = -5; cellIndex <= 5; cellIndex++) {
             int x = cellIndex * 256 + 128;
@@ -62,7 +63,7 @@ class FloatingIslandsPlanTest {
     @Test
     void biomeVarietyPicksFromThePoolInsteadOfTheFallback() {
         FloatingIslandsPlan plan = new FloatingIslandsPlan(
-            true, 100, 100, 0.0, 256, 1.0, true, List.of("minecraft:desert"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 100, 100, 0.0, 256, 1.0, true, List.of("minecraft:desert"), new IslandPlan.ExclusionZone(false, 0), false, false
         );
         FloatingIslandsPlan.Hit hit = plan.at(128, 128, 42L, "minecraft:plains");
         assertTrue(hit.present());
@@ -72,7 +73,7 @@ class FloatingIslandsPlanTest {
     @Test
     void noBiomeVarietyUsesTheFallbackBiome() {
         FloatingIslandsPlan plan = new FloatingIslandsPlan(
-            true, 100, 100, 0.0, 256, 1.0, false, List.of("minecraft:desert"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 100, 100, 0.0, 256, 1.0, false, List.of("minecraft:desert"), new IslandPlan.ExclusionZone(false, 0), false, false
         );
         FloatingIslandsPlan.Hit hit = plan.at(128, 128, 42L, "minecraft:plains");
         assertTrue(hit.present());
@@ -82,27 +83,27 @@ class FloatingIslandsPlanTest {
     @Test
     void invalidRadiusRangeIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new FloatingIslandsPlan(
-            true, 7, 32, 0.3, 256, 0.5, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 7, 32, 0.3, 256, 0.5, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false, false
         ));
         assertThrows(IllegalArgumentException.class, () -> new FloatingIslandsPlan(
-            true, 64, 32, 0.3, 256, 0.5, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 64, 32, 0.3, 256, 0.5, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false, false
         ));
     }
 
     @Test
     void invalidSpawnChanceIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new FloatingIslandsPlan(
-            true, 16, 32, 0.3, 256, -0.1, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 16, 32, 0.3, 256, -0.1, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false, false
         ));
         assertThrows(IllegalArgumentException.class, () -> new FloatingIslandsPlan(
-            true, 16, 32, 0.3, 256, 1.1, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 16, 32, 0.3, 256, 1.1, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false, false
         ));
     }
 
     @Test
     void biomeVarietyWithNoBiomesIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new FloatingIslandsPlan(
-            true, 16, 32, 0.3, 256, 0.5, true, List.of(), new IslandPlan.ExclusionZone(false, 0), false
+            true, 16, 32, 0.3, 256, 0.5, true, List.of(), new IslandPlan.ExclusionZone(false, 0), false, false
         ));
     }
 
@@ -113,6 +114,7 @@ class FloatingIslandsPlanTest {
         config.minRadiusBlocks = 20;
         config.maxRadiusBlocks = 40;
         config.oreDepositsEnabled = true;
+        config.lootChestEnabled = true;
 
         FloatingIslandsPlan plan = FloatingIslandsPlan.fromConfig(config);
 
@@ -120,13 +122,14 @@ class FloatingIslandsPlanTest {
         assertEquals(20, plan.minRadiusBlocks());
         assertEquals(40, plan.maxRadiusBlocks());
         assertTrue(plan.oreDepositsEnabled());
+        assertTrue(plan.lootChestEnabled());
     }
 
     @Test
     void fromTextParsesDecimalFieldsAndSplitsBiomes() {
         FloatingIslandsPlan plan = FloatingIslandsPlan.fromText(
             true, "20", "40", "0.4", "300", "0.7", true, "minecraft:plains, minecraft:desert\nminecraft:taiga",
-            true, "500", true
+            true, "500", true, true
         );
 
         assertEquals(20, plan.minRadiusBlocks());
@@ -138,12 +141,13 @@ class FloatingIslandsPlanTest {
         assertTrue(plan.exclusionZone().enabled());
         assertEquals(500, plan.exclusionZone().radiusBlocks());
         assertTrue(plan.oreDepositsEnabled());
+        assertTrue(plan.lootChestEnabled());
     }
 
     @Test
     void fromTextRejectsNonNumericRadius() {
         assertThrows(IllegalArgumentException.class, () -> FloatingIslandsPlan.fromText(
-            true, "not-a-number", "40", "0.3", "256", "0.5", false, "minecraft:plains", false, "256", false
+            true, "not-a-number", "40", "0.3", "256", "0.5", false, "minecraft:plains", false, "256", false, false
         ));
     }
 
@@ -151,7 +155,7 @@ class FloatingIslandsPlanTest {
     void islandBiomesTextJoinsWithNewlines() {
         FloatingIslandsPlan plan = new FloatingIslandsPlan(
             true, 16, 32, 0.3, 256, 0.5, true, List.of("minecraft:plains", "minecraft:desert"),
-            new IslandPlan.ExclusionZone(false, 0), false
+            new IslandPlan.ExclusionZone(false, 0), false, false
         );
         assertEquals("minecraft:plains\nminecraft:desert", plan.islandBiomesText());
     }
@@ -159,7 +163,7 @@ class FloatingIslandsPlanTest {
     @Test
     void nearbyIslandsFindsThePresentIslandRegardlessOfJitter() {
         FloatingIslandsPlan plan = new FloatingIslandsPlan(
-            true, 16, 32, 0.1, 256, 1.0, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false
+            true, 16, 32, 0.1, 256, 1.0, false, List.of("minecraft:plains"), new IslandPlan.ExclusionZone(false, 0), false, false
         );
         List<FloatingIslandsPlan.ResolvedIsland> nearby = plan.nearbyIslands(128, 128, 42L, "minecraft:plains");
         assertEquals(9, nearby.size());
@@ -209,7 +213,7 @@ class FloatingIslandsPlanTest {
         boolean enabled, double spawnChance, boolean biomeVariety, int cellSizeBlocks, IslandPlan.ExclusionZone exclusionZone
     ) {
         return new FloatingIslandsPlan(
-            enabled, 16, 32, 0.1, cellSizeBlocks, spawnChance, biomeVariety, List.of("minecraft:plains"), exclusionZone, false
+            enabled, 16, 32, 0.1, cellSizeBlocks, spawnChance, biomeVariety, List.of("minecraft:plains"), exclusionZone, false, false
         );
     }
 }

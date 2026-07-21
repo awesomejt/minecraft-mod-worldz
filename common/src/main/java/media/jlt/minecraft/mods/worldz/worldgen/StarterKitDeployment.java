@@ -127,7 +127,8 @@ final class StarterKitDeployment {
         WorldzCommon.LOGGER.info("Spawned the GOALS 03 starter chest boat at ({}, {}, {}).", originX, surfaceY, originZ);
     }
 
-    private static StarterKitPlan resolvePlan(StarterKitConfig config) {
+    /** Package-visible so {@link EnvelopedChunkGenerator}'s own scattered-island loot chests (GOALS 08, DESIGN §28.2) can reuse it. */
+    static StarterKitPlan resolvePlan(StarterKitConfig config) {
         List<StarterKitPlan.ItemAmount> essentials = new ArrayList<>();
         for (String raw : config.essentials) {
             essentials.add(StarterKitPlan.ItemAmount.parse(raw));

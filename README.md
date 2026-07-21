@@ -549,6 +549,17 @@ skyIsland:
       - 'minecraft:ore_lapis'
       - 'minecraft:ore_diamond_small'
       - 'minecraft:ore_emerald'
+    lootChestEnabled: false
+    lootKit:
+      essentials:
+        - 'minecraft:bread:2'
+      extras:
+        - 'minecraft:iron_ingot:2'
+        - 'minecraft:emerald:1'
+        - 'minecraft:arrow:8'
+        - 'minecraft:golden_apple:1'
+        - 'minecraft:ender_pearl:1'
+      extrasCount: 2
 ```
 
 | Setting | Default | Description |
@@ -563,10 +574,11 @@ skyIsland:
 | `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` | `true`/`256` | Void buffer around the starter island before scattered islands begin. |
 | `oreDepositsEnabled` | `false` | Whether each island gets one embedded vanilla ore-vein feature, hash-picked from `oreFeatureIds` and placed once at the island's own center, clamped to its slab's thickness. |
 | `oreFeatureIds` | coal/iron/gold/redstone/lapis/diamond/emerald | Candidate vanilla `ConfiguredFeature` ids (config-only, like `easyKit`/`mediumKit`/`hardKit` above — not exposed on the Customize screen). |
+| `lootChestEnabled` | `false` | Whether each island gets one placed loot chest at the island's surface, reusing `lootKit`. |
+| `lootKit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `easyKit`/`mediumKit`/`hardKit` above (config-only, not exposed on the Customize screen). |
 
-**Current scope:** loot chests and the guaranteed village (GOALS 07's own
-village-beyond-the-exclusion-zone piece) are still to come. Those land in
-later tasks of the same phase; see `TODO.md` Phase 11.
+**Current scope:** the guaranteed village (GOALS 07's own village-beyond-
+the-exclusion-zone piece) is still to come; see `TODO.md` Phase 11.
 
 Not exposed on the Customize screen beyond the tier selector and the Nether
 checkbox — the kit contents themselves are YAML-only, matching every other

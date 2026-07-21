@@ -1580,8 +1580,41 @@ in full per the Phase 10 header's own note.
       table rows and config example. Not yet deployed/tested — folded
       into 11.6's acceptance pass along with loot chests (11.4) and the
       guaranteed village (11.5), same reasoning as 11.2's own deferral.
-- [ ] 11.4 Loot chests: `ResourceConfig.lootChestEnabled`/`lootKit` reusing
+- [x] 11.4 Loot chests: `ResourceConfig.lootChestEnabled`/`lootKit` reusing
       `StarterKitPlan` directly, one placed chest per island.
+      **Done (0.2.50):** `FloatingIslandsPlan` gained a persisted
+      `lootChestEnabled` boolean (11th field); `lootKit` itself stays
+      config-only (`FloatingIslandsConfig.lootKit`, a `StarterKitConfig`),
+      same precedent as 11.3's `oreFeatureIds` and `easyKit`/`mediumKit`/
+      `hardKit`. Refactored `EnvelopedChunkGenerator`'s per-chunk "which
+      scattered island does this chunk own the center of" logic (11.3's
+      ore lookup) into a shared `floatingIslandsOwnedByChunk`/`OwnedIsland`
+      helper, now used by both `applyFloatingIslandOre` and the new
+      `applyFloatingIslandLoot` — avoids tripling the containment-check
+      loop once 11.5's guaranteed village needs the same lookup a third
+      time. The chest sits at the island's surface (`active.surfaceY()`),
+      same X/Z as the ore deposit (if any) but a different Y so the two
+      never collide; contents resolved via `StarterKitPlan.resolve(...)`
+      with a per-island-salted seed (reusing the same
+      `seed ^ (centerX<<32 ^ centerZ)` derivation 11.3's `RandomSource`
+      already used) so every island's chest differs, not just the
+      per-world kit list. Widened `StarterKitDeployment.resolvePlan`
+      from `private` to package-visible rather than duplicating its
+      essentials/extras-parsing logic. Verified `WorldGenLevel` (via its
+      `BlockGetter`/`LevelWriter` supertypes) exposes the same
+      `setBlock`/`getBlockEntity` shape `StarterKitDeployment`'s own
+      `ServerLevel`-based chest placement already uses, against the real
+      26.2 decompiled sources, before relying on it mid-chunk-generation.
+      `SkyIslandCustomizeScreen` gained a `lootChestEnabled` checkbox
+      (screen-exposed like `oreDepositsEnabled`; `lootKit`'s own item
+      list stays YAML-only). Full config read/sanitize/map/summary
+      wiring, reusing `sanitizeStarterKit`/`readStarterKitConfig`/
+      `starterKitMap`/`starterKitSummary` directly. Test additions only
+      (no new test methods — extended existing ones); full suite green
+      (467 tests); clean build across all modules. README's "Floating
+      resource islands" section extended with the loot-chest table rows
+      and config example. Not yet deployed/tested — still folded into
+      11.6's acceptance pass along with the guaranteed village (11.5).
 - [ ] 11.5 Guaranteed village (GOALS 07): the reserved village cell (hash-
       picked angle/radius just beyond the exclusion zone, forced radius/
       biome), `FloatingIslandsDeployment.placeGuaranteedVillage` force-

@@ -17,6 +17,7 @@ import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
+import media.jlt.minecraft.mods.worldz.logic.StarterKitPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
@@ -27,6 +28,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -34,6 +36,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -45,6 +49,7 @@ import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -59,6 +64,7 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -475,22 +481,54 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             applyEnvelope(chunk);
             if (activeSkyIsland().enabled()) {
                 applyFloatingIslandOre(level, chunk);
+                applyFloatingIslandLoot(level, chunk);
             }
         }
     }
 
     /**
+     * One scattered island whose own (jittered) center falls inside a specific chunk -- the
+     * "exactly once per island, whichever chunk happens to own it" unit every floating-island
+     * resource (an ore deposit, a loot chest -- DESIGN §28.2) is placed against.
+     */
+    private record OwnedIsland(FloatingIslandsPlan.ResolvedIsland island, int centerBlockX, int centerBlockZ) {
+    }
+
+    /**
+     * Resolves every scattered island this chunk owns the center of (DESIGN §28.2/§28.3): checks
+     * the 3x3 cell neighborhood around this chunk's own center (not just "which cell does my
+     * center belong to"), since a jittered center can land in a different chunk than that naive
+     * lookup would suggest.
+     */
+    private List<OwnedIsland> floatingIslandsOwnedByChunk(ChunkPos chunkPos) {
+        SkyIslandPlan active = activeSkyIsland();
+        FloatingIslandsPlan floating = active.floatingIslands();
+        if (!floating.enabled()) {
+            return List.of();
+        }
+        long seed = skyIslandSeed();
+        int centerX = chunkPos.getMinBlockX() + 8 - originX();
+        int centerZ = chunkPos.getMinBlockZ() + 8 - originZ();
+        List<OwnedIsland> owned = new ArrayList<>();
+        for (FloatingIslandsPlan.ResolvedIsland island : floating.nearbyIslands(centerX, centerZ, seed, active.islandBiome())) {
+            int blockX = (int) Math.round(island.centerX()) + originX();
+            int blockZ = (int) Math.round(island.centerZ()) + originZ();
+            if (blockX >= chunkPos.getMinBlockX() && blockX <= chunkPos.getMaxBlockX()
+                && blockZ >= chunkPos.getMinBlockZ() && blockZ <= chunkPos.getMaxBlockZ()) {
+                owned.add(new OwnedIsland(island, blockX, blockZ));
+            }
+        }
+        return owned;
+    }
+
+    /**
      * Embeds one vanilla ore-vein feature on each present scattered floating island (GOALS 08,
      * DESIGN §28.2), exactly once per island regardless of chunk generation order: the deposit's
-     * position is always the island's own (jittered) center, so it's placed only when generating
-     * whichever one chunk happens to contain that exact point. Checks the 3x3 cell neighborhood
-     * around this chunk's own center (not just "which cell does my center belong to"), since a
-     * jittered center can land in a different chunk than that naive lookup would suggest.
+     * position is always the island's own center, clamped between its slab's floor and surface.
      */
     private void applyFloatingIslandOre(WorldGenLevel level, ChunkAccess chunk) {
         SkyIslandPlan active = activeSkyIsland();
-        FloatingIslandsPlan floating = active.floatingIslands();
-        if (!floating.enabled() || !floating.oreDepositsEnabled()) {
+        if (!active.floatingIslands().oreDepositsEnabled()) {
             return;
         }
         List<String> oreFeatureIds = WorldzCommon.config().skyIsland.floatingIslands.oreFeatureIds;
@@ -505,19 +543,50 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         }
 
         long seed = skyIslandSeed();
-        ChunkPos chunkPos = chunk.getPos();
-        int centerX = chunkPos.getMinBlockX() + 8 - originX();
-        int centerZ = chunkPos.getMinBlockZ() + 8 - originZ();
-        for (FloatingIslandsPlan.ResolvedIsland island : floating.nearbyIslands(centerX, centerZ, seed, active.islandBiome())) {
-            int islandCenterBlockX = (int) Math.round(island.centerX()) + originX();
-            int islandCenterBlockZ = (int) Math.round(island.centerZ()) + originZ();
-            if (islandCenterBlockX < chunkPos.getMinBlockX() || islandCenterBlockX > chunkPos.getMaxBlockX()
-                || islandCenterBlockZ < chunkPos.getMinBlockZ() || islandCenterBlockZ > chunkPos.getMaxBlockZ()) {
-                continue;
+        for (OwnedIsland owned : floatingIslandsOwnedByChunk(chunk.getPos())) {
+            String featureId = owned.island().pick(oreFeatureIds, seed, "floating_island_ore_feature");
+            int y = owned.island().pickY(minY, maxY, seed, "floating_island_ore_y");
+            placeOreFeature(
+                level, featureId, new BlockPos(owned.centerBlockX(), y, owned.centerBlockZ()), seed, owned.centerBlockX(), owned.centerBlockZ()
+            );
+        }
+    }
+
+    /**
+     * Places one filled loot chest on each present scattered floating island (GOALS 08, DESIGN
+     * §28.2), reusing {@link StarterKitPlan} exactly like the starter island's own necessities
+     * chest (DESIGN §27.8) -- on the island's walkable surface, at the same X/Z as its ore
+     * deposit (if any) but a different Y, so the two never collide.
+     */
+    private void applyFloatingIslandLoot(WorldGenLevel level, ChunkAccess chunk) {
+        SkyIslandPlan active = activeSkyIsland();
+        if (!active.floatingIslands().lootChestEnabled()) {
+            return;
+        }
+        long seed = skyIslandSeed();
+        for (OwnedIsland owned : floatingIslandsOwnedByChunk(chunk.getPos())) {
+            placeLootChest(level, new BlockPos(owned.centerBlockX(), active.surfaceY(), owned.centerBlockZ()), seed, owned.centerBlockX(), owned.centerBlockZ());
+        }
+    }
+
+    private void placeLootChest(WorldGenLevel level, BlockPos pos, long seed, int centerX, int centerZ) {
+        StarterKitPlan plan = StarterKitDeployment.resolvePlan(WorldzCommon.config().skyIsland.floatingIslands.lootKit);
+        long islandSeed = seed ^ (((long) centerX) << 32 ^ (centerZ & 0xFFFFFFFFL));
+        List<StarterKitPlan.ItemAmount> resolved = plan.resolve(islandSeed);
+
+        level.setBlock(pos, Blocks.CHEST.defaultBlockState(), 0);
+        if (!(level.getBlockEntity(pos) instanceof ChestBlockEntity chest)) {
+            WorldzCommon.LOGGER.warn("Could not create a GOALS 08 floating-island loot chest at {}.", pos);
+            return;
+        }
+        int slot = 0;
+        for (StarterKitPlan.ItemAmount amount : resolved) {
+            if (slot >= chest.getContainerSize()) {
+                break;
             }
-            String featureId = island.pick(oreFeatureIds, seed, "floating_island_ore_feature");
-            int y = island.pickY(minY, maxY, seed, "floating_island_ore_y");
-            placeOreFeature(level, featureId, new BlockPos(islandCenterBlockX, y, islandCenterBlockZ), seed, islandCenterBlockX, islandCenterBlockZ);
+            Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(amount.itemId()));
+            chest.setItem(slot, new ItemStack(item, amount.count()));
+            slot++;
         }
     }
 

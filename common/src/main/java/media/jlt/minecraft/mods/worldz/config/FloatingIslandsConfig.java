@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
+import media.jlt.minecraft.mods.worldz.logic.StarterKitPlan;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,9 +46,27 @@ public final class FloatingIslandsConfig {
         "minecraft:ore_coal", "minecraft:ore_iron_small", "minecraft:ore_gold_buried",
         "minecraft:ore_redstone", "minecraft:ore_lapis", "minecraft:ore_diamond_small", "minecraft:ore_emerald"
     );
+    /** Whether each island gets one placed loot chest (GOALS 08, DESIGN §28.2). */
+    public boolean lootChestEnabled = false;
+    /**
+     * The loot chest's contents, reusing {@link StarterKitPlan}'s essentials+extras shape --
+     * config-only like {@link #oreFeatureIds}, not threaded through {@code FloatingIslandsPlan}'s
+     * codec.
+     */
+    public StarterKitConfig lootKit = lootKitDefaults();
 
     /** Creates a config populated with defaults. */
     public FloatingIslandsConfig() {
+    }
+
+    private static StarterKitConfig lootKitDefaults() {
+        StarterKitConfig config = new StarterKitConfig();
+        config.essentials = list("minecraft:bread:2");
+        config.extras = list(
+            "minecraft:iron_ingot:2", "minecraft:emerald:1", "minecraft:arrow:8", "minecraft:golden_apple:1", "minecraft:ender_pearl:1"
+        );
+        config.extrasCount = 2;
+        return config;
     }
 
     private static List<String> list(String... values) {

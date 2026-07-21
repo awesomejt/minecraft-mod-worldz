@@ -38,6 +38,9 @@ import java.util.Optional;
  *     placement time -- the same "list stays in config, never persisted" precedent {@code
  *     StarterKitPlan}'s own essentials/extras pool already established (DESIGN §28's revision
  *     note), only this toggle is persisted so a reloaded world remembers whether it was enabled
+ * @param lootChestEnabled whether each island gets one placed loot chest (GOALS 08, DESIGN
+ *     §28.2), reusing {@link StarterKitPlan} directly. Same config-only-list precedent as {@link
+ *     #oreDepositsEnabled}: the actual kit contents live in config, only this toggle is persisted
  */
 public record FloatingIslandsPlan(
     boolean enabled,
@@ -49,7 +52,8 @@ public record FloatingIslandsPlan(
     boolean biomeVariety,
     List<String> islandBiomes,
     IslandPlan.ExclusionZone exclusionZone,
-    boolean oreDepositsEnabled
+    boolean oreDepositsEnabled,
+    boolean lootChestEnabled
 ) {
     /**
      * Fraction of {@code cellSizeBlocks} an island's center may be jittered off the cell's own
@@ -104,7 +108,7 @@ public record FloatingIslandsPlan(
         return new FloatingIslandsPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0,
             WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, 0.0, false, List.of("minecraft:plains"),
-            new IslandPlan.ExclusionZone(false, 256), false
+            new IslandPlan.ExclusionZone(false, 256), false, false
         );
     }
 
@@ -119,7 +123,7 @@ public record FloatingIslandsPlan(
             config.enabled, config.minRadiusBlocks, config.maxRadiusBlocks, config.shapeAmplitude, config.cellSizeBlocks,
             config.spawnChance, config.biomeVariety, config.islandBiomes,
             new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
-            config.oreDepositsEnabled
+            config.oreDepositsEnabled, config.lootChestEnabled
         );
     }
 
@@ -137,6 +141,7 @@ public record FloatingIslandsPlan(
      * @param exclusionZoneEnabled whether a void buffer precedes scattered islands
      * @param exclusionZoneRadiusBlocks decimal exclusion-zone radius
      * @param oreDepositsEnabled whether each island gets one embedded ore-vein feature
+     * @param lootChestEnabled whether each island gets one placed loot chest
      * @return canonical immutable values
      */
     public static FloatingIslandsPlan fromText(
@@ -150,7 +155,8 @@ public record FloatingIslandsPlan(
         String islandBiomesText,
         boolean exclusionZoneEnabled,
         String exclusionZoneRadiusBlocks,
-        boolean oreDepositsEnabled
+        boolean oreDepositsEnabled,
+        boolean lootChestEnabled
     ) {
         List<String> islandBiomes = Arrays.stream(islandBiomesText.split("[,\\r\\n]+"))
             .map(String::trim)
@@ -168,7 +174,7 @@ public record FloatingIslandsPlan(
             new IslandPlan.ExclusionZone(
                 exclusionZoneEnabled, parseInteger(exclusionZoneRadiusBlocks, "Floating island exclusion zone radius")
             ),
-            oreDepositsEnabled
+            oreDepositsEnabled, lootChestEnabled
         );
     }
 

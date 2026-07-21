@@ -31,7 +31,8 @@ final class SkyIslandCodecs {
         Codec.BOOL.fieldOf("biome_variety").forGetter(FloatingIslandsPlan::biomeVariety),
         Codec.STRING.listOf().fieldOf("island_biomes").forGetter(FloatingIslandsPlan::islandBiomes),
         EXCLUSION_ZONE_CODEC.fieldOf("exclusion_zone").forGetter(FloatingIslandsPlan::exclusionZone),
-        Codec.BOOL.fieldOf("ore_deposits_enabled").forGetter(FloatingIslandsPlan::oreDepositsEnabled)
+        Codec.BOOL.fieldOf("ore_deposits_enabled").forGetter(FloatingIslandsPlan::oreDepositsEnabled),
+        Codec.BOOL.fieldOf("loot_chest_enabled").forGetter(FloatingIslandsPlan::lootChestEnabled)
     ).apply(instance, FloatingIslandsPlan::new));
 
     static final Codec<SkyIslandPlan> PLAN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
