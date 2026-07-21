@@ -632,9 +632,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * incidental boundary. Scoped to {@code island.enabled()} so strip_world/single_biome/
      * chaos_biomes's existing exterior-ocean behavior (a silent, decoration-free boundary,
      * unchanged since before this phase) is completely untouched.
+     *
+     * <p>Excludes {@link IslandFluid#LAVA} (GOALS 28): Jason found ocean monuments and
+     * shipwrecks sitting in a sea of lava looks wrong (config 36 testing, 2026-07-20), so a lava
+     * exterior reverts to the same silent, decoration-free boundary as every non-ocean-island
+     * preset. {@link IslandFluid#NONE} (GOALS 31, drained basin) is unaffected -- config 37's own
+     * acceptance steps already expect structures to generate normally there.
      */
     private boolean decoratesExteriorOcean(ChunkPos chunkPos) {
-        return this.island.enabled() && isEntirelyExteriorOcean(chunkPos);
+        return this.island.enabled() && this.island.fluid() != IslandFluid.LAVA && isEntirelyExteriorOcean(chunkPos);
     }
 
     @Override

@@ -310,7 +310,10 @@ any island source can pair with any fluid:
   island shape, shore ring, and ocean gradient bands are otherwise
   unchanged; the shore ring's non-flammable blocks (beach/stony-shore)
   buffer the island's land from the lava. No boats (vanilla already
-  disallows placing them on lava); travel is by strider or bridging.
+  disallows placing them on lava); travel is by strider or bridging. No
+  ocean monuments, shipwrecks, ocean ruins, kelp/seagrass, or fish
+  generate in the lava — it falls back to the same silent,
+  decoration-free boundary every non-ocean-island preset already has.
 - **`none`** (GOALS 31) — the ocean is a drained, exposed basin (no fluid
   at all, real stone floor). Water-scarcity beatability is automatic —
   this only changes the exterior ocean's own fluid, so village wells,

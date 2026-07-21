@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.52", properties.getProperty("version"));
+        assertEquals("0.2.53", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -640,6 +640,23 @@ class ProjectMetadataTest {
             "if (this.originSource.isPresent()\n"
                 + "            && this.originSource.get().isNaturalPassThroughAt(x, naturalFloor, z, randomState.sampler())) {\n"
                 + "            return naturalFloor;"
+        ));
+    }
+
+    @Test
+    void lavaOceanExteriorRevertsToTheSilentDecorationFreeBoundary() throws IOException {
+        // Regression guard (Jason found in-game, config 36 testing, GOALS 28): ocean monuments
+        // and shipwrecks sitting in a sea of lava looked wrong. decoratesExteriorOcean's
+        // artificial-ocean carve-out (structures/original mobs/decoration) must exclude
+        // IslandFluid.LAVA so lava exteriors fall back to the same silent, decoration-free
+        // boundary every non-ocean-island preset already has. IslandFluid.NONE (drained basin,
+        // GOALS 31) is deliberately unaffected -- config 37 already expects structures there.
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains(
+            "return this.island.enabled() && this.island.fluid() != IslandFluid.LAVA && isEntirelyExteriorOcean(chunkPos);"
         ));
     }
 

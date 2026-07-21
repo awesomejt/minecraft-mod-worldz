@@ -494,9 +494,10 @@ there is no separate World Type for either.
 ## Phase 9 acceptance (ocean fluid variants, GOALS 28/31, TODO 9.2-9.3)
 
 Uses configs `36`-`37` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: Ocean Island"** for both. Requires 0.2.41+. Both extend
-the same preset configs 30-35 already used (DESIGN §26.1) — there is no
-separate World Type for either.
+**Select "Worldz: Ocean Island"** for both. Requires 0.2.53+ (0.2.41 for the
+core lava/dry mechanism; 0.2.53 fixed lava's structure suppression below).
+Both extend the same preset configs 30-35 already used (DESIGN §26.1) —
+there is no separate World Type for either.
 
 1. **Lava ocean**, `36-ocean-island-lava.yaml` (GOALS 28). Confirm the
    endless ocean is lava, not water, beyond the shore ring. Confirm the
@@ -509,7 +510,12 @@ separate World Type for either.
    completely ordinary vanilla. **None of this phase's design/code
    review could verify actual in-game lava-at-scale behavior** (light,
    fire spread, fluid ticking, map color) — this is genuinely new
-   ground for acceptance testing to cover, not a formality.
+   ground for acceptance testing to cover, not a formality. **(0.2.53)**
+   Confirm no ocean monuments, shipwrecks, ocean ruins, kelp/seagrass, or
+   fish generate in the lava — Jason found these looked wrong in the
+   original testing pass (config 36), so the lava exterior now reverts
+   to the same silent, decoration-free boundary every non-ocean-island
+   preset already has.
 2. **Dry world**, `37-ocean-island-dry.yaml` (GOALS 31). Confirm the
    area beyond the shore ring is an exposed, walkable stone basin with
    no water anywhere, and that its depth still visibly increases further

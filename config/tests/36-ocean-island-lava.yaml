@@ -30,6 +30,14 @@
 #     Nether generation (GOALS 28: "Nether and End unchanged").
 #  7. General light/rendering/performance sanity near the coastline --
 #     nothing this design pass could verify without booting the game.
+#  8. **(0.2.53)** Confirm no ocean monuments, shipwrecks, ocean ruins, or
+#     other water structures generate in the lava -- Jason found these
+#     looked wrong sitting in lava during the original testing pass, so
+#     the lava exterior now falls back to the same silent,
+#     decoration-free boundary every non-ocean-island preset already
+#     has (kelp/seagrass/fish are suppressed too). Only structures that
+#     can legitimately span from the island's own land out over the
+#     lava (if any) should still be possible.
 oceanIsland:
   fluid: lava
   radiusBlocks: 128
