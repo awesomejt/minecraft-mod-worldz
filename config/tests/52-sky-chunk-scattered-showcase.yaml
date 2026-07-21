@@ -1,0 +1,39 @@
+# GOALS 37 (Phase 12.5/12.6): multi-biome scattered islands with
+# independent per-island depth mode, plus underground-content showcasing
+# (DESIGN §29.6).
+# **Select "Worldz: Sky Chunk"** on the creation screen.
+#
+# A tighter exclusion zone (128 blocks) than the default, purely so it's
+# practical to reach several scattered islands quickly for this test --
+# production worlds can use much larger defaults. Half of all scattered
+# islands independently resolve top-only instead of full-column
+# (scatteredTopOnlyChance 0.5); the starter island itself stays full-column
+# (topOnly: false), same as config 49. Biome variety needs no setting at
+# all -- a scattered island's biome is whatever the real seed naturally has
+# there.
+#
+# Steps once in-game:
+#  1. Confirm the starter island is full-column, same as config 49.
+#  2. Bridge to several scattered islands beyond 128 blocks. Confirm they
+#     show different biomes from each other and from the starter (whatever
+#     the seed naturally has at each chunk -- no override).
+#  3. For each scattered island visited, dig down at its edge to check
+#     whether it's full-column (bedrock reachable) or top-only (voids out
+#     after some depth) -- confirm you see a mix of both across several
+#     islands, not all the same.
+#  4. Check the server log for the guaranteed portal room, geode, and any
+#     cave-biome/structure showcase finds (same as config 49); bridge to
+#     whichever showcase chunks were found and confirm the natural content
+#     (lush/dripstone/deep dark caves, an ancient city, or trial chambers)
+#     is really there, not a coincidence.
+chunkIsland:
+  enabled: true
+  spawnChance: 0.5
+  cellSizeChunks: 1
+  topOnly: false
+  exclusionZoneEnabled: true
+  exclusionZoneRadiusBlocks: 128
+  scatteredTopOnlyChance: 0.5
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

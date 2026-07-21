@@ -38,6 +38,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Strip World** | A narrow corridor along one axis — everything happens in that strip, ordinary vanilla terrain and biome variety otherwise; configurable width; optional Nether corridor; optional ordered biome-band sequence along its length. See [Strip world challenge](#strip-world-challenge) below. | Small screen: corridor width and unit, width mode (void/ocean), apply-to-Nether, biome bands toggle/list/width/shuffle, spawn strategy, borders, exteriors. |
 | **Worldz: Ocean Island** | An island surrounded by an endless generated ocean that gradually deepens from shore to open water: an `artificial` natural-looking island of one chosen biome, a `natural` island found in the seed's own unmodified terrain, or `chest_boat` — no land at all, spawn on a stocked chest boat. Optional distant natural islands beyond an exclusion zone. See [Ocean island challenge](#ocean-island-challenge) below. | Small screen: island source, island biome, radius, coastline shape, shore-ring width, ocean gradient widths/depths, exclusion zone toggle/radius, borders, Nether exterior. |
 | **Worldz: Sky Island** | A true floating island: a thin, fixed-thickness slab surrounded by void above, below, and beyond its footprint — Skyblock-style. Necessities chest with easy/medium/hard tiers plus a biome-driven water-source item. Optional matching Nether sky island. See [Sky island challenge](#sky-island-challenge) below. | Small screen: island biome, radius, coastline shape, surface Y, slab thickness, chest tier, apply-to-Nether, borders, Nether exterior. |
+| **Worldz: Sky Chunk** | Chunk-shaped islands cut from the seed's own natural chunks: unlike every other island type, a selected chunk's real vanilla terrain (biome, caves, structures) is left completely untouched — only unselected chunks mask to void. Optional top-only depth cutoff; a guaranteed portal-room stronghold and a forced amethyst geode; optional Nether/End application; optional underground-content showcasing. See [Sky chunk challenge](#sky-chunk-challenge) below. | Small screen: spawn chance, cell size, top-only toggle/depth, scattered top-only chance, exclusion zone, apply-to-Nether/End, borders, Nether exterior. |
 
 ## Supported loaders
 
@@ -593,6 +594,97 @@ setting: it's automatic whenever scattered islands are on.
 Not exposed on the Customize screen beyond the tier selector and the Nether
 checkbox — the kit contents themselves are YAML-only, matching every other
 variable-length list in this mod's config.
+
+## Sky chunk challenge
+
+Select **Worldz: Sky Chunk** under **World Type** for chunk-shaped islands
+cut straight from the seed's own natural chunks. Unlike every other island
+type in this mod, a selected chunk's real vanilla terrain — biome, caves,
+structures, decoration — is left completely untouched; only unselected
+chunks mask to void. There is no synthetic terrain, no surface-material
+palette, no coastline shape to configure: the island's shape is exactly one
+16×16 chunk (or a group of them, if `cellSizeChunks` is larger than 1).
+
+Every chunk independently rolls whether it's a present island
+(`spawnChance`), grouped into `cellSizeChunks`×`cellSizeChunks`-chunk cells
+if configured larger than 1. The starter chunk (spawn) is always present.
+A void buffer (`exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`) keeps
+the area immediately around the starter chunk empty before scattered
+islands begin.
+
+Each island independently keeps either its **entire natural column** (bedrock
+to sky, `topOnly: false`) or **only its top slice** down to a configured
+depth below its own real surface (`topOnly: true`,
+`topOnlyDepthBlocks` — GOALS 09's own "like 5 deep to ensure access to
+stone" example), voiding everything deeper. The cutoff follows each
+column's own natural height, not a flat world-absolute Y. The starter
+island uses the plan-wide `topOnly` setting deterministically; ordinary
+scattered islands instead each independently hash-pick their own depth
+mode via `scatteredTopOnlyChance` (GOALS 37 — "each island can
+independently be top-only... or the entire chunk column"), so the same
+world always gives the same scattered island the same depth mode, but
+different islands can differ from each other and from the starter.
+
+A real vanilla stronghold — with its End Portal Room — is guaranteed on
+one specific chunk beyond the exclusion zone, forced with the same
+`/place structure`-style API vanilla itself uses. Because a stronghold's
+own generated footprint is often much larger than one chunk, this reserved
+site can pull in several neighboring chunks beyond the void, not stay a
+clean single-chunk island; check the server log for its coordinates. An
+amethyst geode is separately force-placed on its own reserved chunk
+(also logged) — no configuration needed beyond enabling chunk islands at
+all.
+
+`applyToNether`/`applyToEnd` mirror the exact same chunk-grid mechanism
+into the Nether and/or the End — the first typed preset in this mod to
+apply to the End's own generator at all. Because chunk islands never
+synthesize terrain, no biome-family palette logic is needed the way sky
+island's Nether variant needed one: a selected Nether or End chunk shows
+real, untouched Nether/End terrain.
+
+**Underground-content showcasing (GOALS 37):** if the seed naturally has a
+lush cave, dripstone cave, or deep dark biome, or an ancient city or trial
+chambers structure, nearby chunks containing them are preferentially
+selected as islands so exploring the scattered grid actually surfaces
+varied content — a real seed-search (no chunk generation needed for the
+biome check), not depth-aware biome forcing. This is "prefer a naturally-
+qualifying chunk when one is nearby," not a guarantee — a seed with no such
+content nearby simply won't showcase it.
+
+Configure its defaults with a `chunkIsland:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+chunkIsland:
+  enabled: false
+  spawnChance: 0.35
+  cellSizeChunks: 1
+  topOnly: false
+  topOnlyDepthBlocks: 5
+  exclusionZoneEnabled: false
+  exclusionZoneRadiusBlocks: 256
+  scatteredTopOnlyChance: 0.0
+  applyToNether: false
+  applyToEnd: false
+  geodeFeatureIds:
+    - 'minecraft:amethyst_geode'
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Whether chunk islands generate at all. |
+| `spawnChance` | `0.35` | Probability (`0..1`) that a given grid cell holds an island. |
+| `cellSizeChunks` | `1` | Grid-cell edge length in chunks — `1` rolls every chunk independently; larger groups chunks into multi-chunk landmasses. |
+| `topOnly` | `false` | Whether the starter island (and the guaranteed portal-room island) keep only their top `topOnlyDepthBlocks`, voiding everything below. |
+| `topOnlyDepthBlocks` | `5` | Depth kept below the real generated surface whenever an island resolves top-only. |
+| `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` | `false`/`256` | Void buffer around the starter island before scattered islands begin. |
+| `scatteredTopOnlyChance` | `0.0` | Probability (`0..1`) an ordinary scattered island (not the starter, not the guaranteed portal room) independently resolves top-only instead of full-column. |
+| `applyToNether`/`applyToEnd` | `false`/`false` | Mirrors the same chunk-grid mechanism into the Nether and/or the End. |
+| `geodeFeatureIds` | `['minecraft:amethyst_geode']` | Candidate vanilla `ConfiguredFeature` ids the forced geode cell is hash-picked from (config-only, not exposed on the Customize screen). |
+
+Not exposed on the Customize screen beyond the fields listed above —
+`geodeFeatureIds` is YAML-only, matching every other variable-length
+feature-id list in this mod's config.
 
 ## Configuration
 

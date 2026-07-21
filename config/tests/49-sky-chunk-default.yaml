@@ -1,0 +1,42 @@
+# GOALS 09 (Phase 12.2/12.3): default chunk islands, full-column depth
+# (DESIGN §29).
+# **Select "Worldz: Sky Chunk"** on the creation screen.
+#
+# Every chunk independently has a 35% chance of being a real, natural chunk
+# island (whatever vanilla would have generated there -- terrain, caves,
+# structures, all untouched); every other chunk is void. The starter chunk
+# (spawn) is always present. A real vanilla stronghold (with its End Portal
+# Room) is guaranteed on one reserved chunk beyond the 256-block exclusion
+# zone -- check the server log for its coordinates. An amethyst geode is
+# also force-placed on its own separate reserved chunk (also beyond the
+# exclusion zone, also logged). If the seed happens to have a nearby lush
+# cave, dripstone cave, deep dark, ancient city, or trial chambers, those
+# chunks are preferentially selected as islands too (also logged, if found).
+#
+# Steps once in-game:
+#  1. Confirm you spawn on a normal-looking one-chunk island (16x16 blocks) --
+#     full-depth, bedrock to sky, exactly like an ordinary vanilla chunk cut
+#     out and surrounded by void. Walk to the edge and confirm it drops
+#     straight into void, not a cliff or slope.
+#  2. Fly around beyond the 256-block exclusion zone and confirm scattered
+#     one-chunk islands appear roughly 35% of the time, each a real natural
+#     chunk (varied terrain/biome, not identical copies).
+#  3. Check the server log for "Placed the GOALS 09 guaranteed portal room
+#     (stronghold) near (X, Z)" -- bridge there and confirm a real
+#     stronghold with a working End Portal Room exists (note: per DESIGN
+#     §29.4 this island may be noticeably larger than one chunk, since the
+#     stronghold's own bounding box can spill into neighboring chunks).
+#  4. Check the log for a geode placement message; bridge there and confirm
+#     an amethyst geode exists, roughly mid-underground in that chunk.
+#  5. If the log mentions any showcase cave-biome/structure finds, bridge to
+#     one and confirm the natural content is really there.
+chunkIsland:
+  enabled: true
+  spawnChance: 0.35
+  cellSizeChunks: 1
+  topOnly: false
+  exclusionZoneEnabled: true
+  exclusionZoneRadiusBlocks: 256
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -1,0 +1,39 @@
+# GOALS 09 (Phase 12.4): chunk islands also applied to the Nether and the
+# End (DESIGN §29.5) -- the first Worldz preset to wrap the End's own
+# generator at all.
+# **Select "Worldz: Sky Chunk"** on the creation screen.
+#
+# Same chunk-island mechanism, independently applied to all three
+# dimensions. The Nether and End each get their own scattered chunk-island
+# grid (same seed, same spawnChance/cellSizeChunks, but resolved
+# independently per dimension -- there is no guaranteed portal room or
+# geode/showcase search in the Nether or End, those are Overworld-only).
+#
+# Steps once in-game:
+#  1. Confirm the Overworld behaves as in config 49 (starter island, guaranteed
+#     portal room, geode).
+#  2. Travel to the Nether. Confirm the Nether is now also chunk islands:
+#     scattered natural Nether terrain (netherrack, basalt, lava seas, real
+#     Nether biomes/structures) on selected chunks, void everywhere else.
+#     Confirm this looks different from a normal unrestricted Nether.
+#  3. Use the End portal (from the guaranteed stronghold) or an End-access
+#     command to reach the End. Confirm the End is now also chunk islands:
+#     only some of vanilla's natural End islands/highlands are revealed,
+#     the rest replaced with void -- distinct from vanilla's own already-
+#     void-surrounded End terrain (the point is *fewer* revealed chunks,
+#     not just "the End looks like the End").
+#  4. Confirm the dragon fight remains winnable (the main End island,
+#     containing the exit portal, should be present since it's near the
+#     End spawn origin most of the time -- flag it if it's ever missing).
+chunkIsland:
+  enabled: true
+  spawnChance: 0.4
+  cellSizeChunks: 1
+  topOnly: false
+  exclusionZoneEnabled: true
+  exclusionZoneRadiusBlocks: 256
+  applyToNether: true
+  applyToEnd: true
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

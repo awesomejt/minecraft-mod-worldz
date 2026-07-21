@@ -627,6 +627,60 @@ Uses configs `44`-`48` (see [`config/tests/README.md`](config/tests/README.md)).
 (deliberately out of scope this phase, DESIGN §28.5 — GOALS 08's text has
 no Nether component).
 
+## Phase 12 acceptance (sky chunk challenge, GOALS 09/37, TODO 12.2-12.6)
+
+Uses configs `49`-`52` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Sky Chunk"** for all four. Every config logs the
+guaranteed portal room, forced geode, and any underground-content showcase
+finds at server start — check the log first, then bridge to each logged
+location.
+
+1. **Default full-column**, `49-sky-chunk-default.yaml` (GOALS 09 core,
+   0.2.54+). Confirm you spawn on a normal one-chunk (16x16) island — real
+   terrain, bedrock to sky, exactly like an ordinary vanilla chunk with
+   void where its neighbors would be. Fly beyond the 256-block exclusion
+   zone and confirm scattered one-chunk islands appear roughly 35% of the
+   time, each genuinely different (real seed terrain, not copies). Check
+   the log for "Placed the GOALS 09 guaranteed portal room (stronghold)
+   near (X, Z)"; bridge there and confirm a real stronghold with a working
+   End Portal Room exists (it may span more than one chunk — DESIGN §29.4
+   flagged this). Check the log for the geode placement and confirm an
+   amethyst geode exists roughly mid-underground in that chunk.
+2. **Top-only depth cutoff**, `50-sky-chunk-top-only.yaml` (0.2.54+). Dig
+   straight down from several points on the starter island; confirm you
+   hit void after roughly 5 blocks below each column's own surface (not a
+   single flat cutoff Y for the whole chunk — a hillier column should void
+   out deeper than a flat one). Confirm any decoration cut off at the
+   boundary (e.g. a tree with no visible roots) reads as an accepted
+   cross-section artifact, not a bug to report.
+3. **Nether/End toggles**, `51-sky-chunk-nether-end.yaml` (GOALS 09's
+   "normal Nether/End, or chunk islands" option, 0.2.54+ — **this is the
+   first Worldz preset to wrap the End's own generator at all, check
+   carefully**). Confirm the Overworld behaves as in config 49. Travel to
+   the Nether; confirm it's now also chunk islands (scattered natural
+   Nether terrain on selected chunks, void elsewhere) rather than an
+   ordinary unrestricted Nether. Reach the End via the guaranteed
+   stronghold; confirm only some of vanilla's natural End islands are
+   revealed, the rest void. **Confirm the dragon fight is still winnable**
+   (the main End island with the exit portal should coincide with the
+   forced-present starter cell at the End's own origin — flag it clearly
+   if that island is ever missing).
+4. **Multi-biome scatter + underground showcase**,
+   `52-sky-chunk-scattered-showcase.yaml` (GOALS 37, 0.2.57/0.2.58+).
+   Bridge to several scattered islands beyond 128 blocks; confirm they
+   show genuinely different biomes (no override — whatever the seed
+   naturally has). Dig at several islands' edges; confirm a mix of
+   full-column and top-only islands (`scatteredTopOnlyChance: 0.5`), not
+   uniform. Check the log for any cave-biome/structure showcase finds
+   (lush caves, dripstone caves, deep dark, an ancient city, or trial
+   chambers) and bridge to confirm the natural content is really there.
+
+**Not covered by this phase's acceptance:** depth-aware biome forcing
+(deliberately out of scope, stays the GOALS-15 Backlog item, DESIGN
+§29.6); the rare portal-room/geode cell collision (documented, not
+reproducible on demand — see `ChunkIslandPlan.reservedGeodeCell`'s javadoc,
+only worth chasing if actually seen in a test world's log).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

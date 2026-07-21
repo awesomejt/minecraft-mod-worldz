@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 10, the World Type dropdown has **six** Worldz
+   new world. Since Phase 12, the World Type dropdown has **seven** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -47,8 +47,15 @@ Every field not mentioned in a file falls back to Worldz's documented default
    Phase 10) reads only its own `skyIsland:` section -- a thin,
    fixed-thickness floating slab, void everywhere else; `skyIsland.chestTier`
    (`easy`/`medium`/`hard`) picks the necessities-chest difficulty, and
-   `skyIsland.applyToNether` mirrors the same shape into the Nether. Each
-   preset ignores every other type's dedicated section.
+   `skyIsland.applyToNether` mirrors the same shape into the Nether.
+   "Worldz: Sky Chunk" (files `49`-`52`, GOALS 09/37, Phase 12) reads only
+   its own `chunkIsland:` section -- chunk-shaped islands cut from the
+   seed's own natural chunks (real terrain untouched, only unselected
+   chunks void); `chunkIsland.topOnly`/`topOnlyDepthBlocks` picks full-
+   column vs. a depth cutoff for the starter island, and
+   `chunkIsland.applyToNether`/`applyToEnd` mirrors the same grid into
+   those dimensions too (the first preset to also wrap the End's own
+   generator). Each preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -105,6 +112,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `46-sky-island-floating-ore-deposits.yaml` | GOALS 08 (Phase 11.3): `floatingIslands.oreDepositsEnabled: true` in isolation — each scattered island should have exactly one embedded vanilla ore vein, no chest. **Select "Worldz: Sky Island"**. Requires 0.2.49+. |
 | `47-sky-island-floating-loot-chests.yaml` | GOALS 08 (Phase 11.4): `floatingIslands.lootChestEnabled: true` in isolation with a custom `lootKit` — each scattered island should have exactly one filled chest, no ore. **Select "Worldz: Sky Island"**. Requires 0.2.50+. |
 | `48-sky-island-floating-guaranteed-village.yaml` | GOALS 07 (Phase 11.5): a real vanilla village always exists on one specific scattered island beyond the exclusion zone (check the server log for its coordinates) — the flagship "guaranteed, not best-effort" village. **Select "Worldz: Sky Island"**. Requires 0.2.51+. |
+| `49-sky-chunk-default.yaml` | GOALS 09 (Phase 12.2/12.3): default full-column chunk islands — a selected chunk's real vanilla terrain is untouched, every unselected chunk is void; a guaranteed portal-room stronghold and a forced amethyst geode each sit on their own reserved chunk (check the server log for coordinates). **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
+| `50-sky-chunk-top-only.yaml` | GOALS 09 (Phase 12.2): the top-only depth cutoff ("like 5 deep to ensure access to stone") — a real per-column cutoff measured from each column's own natural surface, not a flat world-absolute Y. **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
+| `51-sky-chunk-nether-end.yaml` | GOALS 09 (Phase 12.4): `applyToNether`/`applyToEnd` — the first Worldz preset to wrap the End's own generator at all; confirms the dragon fight stays winnable when the End is also chunk islands. **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
+| `52-sky-chunk-scattered-showcase.yaml` | GOALS 37 (Phase 12.5/12.6): per-island independent depth mode (`scatteredTopOnlyChance`) plus underground-content showcasing — seed-search-preferred cave-biome/structure chunks and the forced geode cell, both logged with coordinates. **Select "Worldz: Sky Chunk"**. Requires 0.2.58+. |
 
 ### Why `01` showed ocean labeled as river
 

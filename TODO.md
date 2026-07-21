@@ -1945,10 +1945,27 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       the GOALS-15 Backlog item, exactly as scoped. 15 new tests across
       `ChunkIslandPlanTest` and `WorldPresetResourcesTest`; full suite
       green (509 tests); clean build across all modules.
-- [ ] 12.7 Test configs (starter-only full-column, starter-only top-N-deep,
+- [x] 12.7 Test configs (starter-only full-column, starter-only top-N-deep,
       portal-room findability, Nether/End toggles on/off, multi-biome
       scatter, underground-content showcase); docs (README, MANUAL_TESTING);
       **[Jason]** acceptance.
+      **Configs and docs done (0.2.59):** `config/tests/49`-`52` (default
+      full-column with the guaranteed portal room/geode; the top-only
+      depth cutoff; Nether+End toggles together, the first config
+      exercising the End-wrapping mechanism; multi-biome scatter with
+      per-island depth-mode variety plus underground-content showcasing).
+      New "Phase 12 acceptance" section in `MANUAL_TESTING.md`; `config/tests/
+      README.md`'s intro updated for the seventh World Type entry.
+      README.md gained a full "Sky chunk challenge" section (table row +
+      config example + settings table), cross-linking the shared border/
+      exterior docs rather than duplicating them, following every other
+      typed preset's section shape exactly. 0.2.59 built and deployed to
+      Worldz-Test. This completes every
+      non-[Jason] item in Phase 12 (12.1 design, 12.2 core mechanism +
+      Nether/End plumbing, 12.3 guaranteed portal room, 12.4 Nether/End
+      verification, 12.5 per-island depth-mode variety, 12.6 underground-
+      content showcasing, 12.7 docs/configs) — **do not start Phase 13
+      without Jason's explicit go-ahead.**
 
 ## Phase 13 — Cave challenge (GOALS 25–26)
 
