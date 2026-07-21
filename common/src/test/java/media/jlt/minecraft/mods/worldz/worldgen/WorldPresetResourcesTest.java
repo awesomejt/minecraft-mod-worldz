@@ -263,6 +263,16 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.sky_chunk.apply_to_end"));
     }
 
+    @Test
+    void chunkIslandShowcaseStructureTagListsExpectedStructures() throws IOException {
+        JsonObject tag = resource("/data/jlt_worldz/tags/worldgen/structure/chunk_island_showcase.json");
+
+        assertFalse(tag.get("replace").getAsBoolean());
+        assertEquals(2, tag.getAsJsonArray("values").size());
+        assertEquals("minecraft:ancient_city", tag.getAsJsonArray("values").get(0).getAsString());
+        assertEquals("minecraft:trial_chambers", tag.getAsJsonArray("values").get(1).getAsString());
+    }
+
     private static JsonObject resource(String path) throws IOException {
         try (InputStream stream = WorldPresetResourcesTest.class.getResourceAsStream(path)) {
             if (stream == null) {

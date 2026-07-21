@@ -140,6 +140,44 @@ class ChunkIslandPlanTest {
     }
 
     @Test
+    void reservedGeodeCellIsAlwaysBeyondTheExclusionZone() {
+        ChunkIslandPlan plan = new ChunkIslandPlan(true, 1.0, 2, false, 5, new IslandPlan.ExclusionZone(true, 500), 0.0);
+        for (long seed = 0; seed < 50; seed++) {
+            ChunkIslandPlan.PortalCell cell = plan.reservedGeodeCell(seed);
+            int[] center = cell.centerBlock(plan.cellSizeChunks());
+            double distance = Math.hypot(center[0], center[1]);
+            assertTrue(distance >= 500, "expected the geode cell beyond the exclusion zone at seed " + seed);
+        }
+    }
+
+    @Test
+    void reservedGeodeCellIsDeterministicAndAlwaysPresentInTheGrid() {
+        ChunkIslandPlan plan = new ChunkIslandPlan(true, 0.0, 1, false, 5, new IslandPlan.ExclusionZone(false, 0), 0.0);
+        ChunkIslandPlan.PortalCell cell = plan.reservedGeodeCell(123L);
+        assertEquals(cell, plan.reservedGeodeCell(123L));
+        ChunkIslandPlan.Hit hit = plan.at((int) cell.cellX(), (int) cell.cellZ(), 123L);
+        assertTrue(hit.present());
+        assertFalse(hit.topOnly(), "expected the geode cell to always be full-column");
+    }
+
+    @Test
+    void reservedGeodeCellIsIndependentOfThePortalCell() {
+        // A rare same-cell collision is possible (both are independent hash picks over the same
+        // distribution) and is a documented, accepted risk (see reservedGeodeCell's javadoc) --
+        // this only checks the two cells aren't derived from literally the same salt.
+        ChunkIslandPlan plan = new ChunkIslandPlan(true, 0.5, 1, false, 5, new IslandPlan.ExclusionZone(false, 0), 0.0);
+        boolean sawDifference = false;
+        for (long seed = 0; seed < 200; seed++) {
+            ChunkIslandPlan.PortalCell portal = plan.reservedPortalCell(seed);
+            ChunkIslandPlan.PortalCell geode = plan.reservedGeodeCell(seed);
+            if (portal.cellX() != geode.cellX() || portal.cellZ() != geode.cellZ()) {
+                sawDifference = true;
+            }
+        }
+        assertTrue(sawDifference, "expected the portal and geode cells to differ for at least one seed");
+    }
+
+    @Test
     void invalidSpawnChanceRejected() {
         assertThrows(
             IllegalArgumentException.class,

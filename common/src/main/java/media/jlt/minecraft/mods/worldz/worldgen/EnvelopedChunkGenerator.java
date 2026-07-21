@@ -68,6 +68,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
@@ -163,6 +164,17 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * which sources its seed from {@link #originSource} unchanged.
      */
     private volatile long chunkIslandSeed;
+    /**
+     * Chunks force-selected as present islands because a seed-search found them naturally
+     * showcasing underground content (GOALS 37, DESIGN §29.6) -- lush/dripstone/deep-dark cave
+     * biomes or a structure like an ancient city -- resolved once, at world start, by {@code
+     * ChunkIslandShowcaseSearch} via {@code WorldLimitManager}, mirroring the guaranteed
+     * portal-room cell's own "resolve once, force present" precedent. Coordinates are relative
+     * to the origin chunk, matching every other chunk-island coordinate in this class. Always
+     * full-column ({@code topOnly} false) regardless of the plan's own setting, since truncating
+     * a showcased cave chunk would defeat the point of showcasing it.
+     */
+    private volatile Set<ChunkPos> chunkIslandShowcaseCells = Set.of();
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -481,7 +493,22 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private ChunkIslandPlan.Hit chunkIslandHitAt(int relativeX, int relativeZ) {
         int chunkX = Math.floorDiv(relativeX, 16);
         int chunkZ = Math.floorDiv(relativeZ, 16);
+        if (this.chunkIslandShowcaseCells.contains(new ChunkPos(chunkX, chunkZ))) {
+            return new ChunkIslandPlan.Hit(true, false, activeChunkIsland().topOnlyDepthBlocks());
+        }
         return activeChunkIsland().at(chunkX, chunkZ, chunkIslandSeed());
+    }
+
+    /**
+     * Sets the underground-content showcase cells found by {@code ChunkIslandShowcaseSearch}
+     * (GOALS 37, DESIGN §29.6), forcing them present regardless of the plan's own hash-picked
+     * grid. Called once, at world start, from {@code WorldLimitManager} -- harmless no-op for
+     * every other preset (the set stays empty).
+     *
+     * @param relativeChunkCells cells to force present, relative to the origin chunk
+     */
+    public void setChunkIslandShowcaseCells(Set<ChunkPos> relativeChunkCells) {
+        this.chunkIslandShowcaseCells = relativeChunkCells;
     }
 
     /**
@@ -614,7 +641,45 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 applyFloatingIslandOre(level, chunk);
                 applyFloatingIslandLoot(level, chunk);
             }
+            if (activeChunkIsland().enabled()) {
+                applyChunkIslandGeode(level, chunk);
+            }
         }
+    }
+
+    /**
+     * Force-places one amethyst geode on the reserved geode showcase cell (GOALS 37, DESIGN
+     * §29.6), reusing {@link #placeOreFeature} directly -- despite the name, it forces any
+     * {@code ConfiguredFeature} at an exact position, exactly what a geode needs too.
+     */
+    private void applyChunkIslandGeode(WorldGenLevel level, ChunkAccess chunk) {
+        List<String> geodeFeatureIds = WorldzCommon.config().chunkIsland.geodeFeatureIds;
+        if (geodeFeatureIds.isEmpty()) {
+            return;
+        }
+        ChunkIslandPlan active = activeChunkIsland();
+        long seed = chunkIslandSeed();
+        ChunkIslandPlan.PortalCell geodeCell = active.reservedGeodeCell(seed);
+        int[] center = geodeCell.centerBlock(active.cellSizeChunks());
+        int centerBlockX = center[0] + originX();
+        int centerBlockZ = center[1] + originZ();
+        ChunkPos chunkPos = chunk.getPos();
+        if (chunkPos.x() != Math.floorDiv(centerBlockX, 16) || chunkPos.z() != Math.floorDiv(centerBlockZ, 16)) {
+            return;
+        }
+        int surfaceY = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, centerBlockX, centerBlockZ);
+        int y = Math.clamp(surfaceY - 20, chunk.getMinY() + 5, surfaceY - 5);
+        String featureId = geodeFeatureIds.get(
+            Math.floorMod((int) (splitmix64(seed) >>> 33), geodeFeatureIds.size())
+        );
+        placeOreFeature(level, featureId, new BlockPos(centerBlockX, y, centerBlockZ), seed, centerBlockX, centerBlockZ);
+    }
+
+    private static long splitmix64(long x) {
+        x += 0x9E3779B97F4A7C15L;
+        x = (x ^ (x >>> 30)) * 0xBF58476D1CE4E5B9L;
+        x = (x ^ (x >>> 27)) * 0x94D049BB133111EBL;
+        return x ^ (x >>> 31);
     }
 
     /**

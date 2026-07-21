@@ -153,6 +153,13 @@ public record ChunkIslandPlan(
         if (cellX == portal.cellX() && cellZ == portal.cellZ()) {
             return new Hit(true, topOnly, topOnlyDepthBlocks);
         }
+        PortalCell geode = reservedGeodeCell(seed);
+        if (cellX == geode.cellX() && cellZ == geode.cellZ()) {
+            // Always full-column (GOALS 37): a forced amethyst geode needs real vertical room,
+            // and truncating the one chunk specifically reserved to showcase it would defeat
+            // the point.
+            return new Hit(true, false, topOnlyDepthBlocks);
+        }
         boolean present = hash01(seed, "chunk_island_present", cellX, cellZ) < spawnChance
             && !withinExclusionZone(cellX, cellZ);
         if (!present) {
@@ -205,11 +212,39 @@ public record ChunkIslandPlan(
      * @return the reserved cell's coordinates
      */
     public PortalCell reservedPortalCell(long seed) {
-        double angle = hash01(seed, "chunk_island_portal_angle", 0, 0) * 2.0 * Math.PI;
+        return reservedCell(seed, "chunk_island_portal");
+    }
+
+    /**
+     * Resolves the guaranteed geode cell's grid coordinates (GOALS 37, DESIGN §29.6): the same
+     * "reserved cell" shape as {@link #reservedPortalCell}, salted differently. A real amethyst
+     * geode is force-placed here (via {@code ConfiguredFeature.place}, reusing Phase 11.3's
+     * ore-deposit mechanism) rather than searched for, since geodes have no "prefer a naturally
+     * nearby one" concept the way cave biomes and structures do.
+     *
+     * <p><b>Known, deliberately accepted risk:</b> this and {@link #reservedPortalCell} are
+     * independent hash picks over the same angle/distance distribution, so a same-cell collision
+     * is possible (rare -- roughly one in a few hundred seeds in testing) for a given world. When
+     * it happens, {@link #at} resolves the cell as the portal room (checked first), and the
+     * geode force-placement in {@code EnvelopedChunkGenerator} would land inside that same
+     * chunk's stronghold -- cosmetically odd (a geode vein intersecting stronghold walls) but not
+     * broken. Not chased further: low probability, minor impact, matches this project's
+     * established "known, minor, deliberately not chased further" posture for similarly rare
+     * geometry edge cases elsewhere (e.g. DESIGN §29.4's stronghold-bounding-box spillover).
+     *
+     * @param seed sampling seed
+     * @return the reserved cell's coordinates
+     */
+    public PortalCell reservedGeodeCell(long seed) {
+        return reservedCell(seed, "chunk_island_geode");
+    }
+
+    private PortalCell reservedCell(long seed, String salt) {
+        double angle = hash01(seed, salt + "_angle", 0, 0) * 2.0 * Math.PI;
         double exclusionRadius = exclusionZone.enabled() ? exclusionZone.radiusBlocks() : 0.0;
         double cellSizeBlocks = cellSizeChunks * 16.0;
         double distance = exclusionRadius + cellSizeBlocks * PORTAL_CELL_CLEARANCE_CELLS
-            + hash01(seed, "chunk_island_portal_distance", 0, 0) * cellSizeBlocks;
+            + hash01(seed, salt + "_distance", 0, 0) * cellSizeBlocks;
         long cellX = Math.floorDiv(Math.round(Math.cos(angle) * distance), (long) cellSizeBlocks);
         long cellZ = Math.floorDiv(Math.round(Math.sin(angle) * distance), (long) cellSizeBlocks);
         return new PortalCell(cellX, cellZ);

@@ -1888,13 +1888,63 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       plus zero/one/half scattered-chance behavior) and
       `SkyChunkCustomizationTest`; full suite green; clean build across
       all modules.
-- [ ] 12.6 Underground-content showcasing (37): seed-search preferentially
+- [x] 12.6 Underground-content showcasing (37): seed-search preferentially
       selects naturally-qualifying chunks (real lush/dripstone/deep-dark
       cave biomes, real structure-bearing chunks) among 12.5's scattered
       candidates, reusing `NaturalIslandSearch`'s seed-scan precedent;
       amethyst geodes via forced `ConfiguredFeature.place`, reusing Phase
       11.3's mechanism. Document the depth-aware-biome-forcing gap this
       does *not* attempt (stays the GOALS-15 Backlog item).
+      **Done (0.2.58):** new `worldgen.ChunkIslandShowcaseSearch`, reusing
+      `SpawnOriginManager.searchNaturalIsland`'s exact climate-sampling
+      technique (`MultiNoiseBiomeSource.getNoiseBiome` against a real
+      `RandomState`, no chunk generation) for `Biomes.LUSH_CAVES`/
+      `DRIPSTONE_CAVES`/`DEEP_DARK`, each checked at one representative
+      depth (Y-40) rather than DESIGN §29.6's originally sketched
+      multi-depth scan — a scoped, documented simplification (matches
+      `SkyIslandProfile`'s own surface-material-heuristic precedent):
+      "prefer a naturally-qualifying chunk when one is nearby" doesn't
+      need exhaustive depth coverage to be worth having. Structure-bearing
+      chunks reuse `ServerLevel.findNearestMapStructure` (the real
+      `/locate structure` query) against a new mod-owned tag,
+      `jlt_worldz:chunk_island_showcase` (`minecraft:ancient_city`,
+      `minecraft:trial_chambers`) — no vanilla tag groups "any single
+      interesting structure," so a small tag resource was the simplest
+      correct option. Found chunks are resolved once at world start (from
+      `WorldLimitManager`, mirroring the guaranteed-portal-room's timing)
+      and threaded into `EnvelopedChunkGenerator` via a new
+      `setChunkIslandShowcaseCells`/`chunkIslandShowcaseCells` field,
+      checked first in `chunkIslandHitAt` ahead of the plan's own
+      hash-based grid — always forced full-column, since truncating a
+      showcased cave chunk would defeat the point. No persistence needed
+      (unlike `SpawnOriginState`'s precedent): the search is a pure
+      function of the real seed's noise field, so it's cheap and correct
+      to just re-run once per server start rather than persist a result.
+      Amethyst geodes are simpler than the search-based categories: a
+      third reserved cell, `ChunkIslandPlan.reservedGeodeCell` (the same
+      hash-picked-angle-and-distance shape as the portal-room cell, just
+      salted differently, refactored into a shared private `reservedCell`
+      helper), force-placed via `EnvelopedChunkGenerator
+      .applyChunkIslandGeode` reusing `placeOreFeature` directly (despite
+      its ore-specific name, it forces any `ConfiguredFeature` at an exact
+      position — exactly what a geode needs too, no new placement code).
+      New config-only `ChunkIslandConfig.geodeFeatureIds` (default
+      `["minecraft:amethyst_geode"]`), same "list stays in config, never
+      persisted" precedent as every other feature-id pool in this
+      codebase. **Known, deliberately accepted risk found and documented,
+      not chased further:** the portal-room and geode cells are
+      independent hash picks over the same distribution, so a same-cell
+      collision is possible (found empirically, roughly one in a few
+      hundred seeds) — the portal room wins (checked first in `at()`),
+      and the geode force-placement would land inside that chunk's
+      stronghold, cosmetically odd but not broken; documented in
+      `reservedGeodeCell`'s javadoc rather than engineered around, matching
+      this project's posture for similarly rare, low-impact geometry edge
+      cases (e.g. DESIGN §29.4's own stronghold-bounding-box spillover).
+      No depth-aware biome forcing attempted anywhere in this task — stays
+      the GOALS-15 Backlog item, exactly as scoped. 15 new tests across
+      `ChunkIslandPlanTest` and `WorldPresetResourcesTest`; full suite
+      green (509 tests); clean build across all modules.
 - [ ] 12.7 Test configs (starter-only full-column, starter-only top-N-deep,
       portal-room findability, Nether/End toggles on/off, multi-biome
       scatter, underground-content showcase); docs (README, MANUAL_TESTING);

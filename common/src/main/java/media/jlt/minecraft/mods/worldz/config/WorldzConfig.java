@@ -792,6 +792,9 @@ public final class WorldzConfig {
         if (map.containsKey("applyToEnd")) {
             config.applyToEnd = readBoolean(map.get("applyToEnd"), name + ".applyToEnd");
         }
+        if (map.containsKey("geodeFeatureIds")) {
+            config.geodeFeatureIds = readStringList(map.get("geodeFeatureIds"), name + ".geodeFeatureIds", logger);
+        }
         return config;
     }
 
@@ -1215,6 +1218,9 @@ public final class WorldzConfig {
                 "Clamped chunkIsland.scatteredTopOnlyChance from {} to {}.", originalScatteredChance, sanitized.scatteredTopOnlyChance
             );
         }
+        sanitized.geodeFeatureIds = new ArrayList<>(
+            sanitized.geodeFeatureIds.stream().map(String::trim).filter(id -> !id.isEmpty()).toList()
+        );
         return sanitized;
     }
 
@@ -1389,6 +1395,7 @@ public final class WorldzConfig {
         values.put("scatteredTopOnlyChance", config.scatteredTopOnlyChance);
         values.put("applyToNether", config.applyToNether);
         values.put("applyToEnd", config.applyToEnd);
+        values.put("geodeFeatureIds", config.geodeFeatureIds);
         return values;
     }
 
@@ -1563,7 +1570,8 @@ public final class WorldzConfig {
             + (config.topOnly ? ", topOnlyDepthBlocks=" + config.topOnlyDepthBlocks : "")
             + ", scatteredTopOnlyChance=" + config.scatteredTopOnlyChance
             + ", applyToNether=" + config.applyToNether
-            + ", applyToEnd=" + config.applyToEnd;
+            + ", applyToEnd=" + config.applyToEnd
+            + ", geodeFeatureIds=" + config.geodeFeatureIds;
     }
 
     private static String singleBiomeSummary(SingleBiomeConfig config) {

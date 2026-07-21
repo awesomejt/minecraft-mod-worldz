@@ -15,6 +15,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 
 import java.util.OptionalInt;
 import java.util.OptionalLong;
@@ -124,6 +125,12 @@ public final class WorldLimitManager {
         }
         if (needsGuaranteedPortalRoom) {
             ChunkIslandDeployment.placeGuaranteedPortalRoom(overworld, originX, originZ, overworldChunkIsland);
+        }
+        if (overworldChunkIsland.enabled() && overworldGenerator instanceof EnvelopedChunkGenerator enveloped
+            && enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {
+            enveloped.setChunkIslandShowcaseCells(ChunkIslandShowcaseSearch.findShowcaseCells(
+                overworld, noiseGenerator, overworldChunkIsland, originX, originZ
+            ));
         }
         BorderInitResult netherResult = BorderInitResult.NONE;
         if (nether != null) {

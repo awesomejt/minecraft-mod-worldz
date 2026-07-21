@@ -1,5 +1,8 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** Configuration for chunk-shaped sky islands (GOALS 09/37). */
 public final class ChunkIslandConfig {
     /** Whether chunk islands generate at all. */
@@ -22,8 +25,18 @@ public final class ChunkIslandConfig {
     public boolean applyToNether;
     /** Whether the same chunk-island mechanism also applies to the End. */
     public boolean applyToEnd;
+    /**
+     * Candidate configured-feature ids force-placed on the reserved geode showcase cell (GOALS
+     * 37, DESIGN §29.6) -- config-only, never persisted per-world, matching {@code
+     * FloatingIslandsConfig.oreFeatureIds}'s precedent exactly.
+     */
+    public List<String> geodeFeatureIds = list("minecraft:amethyst_geode");
 
     /** Creates the disabled default configuration. */
     public ChunkIslandConfig() {
+    }
+
+    private static List<String> list(String... values) {
+        return new ArrayList<>(List.of(values));
     }
 }
