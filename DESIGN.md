@@ -3866,9 +3866,14 @@ Mechanism (`SpawnOriginManager.resolveCaveOrigin`, called from
 The optional starter chest (GOALS 25) is **not** placed here — it stays on
 `WorldLimitManager.onServerStarted`'s existing one-shot deployment timing
 (§27.8's precedent), reading the chest position straight from
-`overworld.getSharedSpawnPos()` (already resolved and persisted by the time
-`onServerStarted` runs) instead of threading a second stored coordinate
-through `SpawnOriginState` — one less thing to keep in sync.
+`overworld.getRespawnData().pos()` (already resolved and persisted by the
+time `onServerStarted` runs) instead of threading a second stored
+coordinate through `SpawnOriginState` — one less thing to keep in sync.
+**Implementation note (13.2d):** the method name above was corrected from
+an original `getSharedSpawnPos()` guess, which doesn't exist in 26.2 --
+spawn/respawn state moved to `LevelData.RespawnData`, exposed via
+`Level.getRespawnData().pos()`; caught by the compiler when this wiring
+was actually written, not a separate source-reading spike.
 
 ### 30.4 Sealed surface — a uniform per-column roof, independent of shape
 

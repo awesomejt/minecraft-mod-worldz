@@ -39,6 +39,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Ocean Island** | An island surrounded by an endless generated ocean that gradually deepens from shore to open water: an `artificial` natural-looking island of one chosen biome, a `natural` island found in the seed's own unmodified terrain, or `chest_boat` — no land at all, spawn on a stocked chest boat. Optional distant natural islands beyond an exclusion zone. See [Ocean island challenge](#ocean-island-challenge) below. | Small screen: island source, island biome, radius, coastline shape, shore-ring width, ocean gradient widths/depths, exclusion zone toggle/radius, borders, Nether exterior. |
 | **Worldz: Sky Island** | A true floating island: a thin, fixed-thickness slab surrounded by void above, below, and beyond its footprint — Skyblock-style. Necessities chest with easy/medium/hard tiers plus a biome-driven water-source item. Optional matching Nether sky island. See [Sky island challenge](#sky-island-challenge) below. | Small screen: island biome, radius, coastline shape, surface Y, slab thickness, chest tier, apply-to-Nether, borders, Nether exterior. |
 | **Worldz: Sky Chunk** | Chunk-shaped islands cut from the seed's own natural chunks: unlike every other island type, a selected chunk's real vanilla terrain (biome, caves, structures) is left completely untouched — only unselected chunks mask to void. Optional top-only depth cutoff; a guaranteed portal-room stronghold and a forced amethyst geode; optional Nether/End application; optional underground-content showcasing. See [Sky chunk challenge](#sky-chunk-challenge) below. | Small screen: spawn chance, cell size, top-only toggle/depth, scattered top-only chance, exclusion zone, apply-to-Nether/End, borders, Nether exterior. |
+| **Worldz: Cave** | Cave-only start: the Overworld generates exactly as vanilla would (no biome restriction, no shape at all) — only your spawn changes, placed in a real, searched-out natural underground cavity. Optional solid roof sealing off sky access everywhere; optional large carved mega-cavern around spawn; optional starter chest. See [Cave challenge](#cave-challenge) below. | Small screen: spawn depth, sealed-surface toggle/Y, mega-cavern toggle/radius/height, chest toggle/tier, borders, Nether exterior. |
 
 ## Supported loaders
 
@@ -685,6 +686,70 @@ chunkIsland:
 Not exposed on the Customize screen beyond the fields listed above —
 `geodeFeatureIds` is YAML-only, matching every other variable-length
 feature-id list in this mod's config.
+
+## Cave challenge
+
+Select **Worldz: Cave** under **World Type** for a cave-only start. Unlike
+every other typed preset, the Overworld generates exactly as vanilla
+would — full biome variety, real seed terrain, no shape or restriction of
+any kind. The only change is where you spawn: a real natural cavity,
+searched out near a configurable depth (`spawnDepthY`), rather than the
+surface. Underground structures (mineshafts, dungeons, trial chambers, a
+stronghold) generate normally so the game stays beatable, and the Nether is
+reached by an ordinary portal built underground.
+
+If no natural cavity is found near the configured depth within the search
+budget, a small safe capsule is carved instead so world creation can never
+fail to produce a safe spawn (check the server log for a warning if this
+happens).
+
+Two independent options layer on top:
+
+- **Sealed surface** (`sealedSurface`/`sealedSurfaceY`): a solid roof caps
+  the entire world at the configured Y, so the whole game is played
+  underground with no sky access anywhere. Terrain above that height —
+  ordinarily just tall mountain peaks — is deliberately clipped flat, not a
+  bug. No sky access also means no phantoms.
+- **Mega-cavern** (`cavernEnabled`/`cavernRadiusBlocks`/`cavernHeightBlocks`):
+  a large, naturally-edged cavern carved around spawn — a buried "world in
+  a cave" with room to build a base. The edge is perturbed (not a perfect
+  sphere) using the same coastline-shaping math every other footprint in
+  this mod shares, so it blends into whatever natural cave systems the seed
+  already has there. The carve only ever turns solid blocks into air —
+  existing air, water, lava, or natural caves already inside the footprint
+  are left exactly as vanilla generated them.
+
+An optional starter chest (`chestEnabled`/`chestTier`, easy/medium/hard) is
+set into the floor directly beneath your spawn position — unlike every
+other typed preset's chest, this one defaults to **off**.
+
+Configure its defaults with a `cave:` section in `config/jlt_worldz.yaml`:
+
+```yaml
+cave:
+  spawnDepthY: -32
+  sealedSurface: false
+  sealedSurfaceY: 128
+  cavernEnabled: false
+  cavernRadiusBlocks: 48
+  cavernHeightBlocks: 24
+  chestEnabled: false
+  chestTier: medium
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `spawnDepthY` | `-32` | Target Y for the underground spawn-cavity search. |
+| `sealedSurface` | `false` | Whether a solid roof seals off sky access everywhere. |
+| `sealedSurfaceY` | `128` | The roof's Y, meaningful only when `sealedSurface` is set. |
+| `cavernEnabled` | `false` | Whether the mega-cavern is carved around spawn. |
+| `cavernRadiusBlocks` | `48` | The mega-cavern's horizontal half-width in blocks (`8`-`256`). |
+| `cavernHeightBlocks` | `24` | The mega-cavern's vertical half-height in blocks (`8`-`256`). |
+| `chestEnabled` | `false` | Whether a starter chest is placed at spawn. |
+| `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+
+**New worlds only**, same restriction as every other typed preset here: no
+save-compat obligations for worlds created by an older mod version.
 
 ## Configuration
 

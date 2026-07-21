@@ -2324,3 +2324,18 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `CavePlan` also defaults from live config — avoided adding a
   `cave.enabled` YAML toggle, which would otherwise need careful gating
   to avoid leaking into every other preset's Overworld generator.
+- 2026-07-21 — **Phase 13 wrap-up (cave challenge, GOALS 25-26).** All
+  four non-[Jason] tasks (13.1 design, 13.2a core + preset, 13.2b sealed
+  surface, 13.2c mega-cavern, 13.2d starter chest + docs/configs) done,
+  0.2.63 deployed to Worldz-Test. One correction found during
+  implementation, worth flagging for future design passes: DESIGN §30.3
+  originally named the vanilla API for reading back a resolved spawn
+  position as `ServerLevel.getSharedSpawnPos()` -- that method doesn't
+  exist in 26.2 (spawn/respawn state moved to `LevelData.RespawnData`,
+  read via `Level.getRespawnData().pos()`). Caught by the compiler when
+  `WorldLimitManager`'s cave-chest wiring was actually written (13.2d),
+  not by a separate source-reading spike -- a reminder that a design
+  pass's own confidence in an API name still needs verifying at the
+  point it's actually used, not just assumed correct because an earlier,
+  adjacent finding (13.1's `setInitialSpawn` timing) was independently
+  confirmed against real sources.

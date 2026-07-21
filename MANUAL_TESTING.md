@@ -681,6 +681,44 @@ location.
 reproducible on demand — see `ChunkIslandPlan.reservedGeodeCell`'s javadoc,
 only worth chasing if actually seen in a test world's log).
 
+## Phase 13 acceptance (cave challenge, GOALS 25/26, TODO 13.2a-13.2d)
+
+Uses configs `53`-`56` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Cave"** for all four. Unlike every other typed preset,
+the Overworld itself is completely untouched vanilla terrain — only spawn
+placement (and the two optional pieces below) differ.
+
+1. **Default underground spawn**, `53-cave-default.yaml` (GOALS 25 core,
+   0.2.60+). Confirm you spawn underground — no sky visible, real stone/cave
+   terrain around you, not the surface. Dig upward and confirm ordinary
+   vanilla surface terrain exists above (hills, biomes, weather). Confirm
+   normal caves, mineshafts, and other underground structures still
+   generate. Build or find a Nether portal underground and confirm it
+   works. If the server log warns "found no natural pocket... carving a
+   safe capsule instead", note that in your report — it's an accepted
+   fallback, not a bug, but worth flagging which seed triggered it.
+2. **Sealed surface**, `54-cave-sealed-surface.yaml` (0.2.61+). Dig straight
+   up from spawn; confirm you hit a solid stone ceiling around Y 128 with
+   no way through without breaking it. Break through from below and confirm
+   there's genuinely no sky beyond it (or, if a very tall mountain happens
+   to poke through, that's an accepted clipped-flat case, not a bug — DESIGN
+   §30.4). Confirm no phantoms spawn over several nights.
+3. **Mega-cavern**, `55-cave-mega-cavern.yaml` (0.2.62+). Confirm you spawn
+   in a large open cavern (roomy enough to build in), not a tight natural
+   pocket like config 53. Walk to the cavern's edge and confirm it looks
+   naturally irregular, blending into real cave systems rather than reading
+   as a perfect sphere with a sharp seam. If a natural water/lava pool or
+   passage already exists near the edge, confirm it's left untouched.
+4. **Optional starter chest**, `56-cave-chest-and-sealed.yaml` (0.2.63+).
+   Confirm a chest exists in the floor directly beneath your spawn position
+   (dig one block down if it isn't immediately visible) containing the
+   hard-tier kit (a handful of torches plus a little food and coal).
+   Confirm the sealed surface (config 54's check) still holds with the
+   chest enabled too.
+
+**Not covered by this phase's acceptance:** a Nether or End variant of any
+cave option (GOALS 25/26 are Overworld-only in scope, DESIGN §30.6).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
+import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
@@ -65,6 +66,11 @@ public final class WorldLimitManager {
         // skyIsland-disabled branch already falls through to the correct plain border/envelope
         // check), so no new ObjectiveSite.supportiveRadius overload is needed -- only this gate.
         ChunkIslandPlan overworldChunkIsland = limitedSource.chunkIsland();
+        // Cave (GOALS 25-26, DESIGN §30) reads its plan straight off the generator, never
+        // LimitedBiomeSource, unlike every plan above -- see §30.1.
+        CavePlan overworldCave = overworldGenerator instanceof EnvelopedChunkGenerator caveEnveloped
+            ? caveEnveloped.cave()
+            : CavePlan.disabled();
         // Fetched early (rather than only inside the `nether != null` block below) so its own
         // sky island plan (GOALS 06, DESIGN §27.6) can join the exteriorObjective gate the same
         // way the Overworld's does -- it never expresses itself through ExteriorPlan either.
@@ -97,8 +103,11 @@ public final class WorldLimitManager {
         // mechanism, not a fallback (exteriorObjective's own generic vault is still a secondary
         // safety net on top, per limit.ensureObjective()).
         boolean needsGuaranteedPortalRoom = overworldChunkIsland.enabled();
+        // Same reasoning again for cave's own optional starter chest (GOALS 25, DESIGN §30.3):
+        // every cave world with the chest option enabled gets one, regardless of border/objective.
+        boolean needsCaveChest = overworldCave.enabled() && overworldCave.chestEnabled();
         if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest
-            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom) {
+            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsCaveChest) {
             return;
         }
 
@@ -125,6 +134,14 @@ public final class WorldLimitManager {
         }
         if (needsGuaranteedPortalRoom) {
             ChunkIslandDeployment.placeGuaranteedPortalRoom(overworld, originX, originZ, overworldChunkIsland);
+        }
+        if (needsCaveChest) {
+            // Cave's own spawn is resolved by SpawnOriginManager.resolveCaveOrigin, never
+            // originX/originZ (which stay 0,0 for this preset -- cave has no layout-origin
+            // search of its own) -- read the actual placed position back from vanilla's own
+            // persisted respawn data instead of threading a second stored coordinate through
+            // SpawnOriginState (DESIGN §30.3).
+            StarterKitDeployment.spawnCaveStarterChest(overworld, overworld.getRespawnData().pos(), overworldCave);
         }
         if (overworldChunkIsland.enabled() && overworldGenerator instanceof EnvelopedChunkGenerator enveloped
             && enveloped.delegate() instanceof NoiseBasedChunkGenerator noiseGenerator) {

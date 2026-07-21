@@ -1,0 +1,25 @@
+# GOALS 25 (Phase 13.2d): the optional starter chest, combined with the
+# sealed surface for a "hardest" cave-only start in one config (DESIGN
+# §30.3).
+# **Select "Worldz: Cave"** on the creation screen.
+#
+# A hard-tier starter chest is set into the floor directly beneath your
+# spawn position. The sealed surface is also enabled (config 54 already
+# covers it alone) -- this file is about the chest, not a repeat of that
+# check.
+#
+# Steps once in-game:
+#  1. Confirm a chest exists in the floor block directly beneath where you
+#     spawned (dig straight down one block if it isn't immediately visible).
+#  2. Open it and confirm it contains the hard-tier kit (a handful of
+#     torches plus a little food and coal -- bare essentials, not a full
+#     loadout).
+#  3. Confirm the sealed surface (config 54's check) still holds with the
+#     chest enabled too -- the two options are independent.
+cave:
+  spawnDepthY: -32
+  sealedSurface: true
+  sealedSurfaceY: 128
+  cavernEnabled: false
+  chestEnabled: true
+  chestTier: hard

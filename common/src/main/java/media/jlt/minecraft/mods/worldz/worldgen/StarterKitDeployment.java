@@ -1,8 +1,10 @@
 package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
+import media.jlt.minecraft.mods.worldz.config.CaveConfig;
 import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
+import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitPlan;
@@ -74,6 +76,53 @@ final class StarterKitDeployment {
     }
 
     private static StarterKitConfig tierConfig(SkyIslandConfig config, StarterKitTier tier) {
+        return switch (tier) {
+            case EASY -> config.easyKit;
+            case MEDIUM -> config.mediumKit;
+            case HARD -> config.hardKit;
+        };
+    }
+
+    /**
+     * Places a filled chest set into the floor directly beneath the resolved underground spawn
+     * position (GOALS 25's "optionally with a starter chest", DESIGN §30.3) -- the same "replace
+     * solid ground within the already-validated safe area" placement {@link #spawnStarterChest}
+     * uses, rather than an adjacent column, since {@code searchCaveCavity}'s floor/headroom check
+     * only validates the spawn column itself, not its neighbors. Filled from the selected
+     * difficulty tier's essentials/extras. Unlike {@link #spawnStarterChest}, there is no
+     * biome-driven water-source item -- cave has no biome concept of its own to key off (DESIGN
+     * §30.1: full vanilla biome variety, not a restricted island biome). Called once, only for a
+     * new cave world with the chest option enabled.
+     *
+     * @param overworld the Overworld server level
+     * @param spawnPos the actual resolved underground spawn position
+     * @param cave the world's resolved cave plan
+     */
+    static void spawnCaveStarterChest(ServerLevel overworld, BlockPos spawnPos, CavePlan cave) {
+        BlockPos pos = spawnPos.below();
+        overworld.setBlock(pos, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+
+        StarterKitPlan plan = resolvePlan(tierConfig(WorldzCommon.config().cave, cave.chestTier()));
+        List<StarterKitPlan.ItemAmount> resolved = plan.resolve(overworld.getSeed());
+
+        BlockEntity blockEntity = overworld.getBlockEntity(pos);
+        if (!(blockEntity instanceof ChestBlockEntity chest)) {
+            WorldzCommon.LOGGER.warn("Could not create the GOALS 25 starter chest at {}.", pos);
+            return;
+        }
+        int slot = 0;
+        for (StarterKitPlan.ItemAmount amount : resolved) {
+            if (slot >= chest.getContainerSize()) {
+                break;
+            }
+            Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(amount.itemId()));
+            chest.setItem(slot, new ItemStack(item, amount.count()));
+            slot++;
+        }
+        WorldzCommon.LOGGER.info("Spawned the GOALS 25 cave starter chest at {}.", pos);
+    }
+
+    private static StarterKitConfig tierConfig(CaveConfig config, StarterKitTier tier) {
         return switch (tier) {
             case EASY -> config.easyKit;
             case MEDIUM -> config.mediumKit;

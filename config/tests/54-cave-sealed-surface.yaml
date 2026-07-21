@@ -1,0 +1,25 @@
+# GOALS 25 (Phase 13.2b): sealed surface -- the entire game is played
+# underground, no sky access anywhere (DESIGN §30.4).
+# **Select "Worldz: Cave"** on the creation screen.
+#
+# A solid stone roof caps the world at Y 128 (comfortably above ordinary
+# hills; true mountains above that height are deliberately clipped flat --
+# expected, not a bug). Normal terrain, caves, and structures still
+# generate below it exactly as usual.
+#
+# Steps once in-game:
+#  1. Confirm you spawn underground exactly as in config 53.
+#  2. Dig straight up from spawn and confirm you hit a solid stone ceiling
+#     around Y 128 -- no sky, no light, no way through without breaking it.
+#  3. Break through the roof from below and confirm there is genuinely no
+#     sky above it (still solid stone, or at most a very tall mountain peak
+#     poking through the general area) -- not just a thin visual layer.
+#  4. Confirm no phantoms spawn over many nights (no sky access anywhere to
+#     trigger them) and that light/mob-spawning below the roof behaves like
+#     an ordinary large cave.
+cave:
+  spawnDepthY: -32
+  sealedSurface: true
+  sealedSurfaceY: 128
+  cavernEnabled: false
+  chestEnabled: false

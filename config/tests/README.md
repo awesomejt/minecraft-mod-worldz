@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 12, the World Type dropdown has **seven** Worldz
+   new world. Since Phase 13, the World Type dropdown has **eight** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -55,7 +55,17 @@ Every field not mentioned in a file falls back to Worldz's documented default
    column vs. a depth cutoff for the starter island, and
    `chunkIsland.applyToNether`/`applyToEnd` mirrors the same grid into
    those dimensions too (the first preset to also wrap the End's own
-   generator). Each preset ignores every other type's dedicated section.
+   generator). "Worldz: Cave" (files `53`-`56`, GOALS 25/26, Phase 13)
+   reads only its own `cave:` section -- the Overworld generates exactly
+   as vanilla would (no biome restriction, no shape at all); the only
+   change is where you spawn (a real natural underground cavity, searched
+   out near `cave.spawnDepthY`) plus two independent options:
+   `cave.sealedSurface` (a solid roof at `cave.sealedSurfaceY`, no sky
+   access anywhere) and `cave.cavernEnabled` (a large carved cavern around
+   spawn, `cave.cavernRadiusBlocks`/`cavernHeightBlocks`). `cave.chestEnabled`
+   plus `cave.chestTier` (`easy`/`medium`/`hard`) optionally place a
+   starter chest at spawn, unlike every other typed preset's chest (which
+   is always on). Each preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -116,6 +126,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `50-sky-chunk-top-only.yaml` | GOALS 09 (Phase 12.2): the top-only depth cutoff ("like 5 deep to ensure access to stone") — a real per-column cutoff measured from each column's own natural surface, not a flat world-absolute Y. **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
 | `51-sky-chunk-nether-end.yaml` | GOALS 09 (Phase 12.4): `applyToNether`/`applyToEnd` — the first Worldz preset to wrap the End's own generator at all; confirms the dragon fight stays winnable when the End is also chunk islands. **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
 | `52-sky-chunk-scattered-showcase.yaml` | GOALS 37 (Phase 12.5/12.6): per-island independent depth mode (`scatteredTopOnlyChance`) plus underground-content showcasing — seed-search-preferred cave-biome/structure chunks and the forced geode cell, both logged with coordinates. **Select "Worldz: Sky Chunk"**. Requires 0.2.58+. |
+| `53-cave-default.yaml` | GOALS 25 (Phase 13.2a): default cave-only start — spawn is a real, searched-out natural underground cavity; no sealed surface, no mega-cavern, no chest. **Select "Worldz: Cave"**. Requires 0.2.60+. |
+| `54-cave-sealed-surface.yaml` | GOALS 25 (Phase 13.2b): `sealedSurface: true` — a solid roof at Y 128 seals off sky access everywhere; confirms no way through without breaking it and no phantom spawns. **Select "Worldz: Cave"**. Requires 0.2.61+. |
+| `55-cave-mega-cavern.yaml` | GOALS 26 (Phase 13.2c): `cavernEnabled: true` — a large, naturally-edged cavern around spawn with room to build; confirms the perturbed boundary blends into real cave systems and never overwrites existing air/fluid. **Select "Worldz: Cave"**. Requires 0.2.62+. |
+| `56-cave-chest-and-sealed.yaml` | GOALS 25 (Phase 13.2d): `chestEnabled: true` with `chestTier: hard`, combined with the sealed surface — confirms the optional starter chest (set into the floor beneath spawn) composes cleanly with another cave option. **Select "Worldz: Cave"**. Requires 0.2.63+. |
 
 ### Why `01` showed ocean labeled as river
 

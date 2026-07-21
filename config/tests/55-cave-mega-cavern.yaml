@@ -1,0 +1,28 @@
+# GOALS 26 (Phase 13.2c): mega-cavern -- a huge natural-looking cavern
+# around spawn, a buried "world in a cave" with room to build a base
+# (DESIGN §30.5).
+# **Select "Worldz: Cave"** on the creation screen.
+#
+# A carved cavern roughly 64 blocks in horizontal radius and 32 blocks
+# above/below spawn's target depth, with a perturbed (not perfectly
+# circular) edge that blends into whatever natural cave systems the real
+# seed already has there. Only solid blocks are carved to air -- any real
+# cave, water, or lava already inside the footprint is left exactly as
+# vanilla generated it.
+#
+# Steps once in-game:
+#  1. Confirm you spawn in a large open cavern, not a tight natural pocket
+#     like config 53 -- there should be genuine room to build.
+#  2. Walk toward the cavern's edge and confirm the boundary looks natural
+#     (an irregular, perturbed wall merging into real cave systems), not a
+#     perfect sphere with a sharp seam.
+#  3. If a natural water/lava pool or cave passage happens to already exist
+#     near the edge, confirm it's left untouched (not overwritten with air
+#     or refilled) rather than looking artificially truncated.
+cave:
+  spawnDepthY: -32
+  sealedSurface: false
+  cavernEnabled: true
+  cavernRadiusBlocks: 64
+  cavernHeightBlocks: 32
+  chestEnabled: false

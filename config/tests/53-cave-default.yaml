@@ -1,0 +1,23 @@
+# GOALS 25 (Phase 13.2a): default cave-only start -- no sealed surface, no
+# mega-cavern, no starter chest (DESIGN §30).
+# **Select "Worldz: Cave"** on the creation screen.
+#
+# The Overworld generates exactly as vanilla would (full biome variety, real
+# seed terrain) -- the only difference is where you spawn: a real natural
+# cavity searched out near Y-32, not the surface. If no natural cavity is
+# found within the search budget, a small carved safe capsule is used
+# instead (check the server log for a warning if so).
+#
+# Steps once in-game:
+#  1. Confirm you spawn underground (no sky visible, surrounded by real
+#     stone/cave terrain) rather than on the surface.
+#  2. Dig/explore upward and confirm ordinary vanilla surface terrain exists
+#     above you (hills, biomes, weather) -- the Overworld itself is untouched.
+#  3. Confirm normal caves, mineshafts, and other underground structures
+#     still generate around you.
+#  4. Build (or find) a Nether portal underground and confirm it works.
+cave:
+  spawnDepthY: -32
+  sealedSurface: false
+  cavernEnabled: false
+  chestEnabled: false

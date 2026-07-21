@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.62", properties.getProperty("version"));
+        assertEquals("0.2.63", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -286,6 +286,26 @@ class ProjectMetadataTest {
                 + "                );"
         ));
         assertTrue(generator.contains("if (!oldState.isAir() && oldState.getFluidState().isEmpty()) {"));
+    }
+
+    @Test
+    void caveStarterChestIsDeployedFromTheActualResolvedSpawnPosition() throws IOException {
+        // GOALS 25's optional starter chest must find the real, resolved cavity spawn -- cave
+        // has no layout-origin search of its own (originX/originZ stay 0,0), so the chest
+        // placement must read vanilla's own persisted respawn data, not the origin.
+        String manager = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/WorldLimitManager.java"
+        ));
+        assertTrue(manager.contains("boolean needsCaveChest = overworldCave.enabled() && overworldCave.chestEnabled();"));
+        assertTrue(manager.contains(
+            "StarterKitDeployment.spawnCaveStarterChest(overworld, overworld.getRespawnData().pos(), overworldCave);"
+        ));
+
+        String deployment = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/StarterKitDeployment.java"
+        ));
+        assertTrue(deployment.contains("static void spawnCaveStarterChest(ServerLevel overworld, BlockPos spawnPos, CavePlan cave) {"));
+        assertTrue(deployment.contains("BlockPos pos = spawnPos.below();"));
     }
 
     @Test

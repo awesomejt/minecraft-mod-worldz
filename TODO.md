@@ -2108,10 +2108,34 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       same rationale as 13.2b's (the generator itself isn't directly
       unit-testable). Full suite green (534 tests); clean build across
       all modules.
-- [ ] 13.2d Starter chest reuse (optional, DESIGN §30.3's
+- [x] 13.2d Starter chest reuse (optional, DESIGN §30.3's
       `getSharedSpawnPos()` timing), test configs, docs
       (README/MANUAL_TESTING.md); **[Jason]** acceptance (25 with/without
       sealed surface and with/without chest, 26).
+      **Done (0.2.63):** `StarterKitDeployment.spawnCaveStarterChest`
+      places a filled chest set into the floor directly beneath the
+      *actual resolved* spawn position -- read back from
+      `overworld.getRespawnData().pos()` (the real 26.2 API; DESIGN
+      §30.3's original "`getSharedSpawnPos()`" name didn't exist and was
+      corrected once verified against the compiled jar during
+      implementation), not `originX`/`originZ` (which stay `0,0` for this
+      preset -- cave has no layout-origin search of its own). No
+      biome-driven water-source item unlike `sky_island`'s chest -- cave
+      has no biome concept to key off. Wired into
+      `WorldLimitManager.onServerStarted` via a `needsCaveChest =
+      overworldCave.enabled() && overworldCave.chestEnabled()` gate,
+      mirroring every other optional one-shot deployment's exact
+      precedent. Test configs `config/tests/53`-`56` (default cavity
+      spawn; sealed surface; mega-cavern; chest + sealed surface
+      combined) with a new "Phase 13 acceptance" section in
+      `MANUAL_TESTING.md`; `config/tests/README.md`'s intro updated for
+      the eighth World Type entry. README.md gained a full "Cave
+      challenge" section (table row + config example + settings table),
+      matching every other typed preset's section shape. Deployed 0.2.63
+      to Worldz-Test. This completes every non-[Jason] item in Phase 13
+      (13.1 design, 13.2a core mechanism + preset, 13.2b sealed surface,
+      13.2c mega-cavern, 13.2d starter chest + docs/configs) -- **do not
+      start Phase 14 without Jason's explicit go-ahead.**
 
 ## Phase 14 — Nether-start challenge (GOALS 27)
 
