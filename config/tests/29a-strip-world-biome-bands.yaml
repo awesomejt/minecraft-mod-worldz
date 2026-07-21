@@ -1,0 +1,62 @@
+# GOALS 36: a strip world (GOALS 32) whose corridor passes through an
+# ordered sequence of biome bands along its length instead of ordinary
+# vanilla terrain. **Select "Worldz: Strip World"** on the creation screen,
+# then open **Customize** and confirm "Pass through an ordered biome-band
+# sequence" is checked with this config's five biomes already filled in --
+# unlike widthRadiusBlocks/widthMode, biome bands are a known gap in the
+# fieldless-preset defaulting (opening Customize is required, not optional,
+# to actually get bands rather than the plain corridor).
+#
+# Terrain stays vanilla throughout (TODO 6.3, DESIGN §23): only the BIOME
+# changes band to band, never the height/shape -- exactly like chaos_biomes
+# (GOALS 33) but ordered along X instead of scattered in a 2D grid.
+#
+# With widthBlocks: 256 and five configured biomes, walking along X should
+# cross into a new biome roughly every 256 blocks, repeating (wrapping) the
+# five-biome sequence once exhausted.
+#
+# bands.allowRivers/allowOceans/allowBeaches default to true (GOALS 36
+# follow-up, Jason 2026-07-19) specifically for bands -- none of the five
+# configured biomes are water/beach biomes, so wherever vanilla's own
+# terrain would naturally put a river, ocean, beach, or stony shore, that
+# should still show through instead of being overridden by the band's land
+# biome. This is what an earlier build of this config got wrong: biomes
+# were "not all mapping correctly" because natural water/beach features
+# never passed through at all.
+#
+# Steps once in-game:
+#  1. Confirm the corridor's terrain is ordinary vanilla shape (hills,
+#     caves, etc.) -- only the biome/surface-block dressing changes.
+#  2. Walk along +X from spawn in ~256-block increments; confirm the biome
+#     changes each time, following the configured order (desert, jungle,
+#     ice_spikes, badlands, taiga, then back to desert).
+#  3. Walk along -X from spawn; confirm the same sequence appears in
+#     reverse (band index wraps via floor division, so negative X is
+#     consistent with positive X, not mirrored oddly).
+#  4. Confirm Z still behaves like an ordinary strip world: terrain ends
+#     into void at approximately 64 blocks out either side.
+#  5. Look for a natural river, ocean, beach, or stony shore along the
+#     corridor (F3 to check biome); confirm it shows through as its real
+#     vanilla biome rather than being relabeled to the current band's biome.
+strip:
+  enabled: true
+  widthRadiusBlocks: 2
+  widthMode: void
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 2048
+  finalRadiusBlocks: 2048
+  ensureEndPortal: true
+stripWorld:
+  spawn:
+    strategy: starter_at_origin
+  bands:
+    enabled: true
+    biomes:
+      - minecraft:desert
+      - minecraft:jungle
+      - minecraft:ice_spikes
+      - minecraft:badlands
+      - minecraft:taiga
+    widthBlocks: 128
+    seedRandomOrder: false
