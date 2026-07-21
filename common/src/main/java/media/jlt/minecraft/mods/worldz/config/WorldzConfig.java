@@ -3,6 +3,7 @@ package media.jlt.minecraft.mods.worldz.config;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
+import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -122,6 +123,8 @@ public final class WorldzConfig {
     public SkyIslandConfig skyIsland = new SkyIslandConfig();
     /** Defaults for the {@code jlt_worldz:sky_chunk} typed preset (GOALS 09/37; DESIGN §29). */
     public ChunkIslandConfig chunkIsland = new ChunkIslandConfig();
+    /** Defaults for the {@code jlt_worldz:cave} typed preset (GOALS 25-26; DESIGN §30). */
+    public CaveConfig cave = new CaveConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -233,6 +236,9 @@ public final class WorldzConfig {
         if (object.containsKey("chunkIsland")) {
             config.chunkIsland = readChunkIslandConfig(object.get("chunkIsland"), "chunkIsland", logger);
         }
+        if (object.containsKey("cave")) {
+            config.cave = readCaveConfig(object.get("cave"), "cave", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -291,6 +297,7 @@ public final class WorldzConfig {
         oceanIsland = sanitizeOceanIsland(oceanIsland, logger);
         skyIsland = sanitizeSkyIsland(skyIsland, logger);
         chunkIsland = sanitizeChunkIsland(chunkIsland, logger);
+        cave = sanitizeCave(cave, logger);
         return this;
     }
 
@@ -447,6 +454,30 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static CaveConfig sanitizeCave(CaveConfig config, Logger logger) {
+        CaveConfig sanitized = config == null ? new CaveConfig() : config;
+
+        if (sanitized.sealedSurface && sanitized.sealedSurfaceY < CaveConfig.MIN_SEALED_SURFACE_Y) {
+            logger.warn(
+                "Clamped cave.sealedSurfaceY from {} to {}.", sanitized.sealedSurfaceY, CaveConfig.MIN_SEALED_SURFACE_Y
+            );
+            sanitized.sealedSurfaceY = CaveConfig.MIN_SEALED_SURFACE_Y;
+        }
+        sanitized.cavernRadiusBlocks = clampWithWarning(
+            sanitized.cavernRadiusBlocks, CavePlan.MIN_CAVERN_BLOCKS, CavePlan.MAX_CAVERN_BLOCKS,
+            "cave.cavernRadiusBlocks", logger
+        );
+        sanitized.cavernHeightBlocks = clampWithWarning(
+            sanitized.cavernHeightBlocks, CavePlan.MIN_CAVERN_BLOCKS, CavePlan.MAX_CAVERN_BLOCKS,
+            "cave.cavernHeightBlocks", logger
+        );
+        sanitized.chestTier = sanitized.chestTier == null ? StarterKitTier.MEDIUM : sanitized.chestTier;
+        sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "cave.easyKit", logger);
+        sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "cave.mediumKit", logger);
+        sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "cave.hardKit", logger);
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -594,6 +625,7 @@ public final class WorldzConfig {
             + ", oceanIsland=" + oceanIslandSummary(oceanIsland)
             + ", skyIsland=" + skyIslandSummary(skyIsland)
             + ", chunkIsland=" + chunkIslandSummary(chunkIsland)
+            + ", cave=" + caveSummary(cave)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -620,6 +652,7 @@ public final class WorldzConfig {
         values.put("oceanIsland", oceanIslandMap(oceanIsland));
         values.put("skyIsland", skyIslandMap(skyIsland));
         values.put("chunkIsland", chunkIslandMap(chunkIsland));
+        values.put("cave", caveMap(cave));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -994,6 +1027,47 @@ public final class WorldzConfig {
         }
         if (map.containsKey("floatingIslands")) {
             config.floatingIslands = readFloatingIslandsConfig(map.get("floatingIslands"), name + ".floatingIslands", logger);
+        }
+        return config;
+    }
+
+    private static CaveConfig readCaveConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        CaveConfig config = new CaveConfig();
+        if (map.containsKey("spawnDepthY")) {
+            config.spawnDepthY = readInt(map.get("spawnDepthY"), name + ".spawnDepthY");
+        }
+        if (map.containsKey("sealedSurface")) {
+            config.sealedSurface = readBoolean(map.get("sealedSurface"), name + ".sealedSurface");
+        }
+        if (map.containsKey("sealedSurfaceY")) {
+            config.sealedSurfaceY = readInt(map.get("sealedSurfaceY"), name + ".sealedSurfaceY");
+        }
+        if (map.containsKey("cavernEnabled")) {
+            config.cavernEnabled = readBoolean(map.get("cavernEnabled"), name + ".cavernEnabled");
+        }
+        if (map.containsKey("cavernRadiusBlocks")) {
+            config.cavernRadiusBlocks = readInt(map.get("cavernRadiusBlocks"), name + ".cavernRadiusBlocks");
+        }
+        if (map.containsKey("cavernHeightBlocks")) {
+            config.cavernHeightBlocks = readInt(map.get("cavernHeightBlocks"), name + ".cavernHeightBlocks");
+        }
+        if (map.containsKey("chestEnabled")) {
+            config.chestEnabled = readBoolean(map.get("chestEnabled"), name + ".chestEnabled");
+        }
+        if (map.containsKey("chestTier")) {
+            config.chestTier = StarterKitTier.parse(readString(map.get("chestTier"), name + ".chestTier"));
+        }
+        if (map.containsKey("easyKit")) {
+            config.easyKit = readStarterKitConfig(map.get("easyKit"), name + ".easyKit", logger);
+        }
+        if (map.containsKey("mediumKit")) {
+            config.mediumKit = readStarterKitConfig(map.get("mediumKit"), name + ".mediumKit", logger);
+        }
+        if (map.containsKey("hardKit")) {
+            config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
         }
         return config;
     }
@@ -1482,6 +1556,22 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> caveMap(CaveConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("spawnDepthY", config.spawnDepthY);
+        values.put("sealedSurface", config.sealedSurface);
+        values.put("sealedSurfaceY", config.sealedSurfaceY);
+        values.put("cavernEnabled", config.cavernEnabled);
+        values.put("cavernRadiusBlocks", config.cavernRadiusBlocks);
+        values.put("cavernHeightBlocks", config.cavernHeightBlocks);
+        values.put("chestEnabled", config.chestEnabled);
+        values.put("chestTier", config.chestTier.serializedName());
+        values.put("easyKit", starterKitMap(config.easyKit));
+        values.put("mediumKit", starterKitMap(config.mediumKit));
+        values.put("hardKit", starterKitMap(config.hardKit));
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1630,6 +1720,20 @@ public final class WorldzConfig {
             + ", hardKit=" + starterKitSummary(config.hardKit)
             + ", applyToNether=" + config.applyToNether
             + ", floatingIslands=" + floatingIslandsSummary(config.floatingIslands);
+    }
+
+    private static String caveSummary(CaveConfig config) {
+        return "spawnDepthY=" + config.spawnDepthY
+            + ", sealedSurface=" + config.sealedSurface
+            + ", sealedSurfaceY=" + config.sealedSurfaceY
+            + ", cavernEnabled=" + config.cavernEnabled
+            + ", cavernRadiusBlocks=" + config.cavernRadiusBlocks
+            + ", cavernHeightBlocks=" + config.cavernHeightBlocks
+            + ", chestEnabled=" + config.chestEnabled
+            + ", chestTier=" + config.chestTier.serializedName()
+            + ", easyKit=" + starterKitSummary(config.easyKit)
+            + ", mediumKit=" + starterKitSummary(config.mediumKit)
+            + ", hardKit=" + starterKitSummary(config.hardKit);
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

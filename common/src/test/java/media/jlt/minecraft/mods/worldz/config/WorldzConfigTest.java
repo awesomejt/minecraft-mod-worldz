@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -568,6 +569,15 @@ class WorldzConfigTest {
                 + ", applyToNether=false"
                 + ", floatingIslands=<disabled>"
                 + ", chunkIsland=<disabled>"
+                + ", cave=spawnDepthY=-32, sealedSurface=false, sealedSurfaceY=128, cavernEnabled=false"
+                + ", cavernRadiusBlocks=48, cavernHeightBlocks=24, chestEnabled=false, chestTier=medium"
+                + ", easyKit=essentials=[minecraft:torch:32, minecraft:bread:8, minecraft:crafting_table:1],"
+                + " extras=[minecraft:wooden_pickaxe:1, minecraft:iron_pickaxe:1, minecraft:cobblestone:32,"
+                + " minecraft:coal:16], extrasCount=3"
+                + ", mediumKit=essentials=[minecraft:torch:16, minecraft:bread:4],"
+                + " extras=[minecraft:wooden_pickaxe:1, minecraft:cobblestone:16, minecraft:coal:8], extrasCount=2"
+                + ", hardKit=essentials=[minecraft:torch:8], extras=[minecraft:bread:2, minecraft:coal:4],"
+                + " extrasCount=1"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -997,6 +1007,77 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.skyIsland.islandBiome);
+    }
+
+    @Test
+    void caveSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            cave:
+              spawnDepthY: -40
+              sealedSurface: true
+              sealedSurfaceY: 100
+              cavernEnabled: true
+              cavernRadiusBlocks: 64
+              cavernHeightBlocks: 32
+              chestEnabled: true
+              chestTier: hard
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(-40, config.cave.spawnDepthY);
+        assertTrue(config.cave.sealedSurface);
+        assertEquals(100, config.cave.sealedSurfaceY);
+        assertTrue(config.cave.cavernEnabled);
+        assertEquals(64, config.cave.cavernRadiusBlocks);
+        assertEquals(32, config.cave.cavernHeightBlocks);
+        assertTrue(config.cave.chestEnabled);
+        assertEquals(StarterKitTier.HARD, config.cave.chestTier);
+    }
+
+    @Test
+    void caveDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals(CavePlan.DEFAULT_SPAWN_DEPTH_Y, config.cave.spawnDepthY);
+        assertFalse(config.cave.sealedSurface);
+        assertEquals(CavePlan.DEFAULT_SEALED_SURFACE_Y, config.cave.sealedSurfaceY);
+        assertFalse(config.cave.cavernEnabled);
+        assertFalse(config.cave.chestEnabled);
+    }
+
+    @Test
+    void caveSealedSurfaceYIsClampedOnlyWhenEnabled() {
+        WorldzConfig tooLow = WorldzConfig.parse("""
+            cave:
+              sealedSurface: true
+              sealedSurfaceY: -999
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig ignoredWhenDisabled = WorldzConfig.parse("""
+            cave:
+              sealedSurface: false
+              sealedSurfaceY: -999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(CaveConfig.MIN_SEALED_SURFACE_Y, tooLow.cave.sealedSurfaceY);
+        assertEquals(-999, ignoredWhenDisabled.cave.sealedSurfaceY);
+    }
+
+    @Test
+    void caveCavernRadiusAndHeightAreClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            cave:
+              cavernRadiusBlocks: 1
+              cavernHeightBlocks: 1
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            cave:
+              cavernRadiusBlocks: 9999999
+              cavernHeightBlocks: 9999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(CavePlan.MIN_CAVERN_BLOCKS, tooSmall.cave.cavernRadiusBlocks);
+        assertEquals(CavePlan.MIN_CAVERN_BLOCKS, tooSmall.cave.cavernHeightBlocks);
+        assertEquals(CavePlan.MAX_CAVERN_BLOCKS, tooLarge.cave.cavernRadiusBlocks);
+        assertEquals(CavePlan.MAX_CAVERN_BLOCKS, tooLarge.cave.cavernHeightBlocks);
     }
 
     @Test

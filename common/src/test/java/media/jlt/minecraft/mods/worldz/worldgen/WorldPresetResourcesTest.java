@@ -76,7 +76,7 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(7, tag.getAsJsonArray("values").size());
+        assertEquals(8, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
         assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
         assertEquals("jlt_worldz:chaos_biomes", tag.getAsJsonArray("values").get(2).getAsString());
@@ -84,6 +84,7 @@ class WorldPresetResourcesTest {
         assertEquals("jlt_worldz:ocean_island", tag.getAsJsonArray("values").get(4).getAsString());
         assertEquals("jlt_worldz:sky_island", tag.getAsJsonArray("values").get(5).getAsString());
         assertEquals("jlt_worldz:sky_chunk", tag.getAsJsonArray("values").get(6).getAsString());
+        assertEquals("jlt_worldz:cave", tag.getAsJsonArray("values").get(7).getAsString());
     }
 
     @Test
@@ -185,6 +186,28 @@ class WorldPresetResourcesTest {
             "minecraft:the_end",
             endGenerator.getAsJsonObject("delegate").getAsJsonObject("biome_source").get("type").getAsString()
         );
+    }
+
+    @Test
+    void cavePresetMirrorsWorldzButFlagsWorldType() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/cave.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject overworldGenerator = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator");
+        JsonObject biomeSource = overworldGenerator.getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("cave", biomeSource.get("world_type").getAsString());
+        // Unlike every other typed preset, cave's own CavePlan is never read from
+        // LimitedBiomeSource (DESIGN §30.1) -- the outer enveloped generator carries its own
+        // "world_type" hint instead (EnvelopedChunkGenerator.resolve's cave-plan fallback).
+        assertEquals("cave", overworldGenerator.get("world_type").getAsString());
+
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
     }
 
     @Test

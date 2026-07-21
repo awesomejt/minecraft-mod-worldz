@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.mixin.client;
 
+import media.jlt.minecraft.mods.worldz.client.CavePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
@@ -40,6 +41,8 @@ abstract class WorldCreationUiStateMixin {
             callback.setReturnValue(SkyIslandPresetEditor.INSTANCE);
         } else if (preset.unwrapKey().filter(SkyChunkPresetEditor.SKY_CHUNK_PRESET::equals).isPresent()) {
             callback.setReturnValue(SkyChunkPresetEditor.INSTANCE);
+        } else if (preset.unwrapKey().filter(CavePresetEditor.CAVE_PRESET::equals).isPresent()) {
+            callback.setReturnValue(CavePresetEditor.INSTANCE);
         }
     }
 }

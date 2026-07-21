@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
+import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.NaturalIslandSearch;
 import media.jlt.minecraft.mods.worldz.logic.SpawnSearchPlan;
@@ -18,6 +19,9 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
@@ -100,6 +104,16 @@ public final class SpawnOriginManager {
             return Optional.empty();
         }
 
+        ChunkGenerator generator = overworld.getChunkSource().getGenerator();
+        if (generator instanceof EnvelopedChunkGenerator enveloped && enveloped.cave().enabled()) {
+            // GOALS 25-26: bypasses every ordinary spawn strategy below -- the cave preset
+            // always resolves its own underground spawn (DESIGN §30.3).
+            int originX = limitedSource.originBlockX();
+            int originZ = limitedSource.originBlockZ();
+            markResolved(overworld, limitedSource, originX, originZ);
+            return Optional.of(resolveCaveOrigin(overworld, enveloped.cave(), originX, originZ));
+        }
+
         IslandPlan island = limitedSource.island();
         if (island.enabled() && island.hasLand() && !island.syntheticLand()) {
             // GOALS 02: ocean_island's own NATURAL source. Independent of spawnStrategy (which
@@ -138,7 +152,6 @@ public final class SpawnOriginManager {
             return Optional.of(safeSpawnNear(overworld, limitedSource, 0, 0));
         }
 
-        ChunkGenerator generator = overworld.getChunkSource().getGenerator();
         ChunkGenerator delegate = generator instanceof EnvelopedChunkGenerator enveloped ? enveloped.delegate() : generator;
         if (!(delegate instanceof NoiseBasedChunkGenerator noiseGenerator)) {
             WorldzCommon.LOGGER.warn(
@@ -189,6 +202,93 @@ public final class SpawnOriginManager {
             height = overworld.getHeight(Heightmap.Types.WORLD_SURFACE, spawnX, spawnZ);
         }
         return new BlockPos(spawnX, height, spawnZ);
+    }
+
+    /**
+     * Narrower search bounds than {@link SpawnSearchPlan#defaults()} (DESIGN §30.3): unlike
+     * every other search in this class (pure climate/biome sampling, effectively free), each
+     * candidate here costs a real, forced chunk generation -- {@link SpawnSearchPlan#defaults()}'s
+     * 2048-block/513-candidate budget would be prohibitively slow for a one-time world-creation
+     * search. Natural caves are common close to the origin in vanilla generation, so the search
+     * is expected to succeed within the first few candidates in the large majority of seeds; the
+     * synthetic-capsule fallback below bounds the worst case.
+     */
+    private static final SpawnSearchPlan CAVE_SEARCH_PLAN = new SpawnSearchPlan(320, 16, 8);
+    /** How far above/below {@link CavePlan#spawnDepthY()} the cavity search scans per column. */
+    private static final int CAVE_SEARCH_VERTICAL_TOLERANCE = 24;
+
+    /**
+     * Resolves GOALS 25-26's underground spawn placement: searches real, force-generated terrain
+     * for a natural cavity near {@link CavePlan#spawnDepthY()}, falling back to a carved synthetic
+     * safe capsule if none is found within budget (DESIGN §30.3).
+     *
+     * @param overworld the newly constructed Overworld level
+     * @param cave the enabled cave plan
+     * @param originX layout origin X (always 0 for this preset, no layout-origin search of its own)
+     * @param originZ layout origin Z
+     * @return the resolved underground spawn position
+     */
+    private static BlockPos resolveCaveOrigin(ServerLevel overworld, CavePlan cave, int originX, int originZ) {
+        for (SpawnSearchPlan.Offset offset : CAVE_SEARCH_PLAN.offsetsInSearchOrder()) {
+            int x = originX + offset.x();
+            int z = originZ + offset.z();
+            Optional<BlockPos> found = searchCaveCavity(overworld, cave, x, z);
+            if (found.isPresent()) {
+                return found.get();
+            }
+        }
+        WorldzCommon.LOGGER.warn(
+            "Cave-cavity search found no natural pocket near Y{} within {} blocks of the origin; carving a safe capsule instead.",
+            cave.spawnDepthY(), CAVE_SEARCH_PLAN.maxRadiusBlocks()
+        );
+        return buildCaveCapsule(overworld, cave, originX, originZ);
+    }
+
+    /**
+     * Force-generates the chunk at one candidate column and scans a vertical window around
+     * {@link CavePlan#spawnDepthY()} for a solid floor with two clear blocks above it -- the same
+     * "just enough to stand" bar {@link #safeSpawnNear} already applies to surface spawns, not a
+     * full cavity-volume search.
+     */
+    private static Optional<BlockPos> searchCaveCavity(ServerLevel overworld, CavePlan cave, int x, int z) {
+        ChunkAccess chunk = overworld.getChunk(x >> 4, z >> 4);
+        int minY = Math.max(chunk.getMinY() + 1, cave.spawnDepthY() - CAVE_SEARCH_VERTICAL_TOLERANCE);
+        int maxY = Math.min(chunk.getMaxY() - 1, cave.spawnDepthY() + CAVE_SEARCH_VERTICAL_TOLERANCE);
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int y = minY; y <= maxY; y++) {
+            BlockState floor = chunk.getBlockState(pos.set(x, y - 1, z));
+            if (floor.isAir() || !floor.getFluidState().isEmpty()) {
+                continue;
+            }
+            BlockState feet = chunk.getBlockState(pos.set(x, y, z));
+            BlockState head = chunk.getBlockState(pos.set(x, y + 1, z));
+            if (feet.isAir() && head.isAir()) {
+                return Optional.of(new BlockPos(x, y, z));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Carves a small safe capsule directly into already-generated terrain when no natural cavity
+     * was found within budget, so world creation can never fail to produce a safe spawn (DESIGN
+     * §30.3) -- reuses {@code ProgressionGuarantees}' "fully enclosed shell regardless of
+     * surroundings" shape rather than inventing a new fallback pattern.
+     */
+    private static BlockPos buildCaveCapsule(ServerLevel overworld, CavePlan cave, int originX, int originZ) {
+        BlockPos center = new BlockPos(originX, cave.spawnDepthY(), originZ);
+        overworld.getChunk(originX >> 4, originZ >> 4);
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dy = -1; dy <= 2; dy++) {
+                    boolean shell = dy == -1 || dy == 2 || Math.abs(dx) == 1 || Math.abs(dz) == 1;
+                    overworld.setBlock(center.offset(dx, dy, dz), shell ? stone : air, 3);
+                }
+            }
+        }
+        return center;
     }
 
     private static Optional<BlockPos> search(

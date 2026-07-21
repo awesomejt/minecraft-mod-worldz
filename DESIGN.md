@@ -3837,7 +3837,7 @@ Mechanism (`SpawnOriginManager.resolveCaveOrigin`, called from
 `resolveFreshOrigin` ahead of every existing branch when
 `generator instanceof EnvelopedChunkGenerator enveloped && enveloped.cave().enabled()`):
 
-1. Walk `SpawnSearchPlan.defaults().offsetsInSearchOrder()` (the existing
+1. Walk a `SpawnSearchPlan`'s `offsetsInSearchOrder()` (the existing
    concentric-ring order, §18) around the origin.
 2. For each offset, force-generate its chunk (`overworld.getChunk(...)`)
    and scan a vertical window centered on `spawnDepthY` (±24 blocks) for a
@@ -3846,13 +3846,22 @@ Mechanism (`SpawnOriginManager.resolveCaveOrigin`, called from
    enough to stand" bar `SpawnOriginManager.safeSpawnNear` already applies
    to surface spawns, not a full cavity-volume search.
 3. First match wins; return that exact `BlockPos`.
-4. If the whole search budget (same default radius as every other
-   `SpawnSearchPlan` use, §18) is exhausted with no natural match, carve a
+4. If the whole search budget is exhausted with no natural match, carve a
    small synthetic safe capsule at `spawnDepthY` directly under the origin
    — reusing `ProgressionGuarantees`'s "fully enclosed shell regardless of
    surroundings" shape (§ProgressionGuarantees.buildEndPortalSite) rather
    than inventing a new fallback pattern — so world creation can never
    fail to produce a safe spawn.
+
+   **Implementation note (13.2a):** unlike every other search in this
+   class (pure climate/biome sampling, effectively free), each cavity
+   candidate costs a real, forced chunk generation — `SpawnSearchPlan
+   .defaults()`'s 2048-block/513-candidate budget would be prohibitively
+   slow for a one-time world-creation search. Uses a narrower, dedicated
+   search plan (320 blocks / 16-block steps / 8 points per ring, ~161
+   candidates worst case) instead; natural caves are common close to the
+   origin, so the search is expected to succeed within the first few
+   candidates in the large majority of seeds.
 
 The optional starter chest (GOALS 25) is **not** placed here — it stays on
 `WorldLimitManager.onServerStarted`'s existing one-shot deployment timing

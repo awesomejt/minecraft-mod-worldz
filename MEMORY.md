@@ -2291,3 +2291,36 @@ Durable decisions, verified API notes, and rationale that should survive across 
   *would* fast-forward under `/time add`.) `/time` also gained
   `pause`/`resume`/`rate` and per-clock `of <clock>` targeting in 26.2 —
   potentially useful for future test recipes.
+- 2026-07-21 — **Phase 13.1/13.2a: cave challenge (GOALS 25-26).** Full
+  design in DESIGN §30, implementation in TODO 13.2a. Key decisions:
+  (a) `CavePlan` persists entirely on `EnvelopedChunkGenerator`'s own
+  codec, never `LimitedBiomeSource` — `LimitedBiomeSource`'s codec is
+  already full (§29.7) and cave needs no biome-source involvement at all
+  (full vanilla biome variety, same as `strip_world`). (b) Verified
+  directly against the real 26.2 decompiled sources
+  (`MinecraftServer.setInitialSpawn`/`createLevels`) that forcing real
+  chunk generation and placing blocks at the same early spawn-resolution
+  hook `SpawnOriginManager.resolveFreshOrigin` already uses is exactly
+  what vanilla itself does there (`level.getHeight` forces sync
+  generation; the bonus-chest feature is placed directly into the world
+  at that same point) — so the underground cavity search
+  (`resolveCaveOrigin`) needs only one hook, not a two-phase
+  "approximate now, correct later" design originally suspected necessary.
+  (c) That search deliberately uses a much narrower `SpawnSearchPlan`
+  (320 blocks/16-block steps/8 points per ring, ~161 candidates) than
+  `SpawnSearchPlan.defaults()` (2048 blocks/513 candidates) — unlike every
+  other search in this codebase (pure climate/biome sampling, free), each
+  cave-cavity candidate costs a real forced chunk generation, so the full
+  default budget would be prohibitively slow for a one-time
+  world-creation search. Falls back to a carved synthetic safe capsule
+  (reusing `ProgressionGuarantees`' enclosed-shell shape) if nothing is
+  found within budget. (d) Closed the fieldless-preset defaulting gap
+  from day one (sky_chunk's precedent, not strip_world's original
+  after-the-fact fix, TODO Phase 6.2b/6.3): added `caveDefaults` to
+  `LimitedBiomeSource.resolve` (biome_source's own `"world_type": "cave"`
+  hint) *and* gave `EnvelopedChunkGenerator`'s own codec a parallel,
+  independent `"world_type"` hint field (write-never, read-only, mirrors
+  `LimitedBiomeSource`'s exact pattern) so a never-customized cave world's
+  `CavePlan` also defaults from live config — avoided adding a
+  `cave.enabled` YAML toggle, which would otherwise need careful gating
+  to avoid leaking into every other preset's Overworld generator.

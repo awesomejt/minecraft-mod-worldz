@@ -6,6 +6,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
@@ -92,7 +93,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         SkyIslandCodecs.PLAN_CODEC.optionalFieldOf("nether_sky_island")
             .forGetter(generator -> Optional.of(generator.netherSkyIsland)),
         ChunkIslandCodecs.PLAN_CODEC.optionalFieldOf("chunk_island")
-            .forGetter(generator -> Optional.of(generator.nonOverworldChunkIsland))
+            .forGetter(generator -> Optional.of(generator.nonOverworldChunkIsland)),
+        CaveCodecs.PLAN_CODEC.optionalFieldOf("cave").forGetter(generator -> Optional.of(generator.cave)),
+        // Fieldless-preset hint only (DESIGN §30.1), mirroring LimitedBiomeSource's own
+        // write-never "world_type" field exactly: lets a never-customized `jlt_worldz:cave`
+        // world default its CavePlan from live config (below) without leaking that default
+        // into every other preset's Overworld, which never sets this field.
+        Codec.STRING.optionalFieldOf("world_type").forGetter(generator -> Optional.<String>empty())
     ).apply(instance, EnvelopedChunkGenerator::resolve));
 
     private final ChunkGenerator delegate;
@@ -175,6 +182,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * a showcased cave chunk would defeat the point of showcasing it.
      */
     private volatile Set<ChunkPos> chunkIslandShowcaseCells = Set.of();
+    /**
+     * The Overworld's underground-spawn/sealed-surface/mega-cavern plan (GOALS 25-26, DESIGN
+     * §30), persisted directly on this generator's own codec -- mirrors {@link #netherSkyIsland}'s
+     * exact precedent (a generator-owned plan needing no biome-source involvement), just for the
+     * Overworld instead of the Nether since cave has no Nether/End variant in scope. Threaded
+     * through every {@code customized(...)} overload the same way regardless of dimension; only
+     * the Overworld instance ever actually uses it (constructor picks based on {@link #dimension}).
+     */
+    private final CavePlan cave;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -182,7 +198,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ExteriorPlan.DimensionEnvelope envelope,
         StripPlan strip,
         SkyIslandPlan netherSkyIsland,
-        ChunkIslandPlan nonOverworldChunkIsland
+        ChunkIslandPlan nonOverworldChunkIsland,
+        CavePlan cave
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
@@ -199,6 +216,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.netherSkyIsland = dimension == Dimension.NETHER ? netherSkyIsland : SkyIslandPlan.disabled();
         this.chunkIsland = this.originSource.map(LimitedBiomeSource::chunkIsland).orElse(ChunkIslandPlan.disabled());
         this.nonOverworldChunkIsland = dimension != Dimension.OVERWORLD ? nonOverworldChunkIsland : ChunkIslandPlan.disabled();
+        this.cave = dimension == Dimension.OVERWORLD ? cave : CavePlan.disabled();
     }
 
     /**
@@ -238,6 +256,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     public ChunkIslandPlan chunkIsland() {
         return activeChunkIsland();
+    }
+
+    /**
+     * Returns the cave plan active for this dimension (GOALS 25-26, DESIGN §30), disabled for
+     * every other preset and for every non-Overworld instance.
+     *
+     * @return resolved cave plan
+     */
+    public CavePlan cave() {
+        return this.cave;
     }
 
     /**
@@ -380,7 +408,35 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         SkyIslandPlan netherSkyIsland,
         ChunkIslandPlan nonOverworldChunkIsland
     ) {
-        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland);
+        return customized(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, CavePlan.disabled());
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope, strip-world plan, Nether sky island plan,
+     * chunk-island plan, and cave plan selected during world creation (GOALS 25-26, DESIGN §30).
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param dimension which dimension this instance wraps
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @param netherSkyIsland resolved Nether sky island plan, disabled for every other preset
+     *     and ignored entirely for non-Nether instances
+     * @param nonOverworldChunkIsland resolved Nether/End chunk-island plan, disabled for every
+     *     other preset and ignored entirely for the Overworld instance
+     * @param cave resolved cave plan, disabled for every other preset and ignored entirely for
+     *     non-Overworld instances
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        Dimension dimension,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland,
+        ChunkIslandPlan nonOverworldChunkIsland,
+        CavePlan cave
+    ) {
+        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave);
     }
 
     /**
@@ -480,7 +536,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     private boolean hasActiveExterior() {
         return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled()
-            || this.island.enabled() || activeSkyIsland().enabled() || activeChunkIsland().enabled();
+            || this.island.enabled() || activeSkyIsland().enabled() || activeChunkIsland().enabled()
+            || this.cave.enabled();
     }
 
     /**
@@ -539,7 +596,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Optional<ExteriorPlan.DimensionEnvelope> encodedEnvelope,
         Optional<StripPlan> encodedStrip,
         Optional<SkyIslandPlan> encodedNetherSkyIsland,
-        Optional<ChunkIslandPlan> encodedChunkIsland
+        Optional<ChunkIslandPlan> encodedChunkIsland,
+        Optional<CavePlan> encodedCave,
+        Optional<String> worldType
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
         ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(() -> switch (dimension) {
@@ -567,7 +626,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 case OVERWORLD -> ChunkIslandPlan.disabled();
             };
         });
-        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland);
+        CavePlan cave = encodedCave.orElseGet(
+            () -> dimension == Dimension.OVERWORLD && worldType.filter("cave"::equals).isPresent()
+                ? CavePlan.fromConfig(WorldzCommon.config().cave)
+                : CavePlan.disabled()
+        );
+        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave);
     }
 
     @Override

@@ -201,6 +201,15 @@ public final class LimitedBiomeSource extends BiomeSource {
         // Phase 6.2b/6.3/6.2c had to fix after the fact for strip_world, closed from day one here.
         boolean skyChunkDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("sky_chunk"::equals).orElse(false);
+        // Same fix, same reason, for cave (GOALS 25-26, DESIGN §30): without this branch a
+        // config-only "select preset, Create World" world would fall through to the generic
+        // preset's own restricted biome list instead of full vanilla variety. Unlike every
+        // other typed preset, cave's own plan (CavePlan) is never read from here at all --
+        // this hint only affects LimitedBiomeSource's own biome/starter/layout defaults,
+        // which for cave are identical to strip_world/ocean_island/sky_island/sky_chunk's
+        // (full vanilla variety, no starter, no coordinated layout).
+        boolean caveDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("cave"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -208,7 +217,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
+                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
                         ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                         : () -> resolveConfiguredBiomes(config, biomeGetter));
 
@@ -218,7 +227,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // not a biome restriction) -- Optional.empty() directly, not a fallback lookup.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
+            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -256,7 +265,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                         LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
                         WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
                     )
-                    : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
+                    : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
                         ? WorldLayoutPlan.legacy()
                         : stripWorldDefaults && config.stripWorld.bands.enabled
                             ? WorldLayoutPlan.resolveBands(
@@ -274,7 +283,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     ? config.singleBiome.spawn.strategy
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
-                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
+                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
                             ? SpawnStrategy.STARTER_AT_ORIGIN
                             : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config

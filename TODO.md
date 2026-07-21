@@ -2002,7 +2002,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       project's own established precedent for multi-part phases (Phase
       6.2a/6.2b, 10.1-10.6, 11.1-11.6, 12.1-12.7) — logged here rather than
       silently expanding one task.
-- [ ] 13.2a Core: `CavePlan` (logic, JUnit-covered), `CaveConfig`/codec/
+- [x] 13.2a Core: `CavePlan` (logic, JUnit-covered), `CaveConfig`/codec/
       `CaveCustomization` plumbing, the `jlt_worldz:cave` typed preset
       (editor, Customize screen, world-preset JSON, `normal` tag, lang
       keys, both loaders' registration), and the underground spawn-cavity
@@ -2010,6 +2010,55 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       its synthetic-capsule fallback. Acceptance bar: a plain cave world
       (no sealed surface, no cavern) spawns the player underground in a
       real natural cavity.
+      **Done (0.2.60):** `logic.CavePlan` (enabled, spawnDepthY,
+      sealedSurface, sealedSurfaceY, cavernEnabled, cavernRadiusBlocks,
+      cavernHeightBlocks, chestEnabled, chestTier) + `config.CaveConfig`
+      (with easyKit/mediumKit/hardKit `StarterKitConfig` sections mirroring
+      `SkyIslandConfig`'s shape) + `worldgen.CaveCodecs`; persisted entirely
+      on `EnvelopedChunkGenerator`'s own codec (a new `cave` field, mirrors
+      `StripPlan`'s exact precedent) rather than `LimitedBiomeSource`,
+      since that codec is already full (§29.7) and cave needs no
+      biome-source involvement. Full registration: `world_preset/cave.json`
+      (Overworld + Nether; End left plain vanilla, no chunk-island-style
+      wrapping needed), the `normal.json` preset tag, lang keys, both
+      loaders' preset-editor hookup (Fabric mixin, NeoForge event) --
+      `CavePresetEditor`/`CaveCustomizeScreen` mirror `strip_world`'s shape
+      (no Overworld exterior field; a cave world's Overworld always stays
+      `ExteriorMode.NORMAL`). Closed the fieldless-preset gap from day one
+      (sky_chunk's precedent, not strip_world's original after-the-fact
+      fix): added a `caveDefaults` boolean to `LimitedBiomeSource.resolve`
+      (full vanilla biome variety via the biome_source's own `"world_type":
+      "cave"` hint) *and* a parallel, new `"world_type"` hint field on
+      `EnvelopedChunkGenerator`'s own codec (write-never, read-only,
+      mirroring `LimitedBiomeSource`'s exact pattern) so a never-customized
+      cave world's `CavePlan` also defaults from live config instead of
+      needing a `cave.enabled` YAML toggle that would otherwise leak into
+      every other preset's Overworld.
+      **Underground spawn placement (`SpawnOriginManager.resolveCaveOrigin`):**
+      verified directly against the real 26.2 decompiled sources
+      (`MinecraftServer.setInitialSpawn`/`createLevels`, see 13.1's
+      finding) that forcing real chunk generation and placing blocks at
+      the same early spawn-resolution hook is exactly what vanilla itself
+      does there -- so the search runs entirely within
+      `resolveFreshOrigin`'s existing single hook: walks a dedicated,
+      narrower `SpawnSearchPlan` (320 blocks/16-block steps/8 points per
+      ring, ~161 candidates worst case -- deliberately smaller than
+      `SpawnSearchPlan.defaults()`'s 2048-block/513-candidate budget,
+      since each candidate here costs a real forced chunk generation, not
+      free climate sampling), force-generating each candidate chunk and
+      scanning a vertical window around `spawnDepthY` for a solid floor
+      with two clear blocks above it. Falls back to carving a small safe
+      capsule (reusing `ProgressionGuarantees`' enclosed-shell shape) if
+      the whole budget is exhausted. DESIGN §30.3 updated to match this
+      narrower budget (the original design text assumed reusing
+      `SpawnSearchPlan.defaults()` directly, corrected once the
+      performance cost became concrete during implementation).
+      21 new tests across `CavePlanTest`, `CaveCustomizationTest`,
+      `WorldzConfigTest`, `WorldPresetResourcesTest`,
+      `ProjectMetadataTest`; full suite green (532 tests); clean build
+      across all modules. Not yet deployed/tested in-game -- folded into
+      13.2d's acceptance pass, same posture Phase 10-12 established for
+      their own multi-task builds.
 - [ ] 13.2b Sealed surface option (GOALS 25, DESIGN §30.4): the roof pass,
       `hasActiveExterior()` gate fix, Customize screen field.
 - [ ] 13.2c Mega-cave option (GOALS 26, DESIGN §30.5): the ellipsoid carve
