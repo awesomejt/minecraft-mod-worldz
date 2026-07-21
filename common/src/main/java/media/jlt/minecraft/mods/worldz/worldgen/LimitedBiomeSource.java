@@ -11,6 +11,7 @@ import media.jlt.minecraft.mods.worldz.logic.AllowedEntryFilter;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
+import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.FloatingIslandsPlan;
@@ -81,6 +82,10 @@ public final class LimitedBiomeSource extends BiomeSource {
         IslandCodecs.PLAN_CODEC.optionalFieldOf("island").forGetter(source -> Optional.of(source.island)),
         SkyIslandCodecs.PLAN_CODEC.optionalFieldOf("sky_island").forGetter(source -> Optional.of(source.skyIsland)),
         Codec.STRING.optionalFieldOf("world_type").forGetter(source -> Optional.<String>empty()),
+        // The last spare top-level slot (DESIGN §29.7): this codec's instance.group(...) is now
+        // completely full at 14 fields. Any future top-level LimitedBiomeSource field must nest
+        // into an existing group instead (the same move made twice now -- pass_through, §27.9).
+        ChunkIslandCodecs.PLAN_CODEC.optionalFieldOf("chunk_island").forGetter(source -> Optional.of(source.chunkIsland)),
         RegistryOps.retrieveGetter(Registries.BIOME)
     ).apply(instance, LimitedBiomeSource::resolve));
 
@@ -96,6 +101,7 @@ public final class LimitedBiomeSource extends BiomeSource {
     private final boolean allowBeaches;
     private final IslandPlan island;
     private final SkyIslandPlan skyIsland;
+    private final ChunkIslandPlan chunkIsland;
     private final Optional<Holder<Biome>> oceanBiome;
     private final boolean configDefaults;
     private final Supplier<Resolution> resolution;
@@ -117,6 +123,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowBeaches,
         IslandPlan island,
         SkyIslandPlan skyIsland,
+        ChunkIslandPlan chunkIsland,
         boolean configDefaults,
         HolderGetter<Biome> biomeGetter
     ) {
@@ -133,6 +140,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         this.allowBeaches = allowBeaches;
         this.island = island;
         this.skyIsland = skyIsland;
+        this.chunkIsland = chunkIsland;
         this.oceanBiome = exteriorPlan.overworld().mode() == ExteriorMode.OCEAN
             ? biomeGetter.get(Biomes.DEEP_OCEAN).map(value -> value)
             : Optional.empty();
@@ -159,6 +167,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<IslandPlan> encodedIsland,
         Optional<SkyIslandPlan> encodedSkyIsland,
         Optional<String> encodedWorldType,
+        Optional<ChunkIslandPlan> encodedChunkIsland,
         HolderGetter<Biome> biomeGetter
     ) {
         WorldzConfig config = WorldzCommon.config();
@@ -186,6 +195,12 @@ public final class LimitedBiomeSource extends BiomeSource {
         // (SkyIslandPlan.disabled() fallback further down).
         boolean skyIslandDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("sky_island"::equals).orElse(false);
+        // Same fix, same reason, for sky_chunk (GOALS 09/37, DESIGN §29): without this branch a
+        // config-only "select preset, Create World" world would silently get no chunk islands
+        // at all (ChunkIslandPlan.disabled() fallback further down) -- the exact "known gap"
+        // Phase 6.2b/6.3/6.2c had to fix after the fact for strip_world, closed from day one here.
+        boolean skyChunkDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("sky_chunk"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -193,7 +208,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults
+                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
                         ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                         : () -> resolveConfiguredBiomes(config, biomeGetter));
 
@@ -203,7 +218,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // not a biome restriction) -- Optional.empty() directly, not a fallback lookup.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults
+            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -241,7 +256,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                         LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
                         WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
                     )
-                    : oceanIslandDefaults || skyIslandDefaults
+                    : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
                         ? WorldLayoutPlan.legacy()
                         : stripWorldDefaults && config.stripWorld.bands.enabled
                             ? WorldLayoutPlan.resolveBands(
@@ -259,7 +274,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     ? config.singleBiome.spawn.strategy
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
-                        : oceanIslandDefaults || skyIslandDefaults
+                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults
                             ? SpawnStrategy.STARTER_AT_ORIGIN
                             : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config
@@ -293,10 +308,16 @@ public final class LimitedBiomeSource extends BiomeSource {
         SkyIslandPlan skyIsland = encodedSkyIsland.orElseGet(
             () -> skyIslandDefaults ? SkyIslandPlan.fromConfig(config.skyIsland) : SkyIslandPlan.disabled()
         );
+        ChunkIslandPlan chunkIsland = encodedChunkIsland.orElseGet(
+            () -> skyChunkDefaults
+                ? ChunkIslandPlan.fromConfig(config.chunkIsland, ChunkIslandPlan.Dimension.OVERWORLD)
+                : ChunkIslandPlan.disabled()
+        );
 
         return new LimitedBiomeSource(
             allowed, starter, radius, starterLand, limits, exterior, worldLayout, spawnStrategy,
-            allowRivers, allowOceans, allowBeaches, island, skyIsland, encodedStarterRadius.isEmpty(), biomeGetter
+            allowRivers, allowOceans, allowBeaches, island, skyIsland, chunkIsland,
+            encodedStarterRadius.isEmpty(), biomeGetter
         );
     }
 
@@ -414,6 +435,51 @@ public final class LimitedBiomeSource extends BiomeSource {
         SkyIslandPlan skyIsland,
         HolderGetter<Biome> biomeGetter
     ) {
+        return customized(
+            allowedBiomes, starterBiome, starterRadiusBlocks, starterLandPlan, worldLimits, exteriorPlan,
+            worldLayoutPlan, spawnStrategy, allowRivers, allowOceans, allowBeaches, island, skyIsland,
+            ChunkIslandPlan.disabled(), biomeGetter
+        );
+    }
+
+    /**
+     * Creates a source from values selected in the world-creation screen, including an
+     * explicit chunk-island plan (GOALS 09/37, DESIGN §29).
+     *
+     * @param allowedBiomes resolved direct allowed-biome holders
+     * @param starterBiome optional resolved starter biome
+     * @param starterRadiusBlocks starter-zone radius
+     * @param starterLandPlan persisted terrain guarantee
+     * @param worldLimits persisted border plan
+     * @param exteriorPlan persisted exterior-terrain plan
+     * @param worldLayoutPlan persisted coordinated-layout plan
+     * @param spawnStrategy persisted layout-origin and spawn strategy
+     * @param allowRivers let vanilla's own river biomes generate naturally
+     * @param allowOceans let vanilla's own river/ocean-family biomes generate naturally
+     * @param allowBeaches let vanilla's own beach/stony-shore biomes generate naturally
+     * @param island resolved ocean-island plan, disabled for every other preset
+     * @param skyIsland resolved sky-island plan, disabled for every other preset
+     * @param chunkIsland resolved chunk-island plan, disabled for every other preset
+     * @param biomeGetter biome registry lookup used for vanilla climate parameters
+     * @return a fully explicit source independent of later YAML changes
+     */
+    public static LimitedBiomeSource customized(
+        HolderSet<Biome> allowedBiomes,
+        Optional<Holder<Biome>> starterBiome,
+        int starterRadiusBlocks,
+        StarterLandPlan starterLandPlan,
+        WorldLimitPlan worldLimits,
+        ExteriorPlan exteriorPlan,
+        WorldLayoutPlan worldLayoutPlan,
+        SpawnStrategy spawnStrategy,
+        boolean allowRivers,
+        boolean allowOceans,
+        boolean allowBeaches,
+        IslandPlan island,
+        SkyIslandPlan skyIsland,
+        ChunkIslandPlan chunkIsland,
+        HolderGetter<Biome> biomeGetter
+    ) {
         return new LimitedBiomeSource(
             () -> allowedBiomes,
             starterBiome,
@@ -428,6 +494,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             allowBeaches,
             island,
             skyIsland,
+            chunkIsland,
             false,
             biomeGetter
         );
@@ -868,6 +935,16 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public SkyIslandPlan skyIsland() {
         return this.skyIsland;
+    }
+
+    /**
+     * Returns the chunk-island plan baked into this world (GOALS 09/37, DESIGN §29), disabled
+     * for every preset except {@code sky_chunk}.
+     *
+     * @return resolved chunk island plan
+     */
+    public ChunkIslandPlan chunkIsland() {
+        return this.chunkIsland;
     }
 
     /**

@@ -76,13 +76,14 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(6, tag.getAsJsonArray("values").size());
+        assertEquals(7, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
         assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
         assertEquals("jlt_worldz:chaos_biomes", tag.getAsJsonArray("values").get(2).getAsString());
         assertEquals("jlt_worldz:strip_world", tag.getAsJsonArray("values").get(3).getAsString());
         assertEquals("jlt_worldz:ocean_island", tag.getAsJsonArray("values").get(4).getAsString());
         assertEquals("jlt_worldz:sky_island", tag.getAsJsonArray("values").get(5).getAsString());
+        assertEquals("jlt_worldz:sky_chunk", tag.getAsJsonArray("values").get(6).getAsString());
     }
 
     @Test
@@ -158,6 +159,35 @@ class WorldPresetResourcesTest {
     }
 
     @Test
+    void skyChunkPresetMirrorsWorldzButFlagsWorldTypeAndWrapsTheEnd() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/sky_chunk.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject biomeSource = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator")
+            .getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("sky_chunk", biomeSource.get("world_type").getAsString());
+
+        JsonObject overworldGenerator = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator");
+        assertEquals("overworld", overworldGenerator.get("dimension").getAsString());
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        assertEquals("nether", netherGenerator.get("dimension").getAsString());
+        // Unlike every other typed preset (sky_island included), the End is also wrapped here --
+        // DESIGN §29.5's finding that GOALS 09/37's chunk-island toggle needs it, unlike sky
+        // island's own Phase 10.5 End-skip.
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", endGenerator.get("type").getAsString());
+        assertEquals("end", endGenerator.get("dimension").getAsString());
+        assertEquals(
+            "minecraft:the_end",
+            endGenerator.getAsJsonObject("delegate").getAsJsonObject("biome_source").get("type").getAsString()
+        );
+    }
+
+    @Test
     void languageFileCoversPresetAndCustomizationScreens() throws IOException {
         JsonObject language = resource("/assets/jlt_worldz/lang/en_us.json");
 
@@ -220,6 +250,16 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.sky_island.chest_tier.medium"));
         assertTrue(language.has("jlt_worldz.sky_island.chest_tier.hard"));
         assertTrue(language.has("jlt_worldz.sky_island.apply_to_nether"));
+        assertEquals("Worldz: Sky Chunk", language.get("generator.jlt_worldz.sky_chunk").getAsString());
+        assertTrue(language.has("jlt_worldz.sky_chunk.title"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.spawn_chance"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.cell_size_chunks"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.top_only"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.top_only_depth"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.exclusion_zone_enabled"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.exclusion_zone_radius"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.apply_to_nether"));
+        assertTrue(language.has("jlt_worldz.sky_chunk.apply_to_end"));
     }
 
     private static JsonObject resource(String path) throws IOException {

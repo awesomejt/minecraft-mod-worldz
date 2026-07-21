@@ -120,6 +120,8 @@ public final class WorldzConfig {
     public OceanIslandConfig oceanIsland = new OceanIslandConfig();
     /** Defaults for the {@code jlt_worldz:sky_island} typed preset (GOALS 05; DESIGN §27). */
     public SkyIslandConfig skyIsland = new SkyIslandConfig();
+    /** Defaults for the {@code jlt_worldz:sky_chunk} typed preset (GOALS 09/37; DESIGN §29). */
+    public ChunkIslandConfig chunkIsland = new ChunkIslandConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -228,6 +230,9 @@ public final class WorldzConfig {
         if (object.containsKey("skyIsland")) {
             config.skyIsland = readSkyIslandConfig(object.get("skyIsland"), "skyIsland", logger);
         }
+        if (object.containsKey("chunkIsland")) {
+            config.chunkIsland = readChunkIslandConfig(object.get("chunkIsland"), "chunkIsland", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -285,6 +290,7 @@ public final class WorldzConfig {
         stripWorld = sanitizeStripWorld(stripWorld, logger);
         oceanIsland = sanitizeOceanIsland(oceanIsland, logger);
         skyIsland = sanitizeSkyIsland(skyIsland, logger);
+        chunkIsland = sanitizeChunkIsland(chunkIsland, logger);
         return this;
     }
 
@@ -587,6 +593,7 @@ public final class WorldzConfig {
             + ", stripWorld=" + stripWorldSummary(stripWorld)
             + ", oceanIsland=" + oceanIslandSummary(oceanIsland)
             + ", skyIsland=" + skyIslandSummary(skyIsland)
+            + ", chunkIsland=" + chunkIslandSummary(chunkIsland)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -612,6 +619,7 @@ public final class WorldzConfig {
         values.put("stripWorld", stripWorldMap(stripWorld));
         values.put("oceanIsland", oceanIslandMap(oceanIsland));
         values.put("skyIsland", skyIslandMap(skyIsland));
+        values.put("chunkIsland", chunkIslandMap(chunkIsland));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -745,6 +753,41 @@ public final class WorldzConfig {
         }
         if (map.containsKey("applyToNether")) {
             config.applyToNether = readBoolean(map.get("applyToNether"), name + ".applyToNether");
+        }
+        return config;
+    }
+
+    private static ChunkIslandConfig readChunkIslandConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        ChunkIslandConfig config = new ChunkIslandConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("spawnChance")) {
+            config.spawnChance = readDouble(map.get("spawnChance"), name + ".spawnChance");
+        }
+        if (map.containsKey("cellSizeChunks")) {
+            config.cellSizeChunks = readInt(map.get("cellSizeChunks"), name + ".cellSizeChunks");
+        }
+        if (map.containsKey("topOnly")) {
+            config.topOnly = readBoolean(map.get("topOnly"), name + ".topOnly");
+        }
+        if (map.containsKey("topOnlyDepthBlocks")) {
+            config.topOnlyDepthBlocks = readInt(map.get("topOnlyDepthBlocks"), name + ".topOnlyDepthBlocks");
+        }
+        if (map.containsKey("exclusionZoneEnabled")) {
+            config.exclusionZoneEnabled = readBoolean(map.get("exclusionZoneEnabled"), name + ".exclusionZoneEnabled");
+        }
+        if (map.containsKey("exclusionZoneRadiusBlocks")) {
+            config.exclusionZoneRadiusBlocks = readInt(map.get("exclusionZoneRadiusBlocks"), name + ".exclusionZoneRadiusBlocks");
+        }
+        if (map.containsKey("applyToNether")) {
+            config.applyToNether = readBoolean(map.get("applyToNether"), name + ".applyToNether");
+        }
+        if (map.containsKey("applyToEnd")) {
+            config.applyToEnd = readBoolean(map.get("applyToEnd"), name + ".applyToEnd");
         }
         return config;
     }
@@ -1146,6 +1189,25 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static ChunkIslandConfig sanitizeChunkIsland(ChunkIslandConfig config, Logger logger) {
+        ChunkIslandConfig sanitized = config == null ? new ChunkIslandConfig() : config;
+        double originalChance = sanitized.spawnChance;
+        sanitized.spawnChance = Math.clamp(sanitized.spawnChance, 0.0, 1.0);
+        if (sanitized.spawnChance != originalChance) {
+            logger.warn("Clamped chunkIsland.spawnChance from {} to {}.", originalChance, sanitized.spawnChance);
+        }
+        sanitized.cellSizeChunks = clampWithWarning(
+            sanitized.cellSizeChunks, 1, MAX_LAYOUT_REGION_SCALE_BLOCKS / 16, "chunkIsland.cellSizeChunks", logger
+        );
+        sanitized.topOnlyDepthBlocks = clampWithWarning(
+            sanitized.topOnlyDepthBlocks, 1, MAX_BORDER_RADIUS_BLOCKS, "chunkIsland.topOnlyDepthBlocks", logger
+        );
+        sanitized.exclusionZoneRadiusBlocks = clampWithWarning(
+            sanitized.exclusionZoneRadiusBlocks, 0, MAX_BORDER_RADIUS_BLOCKS, "chunkIsland.exclusionZoneRadiusBlocks", logger
+        );
+        return sanitized;
+    }
+
     private static ExteriorConfig sanitizeExterior(
         ExteriorConfig config,
         BorderConfig border,
@@ -1302,6 +1364,20 @@ public final class WorldzConfig {
         values.put("widthRadiusBlocks", config.widthRadiusBlocks);
         values.put("widthMode", config.widthMode.serializedName());
         values.put("applyToNether", config.applyToNether);
+        return values;
+    }
+
+    private static Map<String, Object> chunkIslandMap(ChunkIslandConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("spawnChance", config.spawnChance);
+        values.put("cellSizeChunks", config.cellSizeChunks);
+        values.put("topOnly", config.topOnly);
+        values.put("topOnlyDepthBlocks", config.topOnlyDepthBlocks);
+        values.put("exclusionZoneEnabled", config.exclusionZoneEnabled);
+        values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
+        values.put("applyToNether", config.applyToNether);
+        values.put("applyToEnd", config.applyToEnd);
         return values;
     }
 
@@ -1464,6 +1540,18 @@ public final class WorldzConfig {
         return "widthRadius=" + config.widthRadiusBlocks
             + ", widthMode=" + config.widthMode.serializedName()
             + ", applyToNether=" + config.applyToNether;
+    }
+
+    private static String chunkIslandSummary(ChunkIslandConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "spawnChance=" + config.spawnChance
+            + ", cellSizeChunks=" + config.cellSizeChunks
+            + ", topOnly=" + config.topOnly
+            + (config.topOnly ? ", topOnlyDepthBlocks=" + config.topOnlyDepthBlocks : "")
+            + ", applyToNether=" + config.applyToNether
+            + ", applyToEnd=" + config.applyToEnd;
     }
 
     private static String singleBiomeSummary(SingleBiomeConfig config) {

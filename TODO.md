@@ -1753,7 +1753,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       depth sampling (no generation needed) for cave biomes, and
       `EnvelopedChunkGenerator.findNearestMapStructure`'s existing delegate
       passthrough for structure-bearing chunks.
-- [ ] 12.2 Core: `ChunkIslandPlan` (pure logic — per-chunk hash-picked
+- [x] 12.2 Core: `ChunkIslandPlan` (pure logic — per-chunk hash-picked
       presence, JUnit-covered), config/codec/customization plumbing on a new
       dedicated `jlt_worldz:sky_chunk` preset (matching `single_biome`/
       `chaos_biomes`/`strip_world`'s own-preset precedent), the chunk-grid
@@ -1763,6 +1763,50 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       small Customize screen. Acceptance bar: a single starter chunk island
       (full-column or top-N-deep) surrounded by void generates — no portal
       room guarantee, no Nether/End toggle, no multi-biome yet.
+      **Done (0.2.54):** new `logic.ChunkIslandPlan` (enabled, spawnChance,
+      cellSizeChunks, topOnly, topOnlyDepthBlocks, exclusionZone; a per-cell
+      hash pick with the starter cell always forced present, no jitter/
+      radius needed since the shape *is* the chunk) + `config.ChunkIslandConfig`
+      + `worldgen.ChunkIslandCodecs`; `LimitedBiomeSource` gained the exact
+      last spare top-level codec slot flagged in 12.1 (`chunk_island`, now
+      14/14 — see DESIGN §29.7) plus a `skyChunkDefaults` fieldless-preset
+      branch fixed from day one (Phase 6.2b/6.3's "known gap" pattern, not
+      repeated here). `EnvelopedChunkGenerator` gained `Dimension.END` (a
+      real, first-ever wrapping of `LevelStem.END`, confirmed nothing else
+      does this), a `chunkIsland`/`nonOverworldChunkIsland` pair mirroring
+      `skyIsland`/`netherSkyIsland`'s exact precedent (Overworld reads live
+      from `LimitedBiomeSource`, Nether/End persist directly on the
+      generator's own codec, both sharing the identical dimension-agnostic
+      masking since chunk islands never synthesize terrain, DESIGN §29.1),
+      and a new `applyChunkIslandDepthCutoff` pass appended after
+      `applyEnvelope`'s ordinary masking loop for the `TOP_ONLY` case
+      (reads the real, already-generated `Heightmap.Types.WORLD_SURFACE`
+      per column — no synthetic height needed, unlike every other exterior
+      mode). **Built the Nether/End toggle plumbing (12.4's own scope) as
+      part of this task**, not deferred: once `ChunkIslandPlan`/the
+      generator wiring supported three dimensions symmetrically (a natural
+      consequence of DESIGN §29.5's finding that no dimension-specific
+      material logic is ever needed), gating it behind a separate task
+      would only have meant re-touching the same methods twice — logged
+      here rather than silently expanding scope; 12.4 is now verification
+      plus test configs, not new implementation. New `SkyChunkCustomization`
+      (mirrors `SkyIslandCustomization`'s shape: no Overworld exterior field,
+      since the chunk-island branch in `effectiveModeAt` supplies the whole
+      Overworld exterior itself ahead of `envelope` ever being consulted)
+      and `SkyChunkPresetEditor`/`SkyChunkCustomizeScreen`, wiring all three
+      dimensions' `LevelStem`s. Full registration: `world_preset/
+      sky_chunk.json` (Overworld + Nether + **End**, the first typed preset
+      to wrap the End's own generator), the `normal.json` preset tag, lang
+      keys, both loaders' preset-editor hookup — each verified by a
+      matching resource/structural test (`WorldPresetResourcesTest`,
+      `ProjectMetadataTest`), following this project's own established
+      per-preset test pattern. 24 new tests across `ChunkIslandPlanTest`,
+      `SkyChunkCustomizationTest`, `WorldPresetResourcesTest`,
+      `ProjectMetadataTest`, `WorldzConfigTest`; full suite green (496
+      tests); clean build across all modules (fabric + neoforge
+      registration compiles and resolves correctly). Not yet deployed/
+      tested in-game — folded into 12.7's acceptance pass, same posture
+      Phase 10/11 established for their own multi-task builds.
 - [ ] 12.3 Guaranteed portal room (09): a reserved chunk (same
       "hash-picked angle/distance beyond an exclusion zone, always the same
       cell for a given seed" shape as Phase 11.5's village cell) forced to

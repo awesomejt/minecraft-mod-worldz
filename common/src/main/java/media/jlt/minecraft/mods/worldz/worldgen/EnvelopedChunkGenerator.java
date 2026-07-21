@@ -6,6 +6,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
+import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
 import media.jlt.minecraft.mods.worldz.logic.FloatingIslandsPlan;
@@ -88,7 +89,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ExteriorCodecs.DIMENSION_CODEC.optionalFieldOf("exterior").forGetter(generator -> Optional.of(generator.envelope)),
         StripCodecs.PLAN_CODEC.optionalFieldOf("strip").forGetter(generator -> Optional.of(generator.strip)),
         SkyIslandCodecs.PLAN_CODEC.optionalFieldOf("nether_sky_island")
-            .forGetter(generator -> Optional.of(generator.netherSkyIsland))
+            .forGetter(generator -> Optional.of(generator.netherSkyIsland)),
+        ChunkIslandCodecs.PLAN_CODEC.optionalFieldOf("chunk_island")
+            .forGetter(generator -> Optional.of(generator.nonOverworldChunkIsland))
     ).apply(instance, EnvelopedChunkGenerator::resolve));
 
     private final ChunkGenerator delegate;
@@ -142,13 +145,32 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * {@link #originSource} unchanged.
      */
     private volatile long netherSkyIslandSeed;
+    /**
+     * The Overworld's own chunk-island plan (GOALS 09/37, DESIGN §29), read live from {@link
+     * #originSource} exactly like {@link #island}/{@link #skyIsland}.
+     */
+    private final ChunkIslandPlan chunkIsland;
+    /**
+     * The Nether's or the End's own chunk-island plan, persisted directly on this generator's
+     * own codec -- neither dimension has a {@code LimitedBiomeSource} to read a live plan from,
+     * mirroring {@link #netherSkyIsland}'s exact precedent, just shared by two dimensions instead
+     * of one since chunk islands never need a dimension-specific material palette (DESIGN §29.5).
+     */
+    private final ChunkIslandPlan nonOverworldChunkIsland;
+    /**
+     * The real Minecraft world seed for a non-Overworld chunk island's grid (mirrors {@link
+     * #netherSkyIslandSeed}'s exact timing/precedent). Irrelevant for the Overworld instance,
+     * which sources its seed from {@link #originSource} unchanged.
+     */
+    private volatile long chunkIslandSeed;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
         Dimension dimension,
         ExteriorPlan.DimensionEnvelope envelope,
         StripPlan strip,
-        SkyIslandPlan netherSkyIsland
+        SkyIslandPlan netherSkyIsland,
+        ChunkIslandPlan nonOverworldChunkIsland
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
@@ -163,6 +185,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.island = this.originSource.map(LimitedBiomeSource::island).orElse(IslandPlan.disabled());
         this.skyIsland = this.originSource.map(LimitedBiomeSource::skyIsland).orElse(SkyIslandPlan.disabled());
         this.netherSkyIsland = dimension == Dimension.NETHER ? netherSkyIsland : SkyIslandPlan.disabled();
+        this.chunkIsland = this.originSource.map(LimitedBiomeSource::chunkIsland).orElse(ChunkIslandPlan.disabled());
+        this.nonOverworldChunkIsland = dimension != Dimension.OVERWORLD ? nonOverworldChunkIsland : ChunkIslandPlan.disabled();
     }
 
     /**
@@ -183,6 +207,47 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     public SkyIslandPlan skyIsland() {
         return activeSkyIsland();
+    }
+
+    /**
+     * Returns the chunk-island plan actually active for this dimension instance: the Overworld's
+     * own (read live from {@link #originSource}) or the Nether's/End's (persisted directly on
+     * this generator) -- see {@link #chunkIsland}/{@link #nonOverworldChunkIsland}.
+     */
+    private ChunkIslandPlan activeChunkIsland() {
+        return this.dimension == Dimension.OVERWORLD ? this.chunkIsland : this.nonOverworldChunkIsland;
+    }
+
+    /**
+     * Returns the chunk-island plan active for this dimension (GOALS 09/37, DESIGN §29),
+     * disabled for every other preset.
+     *
+     * @return resolved chunk island plan for this dimension
+     */
+    public ChunkIslandPlan chunkIsland() {
+        return activeChunkIsland();
+    }
+
+    /**
+     * Resolves the real Minecraft world seed for a non-Overworld chunk island's grid. Mirrors
+     * {@link #setSkyIslandSeed(long)}'s timing exactly -- called from the same {@code
+     * ChunkMapMixin} injection, once per level load.
+     *
+     * @param seed the real Minecraft world seed
+     */
+    public void setChunkIslandSeed(long seed) {
+        this.chunkIslandSeed = seed;
+    }
+
+    /**
+     * Returns the real Minecraft world seed for {@link #activeChunkIsland()}'s grid: the
+     * Overworld shares {@code LimitedBiomeSource}'s biome-classification seed exactly; the
+     * Nether/End have no such source, so they use {@link #chunkIslandSeed} instead.
+     */
+    private long chunkIslandSeed() {
+        return this.dimension == Dimension.OVERWORLD
+            ? this.originSource.orElseThrow().effectiveLayoutPlan().seed()
+            : this.chunkIslandSeed;
     }
 
     /**
@@ -271,9 +336,39 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StripPlan strip,
         SkyIslandPlan netherSkyIsland
     ) {
-        return new EnvelopedChunkGenerator(
-            delegate, overworld ? Dimension.OVERWORLD : Dimension.NETHER, envelope, strip, netherSkyIsland
+        return customized(
+            delegate, overworld ? Dimension.OVERWORLD : Dimension.NETHER, envelope, strip, netherSkyIsland,
+            ChunkIslandPlan.disabled()
         );
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope, strip-world plan, Nether sky island plan, and
+     * chunk-island plan selected during world creation (GOALS 09/37, DESIGN §29). The only
+     * overload that accepts an explicit {@link Dimension} rather than an {@code overworld}
+     * boolean, since this is the one call site that also needs to wrap {@code LevelStem.END}
+     * for the first time (DESIGN §29.5) -- every other preset editor only ever wraps
+     * Overworld/Nether and keeps using the narrower boolean-based overloads above.
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param dimension which dimension this instance wraps
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @param netherSkyIsland resolved Nether sky island plan, disabled for every other preset
+     *     and ignored entirely for non-Nether instances
+     * @param nonOverworldChunkIsland resolved Nether/End chunk-island plan, disabled for every
+     *     other preset and ignored entirely for the Overworld instance
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        Dimension dimension,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland,
+        ChunkIslandPlan nonOverworldChunkIsland
+    ) {
+        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland);
     }
 
     /**
@@ -335,6 +430,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             // via islandOceanDepthAt without ever needing a second ExteriorMode value.
             return ExteriorMode.VOID;
         }
+        if (activeChunkIsland().enabled()) {
+            // Unlike every other island-shaped preset, a selected chunk's real vanilla terrain
+            // is never replaced (DESIGN §29.1) -- NORMAL lets the delegate/layout/starter-land
+            // pipeline run exactly as it would with no Worldz masking at all. Only unselected
+            // chunks mask to VOID. The TOP_ONLY depth cutoff is layered on separately, after
+            // generation, in applyEnvelope's own additive pass (§29.3) -- no single ExteriorMode
+            // can express "NORMAL above a cutoff, VOID below it" in the same column.
+            return chunkIslandHitAt(relativeX, relativeZ).present() ? ExteriorMode.NORMAL : ExteriorMode.VOID;
+        }
         if (this.island.enabled() && this.island.withinExclusionZone(relativeX, relativeZ)) {
             // Inside the exclusion zone (or it's disabled, the GOALS 01 default): the island
             // interior and its shore ring are real, unmasked generation (NORMAL); only open
@@ -364,7 +468,20 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     private boolean hasActiveExterior() {
         return this.envelope.mode() != ExteriorMode.NORMAL || this.strip.enabled()
-            || this.island.enabled() || activeSkyIsland().enabled();
+            || this.island.enabled() || activeSkyIsland().enabled() || activeChunkIsland().enabled();
+    }
+
+    /**
+     * Classifies one column's containing chunk against {@link #activeChunkIsland()}'s grid.
+     *
+     * @param relativeX block X relative to the origin
+     * @param relativeZ block Z relative to the origin
+     * @return the containing chunk's resolved hit
+     */
+    private ChunkIslandPlan.Hit chunkIslandHitAt(int relativeX, int relativeZ) {
+        int chunkX = Math.floorDiv(relativeX, 16);
+        int chunkZ = Math.floorDiv(relativeZ, 16);
+        return activeChunkIsland().at(chunkX, chunkZ, chunkIslandSeed());
     }
 
     /**
@@ -394,12 +511,18 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Dimension dimension,
         Optional<ExteriorPlan.DimensionEnvelope> encodedEnvelope,
         Optional<StripPlan> encodedStrip,
-        Optional<SkyIslandPlan> encodedNetherSkyIsland
+        Optional<SkyIslandPlan> encodedNetherSkyIsland,
+        Optional<ChunkIslandPlan> encodedChunkIsland
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
-        ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(
-            () -> dimension == Dimension.OVERWORLD ? defaults.overworld() : defaults.nether()
-        );
+        ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(() -> switch (dimension) {
+            case OVERWORLD -> defaults.overworld();
+            case NETHER -> defaults.nether();
+            // The End has no config-default exterior of its own (ExteriorPlan is an Overworld/
+            // Nether pair only, DESIGN §29.5) -- masking there is fully handled by the chunk-
+            // island branch in effectiveModeAt, ahead of this envelope ever being consulted.
+            case END -> ExteriorPlan.DimensionEnvelope.normal();
+        });
         StripPlan strip = encodedStrip.orElseGet(
             () -> StripPlan.fromConfig(WorldzCommon.config().strip, dimension == Dimension.OVERWORLD)
         );
@@ -409,7 +532,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 ? SkyIslandPlan.fromConfig(skyIslandConfig)
                 : SkyIslandPlan.disabled();
         });
-        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland);
+        ChunkIslandPlan nonOverworldChunkIsland = encodedChunkIsland.orElseGet(() -> {
+            var chunkIslandConfig = WorldzCommon.config().chunkIsland;
+            return switch (dimension) {
+                case NETHER -> ChunkIslandPlan.fromConfig(chunkIslandConfig, ChunkIslandPlan.Dimension.NETHER);
+                case END -> ChunkIslandPlan.fromConfig(chunkIslandConfig, ChunkIslandPlan.Dimension.END);
+                case OVERWORLD -> ChunkIslandPlan.disabled();
+            };
+        });
+        return new EnvelopedChunkGenerator(delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland);
     }
 
     @Override
@@ -846,6 +977,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     + ", thickness=" + active.thicknessBlocks()
             );
         }
+        if (activeChunkIsland().enabled()) {
+            ChunkIslandPlan active = activeChunkIsland();
+            result.add(
+                "Worldz chunk island: spawnChance=" + active.spawnChance()
+                    + ", cellSizeChunks=" + active.cellSizeChunks()
+                    + ", topOnly=" + active.topOnly()
+            );
+        }
         this.starterLand.ifPresent(context -> result.add(
             "Worldz starter land: radius=" + context.radiusBlocks()
                 + ", transition=" + context.plan().transitionWidthBlocks()
@@ -923,6 +1062,44 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                             }
                             chunk.setBlockState(pos, state, 0);
                         }
+                    }
+                }
+            }
+        }
+        if (activeChunkIsland().enabled() && activeChunkIsland().topOnly()) {
+            applyChunkIslandDepthCutoff(chunk, chunkPos, pos, minY);
+        }
+    }
+
+    /**
+     * Voids everything below a {@code TOP_ONLY} chunk island's own real generated surface, down
+     * to its configured depth (GOALS 09's "like 5 deep to ensure access to stone") -- layered
+     * additively after {@link #applyEnvelope}'s ordinary per-column masking loop above, since the
+     * same column is {@code NORMAL} above the cutoff and voided below it, which no single {@link
+     * ExteriorMode} can express in one column (DESIGN §29.3). Re-runs every time {@link
+     * #applyEnvelope} does (once per generation stage) -- harmless and idempotent, the same
+     * "runs again unconditionally" pattern every other exterior mode already relies on.
+     */
+    private void applyChunkIslandDepthCutoff(ChunkAccess chunk, ChunkPos chunkPos, BlockPos.MutableBlockPos pos, int minY) {
+        int chunkX = Math.floorDiv(chunkPos.getMinBlockX() - originX(), 16);
+        int chunkZ = Math.floorDiv(chunkPos.getMinBlockZ() - originZ(), 16);
+        ChunkIslandPlan.Hit hit = activeChunkIsland().at(chunkX, chunkZ, chunkIslandSeed());
+        if (!hit.present() || !hit.topOnly()) {
+            return;
+        }
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
+            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                int surfaceY = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+                int cutoffY = surfaceY - hit.topOnlyDepthBlocks();
+                for (int y = minY; y < cutoffY; y++) {
+                    pos.set(x, y, z);
+                    BlockState oldState = chunk.getBlockState(pos);
+                    if (oldState != air) {
+                        if (oldState.hasBlockEntity()) {
+                            chunk.removeBlockEntity(pos);
+                        }
+                        chunk.setBlockState(pos, air, 0);
                     }
                 }
             }
@@ -1393,9 +1570,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             && predicate.test(this.effectiveModeAt(maxX, maxZ));
     }
 
-    private enum Dimension {
+    /** Which dimension one {@code EnvelopedChunkGenerator} instance wraps. */
+    public enum Dimension {
+        /** The Overworld. */
         OVERWORLD("overworld"),
-        NETHER("nether");
+        /** The Nether. */
+        NETHER("nether"),
+        /** The End -- only ever wrapped by the {@code sky_chunk} preset (DESIGN §29.5). */
+        END("end");
 
         private static final Codec<Dimension> CODEC = Codec.STRING.xmap(Dimension::parse, value -> value.serializedName);
         private final String serializedName;
@@ -1408,6 +1590,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return switch (value) {
                 case "overworld" -> OVERWORLD;
                 case "nether" -> NETHER;
+                case "end" -> END;
                 default -> throw new IllegalArgumentException("Unknown Worldz generator dimension: " + value);
             };
         }

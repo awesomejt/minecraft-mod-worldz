@@ -3,6 +3,7 @@ package media.jlt.minecraft.mods.worldz;
 import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
+import media.jlt.minecraft.mods.worldz.client.SkyChunkPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SkyIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
@@ -25,5 +26,6 @@ final class WorldzNeoForgeClient {
         event.register(StripWorldPresetEditor.STRIP_WORLD_PRESET, StripWorldPresetEditor.INSTANCE);
         event.register(OceanIslandPresetEditor.OCEAN_ISLAND_PRESET, OceanIslandPresetEditor.INSTANCE);
         event.register(SkyIslandPresetEditor.SKY_ISLAND_PRESET, SkyIslandPresetEditor.INSTANCE);
+        event.register(SkyChunkPresetEditor.SKY_CHUNK_PRESET, SkyChunkPresetEditor.INSTANCE);
     }
 }

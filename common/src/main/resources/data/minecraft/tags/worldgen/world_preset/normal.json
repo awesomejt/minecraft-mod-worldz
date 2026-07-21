@@ -6,6 +6,7 @@
     "jlt_worldz:chaos_biomes",
     "jlt_worldz:strip_world",
     "jlt_worldz:ocean_island",
-    "jlt_worldz:sky_island"
+    "jlt_worldz:sky_island",
+    "jlt_worldz:sky_chunk"
   ]
 }

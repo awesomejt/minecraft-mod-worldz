@@ -567,6 +567,7 @@ class WorldzConfigTest {
                 + " extrasCount=1"
                 + ", applyToNether=false"
                 + ", floatingIslands=<disabled>"
+                + ", chunkIsland=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
