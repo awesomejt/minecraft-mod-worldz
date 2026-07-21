@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.61", properties.getProperty("version"));
+        assertEquals("0.2.62", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -267,6 +267,25 @@ class ProjectMetadataTest {
         ));
         assertTrue(generator.contains("if (this.cave.enabled() && this.cave.sealedSurface()) {"));
         assertTrue(generator.contains("private void applyCaveSealedSurface("));
+    }
+
+    @Test
+    void caveMegaCavernReusesIslandShapeProfileAndNeverFills() throws IOException {
+        // GOALS 26: the mega-cavern must blend into natural cave systems at its edges (reuses
+        // the same perturbed-footprint math as every other shaped preset, DESIGN §30.5) and
+        // must never overwrite existing air/fluid -- only solid blocks are carved to air.
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("if (this.cave.enabled() && this.cave.cavernEnabled()) {"));
+        assertTrue(generator.contains("private void applyCaveMegaCavern("));
+        assertTrue(generator.contains(
+            "IslandShapeProfile.distanceFromShore(\n"
+                + "                    x - originX(), z - originZ(), this.cave.cavernRadiusBlocks(), IslandShapeProfile.DEFAULT_AMPLITUDE, seed\n"
+                + "                );"
+        ));
+        assertTrue(generator.contains("if (!oldState.isAir() && oldState.getFluidState().isEmpty()) {"));
     }
 
     @Test

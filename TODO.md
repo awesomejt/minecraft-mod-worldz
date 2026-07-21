@@ -2082,8 +2082,32 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       `NoClassDefFoundError` limitation as `SpawnOriginManager`/
       `WorldLimitManager`). Full suite green (533 tests); clean build
       across all modules.
-- [ ] 13.2c Mega-cave option (GOALS 26, DESIGN §30.5): the ellipsoid carve
+- [x] 13.2c Mega-cave option (GOALS 26, DESIGN §30.5): the ellipsoid carve
       pass reusing `IslandShapeProfile`, Customize screen fields.
+      **Done (0.2.62):** `EnvelopedChunkGenerator.applyCaveMegaCavern` --
+      reuses `IslandShapeProfile.distanceFromShore` (the same perturbed-
+      coastline math every other shaped preset in this project shares,
+      fixed at `IslandShapeProfile.DEFAULT_AMPLITUDE` since `CavePlan` has
+      no `shapeAmplitude` field of its own by design, §30.2) for the
+      horizontal footprint, bounded vertically by `cavernHeightBlocks`
+      above/below `spawnDepthY`. Air-only, one-directional carve: only
+      solid, non-fluid blocks become air (`!oldState.isAir() &&
+      oldState.getFluidState().isEmpty()`), so existing air/water/lava/
+      natural caves already inside the footprint are left exactly as
+      vanilla generated them -- this is what "blended into the natural
+      cave systems at its edges" means in practice, no separate blend
+      math needed. New `caveSeed()` helper mirrors `islandSeed()`'s
+      exact precondition (cave is Overworld-only, so `originSource` is
+      always present when called). Layered as another additive pass
+      alongside 13.2b's roof, at the end of `applyEnvelope`, independent
+      of `mode`. Customize-screen fields (cavernEnabled checkbox,
+      cavernRadiusBlocks/cavernHeightBlocks text fields) were already
+      built whole in 13.2a alongside the rest of `CavePlan` -- no new UI
+      work needed. New structural regression-guard test
+      (`ProjectMetadataTest.caveMegaCavernReusesIslandShapeProfileAndNeverFills`),
+      same rationale as 13.2b's (the generator itself isn't directly
+      unit-testable). Full suite green (534 tests); clean build across
+      all modules.
 - [ ] 13.2d Starter chest reuse (optional, DESIGN §30.3's
       `getSharedSpawnPos()` timing), test configs, docs
       (README/MANUAL_TESTING.md); **[Jason]** acceptance (25 with/without

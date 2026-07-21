@@ -1203,6 +1203,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (this.cave.enabled() && this.cave.sealedSurface()) {
             applyCaveSealedSurface(chunk, chunkPos, pos, maxY);
         }
+        if (this.cave.enabled() && this.cave.cavernEnabled()) {
+            applyCaveMegaCavern(chunk, chunkPos, pos);
+        }
     }
 
     /**
@@ -1233,6 +1236,52 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * Carves a large natural-looking cavern around spawn (GOALS 26, DESIGN §30.5): reuses {@link
+     * IslandShapeProfile#distanceFromShore} for a perturbed horizontal footprint (the same
+     * coastline-shaping math every other footprint in this project shares) bounded vertically by
+     * {@code cave.cavernHeightBlocks()} above/below {@code cave.spawnDepthY()}. Air-only,
+     * one-directional: a column already air or fluid inside the footprint is left exactly as
+     * vanilla generated it (this is what "blended into the natural cave systems at its edges"
+     * means in practice) -- only solid, non-fluid blocks become air. Never fills.
+     */
+    private void applyCaveMegaCavern(ChunkAccess chunk, ChunkPos chunkPos, BlockPos.MutableBlockPos pos) {
+        int minY = Math.max(chunk.getMinY(), this.cave.spawnDepthY() - this.cave.cavernHeightBlocks());
+        int maxY = Math.min(chunk.getMaxY(), this.cave.spawnDepthY() + this.cave.cavernHeightBlocks());
+        long seed = caveSeed();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
+            for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                double distance = IslandShapeProfile.distanceFromShore(
+                    x - originX(), z - originZ(), this.cave.cavernRadiusBlocks(), IslandShapeProfile.DEFAULT_AMPLITUDE, seed
+                );
+                if (distance > 0) {
+                    continue;
+                }
+                for (int y = minY; y <= maxY; y++) {
+                    pos.set(x, y, z);
+                    BlockState oldState = chunk.getBlockState(pos);
+                    if (!oldState.isAir() && oldState.getFluidState().isEmpty()) {
+                        if (oldState.hasBlockEntity()) {
+                            chunk.removeBlockEntity(pos);
+                        }
+                        chunk.setBlockState(pos, air, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the real Minecraft world seed for the mega-cavern's footprint shape. Cave has no
+     * Nether/End variant in scope (DESIGN §30.6), so this is only ever called for the Overworld
+     * instance, which always has a real {@link #originSource} to read from -- same precondition
+     * as {@link #islandSeed()}.
+     */
+    private long caveSeed() {
+        return this.originSource.orElseThrow().effectiveLayoutPlan().seed();
     }
 
     /**
