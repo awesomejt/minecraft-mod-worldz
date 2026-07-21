@@ -63,6 +63,24 @@ public record FloatingIslandsPlan(
      */
     private static final double JITTER_FRACTION = 0.3;
 
+    /**
+     * Minimum radius for the guaranteed village's own reserved island (GOALS 07, DESIGN §28.3) --
+     * bigger than any ordinary configured range, so the compact fallback-vault situation §24.6
+     * accepted for tiny ocean islands doesn't recur for a real vanilla village.
+     */
+    public static final int VILLAGE_MIN_RADIUS_BLOCKS = 96;
+
+    /** Village-compatible biome ids, paired index-for-index with {@link #VILLAGE_STRUCTURE_IDS}. */
+    private static final String[] VILLAGE_BIOME_IDS = {
+        "minecraft:plains", "minecraft:desert", "minecraft:savanna", "minecraft:snowy_plains", "minecraft:taiga"
+    };
+
+    /** Real vanilla village structure ids, one per {@link #VILLAGE_BIOME_IDS} entry (DESIGN §28.3). */
+    private static final String[] VILLAGE_STRUCTURE_IDS = {
+        "minecraft:village_plains", "minecraft:village_desert", "minecraft:village_savanna",
+        "minecraft:village_snowy", "minecraft:village_taiga"
+    };
+
     /** Validates persisted values even while the feature is disabled. */
     public FloatingIslandsPlan {
         if (minRadiusBlocks < WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS || minRadiusBlocks > WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS) {
@@ -340,6 +358,17 @@ public record FloatingIslandsPlan(
     }
 
     private Optional<ResolvedIsland> resolveCell(long cellX, long cellZ, long seed, String fallbackBiome) {
+        VillageCell village = resolveVillageCell(seed);
+        if (cellX == village.cellX() && cellZ == village.cellZ()) {
+            // The guaranteed village's own reserved cell (GOALS 07, DESIGN §28.3): always present,
+            // forced radius/biome, bypassing the ordinary spawnChance/exclusion-zone gating below
+            // entirely -- it's constructed to already sit beyond the exclusion zone.
+            double villageCenterX = cellCenter(cellX, seed, "floating_island_jitter_x", cellZ);
+            double villageCenterZ = cellCenter(cellZ, seed, "floating_island_jitter_z", cellX);
+            return Optional.of(new ResolvedIsland(
+                villageCenterX, villageCenterZ, Math.max(minRadiusBlocks, VILLAGE_MIN_RADIUS_BLOCKS), villageBiome(seed)
+            ));
+        }
         if (hash01(seed, "floating_island_present", cellX, cellZ, 0) >= spawnChance) {
             return Optional.empty();
         }
@@ -353,6 +382,64 @@ public record FloatingIslandsPlan(
             ? islandBiomes.get(Math.floorMod((int) Math.floor(hash01(seed, "floating_island_biome", cellX, cellZ, 0) * islandBiomes.size()), islandBiomes.size()))
             : fallbackBiome;
         return Optional.of(new ResolvedIsland(centerX, centerZ, radius, biome));
+    }
+
+    /**
+     * The result of resolving the guaranteed village's placement (GOALS 07, DESIGN §28.3): its
+     * (jittered) center and which vanilla village structure variant to force-generate there.
+     *
+     * @param centerX jittered center block X, relative to the sky island origin
+     * @param centerZ jittered center block Z, relative to the sky island origin
+     * @param structureId the vanilla village structure id matching the forced biome
+     */
+    public record VillageSite(double centerX, double centerZ, String structureId) {
+    }
+
+    /**
+     * Resolves the guaranteed village's placement (GOALS 07, DESIGN §28.3). Only meaningful when
+     * {@link #enabled} -- callers gate on that themselves, matching every other deployment method
+     * in this codebase (e.g. {@code StarterKitDeployment}'s own unguarded internals).
+     *
+     * @param seed sampling seed (the world's real seed, resolved live)
+     * @return the village's resolved placement
+     */
+    public VillageSite guaranteedVillageSite(long seed) {
+        VillageCell village = resolveVillageCell(seed);
+        double centerX = cellCenter(village.cellX(), seed, "floating_island_jitter_x", village.cellZ());
+        double centerZ = cellCenter(village.cellZ(), seed, "floating_island_jitter_z", village.cellX());
+        return new VillageSite(centerX, centerZ, villageStructureId(seed));
+    }
+
+    private record VillageCell(long cellX, long cellZ) {
+    }
+
+    /**
+     * Resolves the guaranteed village's grid-cell coordinates: a hash-picked angle and distance
+     * (always at least one full cell size beyond the exclusion zone) converted to cell indices --
+     * always the same cell for a given seed, independent of the ordinary per-cell {@link
+     * #spawnChance} roll.
+     */
+    private VillageCell resolveVillageCell(long seed) {
+        double angle = hash01(seed, "floating_island_village_angle", 0, 0, 0) * 2.0 * Math.PI;
+        double exclusionRadius = exclusionZone.enabled() ? exclusionZone.radiusBlocks() : 0.0;
+        double distance = exclusionRadius + cellSizeBlocks
+            + hash01(seed, "floating_island_village_distance", 0, 0, 0) * cellSizeBlocks;
+        long cellX = Math.floorDiv(Math.round(Math.cos(angle) * distance), (long) cellSizeBlocks);
+        long cellZ = Math.floorDiv(Math.round(Math.sin(angle) * distance), (long) cellSizeBlocks);
+        return new VillageCell(cellX, cellZ);
+    }
+
+    private static int villageVariantIndex(long seed) {
+        double fraction = hash01(seed, "floating_island_village_biome", 0, 0, 0);
+        return Math.floorMod((int) Math.floor(fraction * VILLAGE_BIOME_IDS.length), VILLAGE_BIOME_IDS.length);
+    }
+
+    private static String villageBiome(long seed) {
+        return VILLAGE_BIOME_IDS[villageVariantIndex(seed)];
+    }
+
+    private static String villageStructureId(long seed) {
+        return VILLAGE_STRUCTURE_IDS[villageVariantIndex(seed)];
     }
 
     private double cellCenter(long cell, long seed, String salt, long otherCell) {

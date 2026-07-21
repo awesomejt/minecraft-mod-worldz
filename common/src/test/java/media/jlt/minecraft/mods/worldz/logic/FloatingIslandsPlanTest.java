@@ -209,6 +209,50 @@ class FloatingIslandsPlanTest {
         assertThrows(IllegalArgumentException.class, () -> island.pickY(63, 58, 42L, "ore_y"));
     }
 
+    @Test
+    void guaranteedVillageSiteStructureIdMatchesTheKnownVillageVariants() {
+        List<String> knownStructureIds = List.of(
+            "minecraft:village_plains", "minecraft:village_desert", "minecraft:village_savanna",
+            "minecraft:village_snowy", "minecraft:village_taiga"
+        );
+        FloatingIslandsPlan plan = plan(true, 0.6, false, 256, new IslandPlan.ExclusionZone(true, 256));
+        for (long seed = 0; seed < 10; seed++) {
+            FloatingIslandsPlan.VillageSite site = plan.guaranteedVillageSite(seed);
+            assertTrue(knownStructureIds.contains(site.structureId()), "unexpected structure id " + site.structureId());
+        }
+    }
+
+    @Test
+    void guaranteedVillageSiteIsDeterministic() {
+        FloatingIslandsPlan plan = plan(true, 0.6, false, 256, new IslandPlan.ExclusionZone(true, 256));
+        FloatingIslandsPlan.VillageSite first = plan.guaranteedVillageSite(42L);
+        FloatingIslandsPlan.VillageSite second = plan.guaranteedVillageSite(42L);
+        assertEquals(first, second);
+    }
+
+    @Test
+    void guaranteedVillageSiteIsAlwaysBeyondTheExclusionZone() {
+        FloatingIslandsPlan plan = plan(true, 0.6, false, 256, new IslandPlan.ExclusionZone(true, 1000));
+        for (long seed = 0; seed < 30; seed++) {
+            FloatingIslandsPlan.VillageSite site = plan.guaranteedVillageSite(seed);
+            double distance = Math.hypot(site.centerX(), site.centerZ());
+            assertTrue(distance >= 1000, "expected village beyond exclusion zone, got distance " + distance);
+        }
+    }
+
+    @Test
+    void guaranteedVillageIslandAlwaysAppearsInTheGrid() {
+        FloatingIslandsPlan plan = plan(true, 0.6, false, 256, new IslandPlan.ExclusionZone(true, 256));
+        for (long seed = 0; seed < 10; seed++) {
+            FloatingIslandsPlan.VillageSite site = plan.guaranteedVillageSite(seed);
+            int x = (int) Math.round(site.centerX());
+            int z = (int) Math.round(site.centerZ());
+            FloatingIslandsPlan.Hit hit = plan.at(x, z, seed, "minecraft:plains");
+            assertTrue(hit.present(), "expected the guaranteed village's own island to appear in the grid, seed " + seed);
+            assertTrue(hit.distanceFromShore() < 0.0, "expected the village's own center to be well inside its island");
+        }
+    }
+
     private static FloatingIslandsPlan plan(
         boolean enabled, double spawnChance, boolean biomeVariety, int cellSizeBlocks, IslandPlan.ExclusionZone exclusionZone
     ) {

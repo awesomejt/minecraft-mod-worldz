@@ -1615,12 +1615,69 @@ in full per the Phase 10 header's own note.
       resource islands" section extended with the loot-chest table rows
       and config example. Not yet deployed/tested — still folded into
       11.6's acceptance pass along with the guaranteed village (11.5).
-- [ ] 11.5 Guaranteed village (GOALS 07): the reserved village cell (hash-
+- [x] 11.5 Guaranteed village (GOALS 07): the reserved village cell (hash-
       picked angle/radius just beyond the exclusion zone, forced radius/
       biome), `FloatingIslandsDeployment.placeGuaranteedVillage` force-
       loading the structure's resolved bounding box then placing via
       `Structure.generate`/`placeInChunk` (DESIGN §28.3), one-time
       `WorldLimitState` gate alongside `needsChestBoat`/`needsStarterChest`.
+      **Done (0.2.51):** `FloatingIslandsPlan.resolveCell` (the same
+      private helper `at`/`nearbyIslands` already both go through) now
+      special-cases one specific cell first, before the ordinary
+      `spawnChance` roll: `resolveVillageCell(seed)` hash-picks an angle
+      and a distance (always at least one full `cellSizeBlocks` beyond
+      the exclusion zone) and converts that to cell coordinates, always
+      the same cell for a given seed. That cell is forced present
+      (bypassing `spawnChance`/exclusion-zone gating entirely — it's
+      constructed to already clear the zone), forced to
+      `max(minRadiusBlocks, VILLAGE_MIN_RADIUS_BLOCKS)` (new constant,
+      96 — bigger than any ordinary configured range), and forced to one
+      of five village-compatible biome/structure pairs (plains/desert/
+      savanna/snowy/taiga), hash-picked together so the structure always
+      matches its own island's biome. Because this hooks into the same
+      `resolveCell` every existing consumer (`at`, `nearbyIslands`,
+      terrain generation, 11.3/11.4's resource placement) already goes
+      through, the village's own island needed **zero** new terrain-
+      generation code — it just generates as an ordinary (larger, forced-
+      biome) scattered island automatically. New
+      `FloatingIslandsPlan.guaranteedVillageSite(seed)` resolves the
+      public-facing placement (center + structure id) for the deployment
+      step. New `worldgen.FloatingIslandsDeployment.placeGuaranteedVillage`
+      mirrors `net.minecraft.server.commands.PlaceCommand.placeStructure`
+      exactly (verified against the real 26.2 decompiled sources,
+      including the `ServerLevel.getStructureManager()`/`.structureManager()`
+      distinction — `StructureTemplateManager` for `Structure.generate`'s
+      NBT-template lookup vs `StructureManager` for `StructureStart
+      .placeInChunk`, two similarly-named but different types): force-
+      loads the origin chunk, calls `structure.generate(...)` with our
+      own `EnvelopedChunkGenerator` (so terrain-fit height queries see the
+      slab's own surface), then force-loads every chunk in the resolved
+      bounding box and calls `placeInChunk` across them — the same two-
+      phase shape `/place structure` uses, just force-loading instead of
+      erroring on an unloaded chunk. Wired into `WorldLimitManager
+      .onServerStarted` alongside the starter chest/chest-boat, gated by
+      a new `needsGuaranteedVillage = overworldSkyIsland.enabled() &&
+      overworldSkyIsland.floatingIslands().enabled()` joining the same
+      early-return and one-time `WorldLimitState` guard — no separate
+      persisted flag needed. No config toggle: automatic whenever
+      scattered islands are enabled, matching GOALS 07's framing as part
+      of the same feature rather than an independent option. 4 new tests
+      (`FloatingIslandsPlanTest`: structure-id validity, determinism,
+      always-beyond-exclusion-zone, always-appears-in-the-grid); full
+      suite green (471 tests); clean build across all modules.
+      `FloatingIslandsDeployment` itself isn't unit-testable (needs a
+      real `ServerLevel`/registries, same limitation as
+      `StarterKitDeployment`/`WorldLimitManager`) — correctness rests on
+      the JUnit-covered pure-logic site resolution plus 11.6's in-game
+      acceptance pass. README's "Floating resource islands" section
+      gained a "Guaranteed village" paragraph. **Known, deliberately
+      deferred risk, not chased further:** whether a vanilla village's
+      jigsaw pieces settle acceptably onto the island's synthetic slab
+      edge for a 96+-block-radius island was flagged in DESIGN §28.3 as
+      unverifiable from source reading alone — this is exactly the kind
+      of thing this project's "wait for Jason's in-game testing" pattern
+      exists for (closest precedent: ocean island's §24.10-§24.13 fixes),
+      not something to guess at further before 11.6's acceptance pass.
 - [ ] 11.6 Test configs (dense/sparse scatter, exclusion-zone-off vs. a
       real radius, each resource layer individually, guaranteed-village
       findability); docs (README, MANUAL_TESTING.md); **[Jason]**

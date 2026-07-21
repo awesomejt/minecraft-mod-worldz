@@ -78,7 +78,10 @@ public final class WorldLimitManager {
         // every sky island world gets one, regardless of whether any border/objective is
         // configured at all.
         boolean needsStarterChest = overworldSkyIsland.enabled();
-        if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest) {
+        // Same reasoning again for the guaranteed village (GOALS 07, DESIGN §28.3): every world
+        // with scattered floating islands enabled gets one, unconditionally.
+        boolean needsGuaranteedVillage = overworldSkyIsland.enabled() && overworldSkyIsland.floatingIslands().enabled();
+        if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest && !needsGuaranteedVillage) {
             return;
         }
 
@@ -99,6 +102,9 @@ public final class WorldLimitManager {
         }
         if (needsStarterChest) {
             StarterKitDeployment.spawnStarterChest(overworld, originX, originZ, overworldSkyIsland);
+        }
+        if (needsGuaranteedVillage) {
+            FloatingIslandsDeployment.placeGuaranteedVillage(overworld, originX, originZ, overworldSkyIsland);
         }
         BorderInitResult netherResult = BorderInitResult.NONE;
         if (nether != null) {

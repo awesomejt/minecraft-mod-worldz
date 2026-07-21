@@ -577,8 +577,15 @@ skyIsland:
 | `lootChestEnabled` | `false` | Whether each island gets one placed loot chest at the island's surface, reusing `lootKit`. |
 | `lootKit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `easyKit`/`mediumKit`/`hardKit` above (config-only, not exposed on the Customize screen). |
 
-**Current scope:** the guaranteed village (GOALS 07's own village-beyond-
-the-exclusion-zone piece) is still to come; see `TODO.md` Phase 11.
+**Guaranteed village (GOALS 07):** whenever `floatingIslands.enabled` is
+set, one specific scattered island beyond the exclusion zone is always a
+real vanilla village — plains, desert, savanna, snowy, or taiga, hash-
+picked per seed and forced to a village-safe minimum radius. It's placed
+with the same `/place structure`-style API vanilla itself uses, so it's a
+genuine village (jigsaw pieces, loot chests, villagers), not a hand-built
+approximation — bridging out from the starter island in the right
+direction (also hash-picked per seed) will always find one. No separate
+setting: it's automatic whenever scattered islands are on.
 
 Not exposed on the Customize screen beyond the tier selector and the Nether
 checkbox — the kit contents themselves are YAML-only, matching every other
