@@ -1597,6 +1597,44 @@ Durable decisions, verified API notes, and rationale that should survive across 
   re-flatten for those chunks. **Jason's call: leave as-is for now, revisit
   as a possible improvement once later phases are through** — logged in
   TODO.md's Backlog section, not scheduled to a phase. No code change made.
+- 2026-07-20 (Phase 12 kickoff, sky chunk challenge, GOALS 09/37) — three
+  scope decisions confirmed with Jason before design/implementation:
+  1. **"Portal room" (GOALS 09) means forced placement**, not best-effort:
+     one reserved chunk (same hash-picked-cell shape as Phase 11.5's
+     guaranteed village) is forced to contain a stronghold with its End
+     Portal Room piece via `Structure.generate`/`placeInChunk`, mirroring
+     `FloatingIslandsDeployment.placeGuaranteedVillage` exactly -- not a
+     reliance on the existing `ProgressionGuarantees` fallback machinery
+     happening to coincide with a selected chunk.
+  2. **The End dimension gets its own chunk-island toggle**, unlike sky
+     island's Phase 10.5 End-skip. Different situations: sky island's skip
+     was because vanilla's End is *already* shaped like a floating island,
+     so forcing a single island there was redundant. Chunk islands are
+     about *revealing only some natural chunks and voiding the rest* --
+     vanilla End terrain doesn't already do that, so the feature is not
+     redundant there. Real architecture finding while scoping this: today
+     `EnvelopedChunkGenerator` only ever wraps `LevelStem.OVERWORLD`/
+     `LevelStem.NETHER` (confirmed by reading `WorldzPresetEditor` --
+     `LevelStem.END` is left completely untouched, vanilla). Adding the End
+     toggle means wrapping `LevelStem.END` with `EnvelopedChunkGenerator`
+     for the first time -- new plumbing, but the masking logic itself is
+     dimension-agnostic (chunk islands never synthesize terrain the way
+     sky_island's Nether variant needed a fixed netherrack palette for; a
+     selected chunk's real vanilla terrain is left untouched either way, so
+     no End-specific material logic is needed).
+  3. **GOALS 37's underground-content showcasing ("lush/dripstone/deep-dark
+     caves, amethyst geodes, structure-bearing chunks") is seed-search
+     preferred selection, not depth-aware biome forcing.** Reuses Phase
+     8.2's `NaturalIslandSearch` precedent (scan the real seed for
+     naturally-qualifying chunks, prefer them among 12.5's scattered
+     candidates) for cave biomes and structures; geodes use forced
+     `ConfiguredFeature.place`, reusing Phase 11.3's ore-deposit mechanism
+     directly. Deliberately does **not** attempt depth-aware biome
+     overriding -- that stays the already-deferred Backlog item from GOALS
+     15 (needs a materially bigger `WorldLayoutPlan` change, out of scope
+     here as well).
+  Full design in DESIGN §29 (TODO 12.1); execution split into TODO
+  12.1-12.7 mirroring Phase 10/11's granularity.
 
 ## Reference Log
 

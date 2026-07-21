@@ -1704,18 +1704,75 @@ in full per the Phase 10 header's own note.
 
 ## Phase 12 — Sky chunk challenge (GOALS 09, 37)
 
-- [ ] 12.1 Design + implement chunk-grid islands cut from the seed's natural
-      chunks: full-chunk vs top-N-blocks-deep option, guarantee one generated
-      chunk contains a portal room, normal-vs-chunk-island Nether/End
-      options. Test configs; **[Jason]** acceptance.
-- [ ] 12.2 Multi-biome chunk islands (37): beyond the starter island,
-      further chunk islands of different biomes; per-island top-only vs
-      full-column choice; where feasible, islands showcasing underground
-      content — cave biomes (lush/dripstone/deep dark), amethyst geodes,
-      structure-bearing chunks — so bridging yields varied resources.
-      Feasibility of targeting specific underground features per island is
-      part of the design task (may require seed-search or forced placement —
-      decide there). Test configs; **[Jason]** acceptance.
+Split from the original single 12.1/12.2 items into the granularity every
+other multi-part phase in this project has needed (Phase 6.2a/6.2b, Phase
+10's 10.1-10.6, Phase 11's 11.1-11.6 precedent) — logged here rather than
+silently expanding one task. Scope decided with Jason (2026-07-20, see
+MEMORY.md's Phase 12 decisions): "portal room" means a guaranteed *forced*
+stronghold placement onto one reserved chunk island, mirroring Phase 11.5's
+guaranteed-village mechanism exactly, not a best-effort reliance on the
+existing fallback-portal machinery; the End dimension gets its own
+chunk-island toggle (a new capability, not the sky-island End-skip
+precedent — vanilla End's native island shape doesn't already give "reveal
+only some natural chunks, void the rest"); GOALS 37's underground-content
+showcasing is seed-search-preferred selection (reusing Phase 8.2's
+`NaturalIslandSearch` precedent) plus forced geode placement (reusing Phase
+11.3's `ConfiguredFeature.place` mechanism), not depth-aware biome forcing
+(that stays the already-deferred Backlog item from GOALS 15).
+
+- [ ] 12.1 Design pass (DESIGN §29): the chunk-grid selection mechanism (a
+      per-chunk hash pick — no jitter/radius needed since the shape *is* the
+      chunk, unlike `FloatingIslandsPlan`'s circular islands), full-column
+      vs. top-N-blocks-deep masking (a new Y-aware path in `applyEnvelope` —
+      real vanilla terrain is kept above the cutoff, voided below, unlike
+      every existing exterior mode which is uniform across all Y), the
+      guaranteed-stronghold mechanism (mirrors Phase 11.5's guaranteed
+      village), and wiring `EnvelopedChunkGenerator` onto `LevelStem.END` for
+      the first time (today only Overworld/Nether are wrapped — confirmed by
+      reading `WorldzPresetEditor`; this phase's End toggle needs that
+      extended). Verify the real vanilla stronghold structure id and
+      `Structure.generate`/`placeInChunk` still apply unchanged (already
+      proven in 11.5) against 26.2 sources. **Commit** design before
+      implementing.
+- [ ] 12.2 Core: `ChunkIslandPlan` (pure logic — per-chunk hash-picked
+      presence, JUnit-covered), config/codec/customization plumbing on a new
+      dedicated `jlt_worldz:sky_chunk` preset (matching `single_biome`/
+      `chaos_biomes`/`strip_world`'s own-preset precedent), the chunk-grid
+      masking wiring into `EnvelopedChunkGenerator` (reusing the existing
+      per-chunk `effectiveModeAt`/`applyEnvelope` VOID path for unselected
+      chunks; new Y-cutoff logic for a selected chunk's top-N-deep option),
+      small Customize screen. Acceptance bar: a single starter chunk island
+      (full-column or top-N-deep) surrounded by void generates — no portal
+      room guarantee, no Nether/End toggle, no multi-biome yet.
+- [ ] 12.3 Guaranteed portal room (09): a reserved chunk (same
+      "hash-picked angle/distance beyond an exclusion zone, always the same
+      cell for a given seed" shape as Phase 11.5's village cell) forced to
+      contain a stronghold with its End Portal Room piece, via
+      `Structure.generate`/`placeInChunk` mirroring
+      `FloatingIslandsDeployment.placeGuaranteedVillage` exactly; one-time
+      `WorldLimitState` gate alongside the existing guarantees.
+- [ ] 12.4 Nether/End chunk-island toggles (09's "normal Nether/End, or
+      chunk islands" option): `applyToNether`/`applyToEnd` config fields;
+      wire `EnvelopedChunkGenerator` onto `LevelStem.END` (new — see 12.1's
+      design finding) reusing the exact same dimension-agnostic masking
+      already proven for Overworld/Nether (no synthetic terrain profile
+      needed, unlike sky_island's Nether variant, since chunk islands never
+      touch a selected chunk's real terrain).
+- [ ] 12.5 Multi-biome scattered chunk islands (37, biome part): beyond the
+      starter island, additional chunk islands of different biomes;
+      per-island top-only-to-depth vs. full-column choice (independent per
+      island, per GOALS 37's exact wording).
+- [ ] 12.6 Underground-content showcasing (37): seed-search preferentially
+      selects naturally-qualifying chunks (real lush/dripstone/deep-dark
+      cave biomes, real structure-bearing chunks) among 12.5's scattered
+      candidates, reusing `NaturalIslandSearch`'s seed-scan precedent;
+      amethyst geodes via forced `ConfiguredFeature.place`, reusing Phase
+      11.3's mechanism. Document the depth-aware-biome-forcing gap this
+      does *not* attempt (stays the GOALS-15 Backlog item).
+- [ ] 12.7 Test configs (starter-only full-column, starter-only top-N-deep,
+      portal-room findability, Nether/End toggles on/off, multi-biome
+      scatter, underground-content showcase); docs (README, MANUAL_TESTING);
+      **[Jason]** acceptance.
 
 ## Phase 13 — Cave challenge (GOALS 25–26)
 
