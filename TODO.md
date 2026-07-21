@@ -1807,13 +1807,46 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       registration compiles and resolves correctly). Not yet deployed/
       tested in-game — folded into 12.7's acceptance pass, same posture
       Phase 10/11 established for their own multi-task builds.
-- [ ] 12.3 Guaranteed portal room (09): a reserved chunk (same
+- [x] 12.3 Guaranteed portal room (09): a reserved chunk (same
       "hash-picked angle/distance beyond an exclusion zone, always the same
       cell for a given seed" shape as Phase 11.5's village cell) forced to
       contain a stronghold with its End Portal Room piece, via
       `Structure.generate`/`placeInChunk` mirroring
       `FloatingIslandsDeployment.placeGuaranteedVillage` exactly; one-time
       `WorldLimitState` gate alongside the existing guarantees.
+      **Done (0.2.55):** `ChunkIslandPlan.reservedPortalCell(seed)` (already
+      added in 12.1/12.2) plus new `worldgen.ChunkIslandDeployment
+      .placeGuaranteedPortalRoom`, mirroring `FloatingIslandsDeployment
+      .placeGuaranteedVillage` line-for-line but forcing
+      `minecraft:stronghold` unconditionally — no variant-picking needed
+      since every vanilla stronghold's own generation loop already retries
+      until it contains a portal-room piece (confirmed reading
+      `StrongholdStructure.generatePieces`, 12.1's finding), so "guarantee
+      a portal room" reduces exactly to "guarantee a stronghold." Wired
+      into `WorldLimitManager.onServerStarted` via a new
+      `needsGuaranteedPortalRoom = overworldChunkIsland.enabled()` gate,
+      unconditional like the guaranteed village. **Proactively audited and
+      fixed the same "silently never fires" gate defect class Phase 10.2/
+      11 already found for sky island/ocean island** (the 8.1 lesson):
+      `exteriorObjective`'s condition gained `|| overworldChunkIsland
+      .enabled()`, since chunk island's Overworld exterior always stays
+      `ExteriorMode.NORMAL` in `ExteriorPlan` terms (mirrors sky island),
+      so without this the fallback End-portal vault would have silently
+      never fired for a chunk-island world with no border configured.
+      Verified no new `ObjectiveSite.supportiveRadius` overload is needed
+      (unlike `IslandPlan`/`SkyIslandPlan`, which each got their own):
+      chunk islands have no inherent radius of their own to narrow the
+      fallback search by, and `ProgressionGuarantees.ensureEndPortal`'s
+      existing skyIsland-disabled branch already falls through to the
+      correct plain border/envelope-only `supportiveRadius` overload,
+      which is exactly right here. `ChunkIslandDeployment` itself isn't
+      unit-testable (needs a real `ServerLevel`/registries, same
+      limitation as `FloatingIslandsDeployment`/`WorldLimitManager`) —
+      correctness rests on the JUnit-covered pure-logic site resolution
+      (`reservedPortalCellIsAlwaysBeyondTheExclusionZone`/
+      `reservedPortalCellIsDeterministicAndAlwaysPresentInTheGrid`,
+      already added in 12.2) plus 12.7's in-game acceptance pass. Full
+      suite green; clean build across all modules.
 - [ ] 12.4 Nether/End chunk-island toggles (09's "normal Nether/End, or
       chunk islands" option): `applyToNether`/`applyToEnd` config fields;
       wire `EnvelopedChunkGenerator` onto `LevelStem.END` (new — see 12.1's

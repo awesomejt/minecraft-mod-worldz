@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
+import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
@@ -54,6 +55,15 @@ public final class WorldLimitManager {
         // explicit gate as the ocean island or a sky-island world silently never gets its
         // fallback End portal either.
         SkyIslandPlan overworldSkyIsland = limitedSource.skyIsland();
+        // Same reasoning again for the chunk island (GOALS 09/37, DESIGN §29.4): it never
+        // expresses itself through ExteriorPlan either (the Overworld side always stays
+        // normal -- effectiveModeAt's chunk-island branch supplies the exterior itself), so
+        // it needs the same explicit gate or a chunk-island world's fallback End-portal
+        // guarantee would silently never fire. Unlike island/skyIsland it has no radius of its
+        // own to narrow the fallback search by (ProgressionGuarantees.ensureEndPortal's existing
+        // skyIsland-disabled branch already falls through to the correct plain border/envelope
+        // check), so no new ObjectiveSite.supportiveRadius overload is needed -- only this gate.
+        ChunkIslandPlan overworldChunkIsland = limitedSource.chunkIsland();
         // Fetched early (rather than only inside the `nether != null` block below) so its own
         // sky island plan (GOALS 06, DESIGN §27.6) can join the exteriorObjective gate the same
         // way the Overworld's does -- it never expresses itself through ExteriorPlan either.
@@ -67,7 +77,7 @@ public final class WorldLimitManager {
             : SkyIslandPlan.disabled();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
             && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()
-                || overworldIsland.enabled() || overworldSkyIsland.enabled()))
+                || overworldIsland.enabled() || overworldSkyIsland.enabled() || overworldChunkIsland.enabled()))
             || (plan.nether().ensureObjective()
                 && (exterior.nether().mode() != ExteriorMode.NORMAL || netherSkyIsland.enabled()));
         // GOALS 03's chest-boat spawn is unrelated to borders/the End-portal guarantee -- gated
@@ -81,7 +91,13 @@ public final class WorldLimitManager {
         // Same reasoning again for the guaranteed village (GOALS 07, DESIGN §28.3): every world
         // with scattered floating islands enabled gets one, unconditionally.
         boolean needsGuaranteedVillage = overworldSkyIsland.enabled() && overworldSkyIsland.floatingIslands().enabled();
-        if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest && !needsGuaranteedVillage) {
+        // Same reasoning again for the guaranteed portal room (GOALS 09, DESIGN §29.4): every
+        // chunk-island world gets one, unconditionally -- it's the primary beatability
+        // mechanism, not a fallback (exteriorObjective's own generic vault is still a secondary
+        // safety net on top, per limit.ensureObjective()).
+        boolean needsGuaranteedPortalRoom = overworldChunkIsland.enabled();
+        if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest
+            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom) {
             return;
         }
 
@@ -105,6 +121,9 @@ public final class WorldLimitManager {
         }
         if (needsGuaranteedVillage) {
             FloatingIslandsDeployment.placeGuaranteedVillage(overworld, originX, originZ, overworldSkyIsland);
+        }
+        if (needsGuaranteedPortalRoom) {
+            ChunkIslandDeployment.placeGuaranteedPortalRoom(overworld, originX, originZ, overworldChunkIsland);
         }
         BorderInitResult netherResult = BorderInitResult.NONE;
         if (nether != null) {
