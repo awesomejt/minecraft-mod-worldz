@@ -1,0 +1,36 @@
+# GOALS 08 (Phase 11.3): embedded ore deposits on scattered floating
+# islands, isolated from the loot-chest layer (DESIGN §28.2).
+# **Select "Worldz: Sky Island"** on the creation screen.
+#
+# A moderate scatter (spawnChance 0.7, 160-block cells) with only
+# oreDepositsEnabled on -- loot chests are left off so this config tests
+# the ore layer in isolation. Each present island should have exactly one
+# embedded vanilla ore vein somewhere between its floor and surface, picked
+# from the default candidate pool (coal, small iron, buried gold, redstone,
+# lapis, small diamond, emerald).
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the starter sky island as usual.
+#  2. Bridge to 2-3 scattered islands. On each, dig down from the surface
+#     through the slab, checking every block.
+#  3. Confirm each island has exactly one ore vein embedded somewhere in
+#     its slab (not necessarily every island -- a very thin slab or a
+#     hash-picked Y right at the edge is fine) -- and that no island has
+#     more than one.
+#  4. Confirm no loot chest appears on any island (lootChestEnabled is off
+#     in this config; see 47 for that layer in isolation).
+skyIsland:
+  floatingIslands:
+    enabled: true
+    minRadiusBlocks: 14
+    maxRadiusBlocks: 28
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 160
+    spawnChance: 0.7
+    biomeVariety: false
+    exclusionZoneEnabled: true
+    exclusionZoneRadiusBlocks: 128
+    oreDepositsEnabled: true
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

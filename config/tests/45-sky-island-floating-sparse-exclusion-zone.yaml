@@ -1,0 +1,37 @@
+# GOALS 07/08 (Phase 11.2): scattered floating islands, sparse scatter with
+# a real exclusion-zone buffer (DESIGN §28.1).
+# **Select "Worldz: Sky Island"** on the creation screen.
+#
+# A large grid cell (400) and a low spawn chance (0.3) mean present islands
+# are rare and far apart -- reaching one should genuinely require "a lot of
+# bridging" (GOALS 08's own wording), not a short hop. The exclusion zone
+# (200 blocks) keeps a real buffer of pure void immediately around the
+# starter island before any scattered island can appear at all.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the small starter sky island as usual.
+#  2. Look around from the edge in every direction: confirm there is
+#     nothing else visible nearby -- just void, for a while.
+#  3. Bridge outward (any direction) past roughly 200 blocks. Confirm the
+#     void buffer genuinely holds -- no islands appear before that point.
+#  4. Keep bridging until you find the first scattered island. Confirm it
+#     took real, sustained bridging to reach (not just a short hop), and
+#     that once you've found one, others are also spaced well apart from
+#     each other, not clustered.
+#  5. Confirm biome variety is explicitly off here -- every scattered
+#     island should share the starter island's own single biome (plains)
+#     rather than varying, unlike config 44.
+skyIsland:
+  floatingIslands:
+    enabled: true
+    minRadiusBlocks: 16
+    maxRadiusBlocks: 40
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 400
+    spawnChance: 0.3
+    biomeVariety: false
+    exclusionZoneEnabled: true
+    exclusionZoneRadiusBlocks: 200
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

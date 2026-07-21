@@ -1,0 +1,42 @@
+# GOALS 08 (Phase 11.4): loot chests on scattered floating islands,
+# isolated from the ore-deposit layer (DESIGN §28.2).
+# **Select "Worldz: Sky Island"** on the creation screen.
+#
+# Same moderate scatter as config 46, but with only lootChestEnabled on --
+# ore deposits are left off so this config tests the loot-chest layer in
+# isolation, with a custom lootKit distinct from the default one.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the starter sky island as usual.
+#  2. Bridge to 2-3 scattered islands. Confirm each has a chest sitting on
+#     its surface (not buried).
+#  3. Open each chest. Confirm contents match this config's lootKit: always
+#     1 stick, plus 1 extra pick from (diamond, gold ingot, book, saddle).
+#  4. Confirm different islands' chests differ in which extra they got --
+#     not every island should roll the same one.
+#  5. Confirm no ore vein appears on any island (oreDepositsEnabled is off
+#     in this config; see 46 for that layer in isolation).
+skyIsland:
+  floatingIslands:
+    enabled: true
+    minRadiusBlocks: 14
+    maxRadiusBlocks: 28
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 160
+    spawnChance: 0.7
+    biomeVariety: false
+    exclusionZoneEnabled: true
+    exclusionZoneRadiusBlocks: 128
+    lootChestEnabled: true
+    lootKit:
+      essentials:
+        - 'minecraft:stick:1'
+      extras:
+        - 'minecraft:diamond:1'
+        - 'minecraft:gold_ingot:1'
+        - 'minecraft:book:1'
+        - 'minecraft:saddle:1'
+      extrasCount: 1
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -1,0 +1,45 @@
+# GOALS 07 (Phase 11.5): the guaranteed village beyond the exclusion zone
+# (DESIGN §28.3).
+# **Select "Worldz: Sky Island"** on the creation screen.
+#
+# A tighter exclusion zone (96 blocks) and cell size (128) than the default,
+# purely so it's practical to actually reach and inspect the guaranteed
+# village in a reasonable amount of time -- production worlds can use much
+# larger defaults. One specific scattered island beyond the exclusion zone
+# is always a real vanilla village (plains, desert, savanna, snowy, or
+# taiga -- hash-picked per seed), regardless of the ordinary spawnChance
+# roll; the direction to bridge is also hash-picked per seed, so there's no
+# fixed "always north" answer to memorize.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the starter sky island as usual.
+#  2. Check the server log for a line like "Placed the GOALS 07 guaranteed
+#     village ('minecraft:village_...') near (X, Z)" -- note the
+#     coordinates and direction from spawn.
+#  3. Bridge toward those coordinates. Confirm a real village island
+#     exists there: noticeably larger than the ordinary scattered islands
+#     nearby, with actual village structures (houses, paths, a well,
+#     villagers) sitting on it -- not a hand-built approximation.
+#  4. Confirm the village's buildings look consistent with its biome (e.g.
+#     sandstone houses on a desert island, not a mismatched style).
+#  5. Confirm the village is otherwise explorable normally: villager
+#     trading, loot in village chests, etc. all work as they would in any
+#     vanilla village.
+#  6. Note anything that looks visually broken where the village meets the
+#     island's own edge (jigsaw pieces overhanging the coastline, floating
+#     fragments, etc.) -- this is a known, flagged, not-yet-verified risk
+#     (DESIGN §28.3) this step is specifically checking for.
+skyIsland:
+  floatingIslands:
+    enabled: true
+    minRadiusBlocks: 12
+    maxRadiusBlocks: 28
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 128
+    spawnChance: 0.5
+    biomeVariety: true
+    exclusionZoneEnabled: true
+    exclusionZoneRadiusBlocks: 96
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

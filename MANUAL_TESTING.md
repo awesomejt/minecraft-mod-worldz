@@ -572,6 +572,55 @@ there is nothing new to test there — see DESIGN §27.7 for the full
 reasoning and Jason's outstanding go/no-go on treating it as already
 satisfied.
 
+## Phase 11 acceptance (floating resource islands, GOALS 07/08, TODO 11.2-11.5)
+
+Uses configs `44`-`48` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Sky Island"** for all five.
+
+1. **Dense scatter**, `44-sky-island-floating-dense.yaml` (GOALS 08 core,
+   0.2.48+). Confirm you spawn on the starter island as usual, and that
+   several other small islands are visible nearby right from the edge —
+   close enough to reach in a short bridge. Bridge to 3-4 of them; confirm
+   they visibly differ in surface material (biome variety working) and
+   each reads as a natural "lumpy" shape, not a perfect circle. Confirm no
+   ore or chests appear (both resource layers are off in this config).
+2. **Sparse scatter with a real exclusion zone**,
+   `45-sky-island-floating-sparse-exclusion-zone.yaml` (0.2.48+). Confirm
+   nothing is visible from the starter island's edge in any direction —
+   just void for a while. Bridge outward past roughly 200 blocks and
+   confirm the buffer genuinely holds (no islands appear before that
+   point). Keep going until you find the first scattered island; confirm
+   it took real, sustained bridging, and that islands stay spaced apart
+   from each other rather than clustering. Every island should share the
+   starter island's own plains biome (biome variety is off here).
+3. **Ore deposits in isolation**, `46-sky-island-floating-ore-deposits.yaml`
+   (0.2.49+). Bridge to 2-3 islands and dig straight down through each
+   slab. Confirm each island has at most one embedded ore vein somewhere
+   in its slab (from the default pool: coal, small iron, buried gold,
+   redstone, lapis, small diamond, emerald) and no chest.
+4. **Loot chests in isolation**, `47-sky-island-floating-loot-chests.yaml`
+   (0.2.50+). Bridge to 2-3 islands. Confirm each has a chest sitting on
+   its surface (not buried), contents always include 1 stick plus one
+   extra pick from (diamond, gold ingot, book, saddle) — confirm different
+   islands roll different extras, not all the same one — and no ore vein
+   appears anywhere.
+5. **Guaranteed village**, `48-sky-island-floating-guaranteed-village.yaml`
+   (GOALS 07, 0.2.51+). **This is the phase's flagship "guaranteed, not
+   best-effort" mechanism — check carefully.** Check the server log for
+   the "Placed the GOALS 07 guaranteed village..." line and its
+   coordinates; bridge toward them. Confirm a real village exists there:
+   noticeably larger than the ordinary scattered islands nearby, with
+   actual houses/paths/a well/villagers, in a building style consistent
+   with its biome. Confirm normal village mechanics work (trading, chest
+   loot). **Specifically check for anything visually broken where the
+   village meets the island's synthetic slab edge** (overhanging jigsaw
+   pieces, floating fragments) — this is a known, deliberately
+   unverified-from-source-reading risk flagged in DESIGN §28.3.
+
+**Not covered by this phase's acceptance:** Nether floating islands
+(deliberately out of scope this phase, DESIGN §28.5 — GOALS 08's text has
+no Nether component).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

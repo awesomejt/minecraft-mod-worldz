@@ -1678,12 +1678,29 @@ in full per the Phase 10 header's own note.
       of thing this project's "wait for Jason's in-game testing" pattern
       exists for (closest precedent: ocean island's §24.10-§24.13 fixes),
       not something to guess at further before 11.6's acceptance pass.
-- [ ] 11.6 Test configs (dense/sparse scatter, exclusion-zone-off vs. a
+- [x] 11.6 Test configs (dense/sparse scatter, exclusion-zone-off vs. a
       real radius, each resource layer individually, guaranteed-village
       findability); docs (README, MANUAL_TESTING.md); **[Jason]**
       acceptance including whether a real village's jigsaw pieces settle
       acceptably onto the synthetic slab edge (DESIGN §28.3's flagged
       risk).
+      **Configs and docs done (0.2.52):** `config/tests/44`-`48` (dense
+      scatter with no exclusion zone + biome variety; sparse scatter with
+      a real 200-block exclusion zone; ore deposits in isolation; loot
+      chests in isolation with a custom `lootKit`; the guaranteed village
+      with a tighter, test-friendly exclusion zone/cell size). New "Phase
+      11 acceptance" section in `MANUAL_TESTING.md` (5 items, explicitly
+      flagging the village's slab-edge risk as the one requiring the
+      most scrutiny); `config/tests/README.md` rows added. README's
+      "Floating resource islands" section (built up incrementally across
+      11.2-11.5) now documents the full mechanism: placement, both
+      resource layers, and the guaranteed village. Deployed to
+      Worldz-Test. **[Jason] acceptance outstanding** — this note only
+      covers docs/configs being ready. This completes every non-[Jason]
+      item in Phase 11 (11.1 design, 11.2 core placement, 11.3 ore
+      deposits, 11.4 loot chests, 11.5 guaranteed village, 11.6
+      docs/configs) — **do not start Phase 12 without Jason's explicit
+      go-ahead.**
 
 ## Phase 12 — Sky chunk challenge (GOALS 09, 37)
 

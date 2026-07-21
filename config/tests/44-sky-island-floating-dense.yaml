@@ -1,0 +1,42 @@
+# GOALS 08 (Phase 11.2): scattered floating islands, dense scatter with no
+# exclusion-zone buffer (DESIGN §28).
+# **Select "Worldz: Sky Island"** on the creation screen.
+#
+# A small grid cell (128) and a high spawn chance (0.9) mean present
+# islands are common and close together -- most of the void beyond the
+# starter island should now hold small floating islands instead of being
+# empty. biomeVariety is on with a five-biome pool, so different islands
+# should show different terrain (grass, sand, snow, etc.) as you bridge
+# between them. The exclusion zone is off, so scattered islands can appear
+# right up against the starter island's own edge.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the small starter sky island as usual (GOALS 05).
+#  2. Look around from the edge: confirm several other small islands are
+#     visible nearby, close enough that reaching the nearest one is a short
+#     bridge, not a long expedition (that's config 45's job).
+#  3. Bridge to 3-4 different islands. Confirm they visibly differ in
+#     surface material (grass/sand/snow/etc.) -- biome variety working.
+#  4. Confirm each island is a natural "lumpy" shape, not a perfect circle
+#     (same coastline perturbation the starter island and ocean island use).
+#  5. Confirm islands are still just bare terrain -- no ore, no chests
+#     (both resource layers are off in this config; see 46/47).
+skyIsland:
+  floatingIslands:
+    enabled: true
+    minRadiusBlocks: 10
+    maxRadiusBlocks: 24
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 128
+    spawnChance: 0.9
+    biomeVariety: true
+    islandBiomes:
+      - 'minecraft:plains'
+      - 'minecraft:forest'
+      - 'minecraft:desert'
+      - 'minecraft:taiga'
+      - 'minecraft:savanna'
+    exclusionZoneEnabled: false
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true
