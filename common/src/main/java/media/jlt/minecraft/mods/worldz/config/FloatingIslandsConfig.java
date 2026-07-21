@@ -33,6 +33,18 @@ public final class FloatingIslandsConfig {
     public boolean exclusionZoneEnabled = true;
     /** Radius of the exclusion-zone buffer, when enabled. */
     public int exclusionZoneRadiusBlocks = 256;
+    /** Whether each island gets one embedded vanilla ore-vein feature (GOALS 08, DESIGN §28.2). */
+    public boolean oreDepositsEnabled = false;
+    /**
+     * Candidate vanilla ore {@code ConfiguredFeature} ids one island's deposit is hash-picked
+     * from -- config-only, read live at placement time, the same "list stays in config, never
+     * persisted" precedent {@code StarterKitPlan}'s own essentials/extras pool already
+     * established, not threaded through {@code FloatingIslandsPlan}'s codec.
+     */
+    public List<String> oreFeatureIds = list(
+        "minecraft:ore_coal", "minecraft:ore_iron_small", "minecraft:ore_gold_buried",
+        "minecraft:ore_redstone", "minecraft:ore_lapis", "minecraft:ore_diamond_small", "minecraft:ore_emerald"
+    );
 
     /** Creates a config populated with defaults. */
     public FloatingIslandsConfig() {

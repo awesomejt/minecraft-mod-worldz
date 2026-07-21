@@ -1015,6 +1015,10 @@ class WorldzConfigTest {
                   - taiga
                 exclusionZoneEnabled: true
                 exclusionZoneRadiusBlocks: 400
+                oreDepositsEnabled: true
+                oreFeatureIds:
+                  - 'minecraft:ore_coal'
+                  - 'minecraft:ore_diamond_small'
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.skyIsland.floatingIslands.enabled);
@@ -1027,6 +1031,22 @@ class WorldzConfigTest {
         assertEquals(List.of("minecraft:desert", "minecraft:taiga"), config.skyIsland.floatingIslands.islandBiomes);
         assertTrue(config.skyIsland.floatingIslands.exclusionZoneEnabled);
         assertEquals(400, config.skyIsland.floatingIslands.exclusionZoneRadiusBlocks);
+        assertTrue(config.skyIsland.floatingIslands.oreDepositsEnabled);
+        assertEquals(List.of("minecraft:ore_coal", "minecraft:ore_diamond_small"), config.skyIsland.floatingIslands.oreFeatureIds);
+    }
+
+    @Test
+    void floatingIslandsOreDepositsWithNoUsableFeatureIdsIsDisabled() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                oreDepositsEnabled: true
+                oreFeatureIds:
+                  - ''
+                  - '  '
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.skyIsland.floatingIslands.oreDepositsEnabled);
     }
 
     @Test
@@ -1036,6 +1056,8 @@ class WorldzConfigTest {
         assertFalse(config.skyIsland.floatingIslands.enabled);
         assertTrue(config.skyIsland.floatingIslands.biomeVariety);
         assertFalse(config.skyIsland.floatingIslands.islandBiomes.isEmpty());
+        assertFalse(config.skyIsland.floatingIslands.oreDepositsEnabled);
+        assertFalse(config.skyIsland.floatingIslands.oreFeatureIds.isEmpty());
     }
 
     @Test

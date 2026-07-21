@@ -490,6 +490,12 @@ public final class WorldzConfig {
             logger.warn("Clamped skyIsland.floatingIslands.exclusionZoneRadiusBlocks from {} to 1.", sanitized.exclusionZoneRadiusBlocks);
             sanitized.exclusionZoneRadiusBlocks = 1;
         }
+
+        sanitized.oreFeatureIds = new ArrayList<>(sanitized.oreFeatureIds.stream().map(String::trim).filter(id -> !id.isEmpty()).toList());
+        if (sanitized.oreDepositsEnabled && sanitized.oreFeatureIds.isEmpty()) {
+            logger.warn("skyIsland.floatingIslands.oreDepositsEnabled is set but has no usable feature ids; disabling ore deposits.");
+            sanitized.oreDepositsEnabled = false;
+        }
         return sanitized;
     }
 
@@ -977,6 +983,12 @@ public final class WorldzConfig {
         if (map.containsKey("exclusionZoneRadiusBlocks")) {
             config.exclusionZoneRadiusBlocks = readInt(map.get("exclusionZoneRadiusBlocks"), name + ".exclusionZoneRadiusBlocks");
         }
+        if (map.containsKey("oreDepositsEnabled")) {
+            config.oreDepositsEnabled = readBoolean(map.get("oreDepositsEnabled"), name + ".oreDepositsEnabled");
+        }
+        if (map.containsKey("oreFeatureIds")) {
+            config.oreFeatureIds = readStringList(map.get("oreFeatureIds"), name + ".oreFeatureIds", logger);
+        }
         return config;
     }
 
@@ -1381,6 +1393,8 @@ public final class WorldzConfig {
         values.put("islandBiomes", config.islandBiomes);
         values.put("exclusionZoneEnabled", config.exclusionZoneEnabled);
         values.put("exclusionZoneRadiusBlocks", config.exclusionZoneRadiusBlocks);
+        values.put("oreDepositsEnabled", config.oreDepositsEnabled);
+        values.put("oreFeatureIds", config.oreFeatureIds);
         return values;
     }
 
@@ -1511,7 +1525,8 @@ public final class WorldzConfig {
             + ", spawnChance=" + config.spawnChance
             + ", biomeVariety=" + config.biomeVariety
             + ", islandBiomes=" + config.islandBiomes
-            + ", exclusionZone=" + (config.exclusionZoneEnabled ? "radius=" + config.exclusionZoneRadiusBlocks : "<disabled>");
+            + ", exclusionZone=" + (config.exclusionZoneEnabled ? "radius=" + config.exclusionZoneRadiusBlocks : "<disabled>")
+            + ", oreDeposits=" + (config.oreDepositsEnabled ? "features=" + config.oreFeatureIds : "<disabled>");
     }
 
     private static String starterKitSummary(StarterKitConfig config) {

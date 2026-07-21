@@ -3,8 +3,10 @@ package media.jlt.minecraft.mods.worldz.logic;
 import media.jlt.minecraft.mods.worldz.config.FloatingIslandsConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Scattered small floating islands filling the void beyond a sky island's own footprint (GOALS
@@ -31,6 +33,11 @@ import java.util.List;
  * @param exclusionZone void buffer around the starter island before scattered islands begin
  *     (reuses {@link IslandPlan.ExclusionZone} directly -- GOALS 07/08's shared mechanism, DESIGN
  *     §28.1)
+ * @param oreDepositsEnabled whether each island gets one embedded vanilla ore-vein feature
+ *     (GOALS 08, DESIGN §28.2). The actual candidate feature-id pool is config-only, read live at
+ *     placement time -- the same "list stays in config, never persisted" precedent {@code
+ *     StarterKitPlan}'s own essentials/extras pool already established (DESIGN §28's revision
+ *     note), only this toggle is persisted so a reloaded world remembers whether it was enabled
  */
 public record FloatingIslandsPlan(
     boolean enabled,
@@ -41,7 +48,8 @@ public record FloatingIslandsPlan(
     double spawnChance,
     boolean biomeVariety,
     List<String> islandBiomes,
-    IslandPlan.ExclusionZone exclusionZone
+    IslandPlan.ExclusionZone exclusionZone,
+    boolean oreDepositsEnabled
 ) {
     /**
      * Fraction of {@code cellSizeBlocks} an island's center may be jittered off the cell's own
@@ -96,7 +104,7 @@ public record FloatingIslandsPlan(
         return new FloatingIslandsPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0,
             WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, 0.0, false, List.of("minecraft:plains"),
-            new IslandPlan.ExclusionZone(false, 256)
+            new IslandPlan.ExclusionZone(false, 256), false
         );
     }
 
@@ -110,7 +118,8 @@ public record FloatingIslandsPlan(
         return new FloatingIslandsPlan(
             config.enabled, config.minRadiusBlocks, config.maxRadiusBlocks, config.shapeAmplitude, config.cellSizeBlocks,
             config.spawnChance, config.biomeVariety, config.islandBiomes,
-            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks)
+            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
+            config.oreDepositsEnabled
         );
     }
 
@@ -127,6 +136,7 @@ public record FloatingIslandsPlan(
      * @param islandBiomesText newline- or comma-separated candidate biome ids
      * @param exclusionZoneEnabled whether a void buffer precedes scattered islands
      * @param exclusionZoneRadiusBlocks decimal exclusion-zone radius
+     * @param oreDepositsEnabled whether each island gets one embedded ore-vein feature
      * @return canonical immutable values
      */
     public static FloatingIslandsPlan fromText(
@@ -139,7 +149,8 @@ public record FloatingIslandsPlan(
         boolean biomeVariety,
         String islandBiomesText,
         boolean exclusionZoneEnabled,
-        String exclusionZoneRadiusBlocks
+        String exclusionZoneRadiusBlocks,
+        boolean oreDepositsEnabled
     ) {
         List<String> islandBiomes = Arrays.stream(islandBiomesText.split("[,\\r\\n]+"))
             .map(String::trim)
@@ -156,7 +167,8 @@ public record FloatingIslandsPlan(
             islandBiomes,
             new IslandPlan.ExclusionZone(
                 exclusionZoneEnabled, parseInteger(exclusionZoneRadiusBlocks, "Floating island exclusion zone radius")
-            )
+            ),
+            oreDepositsEnabled
         );
     }
 
@@ -227,26 +239,114 @@ public record FloatingIslandsPlan(
     }
 
     private Hit hitFromCell(long cellX, long cellZ, int x, int z, long seed, String fallbackBiome) {
+        return resolveCell(cellX, cellZ, seed, fallbackBiome)
+            .map(island -> {
+                long cellSeed = splitmix64(seed ^ splitmix64(cellX) ^ splitmix64(cellZ * 0x2545F4914F6CDD1DL));
+                double distance = IslandShapeProfile.distanceFromShore(
+                    (int) Math.round(x - island.centerX()), (int) Math.round(z - island.centerZ()),
+                    island.radius(), shapeAmplitude, cellSeed
+                );
+                return distance > 0.0 ? Hit.NONE : new Hit(true, distance, island.biome());
+            })
+            .orElse(Hit.NONE);
+    }
+
+    /**
+     * The resolved placement of one present island: its (jittered) center, radius, and biome --
+     * unlike {@link Hit}, not tied to any particular query column. Used to find which one chunk
+     * owns a given island's center, for one-time resource placement (an embedded ore deposit, a
+     * loot chest, the guaranteed village -- DESIGN §28.2/§28.3).
+     *
+     * @param centerX jittered center block X, relative to the sky island origin
+     * @param centerZ jittered center block Z, relative to the sky island origin
+     * @param radius hash-picked (unperturbed) island radius
+     * @param biome the island's biome
+     */
+    public record ResolvedIsland(double centerX, double centerZ, double radius, String biome) {
+        /**
+         * Deterministically picks one entry from a candidate list for this island's resource
+         * placement (an ore feature id, DESIGN §28.2). The same island always picks the same
+         * entry for a given seed and salt.
+         *
+         * @param candidates non-empty candidate pool
+         * @param seed sampling seed
+         * @param salt distinguishes this pick from any other made against the same island
+         * @return one entry from {@code candidates}
+         */
+        public String pick(List<String> candidates, long seed, String salt) {
+            if (candidates.isEmpty()) {
+                throw new IllegalArgumentException("Candidate list must not be empty.");
+            }
+            double fraction = hash01(seed, salt, cellCoordinate(centerX), cellCoordinate(centerZ), 0);
+            return candidates.get(Math.floorMod((int) Math.floor(fraction * candidates.size()), candidates.size()));
+        }
+
+        /**
+         * Deterministically picks a Y within an inclusive range for this island's resource
+         * placement.
+         *
+         * @param minY inclusive lower bound
+         * @param maxY inclusive upper bound, at least {@code minY}
+         * @param seed sampling seed
+         * @param salt distinguishes this pick from any other made against the same island
+         * @return a Y in {@code [minY, maxY]}
+         */
+        public int pickY(int minY, int maxY, long seed, String salt) {
+            if (maxY < minY) {
+                throw new IllegalArgumentException("maxY must be at least minY.");
+            }
+            double fraction = hash01(seed, salt, cellCoordinate(centerX), cellCoordinate(centerZ), 1);
+            return minY + (int) Math.floor(fraction * (maxY - minY + 1));
+        }
+
+        private static long cellCoordinate(double value) {
+            return Math.round(value);
+        }
+    }
+
+    /**
+     * Resolves every present island among the 3x3 grid-cell neighborhood around one reference
+     * point (a chunk's own center, normally) -- unlike {@link #at}, does not check whether the
+     * reference point itself falls inside any resolved island. Used to find which one chunk owns
+     * a given island's center for one-time resource placement, since a jittered center can land
+     * in a different chunk than a naive "which cell does this chunk's own center belong to"
+     * lookup would suggest (DESIGN §28.2/§28.3).
+     *
+     * @param x reference block X relative to the sky island origin
+     * @param z reference block Z relative to the sky island origin
+     * @param seed sampling seed
+     * @param fallbackBiome biome to report when {@link #biomeVariety} is {@code false}
+     * @return every present island among the 9 neighboring cells
+     */
+    public List<ResolvedIsland> nearbyIslands(int x, int z, long seed, String fallbackBiome) {
+        if (!enabled) {
+            return List.of();
+        }
+        long cellX = Math.floorDiv(x, cellSizeBlocks);
+        long cellZ = Math.floorDiv(z, cellSizeBlocks);
+        List<ResolvedIsland> islands = new ArrayList<>();
+        for (long neighborX = cellX - 1; neighborX <= cellX + 1; neighborX++) {
+            for (long neighborZ = cellZ - 1; neighborZ <= cellZ + 1; neighborZ++) {
+                resolveCell(neighborX, neighborZ, seed, fallbackBiome).ifPresent(islands::add);
+            }
+        }
+        return islands;
+    }
+
+    private Optional<ResolvedIsland> resolveCell(long cellX, long cellZ, long seed, String fallbackBiome) {
         if (hash01(seed, "floating_island_present", cellX, cellZ, 0) >= spawnChance) {
-            return Hit.NONE;
+            return Optional.empty();
         }
         double centerX = cellCenter(cellX, seed, "floating_island_jitter_x", cellZ);
         double centerZ = cellCenter(cellZ, seed, "floating_island_jitter_z", cellX);
         if (exclusionZone.enabled() && Math.hypot(centerX, centerZ) < exclusionZone.radiusBlocks()) {
-            return Hit.NONE;
+            return Optional.empty();
         }
         double radius = minRadiusBlocks + hash01(seed, "floating_island_radius", cellX, cellZ, 0) * (maxRadiusBlocks - minRadiusBlocks);
-        long cellSeed = splitmix64(seed ^ splitmix64(cellX) ^ splitmix64(cellZ * 0x2545F4914F6CDD1DL));
-        double distance = IslandShapeProfile.distanceFromShore(
-            (int) Math.round(x - centerX), (int) Math.round(z - centerZ), radius, shapeAmplitude, cellSeed
-        );
-        if (distance > 0.0) {
-            return Hit.NONE;
-        }
         String biome = biomeVariety
             ? islandBiomes.get(Math.floorMod((int) Math.floor(hash01(seed, "floating_island_biome", cellX, cellZ, 0) * islandBiomes.size()), islandBiomes.size()))
             : fallbackBiome;
-        return new Hit(true, distance, biome);
+        return Optional.of(new ResolvedIsland(centerX, centerZ, radius, biome));
     }
 
     private double cellCenter(long cell, long seed, String salt, long otherCell) {

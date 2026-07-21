@@ -1532,9 +1532,54 @@ in full per the Phase 10 header's own note.
       land in 11.3-11.5). Not yet deployed/tested in-game — nothing
       walkable-and-different-from-void to show Jason until 11.3+ add
       actual resources; the whole slice waits for 11.6's acceptance pass.
-- [ ] 11.3 Ore deposits: `ResourceConfig.oreDepositsEnabled`/`oreFeatureIds`,
+- [x] 11.3 Ore deposits: `ResourceConfig.oreDepositsEnabled`/`oreFeatureIds`,
       per-island hash-picked `ConfiguredFeature` placement clamped to the
       slab's own thickness (DESIGN §28.2).
+      **Done (0.2.49):** `FloatingIslandsPlan` gained a persisted
+      `oreDepositsEnabled` boolean (10th field, nested inside its own
+      codec group per DESIGN §28.4, no ceiling impact). **Revised during
+      implementation:** `oreFeatureIds` itself is config-only, never
+      persisted through the codec — a `ResourceConfig` nested record
+      grouping both fields (as DESIGN §28.4 originally sketched) turned
+      out unnecessary once `StarterKitPlan`'s own precedent was re-read
+      closely: variable-length item/feature-id lists stay in
+      `WorldzCommon.config()`, read live at placement time, never
+      persisted per-world (`StarterKitDeployment.tierConfig` does the
+      exact same thing for `easyKit`/`mediumKit`/`hardKit`). New
+      `FloatingIslandsPlan.ResolvedIsland` (centerX, centerZ, radius,
+      biome — resolved independent of any query column) plus
+      `nearbyIslands(x, z, seed, fallbackBiome)`, both factored out of
+      `hitFromCell`'s existing presence/jitter/radius/biome resolution
+      (DRY, `hitFromCell` now delegates to the same `resolveCell` helper).
+      `ResolvedIsland.pick`/`pickY` are pure, JUnit-tested deterministic
+      hash-picks (a feature id from a candidate list; a Y within an
+      inclusive range) reusing the record's own enclosing-class hash
+      primitives. `EnvelopedChunkGenerator.applyFloatingIslandOre`
+      (called from `applyBiomeDecoration`, after `applyEnvelope` so the
+      slab's own blocks already exist to embed into) finds which one
+      chunk owns each nearby island's center via `nearbyIslands` on the
+      chunk's own center point (not a naive "which cell does my center
+      belong to" lookup, which could miss a jittered center that landed
+      in an adjacent chunk) and places the picked `ConfiguredFeature`
+      there via `ConfiguredFeature.place(level, this, random, pos)` —
+      verified against the real 26.2 decompiled `PlaceCommand
+      .placeFeature`, which uses the identical bypass-normal-placement-
+      gating API (11.1's own verification). Y clamped to
+      `[bottomY()+1, surfaceY()-1]`; a slab too thin for that range
+      (`thicknessBlocks: 1`) silently skips ore placement rather than
+      erroring. `SkyIslandCustomizeScreen` gained an `oreDepositsEnabled`
+      checkbox (screen-exposed, matching the `allowRivers`/`allowOceans`/
+      `allowBeaches` boolean-toggle precedent) while `oreFeatureIds`
+      stays YAML-only like every kit's own item list. Full config
+      read/sanitize/map/summary wiring (`FloatingIslandsConfig` gained
+      `oreDepositsEnabled`/`oreFeatureIds`, default pool: coal, small
+      iron, buried gold, redstone, lapis, small diamond, emerald). 15 new
+      tests (`FloatingIslandsPlanTest`, `WorldzConfigTest` additions);
+      full suite green (467 tests); clean build across all modules.
+      README's "Floating resource islands" section extended with the ore
+      table rows and config example. Not yet deployed/tested — folded
+      into 11.6's acceptance pass along with loot chests (11.4) and the
+      guaranteed village (11.5), same reasoning as 11.2's own deferral.
 - [ ] 11.4 Loot chests: `ResourceConfig.lootChestEnabled`/`lootKit` reusing
       `StarterKitPlan` directly, one placed chest per island.
 - [ ] 11.5 Guaranteed village (GOALS 07): the reserved village cell (hash-

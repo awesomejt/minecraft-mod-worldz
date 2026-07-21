@@ -540,6 +540,15 @@ skyIsland:
       - 'minecraft:savanna'
     exclusionZoneEnabled: true
     exclusionZoneRadiusBlocks: 256
+    oreDepositsEnabled: false
+    oreFeatureIds:
+      - 'minecraft:ore_coal'
+      - 'minecraft:ore_iron_small'
+      - 'minecraft:ore_gold_buried'
+      - 'minecraft:ore_redstone'
+      - 'minecraft:ore_lapis'
+      - 'minecraft:ore_diamond_small'
+      - 'minecraft:ore_emerald'
 ```
 
 | Setting | Default | Description |
@@ -552,12 +561,12 @@ skyIsland:
 | `biomeVariety` | `true` | Whether each island hash-picks its own biome from `islandBiomes`, instead of every scattered island sharing the starter island's single `islandBiome`. |
 | `islandBiomes` | plains/forest/desert/taiga/savanna | Candidate biome pool when `biomeVariety` is `true`. Concrete biome ids only, no `#tags`. |
 | `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` | `true`/`256` | Void buffer around the starter island before scattered islands begin. |
+| `oreDepositsEnabled` | `false` | Whether each island gets one embedded vanilla ore-vein feature, hash-picked from `oreFeatureIds` and placed once at the island's own center, clamped to its slab's thickness. |
+| `oreFeatureIds` | coal/iron/gold/redstone/lapis/diamond/emerald | Candidate vanilla `ConfiguredFeature` ids (config-only, like `easyKit`/`mediumKit`/`hardKit` above — not exposed on the Customize screen). |
 
-**Current scope:** this ships the placement/terrain mechanism only — every
-scattered island is bare terrain with no ore deposits, loot chests, or
-guaranteed village yet (GOALS 07's own village-beyond-the-exclusion-zone
-piece is still to come). Those land in later tasks of the same phase; see
-`TODO.md` Phase 11.
+**Current scope:** loot chests and the guaranteed village (GOALS 07's own
+village-beyond-the-exclusion-zone piece) are still to come. Those land in
+later tasks of the same phase; see `TODO.md` Phase 11.
 
 Not exposed on the Customize screen beyond the tier selector and the Nether
 checkbox — the kit contents themselves are YAML-only, matching every other

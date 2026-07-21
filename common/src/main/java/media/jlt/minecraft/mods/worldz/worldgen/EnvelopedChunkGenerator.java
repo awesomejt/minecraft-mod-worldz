@@ -25,10 +25,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -49,6 +53,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
@@ -468,7 +473,63 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // decorated; the earlier applyCarvers/buildSurface passes already shaped its terrain.
         if (!decorateExteriorOcean) {
             applyEnvelope(chunk);
+            if (activeSkyIsland().enabled()) {
+                applyFloatingIslandOre(level, chunk);
+            }
         }
+    }
+
+    /**
+     * Embeds one vanilla ore-vein feature on each present scattered floating island (GOALS 08,
+     * DESIGN §28.2), exactly once per island regardless of chunk generation order: the deposit's
+     * position is always the island's own (jittered) center, so it's placed only when generating
+     * whichever one chunk happens to contain that exact point. Checks the 3x3 cell neighborhood
+     * around this chunk's own center (not just "which cell does my center belong to"), since a
+     * jittered center can land in a different chunk than that naive lookup would suggest.
+     */
+    private void applyFloatingIslandOre(WorldGenLevel level, ChunkAccess chunk) {
+        SkyIslandPlan active = activeSkyIsland();
+        FloatingIslandsPlan floating = active.floatingIslands();
+        if (!floating.enabled() || !floating.oreDepositsEnabled()) {
+            return;
+        }
+        List<String> oreFeatureIds = WorldzCommon.config().skyIsland.floatingIslands.oreFeatureIds;
+        if (oreFeatureIds.isEmpty()) {
+            return;
+        }
+        int minY = active.bottomY() + 1;
+        int maxY = active.surfaceY() - 1;
+        if (minY > maxY) {
+            // Slab too thin (thicknessBlocks 1) to fit any ore between its floor and surface.
+            return;
+        }
+
+        long seed = skyIslandSeed();
+        ChunkPos chunkPos = chunk.getPos();
+        int centerX = chunkPos.getMinBlockX() + 8 - originX();
+        int centerZ = chunkPos.getMinBlockZ() + 8 - originZ();
+        for (FloatingIslandsPlan.ResolvedIsland island : floating.nearbyIslands(centerX, centerZ, seed, active.islandBiome())) {
+            int islandCenterBlockX = (int) Math.round(island.centerX()) + originX();
+            int islandCenterBlockZ = (int) Math.round(island.centerZ()) + originZ();
+            if (islandCenterBlockX < chunkPos.getMinBlockX() || islandCenterBlockX > chunkPos.getMaxBlockX()
+                || islandCenterBlockZ < chunkPos.getMinBlockZ() || islandCenterBlockZ > chunkPos.getMaxBlockZ()) {
+                continue;
+            }
+            String featureId = island.pick(oreFeatureIds, seed, "floating_island_ore_feature");
+            int y = island.pickY(minY, maxY, seed, "floating_island_ore_y");
+            placeOreFeature(level, featureId, new BlockPos(islandCenterBlockX, y, islandCenterBlockZ), seed, islandCenterBlockX, islandCenterBlockZ);
+        }
+    }
+
+    private void placeOreFeature(WorldGenLevel level, String featureId, BlockPos pos, long seed, int centerX, int centerZ) {
+        Registry<ConfiguredFeature<?, ?>> registry = level.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE);
+        ConfiguredFeature<?, ?> feature = registry.getValue(ResourceKey.create(Registries.CONFIGURED_FEATURE, Identifier.parse(featureId)));
+        if (feature == null) {
+            WorldzCommon.LOGGER.warn("Unknown floating-island ore feature '{}'; skipping.", featureId);
+            return;
+        }
+        RandomSource random = RandomSource.create(seed ^ (((long) centerX) << 32 ^ (centerZ & 0xFFFFFFFFL)));
+        feature.place(level, this, random, pos);
     }
 
     @Override

@@ -58,6 +58,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
     private MultiLineEditBox floatingIslandBiomes;
     private boolean floatingExclusionZoneEnabled;
     private EditBox floatingExclusionZoneRadiusBlocks;
+    private boolean floatingOreDepositsEnabled;
     private String floatingMinRadiusBlocksText;
     private String floatingMaxRadiusBlocksText;
     private String floatingShapeAmplitudeText;
@@ -91,6 +92,7 @@ final class SkyIslandCustomizeScreen extends Screen implements
         this.floatingIslandBiomesText = floatingIslands.islandBiomesText();
         this.floatingExclusionZoneEnabled = floatingIslands.exclusionZone().enabled();
         this.floatingExclusionZoneRadiusBlocksText = Integer.toString(floatingIslands.exclusionZone().radiusBlocks());
+        this.floatingOreDepositsEnabled = floatingIslands.oreDepositsEnabled();
     }
 
     @Override
@@ -206,6 +208,12 @@ final class SkyIslandCustomizeScreen extends Screen implements
             this.font, this.floatingExclusionZoneRadiusBlocks, Component.translatable("jlt_worldz.sky_island.floating_exclusion_zone_radius")
         ));
 
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.sky_island.floating_ore_deposits_enabled"), this.font)
+            .selected(this.floatingOreDepositsEnabled)
+            .onValueChange((checkbox, selected) -> this.floatingOreDepositsEnabled = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
+
         Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
         borderButtons.addChild(Button.builder(
@@ -276,7 +284,8 @@ final class SkyIslandCustomizeScreen extends Screen implements
                 this.floatingBiomeVariety,
                 this.floatingIslandBiomes.getValue(),
                 this.floatingExclusionZoneEnabled,
-                this.floatingExclusionZoneRadiusBlocks.getValue()
+                this.floatingExclusionZoneRadiusBlocks.getValue(),
+                this.floatingOreDepositsEnabled
             );
             SkyIslandCustomization customization = SkyIslandCustomization.fromText(
                 this.islandBiome.getValue(),
