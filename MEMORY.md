@@ -1583,6 +1583,20 @@ Durable decisions, verified API notes, and rationale that should survive across 
   confirmed via grep after reverting that no dead code or inert
   YAML/Customize-screen fields were left behind. Full suite green (395
   tests); clean build. Full detail in DESIGN §26.4.
+- 2026-07-20 (config 34 testing) — Jason reported no caves under
+  `ExteriorMode.OCEAN` terrain, only structures underground. Investigated
+  and confirmed **working as designed, not a bug**: DESIGN §14 already
+  documents exterior ocean as "a stable deep-ocean exterior with water
+  through sea level and a solid seabed," and `EnvelopedChunkGenerator
+  .applyEnvelope`'s OCEAN branch unconditionally repaints every exterior
+  column with a synthetic flat profile (`ExteriorTerrainProfile
+  .oceanLayerAt`) right after vanilla's carvers run each `applyCarvers`
+  /`buildSurface` pass — erasing any caves vanilla just carved. Structures
+  still appear because `decoratesExteriorOcean` (the ocean-island/chest-boat
+  carve-out) lets `delegate.applyBiomeDecoration` run and skips the final
+  re-flatten for those chunks. **Jason's call: leave as-is for now, revisit
+  as a possible improvement once later phases are through** — logged in
+  TODO.md's Backlog section, not scheduled to a phase. No code change made.
 
 ## Reference Log
 

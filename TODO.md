@@ -1860,6 +1860,23 @@ pulled earlier if Jason wants a fun quick win.**
   `quartY`), a materially bigger design than 3.1's surface-family
   pass-through. Revisit once a later phase's slot is picked with Jason; not
   part of any current phase's completion gate.
+- **2026-07-20, Jason (from config 34 testing, ocean-island chest-boat):** no
+  caves generate under `ExteriorMode.OCEAN` terrain — confirmed working as
+  designed, not a bug (DESIGN §14: exterior ocean is documented as "a stable
+  deep-ocean exterior with water through sea level and a solid seabed").
+  Root cause: `EnvelopedChunkGenerator.applyEnvelope`'s OCEAN branch
+  unconditionally overwrites every exterior column with a synthetic flat
+  profile (`ExteriorTerrainProfile.oceanLayerAt`) immediately after vanilla's
+  carvers run, every `applyCarvers`/`buildSurface` pass — this erases
+  whatever caves vanilla just carved. Structures still appear (a deliberate
+  `decoratesExteriorOcean` carve-out for the ocean-island/chest-boat preset
+  lets `delegate.applyBiomeDecoration` run and skips the final re-flatten),
+  which is why Jason saw "structures underground, but no caves." Possible
+  future improvement: change the OCEAN-mode overwrite to only replace
+  natural/solid terrain (not carved air), so real cave systems can still
+  poke into the synthetic seabed. **Jason: leave as-is for now, revisit once
+  later phases are through — logged as a possible improvement, not
+  scheduled.**
 
 ## Carried-over open risks (from MEMORY.md)
 
