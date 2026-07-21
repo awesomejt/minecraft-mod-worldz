@@ -1847,13 +1847,26 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       `reservedPortalCellIsDeterministicAndAlwaysPresentInTheGrid`,
       already added in 12.2) plus 12.7's in-game acceptance pass. Full
       suite green; clean build across all modules.
-- [ ] 12.4 Nether/End chunk-island toggles (09's "normal Nether/End, or
+- [x] 12.4 Nether/End chunk-island toggles (09's "normal Nether/End, or
       chunk islands" option): `applyToNether`/`applyToEnd` config fields;
       wire `EnvelopedChunkGenerator` onto `LevelStem.END` (new — see 12.1's
       design finding) reusing the exact same dimension-agnostic masking
       already proven for Overworld/Nether (no synthetic terrain profile
       needed, unlike sky_island's Nether variant, since chunk islands never
       touch a selected chunk's real terrain).
+      **Done (0.2.56):** already fully implemented as part of 12.2's core
+      task (logged there rather than silently expanding scope) — this
+      task closed the remaining test-coverage gap instead of writing new
+      production code: `ChunkIslandPlanTest` had zero coverage of
+      `fromConfig`'s per-dimension gating despite the method existing
+      since 12.2. Added `fromConfigOverworldAlwaysAppliesWhenEnabled`,
+      `fromConfigNetherDisabledUnlessApplyToNether`,
+      `fromConfigEndDisabledUnlessApplyToEnd`,
+      `fromConfigEverythingDisabledWhenTopLevelDisabled`, and
+      `fromConfigCopiesShapeFields` (5 new tests). `SkyChunkCustomization
+      .netherChunkIslandPlan()`/`endChunkIslandPlan()` were already
+      covered in 12.2's own `SkyChunkCustomizationTest`. Full suite
+      green; clean build across all modules.
 - [ ] 12.5 Multi-biome scattered chunk islands (37, biome part): beyond the
       starter island, additional chunk islands of different biomes;
       per-island top-only-to-depth vs. full-column choice (independent per

@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
+import media.jlt.minecraft.mods.worldz.config.ChunkIslandConfig;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -122,5 +123,74 @@ class ChunkIslandPlanTest {
             IllegalArgumentException.class,
             () -> new ChunkIslandPlan(true, 0.5, 1, true, 0, new IslandPlan.ExclusionZone(false, 0))
         );
+    }
+
+    @Test
+    void fromConfigOverworldAlwaysAppliesWhenEnabled() {
+        ChunkIslandConfig config = new ChunkIslandConfig();
+        config.enabled = true;
+        config.applyToNether = false;
+        config.applyToEnd = false;
+
+        ChunkIslandPlan overworld = ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.OVERWORLD);
+
+        assertTrue(overworld.enabled());
+    }
+
+    @Test
+    void fromConfigNetherDisabledUnlessApplyToNether() {
+        ChunkIslandConfig config = new ChunkIslandConfig();
+        config.enabled = true;
+        config.applyToNether = false;
+
+        assertFalse(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.NETHER).enabled());
+
+        config.applyToNether = true;
+        assertTrue(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.NETHER).enabled());
+    }
+
+    @Test
+    void fromConfigEndDisabledUnlessApplyToEnd() {
+        ChunkIslandConfig config = new ChunkIslandConfig();
+        config.enabled = true;
+        config.applyToEnd = false;
+
+        assertFalse(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.END).enabled());
+
+        config.applyToEnd = true;
+        assertTrue(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.END).enabled());
+    }
+
+    @Test
+    void fromConfigEverythingDisabledWhenTopLevelDisabled() {
+        ChunkIslandConfig config = new ChunkIslandConfig();
+        config.enabled = false;
+        config.applyToNether = true;
+        config.applyToEnd = true;
+
+        assertFalse(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.OVERWORLD).enabled());
+        assertFalse(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.NETHER).enabled());
+        assertFalse(ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.END).enabled());
+    }
+
+    @Test
+    void fromConfigCopiesShapeFields() {
+        ChunkIslandConfig config = new ChunkIslandConfig();
+        config.enabled = true;
+        config.spawnChance = 0.7;
+        config.cellSizeChunks = 3;
+        config.topOnly = true;
+        config.topOnlyDepthBlocks = 8;
+        config.exclusionZoneEnabled = true;
+        config.exclusionZoneRadiusBlocks = 512;
+
+        ChunkIslandPlan plan = ChunkIslandPlan.fromConfig(config, ChunkIslandPlan.Dimension.OVERWORLD);
+
+        assertEquals(0.7, plan.spawnChance());
+        assertEquals(3, plan.cellSizeChunks());
+        assertTrue(plan.topOnly());
+        assertEquals(8, plan.topOnlyDepthBlocks());
+        assertTrue(plan.exclusionZone().enabled());
+        assertEquals(512, plan.exclusionZone().radiusBlocks());
     }
 }
