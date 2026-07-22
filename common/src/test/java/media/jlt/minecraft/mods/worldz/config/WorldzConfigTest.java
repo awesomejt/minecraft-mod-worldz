@@ -593,6 +593,9 @@ class WorldzConfigTest {
                 + " extrasCount=2"
                 + ", hardKit=essentials=[minecraft:bread:2],"
                 + " extras=[minecraft:arrow:8, minecraft:ender_pearl:1], extrasCount=1"
+                + ", flat=layers=[minecraft:bedrock:1, minecraft:stone:123, minecraft:dirt:3, minecraft:grass_block:1],"
+                + " biome=minecraft:plains, decoration=false,"
+                + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1167,6 +1170,42 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0, config.endStart.hardKit.extrasCount);
+    }
+
+    @Test
+    void flatSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            flat:
+              layers: ["minecraft:bedrock:1", "minecraft:stone:10", "minecraft:grass_block:1"]
+              biome: minecraft:desert
+              decoration: true
+              structureOverrides: ["minecraft:villages", "minecraft:desert_pyramids"]
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:bedrock:1", "minecraft:stone:10", "minecraft:grass_block:1"), config.flat.layers);
+        assertEquals("minecraft:desert", config.flat.biome);
+        assertTrue(config.flat.decoration);
+        assertEquals(List.of("minecraft:villages", "minecraft:desert_pyramids"), config.flat.structureOverrides);
+    }
+
+    @Test
+    void flatDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.flat.layers.isEmpty());
+        assertEquals("minecraft:plains", config.flat.biome);
+        assertFalse(config.flat.decoration);
+        assertFalse(config.flat.structureOverrides.isEmpty());
+    }
+
+    @Test
+    void flatEmptyLayersFallBackToDefaults() {
+        WorldzConfig config = WorldzConfig.parse("""
+            flat:
+              layers: []
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.flat.layers.isEmpty());
     }
 
     @Test

@@ -10,6 +10,7 @@
     "jlt_worldz:sky_chunk",
     "jlt_worldz:cave",
     "jlt_worldz:nether_start",
-    "jlt_worldz:end_start"
+    "jlt_worldz:end_start",
+    "jlt_worldz:flat"
   ]
 }

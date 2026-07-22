@@ -2501,3 +2501,38 @@ Durable decisions, verified API notes, and rationale that should survive across 
   remit, not gated on Jason's input. TODO 16.2 split into 16.2a (classic
   flat)/16.2b (deep flat)/16.2c (structures/underground-content
   acceptance, docs, wrap-up), mirroring Phase 13/14/15's own precedent.
+- 2026-07-22 — **Phase 16.2a (classic flat, GOAL 15), 0.2.70.** Real
+  architecture corrected before writing any code, not after: DESIGN
+  §33.1's first draft (wrap vanilla `FlatLevelSource` directly) turned
+  out to be wrong -- `WorldLimitManager.onServerStarted` hard-gates on
+  `overworld...getBiomeSource() instanceof LimitedBiomeSource` and
+  returns immediately otherwise, and `FlatLevelSource` unconditionally
+  builds its own internal `FixedBiomeSource`, so wrapping it directly
+  would have silently disabled every shared Worldz feature (borders,
+  exteriors, progression guarantees) for `flat` worlds with no error.
+  Fixed by keeping every Overworld delegate as `NoiseBasedChunkGenerator`
+  + `LimitedBiomeSource` (single-biome-restricted, mirrors
+  `single_biome`'s exact precedent) and having `EnvelopedChunkGenerator`
+  skip the delegate's real terrain/carving/surface methods entirely when
+  its new `flat` plan is enabled, substituting a small directly-
+  reimplemented flat-fill (mirrors vanilla `FlatLevelSource`'s own logic
+  almost verbatim) instead -- real performance parity with vanilla flat,
+  since the expensive delegate methods are never invoked, not generated-
+  then-discarded. `createState` still reuses vanilla's own real
+  `ChunkGeneratorStructureState.createForFlat` factory. Dropped the
+  `lakes` toggle from scope (not actually asked for in GOALS.md's own
+  GOAL 15 wording, just carried forward from DESIGN §19's earlier
+  pre-replan elaboration). The structure-set list is a multi-line text
+  field, not 18 checkboxes -- found during implementation to better match
+  this project's own established "text box for lists" convention
+  (`allowedBiomes`' own `MultiLineEditBox`). While closing flat's own
+  fieldless-preset defaulting gap (`flatDefaults`, single-biome
+  resolution mirroring `single_biome`'s precedent), incidentally found
+  and fixed a small pre-existing Phase 15 gap in the same touched lines:
+  `end_start`'s own `endStartDefaults` hint was missing from three
+  defaulting branches (starter-biome-empty check, `WorldLayoutPlan`
+  default, `SpawnStrategy` default) -- low severity (defaults mostly
+  align anyway under typical config), fixed here rather than deferred
+  since it was trivial in the same diff, unlike Phase 15's own
+  `nether_start` kit-config gap (a bigger, separate fix, still open as
+  TODO 15.2a-bugfix).

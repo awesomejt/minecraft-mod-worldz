@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.69", properties.getProperty("version"));
+        assertEquals("0.2.70", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -293,6 +293,50 @@ class ProjectMetadataTest {
     }
 
     @Test
+    void flatTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("FlatPresetEditor.FLAT_PRESET"));
+        assertTrue(fabricMixin.contains("FlatPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(FlatPresetEditor.FLAT_PRESET, FlatPresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Flat", lang.get("generator.jlt_worldz.flat").getAsString());
+    }
+
+    @Test
+    void limitedBiomeSourceAppliesFlatDefaultsWithoutCustomize() throws IOException {
+        // Same fix shape as every prior typed preset (closed from day one): a never-customized
+        // flat world still gets its own single configured biome via the "world_type": "flat"
+        // hint (DESIGN §33.2) -- unlike cave/nether_start/end_start, flat needs exactly one
+        // biome everywhere (mirrors single_biome's own hint), not full vanilla variety. FlatPlan
+        // itself is resolved separately, on EnvelopedChunkGenerator's own codec, keyed to the
+        // Overworld generator instance (like cave, unlike nether_start/end_start).
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains(
+            "boolean flatDefaults = encodedStarterRadius.isEmpty()\n"
+                + "            && encodedWorldType.map(\"flat\"::equals).orElse(false);"
+        ));
+        assertTrue(source.contains("? () -> resolveFlatAllowed(config, biomeGetter)"));
+
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+        assertTrue(generator.contains("dimension == Dimension.OVERWORLD && worldType.filter(\"flat\"::equals).isPresent()"));
+        assertTrue(generator.contains("FlatPlan.fromConfig(WorldzCommon.config().flat)"));
+    }
+
+    @Test
     void limitedBiomeSourceAppliesNetherStartDefaultsWithoutCustomize() throws IOException {
         // Same fix shape as cave's own (closed from day one): a never-customized nether_start
         // world still gets full vanilla biome variety via the "world_type": "nether_start" hint
@@ -308,7 +352,8 @@ class ProjectMetadataTest {
                 + "            && encodedWorldType.map(\"nether_start\"::equals).orElse(false);"
         ));
         assertTrue(source.contains(
-            "stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults"
+            "stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults\n"
+                + "                            || netherStartDefaults || endStartDefaults"
         ));
 
         String generator = Files.readString(ROOT.resolve(
@@ -706,7 +751,8 @@ class ProjectMetadataTest {
                 + "                    ? config.singleBiome.spawn.strategy\n"
                 + "                    : stripWorldDefaults\n"
                 + "                        ? config.stripWorld.spawn.strategy\n"
-                + "                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults\n"
+                + "                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults\n"
+                + "                            || netherStartDefaults || endStartDefaults || flatDefaults\n"
                 + "                            ? SpawnStrategy.STARTER_AT_ORIGIN\n"
                 + "                            : config.spawn.strategy);"
         ));

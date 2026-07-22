@@ -130,6 +130,8 @@ public final class WorldzConfig {
     public NetherStartConfig netherStart = new NetherStartConfig();
     /** Defaults for the {@code jlt_worldz:end_start} typed preset (GOALS 34; DESIGN §32). */
     public EndStartConfig endStart = new EndStartConfig();
+    /** Defaults for the {@code jlt_worldz:flat} typed preset (GOAL 15; DESIGN §33.2). */
+    public FlatConfig flat = new FlatConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -250,6 +252,9 @@ public final class WorldzConfig {
         if (object.containsKey("endStart")) {
             config.endStart = readEndStartConfig(object.get("endStart"), "endStart", logger);
         }
+        if (object.containsKey("flat")) {
+            config.flat = readFlatConfig(object.get("flat"), "flat", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -311,6 +316,7 @@ public final class WorldzConfig {
         cave = sanitizeCave(cave, logger);
         netherStart = sanitizeNetherStart(netherStart, logger);
         endStart = sanitizeEndStart(endStart, logger);
+        flat = sanitizeFlat(flat, logger);
         return this;
     }
 
@@ -509,6 +515,22 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static FlatConfig sanitizeFlat(FlatConfig config, Logger logger) {
+        FlatConfig sanitized = config == null ? new FlatConfig() : config;
+        if (sanitized.layers == null || sanitized.layers.isEmpty()) {
+            logger.warn("flat.layers was empty; using the default layer stack.");
+            sanitized.layers = new FlatConfig().layers;
+        }
+        if (sanitized.biome == null || sanitized.biome.isBlank()) {
+            logger.warn("flat.biome was blank; defaulting to minecraft:plains.");
+            sanitized.biome = "minecraft:plains";
+        }
+        if (sanitized.structureOverrides == null) {
+            sanitized.structureOverrides = new FlatConfig().structureOverrides;
+        }
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -659,6 +681,7 @@ public final class WorldzConfig {
             + ", cave=" + caveSummary(cave)
             + ", netherStart=" + netherStartSummary(netherStart)
             + ", endStart=" + endStartSummary(endStart)
+            + ", flat=" + flatSummary(flat)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -688,6 +711,7 @@ public final class WorldzConfig {
         values.put("cave", caveMap(cave));
         values.put("netherStart", netherStartMap(netherStart));
         values.put("endStart", endStartMap(endStart));
+        values.put("flat", flatMap(flat));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1137,6 +1161,26 @@ public final class WorldzConfig {
         }
         if (map.containsKey("hardKit")) {
             config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
+        }
+        return config;
+    }
+
+    private static FlatConfig readFlatConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        FlatConfig config = new FlatConfig();
+        if (map.containsKey("layers")) {
+            config.layers = readStringList(map.get("layers"), name + ".layers", logger);
+        }
+        if (map.containsKey("biome")) {
+            config.biome = readString(map.get("biome"), name + ".biome");
+        }
+        if (map.containsKey("decoration")) {
+            config.decoration = readBoolean(map.get("decoration"), name + ".decoration");
+        }
+        if (map.containsKey("structureOverrides")) {
+            config.structureOverrides = readStringList(map.get("structureOverrides"), name + ".structureOverrides", logger);
         }
         return config;
     }
@@ -1657,6 +1701,15 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> flatMap(FlatConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("layers", config.layers);
+        values.put("biome", config.biome);
+        values.put("decoration", config.decoration);
+        values.put("structureOverrides", config.structureOverrides);
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1831,6 +1884,13 @@ public final class WorldzConfig {
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
             + ", hardKit=" + starterKitSummary(config.hardKit);
+    }
+
+    private static String flatSummary(FlatConfig config) {
+        return "layers=" + config.layers
+            + ", biome=" + config.biome
+            + ", decoration=" + config.decoration
+            + ", structureOverrides=" + config.structureOverrides;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

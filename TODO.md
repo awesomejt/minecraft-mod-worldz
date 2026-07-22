@@ -2436,11 +2436,43 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       into 16.2a (classic flat)/16.2b (deep flat)/16.2c (structures, test
       configs, docs), mirroring Phase 13/14/15's own precedent for
       multi-part phases.
-- [ ] 16.2a Implement `jlt_worldz:flat` (GOAL 15, DESIGN §33.2-33.3):
+- [x] 16.2a Implement `jlt_worldz:flat` (GOAL 15, DESIGN §33.2-33.3):
       `FlatPlan`/codec, layer editor UI (arbitrary layers, text import/
       export per §33.5, built-in presets), structure-set checklist,
       spawn-Y/slime-avoidance option, typed preset + registration; test
       configs; docs.
+      **Done (0.2.70), in-game testable now.** `flat` shows up as the
+      eleventh "Worldz" World Type entry. Real architecture ended up
+      different from DESIGN §33.1's first draft, corrected before writing
+      any code (not after): `flat` cannot wrap vanilla `FlatLevelSource`
+      directly, since `WorldLimitManager`'s hard `LimitedBiomeSource` gate
+      would silently disable every shared Worldz feature (borders,
+      exteriors, progression guarantees) for it. Every Overworld delegate
+      stays `NoiseBasedChunkGenerator` + `LimitedBiomeSource` (restricted
+      to one biome, mirroring `single_biome`'s exact precedent) instead;
+      `EnvelopedChunkGenerator` skips the delegate's real (expensive)
+      terrain/carving/surface methods entirely when `flat.enabled()` and
+      substitutes a small, directly-reimplemented flat-fill mirroring
+      vanilla `FlatLevelSource`'s own few-line logic almost verbatim --
+      giving genuine performance parity with real vanilla flat, not
+      "generate real terrain then discard it." `createState` still reuses
+      the real `ChunkGeneratorStructureState.createForFlat` factory
+      vanilla flat worlds themselves use, for `structureOverrides`
+      filtering. Dropped the `lakes` toggle from scope (GOALS.md's own
+      GOAL 15 wording never asked for it; DESIGN §33.2 records why).
+      Structure list is a multi-line text field (mirrors the generic
+      Customize screen's own `allowedBiomes` widget), not 18 checkboxes.
+      Closed the fieldless-preset defaulting gap from day one (`flatDefaults`
+      hint, single-biome resolution mirroring `single_biome`'s own
+      precedent) and, incidentally, fixed a small pre-existing Phase-15
+      gap found in the same lines (`end_start`'s own hint was missing
+      from three defaulting branches -- low severity, fixed here rather
+      than deferred since it was trivial in the same diff). New JUnit
+      (`FlatLayerSpecTest`, `FlatPlanTest`, `WorldzConfigTest` coverage)
+      plus structural regression tests mirroring every prior typed
+      preset's own precedent. Test configs and docs deferred to 16.2c
+      per Phase 13/14/15's own precedent (config/docs land in the final
+      sub-task of a multi-part phase).
 - [ ] 16.2b Implement `jlt_worldz:deep_flat` (GOAL 16, DESIGN §33.4):
       `DeepFlatPlan`/codec, the delegate-then-cap `EnvelopedChunkGenerator`
       post-processing pass (biome-aware: land cap vs. river/ocean water

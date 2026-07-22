@@ -12,6 +12,8 @@ import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.FlatLayerSpec;
+import media.jlt.minecraft.mods.worldz.logic.FlatPlan;
 import media.jlt.minecraft.mods.worldz.logic.FloatingIslandsPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandOceanProfile;
@@ -75,6 +77,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /** Delegates vanilla generation, then replaces columns outside a persisted square envelope. */
 public final class EnvelopedChunkGenerator extends ChunkGenerator {
@@ -103,6 +106,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         NetherStartCodecs.PLAN_CODEC.optionalFieldOf("nether_start")
             .forGetter(generator -> Optional.of(generator.netherStart)),
         EndStartCodecs.PLAN_CODEC.optionalFieldOf("end_start").forGetter(generator -> Optional.of(generator.endStart)),
+        FlatCodecs.PLAN_CODEC.optionalFieldOf("flat").forGetter(generator -> Optional.of(generator.flat)),
         // Fieldless-preset hint only (DESIGN §30.1), mirroring LimitedBiomeSource's own
         // write-never "world_type" field exactly: lets a never-customized `jlt_worldz:cave`/
         // `jlt_worldz:nether_start` world default its plan from live config (below) without
@@ -231,6 +235,15 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * picks based on {@link #dimension}).
      */
     private final EndStartPlan endStart;
+    /**
+     * The Overworld's classic-flat plan (GOAL 15, DESIGN §33.2), persisted directly on this
+     * generator's own codec -- mirrors {@link #cave}'s exact precedent (a generator-owned plan
+     * needing no biome-source involvement), just for the flat-fill shape instead of a spawn/
+     * chest mechanism. Threaded through every {@code customized(...)} overload the same way
+     * regardless of dimension; only the Overworld instance ever actually uses it (constructor
+     * picks based on {@link #dimension}).
+     */
+    private final FlatPlan flat;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -241,7 +254,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkIslandPlan nonOverworldChunkIsland,
         CavePlan cave,
         NetherStartPlan netherStart,
-        EndStartPlan endStart
+        EndStartPlan endStart,
+        FlatPlan flat
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
@@ -261,6 +275,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.cave = dimension == Dimension.OVERWORLD ? cave : CavePlan.disabled();
         this.netherStart = dimension == Dimension.NETHER ? netherStart : NetherStartPlan.disabled();
         this.endStart = dimension == Dimension.END ? endStart : EndStartPlan.disabled();
+        this.flat = dimension == Dimension.OVERWORLD ? flat : FlatPlan.disabled();
     }
 
     /**
@@ -330,6 +345,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     public EndStartPlan endStart() {
         return this.endStart;
+    }
+
+    /**
+     * Returns the flat plan active for this dimension (GOAL 15, DESIGN §33.2), disabled for every
+     * other preset and for every non-Overworld instance.
+     *
+     * @return resolved flat plan
+     */
+    public FlatPlan flat() {
+        return this.flat;
     }
 
     /**
@@ -535,8 +560,49 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         NetherStartPlan netherStart,
         EndStartPlan endStart
     ) {
+        return customized(
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart,
+            FlatPlan.disabled()
+        );
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope, strip-world plan, Nether sky island plan,
+     * chunk-island plan, cave plan, Nether-start plan, End-start plan, and flat plan selected
+     * during world creation (GOAL 15, DESIGN §33.2).
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param dimension which dimension this instance wraps
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @param netherSkyIsland resolved Nether sky island plan, disabled for every other preset
+     *     and ignored entirely for non-Nether instances
+     * @param nonOverworldChunkIsland resolved Nether/End chunk-island plan, disabled for every
+     *     other preset and ignored entirely for the Overworld instance
+     * @param cave resolved cave plan, disabled for every other preset and ignored entirely for
+     *     non-Overworld instances
+     * @param netherStart resolved Nether-start plan, disabled for every other preset and ignored
+     *     entirely for non-Nether instances
+     * @param endStart resolved End-start plan, disabled for every other preset and ignored
+     *     entirely for non-End instances
+     * @param flat resolved flat plan, disabled for every other preset and ignored entirely for
+     *     non-Overworld instances
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        Dimension dimension,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland,
+        ChunkIslandPlan nonOverworldChunkIsland,
+        CavePlan cave,
+        NetherStartPlan netherStart,
+        EndStartPlan endStart,
+        FlatPlan flat
+    ) {
         return new EnvelopedChunkGenerator(
-            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat
         );
     }
 
@@ -735,6 +801,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Optional<CavePlan> encodedCave,
         Optional<NetherStartPlan> encodedNetherStart,
         Optional<EndStartPlan> encodedEndStart,
+        Optional<FlatPlan> encodedFlat,
         Optional<String> worldType
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
@@ -778,8 +845,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 ? EndStartPlan.fromConfig(WorldzCommon.config().endStart)
                 : EndStartPlan.disabled()
         );
+        FlatPlan flat = encodedFlat.orElseGet(
+            () -> dimension == Dimension.OVERWORLD && worldType.filter("flat"::equals).isPresent()
+                ? FlatPlan.fromConfig(WorldzCommon.config().flat)
+                : FlatPlan.disabled()
+        );
         return new EnvelopedChunkGenerator(
-            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat
         );
     }
 
@@ -799,7 +871,23 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         RandomState randomState,
         long legacyLevelSeed
     ) {
+        if (this.flat.enabled()) {
+            // Mirrors FlatLevelSource.createState exactly (GOAL 15, DESIGN §33.1's correction):
+            // an empty structureOverrides list means every registered set is eligible, otherwise
+            // only the configured ones -- the same "absent means all" default vanilla flat worlds
+            // use, just resolved from FlatPlan's own plain-string ids instead of a HolderSet.
+            Stream<Holder<StructureSet>> structures = this.flat.structureOverrides().isEmpty()
+                ? structureSets.listElements().map(e -> (Holder<StructureSet>) e)
+                : structureSets.listElements()
+                    .filter(holder -> this.flat.structureOverrides().contains(structureSetId(holder)))
+                    .map(e -> (Holder<StructureSet>) e);
+            return ChunkGeneratorStructureState.createForFlat(randomState, legacyLevelSeed, this.getBiomeSource(), structures);
+        }
         return this.delegate.createState(structureSets, randomState, legacyLevelSeed);
+    }
+
+    private static String structureSetId(Holder<StructureSet> holder) {
+        return holder.unwrapKey().map(key -> key.identifier().toString()).orElseGet(holder::getRegisteredName);
     }
 
     @Override
@@ -821,8 +909,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureManager structureManager,
         ChunkAccess chunk
     ) {
-        this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
-        applyTerrainAdjustments(chunk, randomState, true);
+        // Flat has no carving of any kind (mirrors FlatLevelSource.applyCarvers's own no-op,
+        // GOAL 15, DESIGN §33.1's correction) -- skipping the delegate's real cave carvers here
+        // is what keeps a flat-fill chunk (built in fillFromNoise) from having real vanilla caves
+        // carved into it after the fact.
+        if (!this.flat.enabled()) {
+            this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
+            applyTerrainAdjustments(chunk, randomState, true);
+        }
         applyEnvelope(chunk, randomState);
     }
 
@@ -833,7 +927,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         RandomState randomState,
         ChunkAccess protoChunk
     ) {
-        this.delegate.buildSurface(level, structureManager, randomState, protoChunk);
+        // Same reasoning as applyCarvers: skip the delegate's real biome-specific surface rules
+        // (sand/grass placement etc.) for flat -- fillFromNoise's own flat-fill is already the
+        // final surface, mirroring FlatLevelSource.buildSurface's own no-op.
+        if (!this.flat.enabled()) {
+            this.delegate.buildSurface(level, structureManager, randomState, protoChunk);
+        }
         applyEnvelope(protoChunk, randomState);
     }
 
@@ -842,7 +941,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkPos chunkPos = chunk.getPos();
         // isEntirelyExteriorOcean already implies isEntirelyExterior (OCEAN != NORMAL).
         boolean decorateExteriorOcean = decoratesExteriorOcean(chunkPos);
-        if (!isEntirelyExterior(chunkPos) || decorateExteriorOcean) {
+        // Flat's own decoration toggle (GOAL 15, mirrors FlatLevelGeneratorSettings.decoration's
+        // all-or-nothing behavior) gates the delegate's real biome decoration entirely -- trees/
+        // ore veins/etc. still come from the real (single, fixed) biome's own feature list when
+        // enabled, same mechanism every other preset already uses.
+        if ((!isEntirelyExterior(chunkPos) || decorateExteriorOcean) && (!this.flat.enabled() || this.flat.decoration())) {
             this.delegate.applyBiomeDecoration(level, chunk, structureManager);
         }
         // Re-painting the exterior profile here would immediately erase whatever decoration
@@ -1059,12 +1162,92 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         StructureManager structureManager,
         ChunkAccess centerChunk
     ) {
+        if (this.flat.enabled()) {
+            // Skips the delegate's real (comparatively expensive) noise-based terrain shaping
+            // entirely -- GOAL 15, DESIGN §33.1's correction -- instead of calling
+            // this.delegate.fillFromNoise, which for the NoiseBasedChunkGenerator+
+            // LimitedBiomeSource delegate flat now uses (needed only for WorldLimitManager/
+            // border integration, DESIGN §33.1) would otherwise generate a full real terrain
+            // column just to discard it.
+            fillFlatColumns(centerChunk, this.flat);
+            applyEnvelope(centerChunk, randomState);
+            return CompletableFuture.completedFuture(centerChunk);
+        }
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
                 applyTerrainAdjustments(chunk, randomState, false);
                 applyEnvelope(chunk, randomState);
                 return chunk;
             });
+    }
+
+    /**
+     * Paints every column with the same fixed layer stack, bottom to top (GOAL 15, DESIGN
+     * §33.2) -- mirrors {@code FlatLevelSource.fillFromNoise}'s own real loop almost verbatim,
+     * reimplemented directly rather than delegated to (DESIGN §33.1's correction).
+     */
+    private static void fillFlatColumns(ChunkAccess chunk, FlatPlan flat) {
+        List<BlockState> states = flatLayerStates(flat);
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
+        Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
+        for (int layerIndex = 0; layerIndex < Math.min(chunk.getHeight(), states.size()); layerIndex++) {
+            BlockState state = states.get(layerIndex);
+            int y = chunk.getMinY() + layerIndex;
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    chunk.setBlockState(pos.set(x, y, z), state);
+                    oceanFloor.update(x, y, z, state);
+                    worldSurface.update(x, y, z, state);
+                }
+            }
+        }
+    }
+
+    /**
+     * Expands {@link FlatPlan#layers()} into one {@link BlockState} per Y, mirroring {@code
+     * FlatLevelGeneratorSettings.updateLayers()}'s own expansion exactly.
+     */
+    private static List<BlockState> flatLayerStates(FlatPlan flat) {
+        List<BlockState> states = new ArrayList<>();
+        for (FlatLayerSpec layer : flat.layers()) {
+            BlockState state = resolveBlockState(layer.blockId());
+            for (int i = 0; i < layer.heightBlocks(); i++) {
+                states.add(state);
+            }
+        }
+        return states;
+    }
+
+    private static BlockState resolveBlockState(String blockId) {
+        return BuiltInRegistries.BLOCK.getValue(Identifier.parse(blockId)).defaultBlockState();
+    }
+
+    /**
+     * Scans the layer stack from the top down for the first block opaque under {@code type},
+     * mirroring {@code FlatLevelSource.getBaseHeight}'s own exact logic -- almost always just the
+     * very top layer, but a configured non-opaque top layer (e.g. a deliberate glass ceiling)
+     * correctly falls through to the next solid one below it, same as vanilla.
+     */
+    private static int flatBaseHeight(FlatPlan flat, Heightmap.Types type, LevelHeightAccessor heightAccessor) {
+        List<BlockState> states = flatLayerStates(flat);
+        for (int layerIndex = Math.min(states.size() - 1, heightAccessor.getMaxY()); layerIndex >= 0; layerIndex--) {
+            BlockState state = states.get(layerIndex);
+            if (type.isOpaque().test(state)) {
+                return heightAccessor.getMinY() + layerIndex + 1;
+            }
+        }
+        return heightAccessor.getMinY();
+    }
+
+    /** Mirrors {@code FlatLevelSource.getBaseColumn} exactly: the layer stack, air above it. */
+    private static NoiseColumn flatBaseColumn(FlatPlan flat, LevelHeightAccessor heightAccessor) {
+        List<BlockState> layerStates = flatLayerStates(flat);
+        BlockState[] states = new BlockState[heightAccessor.getHeight()];
+        for (int index = 0; index < states.length; index++) {
+            states[index] = index < layerStates.size() ? layerStates.get(index) : Blocks.AIR.defaultBlockState();
+        }
+        return new NoiseColumn(heightAccessor.getMinY(), states);
     }
 
     @Override
@@ -1084,7 +1267,12 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
     @Override
     public int getSpawnHeight(LevelHeightAccessor heightAccessor) {
-        return this.delegate.getSpawnHeight(heightAccessor);
+        // Mirrors FlatLevelSource.getSpawnHeight exactly (GOAL 15, DESIGN §33.3): the top of the
+        // layer stack -- avoiding slimes (Y 40 cutoff, Slime.checkSlimeSpawnRules) is purely a
+        // property of how tall the configured layers are, no separate spawnY field needed.
+        return this.flat.enabled()
+            ? heightAccessor.getMinY() + Math.min(heightAccessor.getHeight(), this.flat.totalHeightBlocks())
+            : this.delegate.getSpawnHeight(heightAccessor);
     }
 
     @Override
@@ -1097,6 +1285,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         ExteriorMode mode = this.effectiveModeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
+            if (this.flat.enabled()) {
+                return flatBaseHeight(this.flat, type, heightAccessor);
+            }
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
             int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor, randomState);
@@ -1194,6 +1385,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         ExteriorMode mode = this.effectiveModeAt(x - originX(), z - originZ());
         if (mode == ExteriorMode.NORMAL) {
+            if (this.flat.enabled()) {
+                return flatBaseColumn(this.flat, heightAccessor);
+            }
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
             int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor, randomState);

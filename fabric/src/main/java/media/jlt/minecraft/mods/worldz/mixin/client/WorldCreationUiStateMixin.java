@@ -3,6 +3,7 @@ package media.jlt.minecraft.mods.worldz.mixin.client;
 import media.jlt.minecraft.mods.worldz.client.CavePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.EndStartPresetEditor;
+import media.jlt.minecraft.mods.worldz.client.FlatPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.NetherStartPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
@@ -49,6 +50,8 @@ abstract class WorldCreationUiStateMixin {
             callback.setReturnValue(NetherStartPresetEditor.INSTANCE);
         } else if (preset.unwrapKey().filter(EndStartPresetEditor.END_START_PRESET::equals).isPresent()) {
             callback.setReturnValue(EndStartPresetEditor.INSTANCE);
+        } else if (preset.unwrapKey().filter(FlatPresetEditor.FLAT_PRESET::equals).isPresent()) {
+            callback.setReturnValue(FlatPresetEditor.INSTANCE);
         }
     }
 }
