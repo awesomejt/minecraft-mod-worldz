@@ -63,7 +63,21 @@ public record FloatingIslandsPlan(
     boolean lootChestEnabled,
     boolean naturalBiome
 ) {
-    /** Legacy 11-arg construction, predating {@link #naturalBiome} (DESIGN §28.4). Defaults to {@code false} -- purely additive. */
+    /**
+     * Legacy 11-arg construction, predating {@link #naturalBiome} (DESIGN §28.4). Defaults to {@code false} -- purely additive.
+     *
+     * @param enabled whether scattered islands generate at all
+     * @param minRadiusBlocks smallest hash-picked island radius
+     * @param maxRadiusBlocks largest hash-picked island radius
+     * @param shapeAmplitude coastline perturbation strength
+     * @param cellSizeBlocks grid-cell edge length
+     * @param spawnChance probability ({@code 0..1}) that a given cell holds an island
+     * @param biomeVariety whether each island hash-picks its own biome
+     * @param islandBiomes candidate biome pool when {@link #biomeVariety} is {@code true}
+     * @param exclusionZone void buffer around the starter island before scattered islands begin
+     * @param oreDepositsEnabled whether each island gets one embedded vanilla ore-vein feature
+     * @param lootChestEnabled whether each island gets one placed loot chest
+     */
     public FloatingIslandsPlan(
         boolean enabled,
         int minRadiusBlocks,

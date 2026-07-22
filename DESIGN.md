@@ -4104,3 +4104,282 @@ gains a `cave()` accessor and a new trailing `customized(...)` overload
 carrying the resolved `CavePlan`, following the exact chained-overload
 pattern `strip`/`netherSkyIsland`/`chunkIsland` already established.
 
+## 31. Nether-start challenge (GOALS 27) — design pass (TODO 14.1)
+
+### 31.1 Feasibility spike: how 26.2 actually resolves spawn/respawn dimension
+
+Verified against the real decompiled 26.2 sources
+(`vanilla-26.2-1-sources.jar`) and cross-checked with `javap -p` against
+the compiled counterpart jar (no decompiler discrepancies found this time,
+unlike the `NoiseBasedChunkGenerator` `final` lesson — MEMORY.md
+2026-07-16).
+
+**A brand-new player's first-ever spawn is not hardcoded to the
+Overworld.** `PrepareSpawnTask.start()` (`net/minecraft/server/network/
+config/PrepareSpawnTask.java:52-61`), which runs during connection setup
+before `PlayerList.placeNewPlayer`, resolves the join level as:
+
+```java
+ServerPlayer.SavedPosition loadedPosition = ...; // EMPTY for a genuinely new player
+LevelData.RespawnData respawnData = this.server.getWorldData().overworldData().getRespawnData();
+ServerLevel spawnLevel = loadedPosition.dimension().map(this.server::getLevel).orElseGet(() -> {
+    ServerLevel spawnDataLevel = this.server.getLevel(respawnData.dimension());
+    return spawnDataLevel != null ? spawnDataLevel : this.server.overworld();
+});
+```
+
+For a new player this always falls through to `respawnData.dimension()`
+— the world's stored default spawn (`LevelData.RespawnData`, a `GlobalPos`
+inside `ServerLevelData`/`PrimaryLevelData`), which is *data*, not a
+compile-time Overworld constant.
+
+**Death with no bed/anchor set also reads the same stored value, not a
+hardcoded Overworld fallback.** `PlayerList.respawn` →
+`ServerPlayer.findRespawnPositionAndUseSpawnBlock` → (no `RespawnConfig`
+set) → `TeleportTransition.createDefault` →
+`MinecraftServer.findRespawnDimension()`
+(`MinecraftServer.java:1708-1713`):
+
+```java
+public ServerLevel findRespawnDimension() {
+    LevelData.RespawnData respawnData = this.getWorldData().overworldData().getRespawnData();
+    ResourceKey<Level> respawnDimension = respawnData.dimension();
+    ServerLevel respawnLevel = this.getLevel(respawnDimension);
+    return respawnLevel != null ? respawnLevel : this.overworld();
+}
+```
+
+Only falls back to `this.overworld()` if the stored dimension no longer
+resolves to a loaded level — confirmed independently by
+`SetWorldSpawnCommand` (`net/minecraft/server/commands/
+SetWorldSpawnCommand.java:33-39`), which sets this exact value from
+whatever dimension `/setworldspawn` was run in. **So both paths converge
+on one lever**: `worldData.overworldData()`'s stored `RespawnData`.
+
+**Where that value gets initialized to Overworld** (the part that *is*
+hardcoded, and the actual hook point): `MinecraftServer.createLevels()`
+(`MinecraftServer.java:421-480`) builds the Overworld `ServerLevel`
+first, then — only `if (!levelData.isInitialized())` — calls the
+`private static void setInitialSpawn(overworld, levelData, ...)`
+(`MinecraftServer.java:441,482-534`), which always writes
+`level.dimension()` (always `Level.OVERWORLD`, since `level` is always
+the just-built `overworld`) into `levelData.setSpawn(...)`.
+
+**Critical ordering finding**: the loop that constructs every *other*
+dimension's `ServerLevel` (Nether, End) — `MinecraftServer.java:459+`,
+iterating `dimensions.entrySet()` — runs **after** the
+`setInitialSpawn` call, not before. At the exact point this project's
+existing spawn-origin hooks fire (`MinecraftServerMixin`'s
+`setInitialSpawn` `@Inject(at = "HEAD")` on Fabric,
+`WorldzNeoForge.onCreateSpawnPosition` / `LevelEvent.CreateSpawnPosition`
+on NeoForge — both call `SpawnOriginManager.resolveFreshOrigin`, DESIGN
+§18), **the Nether `ServerLevel` does not exist yet** —
+`server.getLevel(Level.NETHER)` would return `null`. Neither hook is
+usable to place a Nether spawn site directly; both must be left alone
+(return `Optional.empty()` for `nether_start`, same as every preset that
+doesn't need to override the Overworld's own default spawn) for this
+feature. See §31.2 for the actual hook chosen instead.
+
+### 31.2 Chosen mechanism: overwrite the world-spawn default once Nether exists
+
+`WorldLimitManager.onServerStarted` already fires once, after every
+dimension (including Nether) is constructed, and already reads
+`server.getLevel(Level.NETHER)` for `ProgressionGuarantees.
+ensureBlazeAccess` — exactly the timing `nether_start` needs, and the
+existing `WorldLimitState`-guarded one-time gate (already applied to
+`needsStarterChest`/`needsCaveChest` etc.) gives idempotency for free,
+same as every other guaranteed-placement feature in this project. No new
+mixin, no new event — `nether_start` adds one more `needsX` branch
+alongside the existing ones.
+
+At that point, `NetherStartDeployment` (new class, mirrors
+`ChunkIslandDeployment`'s shape) resolves a safe Nether site (§31.3),
+places the starter chest there, and calls
+`overworld.getServer().setRespawnData(LevelData.RespawnData.of(Level.NETHER, safePos, 0.0F, 0.0F))`
+(`MinecraftServer.java:1715-1723`, `public`, non-final — verified via
+`javap`) — literally the same lever `/setworldspawn` uses at runtime
+(§31.1), just invoked once at world-creation time instead. Because
+`PrepareSpawnTask` (first join) and `findRespawnDimension` (no-bed/anchor
+death) both read this exact stored value live, **one overwrite handles
+both cases** — no per-player `ServerPlayer.setRespawnPosition`/
+`RespawnConfig` needed for the default case. A player who later builds
+their own bed (works in the Overworld once they reach it) or respawn
+anchor (works in the Nether, confirmed §31.1's dimension-type research
+below) gets the ordinary vanilla personal-spawn override on top, same as
+any vanilla world.
+
+**Known, accepted quirk, not fixed**: `setInitialSpawn` still runs first
+and unconditionally (with its original Overworld-default target) inside
+`createLevels()`, including placing the bonus chest there if
+`generateBonusChest` is set. For `nether_start` this produces a harmless,
+unreachable bonus chest sitting at an ordinary Overworld location nobody
+is directed toward — cosmetic, not a beatability or correctness issue
+(same "log it, don't engineer around it" posture as the Phase 2/3
+cosmetic-gap entries in MEMORY.md). `nether_start` worlds don't need to
+disable the bonus-chest game rule; it's just moot.
+
+### 31.3 Respawn-anchor/bed dimension semantics (confirms GOALS 27's premise)
+
+26.2 replaced the old `DimensionType.bedWorks()`/`respawnAnchorWorks()`
+boolean fields with a data-driven `EnvironmentAttributeMap`
+(`net/minecraft/world/level/dimension/DimensionType.java:29-46`,
+`RespawnAnchorBlock.canSetSpawn` at `RespawnAnchorBlock.java:167-169`
+reads `EnvironmentAttributes.RESPAWN_ANCHOR_WORKS`; `BedBlock`/
+`ServerPlayer.findRespawnAndUseSpawnBlock` read
+`EnvironmentAttributes.BED_RULE`, `ServerPlayer.java:1065`). The bundled
+vanilla data pack confirms the values GOALS 27 assumes:
+
+| Dimension | `respawn_anchor_works` | `bed_rule` |
+|---|---|---|
+| Nether | `true` | `never` (sleeping/spawn-setting), explodes if tried |
+| Overworld | `false` | `always`/`when_dark` |
+| End | `false` | `never`, explodes if tried |
+
+So once a player reaches the Nether they can place a real respawn anchor
+and it works exactly like a bed would in the Overworld — no special
+`nether_start` code needed for that path, only for the *initial* safe
+site before any anchor exists (§31.2).
+
+**Validation is re-checked live at every respawn, not cached** —
+`ServerPlayer.findRespawnAndUseSpawnBlock` (`ServerPlayer.java:1045-1081`)
+re-reads the actual block state at the stored position every time,
+including honoring a `forced` flag on `ServerPlayer.RespawnConfig` that
+bypasses the block-type check entirely (falls through to a generic
+`Block.isPossibleToRespawnInThis` — "not solid, not liquid" — free-space
+check instead of requiring a real anchor/bed). This confirms a
+`forced=true` synthetic `RespawnConfig` *would* be a viable way to give
+an individual player a permanent non-anchor Nether/End spawn point later
+(relevant to Phase 15's End start, where neither anchors nor beds work
+at all) — not needed for `nether_start`'s own world-spawn-default
+mechanism (§31.2), which is a separate, simpler lever, but recorded here
+since Phase 15 will need exactly this.
+
+### 31.4 Safe-site search: natural first, guaranteed capsule fallback (Jason's choice, 2026-07-21)
+
+Mirrors `SpawnOriginManager.resolveCaveOrigin`'s existing two-phase shape
+(DESIGN §30.3) almost exactly, chosen over either "always guaranteed" or
+"pure natural search" (Jason's explicit call, weighing predictability
+against a real "you were just dropped into the Nether" feel) — but
+Nether terrain is far more hazard-dense than an Overworld cave pocket
+(lava seas, close ceilings), so the natural-candidate check is stricter
+than `searchCaveCavity`'s:
+
+- **Search** (`searchNetherStartSite`, force-generates each candidate
+  chunk exactly like `searchCaveCavity`): scans a vertical window around
+  a configurable target Y (`NetherStartConfig.spawnY`, default 32 —
+  comfortably between the Y-0 floor and the Y-128 bedrock ceiling, same
+  "fixture-verified default" posture as `CavePlan.DEFAULT_SPAWN_DEPTH_Y`)
+  for a solid, non-fluid floor with two clear blocks above it (identical
+  bar to `searchCaveCavity`), **plus** a horizontal check that the floor
+  block's four neighbors at the same Y are not lava — cheap, and rules
+  out spawning at the literal edge of a lava lake, the single dominant
+  Nether hazard `searchCaveCavity` never had to consider.
+- **Fallback capsule** (`buildNetherStartCapsule`): reuses
+  `SpawnOriginManager.buildCaveCapsule`'s exact fully-enclosed-shell
+  shape (not corner-posts-only — the Phase 7 test-2 lesson, DESIGN
+  §24.12), swapping `Blocks.STONE` for `Blocks.NETHER_BRICKS` — the same
+  material `ProgressionGuarantees.buildBlazeSite` already uses for its
+  own guaranteed Nether room, for visual consistency within the
+  dimension rather than introducing a third guaranteed-shell material.
+
+Both live in `SpawnOriginManager`-adjacent new code (a `NetherStartSearch`
+pure-logic/deployment split mirroring cave's own split between the
+private search helpers and `CavePlan`), not inside `SpawnOriginManager`
+itself, since `SpawnOriginManager`'s own two entry points are scoped to
+the *early* Overworld-spawn-search hooks (§31.1's finding that those fire
+before Nether exists) — this is a different hook (`WorldLimitManager.
+onServerStarted`, §31.2), so it gets its own small deployment class
+instead of overloading `SpawnOriginManager`'s existing contract.
+
+### 31.5 `NetherStartPlan` shape and persistence
+
+Mirrors `CavePlan` exactly for the same reason (§30.1): no per-column
+biome-source decision needed (`GOALS 27`'s "Overworld generates normally"
+means genuinely ordinary vanilla Overworld terrain, and the Nether is
+also ordinary vanilla Nether terrain apart from the one guaranteed safe
+site) — so `NetherStartPlan` persists entirely on
+`EnvelopedChunkGenerator`'s own codec, a new `NetherStartCodecs.PLAN_CODEC`
+`optionalFieldOf("nether_start")`, not on `LimitedBiomeSource` (already
+full, §29.7/§28.4).
+
+```
+NetherStartPlan(
+    boolean enabled,
+    int spawnY,           // search target Y, DEFAULT_SPAWN_Y = 32
+    StarterKitTier chestTier
+)
+```
+
+`EnvelopedChunkGenerator` gains a `netherStart()` accessor and a new
+trailing `customized(...)` overload, following the exact chained-overload
+pattern `strip`/`netherSkyIsland`/`chunkIsland`/`cave` already
+established (§30.7). Unlike `CavePlan`, `nether_start`'s plan is only
+ever meaningful when read from the **Nether** `ServerLevel`'s own
+generator (the Overworld generator for this preset carries a disabled
+placeholder, mirroring how `netherSkyIsland` is the Nether-side field on
+an Overworld-attached generator, just the dimension roles reversed) —
+`WorldLimitManager.onServerStarted` reads it via
+`nether.getChunkSource().getGenerator()` alongside the existing
+`netherGenerator`-derived reads (`netherStrip`/`netherSkyIsland`,
+`WorldLimitManager.java:79-84`).
+
+### 31.6 Starter chest tiers (GOALS 27's own example)
+
+Reuses `StarterKitTier`/`StarterKitConfig` unchanged, same three-tier
+shape as `sky_island`/`cave` (§27.8/§30.2). GOALS 27's own worked example
+names the easy tier literally: obsidian and flint and steel, enough to
+"build a portal out." First-pass defaults (adjustable via YAML like
+every other kit in this project, per the same "first pass, not sign-off"
+posture the 2026-07-21 sky-island beatability follow-up already
+established):
+
+- **Easy**: essentials include 10 obsidian (a full frame with no
+  cobblestone-generator/mining detour needed) + 1 flint and steel + food
+  + torches; a few random extras.
+- **Medium**: fewer obsidian (enough for a minimal frame, not a full
+  luxury one — vanilla portals need at least 10 blocks for a standard
+  rectangular frame, so medium still gets 10 but drops the guaranteed
+  flint and steel, requiring the player to find/craft ignition
+  another way (flint + iron, or a found fire source) — still always
+  obtainable in the Nether) plus less food/fewer torches.
+  **Deviation flag**: needs a real playtest to confirm "10 obsidian, no
+  flint and steel" is actually a meaningfully different (not just
+  arbitrarily smaller) experience from easy — a candidate for tuning
+  once Jason tests config `59`/`60`.
+- **Hard**: no guaranteed obsidian or flint and steel at all — leans
+  entirely on Nether exploration (ruined portals often carry salvageable
+  obsidian, bastions/piglin bartering for gold-adjacent trade routes,
+  or striking lava+water found naturally) for the "every tier must
+  leave the game beatable" requirement, same "harder, still beatable"
+  posture GOALS 05's own hard sky-island tier already established
+  (§27.8) — not a new design principle, a direct reuse of one already
+  approved.
+
+### 31.7 New typed preset shape (`jlt_worldz:nether_start`)
+
+Mirrors `cave`'s scaffolding (§30.7) almost exactly, since neither needs
+a `LimitedBiomeSource` field: `NetherStartConfig` (YAML defaults: `spawnY`,
+`chestTier`, plus `easyKit`/`mediumKit`/`hardKit`), `NetherStartCustomization`
+(record: spawnY, chestTier, overworldBorder, netherBorder, endBorder,
+netherExterior — no Overworld-exterior field, same reasoning as `cave`:
+the Overworld always generates ordinary vanilla terrain), no spawn-strategy
+field (spawn is always this preset's own mechanism, §31.2, never vanilla's
+ordinary strategies), `NetherStartPresetEditor`, `NetherStartCustomizeScreen`,
+world-preset JSON + `normal` tag entry + lang keys, both loaders'
+registration — each verified by the same structural-test pattern every
+prior typed preset established (`WorldPresetResourcesTest`,
+`ProjectMetadataTest`).
+
+### 31.8 Deferred, not in this phase's scope
+
+- **End start (GOALS 34)** — a separate phase (15), sharing this spike's
+  respawn-mechanics research (§31.1/§31.3's `forced` `RespawnConfig`
+  finding is specifically flagged as relevant there, since neither beds
+  nor anchors work in the End at all).
+- **Per-player forced `RespawnConfig`** — not needed for `nether_start`'s
+  own default-spawn mechanism (§31.2 handles both first-join and
+  no-anchor-death with one world-spawn overwrite); left for Phase 15 or
+  any future need for an individually-customized permanent non-anchor
+  spawn point.
+- **Bonus-chest placement quirk** — logged, not fixed (§31.2).
+

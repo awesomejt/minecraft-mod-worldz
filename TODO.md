@@ -2178,16 +2178,53 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
 
 ## Phase 14 — Nether-start challenge (GOALS 27)
 
-- [ ] 14.1 Feasibility spike first (the §16.1 pattern): how initial spawn in
+- [x] 14.1 Feasibility spike first (the §16.1 pattern): how initial spawn in
       a non-Overworld dimension actually works in 26.2 — `MinecraftServer`/
       `PlayerList` spawn+respawn paths, respawn-anchor semantics, what
       happens on death without an anchor. Findings cover the End too (for
       Phase 15). Verify against real sources; commit findings to DESIGN
       §20.10 before implementing.
-- [ ] 14.2 Implement `nether_start` world type: safe Nether spawn site,
-      starter-chest difficulty tiers (easy = portal escape kit; every tier
-      beatable), Overworld normal. Test configs; docs; **[Jason]**
-      acceptance including death/respawn behavior.
+      **Done, no code (design only).** Full spike + design in DESIGN §31.
+      Key finding: neither existing early spawn hook
+      (`MinecraftServerMixin`/`WorldzNeoForge.onCreateSpawnPosition`) can
+      place a Nether spawn site directly — the Nether `ServerLevel`
+      doesn't exist yet at that point in `MinecraftServer.createLevels()`
+      (verified from real source, §31.1). Chosen mechanism instead:
+      overwrite the world's stored default spawn (`MinecraftServer.
+      setRespawnData`, the same lever `/setworldspawn` uses) once
+      `WorldLimitManager.onServerStarted` fires — by which point Nether
+      already exists — since both first-join (`PrepareSpawnTask`) and
+      no-bed/no-anchor death (`findRespawnDimension`) read that one same
+      stored value (§31.2). Confirmed Nether respawn anchors work / beds
+      don't (and End: neither works) via the real dimension-type data
+      (§31.3). **Jason's call (2026-07-21): natural safe-site search
+      first, guaranteed capsule shelter as fallback** — mirrors Cave's
+      own `resolveCaveOrigin` two-phase shape (§31.4) with an added
+      lava-adjacency check Cave never needed. Split 14.2 into 14.2a-c
+      below, mirroring Phase 13's own precedent for multi-part phases.
+- [ ] 14.2a Core mechanic: `NetherStartPlan`/codec (persisted on
+      `EnvelopedChunkGenerator`, mirrors `CavePlan`, DESIGN §31.5), the
+      natural-search-then-guaranteed-capsule safe-site resolver (DESIGN
+      §31.4), and the `WorldLimitManager.onServerStarted` hook that
+      overwrites the world's default spawn to the resolved Nether site
+      (DESIGN §31.2). JUnit-covered pure logic where possible (search
+      candidate ordering, capsule shape); the actual `MinecraftServer`
+      lever itself is only exercisable in-game.
+- [ ] 14.2b Starter chest tiers (DESIGN §31.6, reuses
+      `StarterKitTier`/`StarterKitConfig`; easy = obsidian + flint and
+      steel + food/torches, medium = frame's worth of obsidian only,
+      hard = none, relies on Nether exploration) placed at the resolved
+      site, plus the typed preset shape (DESIGN §31.7): `NetherStartConfig`,
+      `NetherStartCustomization`, `NetherStartPresetEditor`,
+      `NetherStartCustomizeScreen`, world-preset JSON + `normal` tag +
+      lang keys, both loaders' registration.
+- [ ] 14.2c Test configs (default, each chest tier, a config exercising
+      the guaranteed-capsule fallback path if forceable); docs (README,
+      MANUAL_TESTING.md); phase wrap-up. **[Jason]** acceptance including
+      death/respawn behavior (does dying without a personal anchor really
+      return you to the same safe site; does a placed anchor elsewhere
+      correctly override it; is the natural-vs-capsule site genuinely
+      safe on arrival).
 
 ## Phase 15 — End-start challenge (GOALS 34)
 

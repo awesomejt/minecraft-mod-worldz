@@ -42,6 +42,15 @@ public record SkyIslandPlan(
      * to the same always-on, 128-block posture {@link media.jlt.minecraft.mods.worldz.config.SkyIslandConfig}
      * ships -- existing callers (mostly test fixtures) get today's real behavior, not a silent
      * opt-out.
+     *
+     * @param enabled whether the sky island shape applies
+     * @param radiusBlocks configured (unperturbed) island radius
+     * @param shapeAmplitude coastline perturbation strength
+     * @param islandBiome the one biome that fills the island's interior
+     * @param surfaceY the island's walkable surface Y
+     * @param thicknessBlocks how many blocks of solid ground extend below {@code surfaceY}
+     * @param chestTier the necessities-chest difficulty tier
+     * @param floatingIslands scattered small floating islands beyond this island's own footprint
      */
     public SkyIslandPlan(
         boolean enabled,

@@ -47,6 +47,19 @@ public record SkyIslandCustomization(
     /**
      * Legacy 12-arg construction, predating {@link #biomeExclusionZone} (DESIGN §27.10). Defaults
      * to the same always-on, 128-block posture {@code SkyIslandConfig} ships.
+     *
+     * @param islandBiome the one biome that fills the island's interior
+     * @param radiusBlocks configured (unperturbed) island radius
+     * @param shapeAmplitude coastline perturbation strength
+     * @param surfaceY the island's walkable surface Y
+     * @param thicknessBlocks how many blocks of solid ground extend below {@code surfaceY}
+     * @param chestTier the necessities-chest difficulty tier
+     * @param applyToNether whether the Nether is also a sky island
+     * @param overworldBorder optional Overworld size limit
+     * @param netherBorder Nether border selection
+     * @param endBorder End border selection
+     * @param netherExterior Nether exterior-terrain selection
+     * @param floatingIslands scattered small floating islands beyond this island's own footprint
      */
     public SkyIslandCustomization(
         String islandBiome,

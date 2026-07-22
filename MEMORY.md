@@ -2339,3 +2339,37 @@ Durable decisions, verified API notes, and rationale that should survive across 
   point it's actually used, not just assumed correct because an earlier,
   adjacent finding (13.1's `setInitialSpawn` timing) was independently
   confirmed against real sources.
+- 2026-07-21 — **Phase 14.1 (Nether-start feasibility spike, GOALS 27),
+  design only, DESIGN §31.** Verified against real 26.2 decompiled
+  sources: a new player's first spawn and a no-bed/no-anchor death both
+  ultimately read the same one value, `worldData.overworldData().
+  getRespawnData()` (a `GlobalPos`, not a hardcoded Overworld constant;
+  `PrepareSpawnTask`/`MinecraftServer.findRespawnDimension` both trace to
+  it). It's *initialized* to Overworld by `MinecraftServer.createLevels()`
+  → `setInitialSpawn`, which runs **before** the Nether `ServerLevel` is
+  constructed — confirmed by reading `createLevels()`'s actual body, not
+  assumed. This means this project's two existing early spawn hooks
+  (`MinecraftServerMixin`/`WorldzNeoForge.onCreateSpawnPosition`, both
+  feeding `SpawnOriginManager.resolveFreshOrigin`, DESIGN §18) cannot be
+  used to place a Nether-start spawn site — `nether_start` must leave
+  them alone (defer to whatever they'd otherwise do) and instead
+  overwrite the world-spawn default later, at `WorldLimitManager.
+  onServerStarted` (which already waits for every dimension including
+  Nether to exist), via `MinecraftServer.setRespawnData(...)` — the same
+  lever `/setworldspawn` uses at runtime. One overwrite there covers both
+  first-join and future no-anchor deaths, since both read the same stored
+  value live. Confirmed via the bundled vanilla data pack: Nether respawn
+  anchors work (beds explode), End has neither (both explode) — directly
+  relevant to Phase 15's End start, which will need the `forced`
+  `ServerPlayer.RespawnConfig` mechanism this spike also found (bypasses
+  the anchor/bed block-type check entirely, just requires non-solid/
+  non-liquid space) since neither vanilla mechanism works there at all.
+  **Jason's decision (2026-07-21):** the Nether spawn site itself uses
+  natural-search-first with a guaranteed-capsule fallback (mirrors Cave's
+  own `resolveCaveOrigin` two-phase precedent, DESIGN §30.3/§31.4) over
+  either "always guaranteed" or "pure natural search, no fallback" — the
+  explicit tradeoff was safety/predictability vs. immersion, and Cave's
+  existing hybrid pattern threaded the needle once already. TODO 14.2
+  split into 14.2a (core mechanic)/14.2b (chest tiers + typed preset
+  UI)/14.2c (test configs/docs/wrap-up), mirroring Phase 13's own
+  precedent for multi-part phases.
