@@ -128,6 +128,8 @@ public final class WorldzConfig {
     public CaveConfig cave = new CaveConfig();
     /** Defaults for the {@code jlt_worldz:nether_start} typed preset (GOALS 27; DESIGN §31). */
     public NetherStartConfig netherStart = new NetherStartConfig();
+    /** Defaults for the {@code jlt_worldz:end_start} typed preset (GOALS 34; DESIGN §32). */
+    public EndStartConfig endStart = new EndStartConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -245,6 +247,9 @@ public final class WorldzConfig {
         if (object.containsKey("netherStart")) {
             config.netherStart = readNetherStartConfig(object.get("netherStart"), "netherStart", logger);
         }
+        if (object.containsKey("endStart")) {
+            config.endStart = readEndStartConfig(object.get("endStart"), "endStart", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -305,6 +310,7 @@ public final class WorldzConfig {
         chunkIsland = sanitizeChunkIsland(chunkIsland, logger);
         cave = sanitizeCave(cave, logger);
         netherStart = sanitizeNetherStart(netherStart, logger);
+        endStart = sanitizeEndStart(endStart, logger);
         return this;
     }
 
@@ -494,6 +500,15 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static EndStartConfig sanitizeEndStart(EndStartConfig config, Logger logger) {
+        EndStartConfig sanitized = config == null ? new EndStartConfig() : config;
+        sanitized.chestTier = sanitized.chestTier == null ? StarterKitTier.MEDIUM : sanitized.chestTier;
+        sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "endStart.easyKit", logger);
+        sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "endStart.mediumKit", logger);
+        sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "endStart.hardKit", logger);
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -643,6 +658,7 @@ public final class WorldzConfig {
             + ", chunkIsland=" + chunkIslandSummary(chunkIsland)
             + ", cave=" + caveSummary(cave)
             + ", netherStart=" + netherStartSummary(netherStart)
+            + ", endStart=" + endStartSummary(endStart)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -671,6 +687,7 @@ public final class WorldzConfig {
         values.put("chunkIsland", chunkIslandMap(chunkIsland));
         values.put("cave", caveMap(cave));
         values.put("netherStart", netherStartMap(netherStart));
+        values.put("endStart", endStartMap(endStart));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1100,6 +1117,26 @@ public final class WorldzConfig {
         }
         if (map.containsKey("chestTier")) {
             config.chestTier = StarterKitTier.parse(readString(map.get("chestTier"), name + ".chestTier"));
+        }
+        return config;
+    }
+
+    private static EndStartConfig readEndStartConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        EndStartConfig config = new EndStartConfig();
+        if (map.containsKey("chestTier")) {
+            config.chestTier = StarterKitTier.parse(readString(map.get("chestTier"), name + ".chestTier"));
+        }
+        if (map.containsKey("easyKit")) {
+            config.easyKit = readStarterKitConfig(map.get("easyKit"), name + ".easyKit", logger);
+        }
+        if (map.containsKey("mediumKit")) {
+            config.mediumKit = readStarterKitConfig(map.get("mediumKit"), name + ".mediumKit", logger);
+        }
+        if (map.containsKey("hardKit")) {
+            config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
         }
         return config;
     }
@@ -1611,6 +1648,15 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> endStartMap(EndStartConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("chestTier", config.chestTier.serializedName());
+        values.put("easyKit", starterKitMap(config.easyKit));
+        values.put("mediumKit", starterKitMap(config.mediumKit));
+        values.put("hardKit", starterKitMap(config.hardKit));
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1778,6 +1824,13 @@ public final class WorldzConfig {
 
     private static String netherStartSummary(NetherStartConfig config) {
         return "spawnY=" + config.spawnY + ", chestTier=" + config.chestTier.serializedName();
+    }
+
+    private static String endStartSummary(EndStartConfig config) {
+        return "chestTier=" + config.chestTier.serializedName()
+            + ", easyKit=" + starterKitSummary(config.easyKit)
+            + ", mediumKit=" + starterKitSummary(config.mediumKit)
+            + ", hardKit=" + starterKitSummary(config.hardKit);
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

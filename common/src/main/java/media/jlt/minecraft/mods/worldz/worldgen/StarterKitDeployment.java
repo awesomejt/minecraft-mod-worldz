@@ -2,10 +2,12 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.config.CaveConfig;
+import media.jlt.minecraft.mods.worldz.config.EndStartConfig;
 import media.jlt.minecraft.mods.worldz.config.NetherStartConfig;
 import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
@@ -168,6 +170,50 @@ final class StarterKitDeployment {
     }
 
     private static StarterKitConfig tierConfig(NetherStartConfig config, StarterKitTier tier) {
+        return switch (tier) {
+            case EASY -> config.easyKit;
+            case MEDIUM -> config.mediumKit;
+            case HARD -> config.hardKit;
+        };
+    }
+
+    /**
+     * Places a filled chest set into the floor directly beneath the resolved guaranteed End
+     * platform (GOALS 34, DESIGN §32.5) -- the same "replace solid ground within the already-
+     * validated safe area" placement {@link #spawnNetherStartChest} uses. Filled from the selected
+     * difficulty tier's essentials/extras; no biome-driven item, same reasoning as {@link
+     * #spawnNetherStartChest} -- End-start has no biome concept of its own to key off. Called
+     * once, only for a new {@code end_start} world.
+     *
+     * @param end the End server level
+     * @param site the resolved guaranteed platform position (DESIGN §32.4)
+     * @param endStart the world's resolved End-start plan
+     */
+    static void spawnEndStartChest(ServerLevel end, BlockPos site, EndStartPlan endStart) {
+        BlockPos pos = site.below();
+        end.setBlock(pos, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+
+        StarterKitPlan plan = resolvePlan(tierConfig(WorldzCommon.config().endStart, endStart.chestTier()));
+        List<StarterKitPlan.ItemAmount> resolved = plan.resolve(end.getSeed());
+
+        BlockEntity blockEntity = end.getBlockEntity(pos);
+        if (!(blockEntity instanceof ChestBlockEntity chest)) {
+            WorldzCommon.LOGGER.warn("Could not create the GOALS 34 starter chest at {}.", pos);
+            return;
+        }
+        int slot = 0;
+        for (StarterKitPlan.ItemAmount amount : resolved) {
+            if (slot >= chest.getContainerSize()) {
+                break;
+            }
+            Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(amount.itemId()));
+            chest.setItem(slot, new ItemStack(item, amount.count()));
+            slot++;
+        }
+        WorldzCommon.LOGGER.info("Spawned the GOALS 34 End-start starter chest at {}.", pos);
+    }
+
+    private static StarterKitConfig tierConfig(EndStartConfig config, StarterKitTier tier) {
         return switch (tier) {
             case EASY -> config.easyKit;
             case MEDIUM -> config.mediumKit;

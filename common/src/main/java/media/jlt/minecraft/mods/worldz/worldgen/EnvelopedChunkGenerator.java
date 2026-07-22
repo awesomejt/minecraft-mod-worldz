@@ -7,6 +7,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
@@ -101,6 +102,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         CaveCodecs.PLAN_CODEC.optionalFieldOf("cave").forGetter(generator -> Optional.of(generator.cave)),
         NetherStartCodecs.PLAN_CODEC.optionalFieldOf("nether_start")
             .forGetter(generator -> Optional.of(generator.netherStart)),
+        EndStartCodecs.PLAN_CODEC.optionalFieldOf("end_start").forGetter(generator -> Optional.of(generator.endStart)),
         // Fieldless-preset hint only (DESIGN §30.1), mirroring LimitedBiomeSource's own
         // write-never "world_type" field exactly: lets a never-customized `jlt_worldz:cave`/
         // `jlt_worldz:nether_start` world default its plan from live config (below) without
@@ -219,6 +221,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * {@link #dimension}).
      */
     private final NetherStartPlan netherStart;
+    /**
+     * The End's guaranteed safe-spawn/starter-chest plan (GOALS 34, DESIGN §32), persisted
+     * directly on this generator's own codec -- mirrors {@link #netherStart}'s exact precedent
+     * (a generator-owned plan needing no biome-source involvement), just for the End instead of
+     * the Nether since {@code end_start} leaves both the Overworld and the Nether ordinary
+     * vanilla terrain (DESIGN §32.3). Threaded through every {@code customized(...)} overload the
+     * same way regardless of dimension; only the End instance ever actually uses it (constructor
+     * picks based on {@link #dimension}).
+     */
+    private final EndStartPlan endStart;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -228,7 +240,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         SkyIslandPlan netherSkyIsland,
         ChunkIslandPlan nonOverworldChunkIsland,
         CavePlan cave,
-        NetherStartPlan netherStart
+        NetherStartPlan netherStart,
+        EndStartPlan endStart
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
@@ -247,6 +260,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.nonOverworldChunkIsland = dimension != Dimension.OVERWORLD ? nonOverworldChunkIsland : ChunkIslandPlan.disabled();
         this.cave = dimension == Dimension.OVERWORLD ? cave : CavePlan.disabled();
         this.netherStart = dimension == Dimension.NETHER ? netherStart : NetherStartPlan.disabled();
+        this.endStart = dimension == Dimension.END ? endStart : EndStartPlan.disabled();
     }
 
     /**
@@ -306,6 +320,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     public NetherStartPlan netherStart() {
         return this.netherStart;
+    }
+
+    /**
+     * Returns the End-start plan active for this dimension (GOALS 34, DESIGN §32), disabled for
+     * every other preset and for every non-End instance.
+     *
+     * @return resolved End-start plan
+     */
+    public EndStartPlan endStart() {
+        return this.endStart;
     }
 
     /**
@@ -481,6 +505,43 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
     /**
      * Wraps a generator with an explicit envelope, strip-world plan, Nether sky island plan,
+     * chunk-island plan, cave plan, Nether-start plan, and End-start plan selected during world
+     * creation (GOALS 34, DESIGN §32).
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param dimension which dimension this instance wraps
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @param netherSkyIsland resolved Nether sky island plan, disabled for every other preset
+     *     and ignored entirely for non-Nether instances
+     * @param nonOverworldChunkIsland resolved Nether/End chunk-island plan, disabled for every
+     *     other preset and ignored entirely for the Overworld instance
+     * @param cave resolved cave plan, disabled for every other preset and ignored entirely for
+     *     non-Overworld instances
+     * @param netherStart resolved Nether-start plan, disabled for every other preset and ignored
+     *     entirely for non-Nether instances
+     * @param endStart resolved End-start plan, disabled for every other preset and ignored
+     *     entirely for non-End instances
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        Dimension dimension,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland,
+        ChunkIslandPlan nonOverworldChunkIsland,
+        CavePlan cave,
+        NetherStartPlan netherStart,
+        EndStartPlan endStart
+    ) {
+        return new EnvelopedChunkGenerator(
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart
+        );
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope, strip-world plan, Nether sky island plan,
      * chunk-island plan, cave plan, and Nether-start plan selected during world creation (GOALS
      * 27, DESIGN §31).
      *
@@ -508,8 +569,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         CavePlan cave,
         NetherStartPlan netherStart
     ) {
-        return new EnvelopedChunkGenerator(
-            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart
+        return customized(
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, EndStartPlan.disabled()
         );
     }
 
@@ -673,6 +734,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Optional<ChunkIslandPlan> encodedChunkIsland,
         Optional<CavePlan> encodedCave,
         Optional<NetherStartPlan> encodedNetherStart,
+        Optional<EndStartPlan> encodedEndStart,
         Optional<String> worldType
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
@@ -711,8 +773,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 ? NetherStartPlan.fromConfig(WorldzCommon.config().netherStart)
                 : NetherStartPlan.disabled()
         );
+        EndStartPlan endStart = encodedEndStart.orElseGet(
+            () -> dimension == Dimension.END && worldType.filter("end_start"::equals).isPresent()
+                ? EndStartPlan.fromConfig(WorldzCommon.config().endStart)
+                : EndStartPlan.disabled()
+        );
         return new EnvelopedChunkGenerator(
-            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart
         );
     }
 

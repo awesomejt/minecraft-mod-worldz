@@ -2434,3 +2434,21 @@ Durable decisions, verified API notes, and rationale that should survive across 
   into 15.2a (core mechanic)/15.2b (chest tiers + typed preset UI)/15.2c
   (test configs/docs/wrap-up), mirroring Phase 13/14's own precedent for
   multi-part phases.
+- 2026-07-22 — **Phase 15.2a (End-start core mechanic, GOALS 34), 0.2.67.**
+  Implementation matched DESIGN §32 exactly, no deviations. `EndStartPlan`
+  persists on the End's `EnvelopedChunkGenerator` (mirrors `NetherStartPlan`,
+  gated on `Dimension.END`); `EndStartDeployment.buildAndRedirectSpawn`
+  always builds the guaranteed end-stone capsule (no natural search, per
+  Jason's 15.1 decision) and reuses `nether_start`'s exact `setRespawnData`
+  lever, just targeting `Level.END`. **Bug found while writing
+  `EndStartConfig`'s YAML plumbing (not fixed here, tracked as TODO
+  15.2a-bugfix)**: `nether_start`'s own equivalent config code (shipped
+  0.2.66) never reads, sanitizes, or writes back its `easyKit`/`mediumKit`/
+  `hardKit` sections at all -- `readNetherStartConfig` doesn't call
+  `readStarterKitConfig` for any of the three, `sanitizeNetherStart` never
+  calls `sanitizeStarterKit`, and `netherStartMap`/`netherStartSummary`
+  never mention them either. A user's `netherStart.easyKit:` YAML edits
+  have silently done nothing since 0.2.66 shipped -- low severity (the
+  built-in defaults are still sane) but a genuine defect, distinct from
+  every other kit-bearing typed preset (`skyIsland`/`cave`/`oceanIsland`/
+  the new `endStart`), all of which correctly wire all four touch points.

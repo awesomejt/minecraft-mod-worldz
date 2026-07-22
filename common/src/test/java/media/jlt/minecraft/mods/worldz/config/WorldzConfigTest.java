@@ -583,6 +583,16 @@ class WorldzConfigTest {
                 + ", hardKit=essentials=[minecraft:torch:8], extras=[minecraft:bread:2, minecraft:coal:4],"
                 + " extrasCount=1"
                 + ", netherStart=spawnY=32, chestTier=medium"
+                + ", endStart=chestTier=medium"
+                + ", easyKit=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
+                + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1],"
+                + " extras=[minecraft:iron_chestplate:1, minecraft:iron_helmet:1, minecraft:golden_apple:2,"
+                + " minecraft:ender_pearl:4], extrasCount=3"
+                + ", mediumKit=essentials=[minecraft:firework_rocket:8, minecraft:cobblestone:32, minecraft:bread:4,"
+                + " minecraft:iron_sword:1], extras=[minecraft:arrow:16, minecraft:bow:1, minecraft:ender_pearl:2],"
+                + " extrasCount=2"
+                + ", hardKit=essentials=[minecraft:bread:2],"
+                + " extras=[minecraft:arrow:8, minecraft:ender_pearl:1], extrasCount=1"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1118,6 +1128,45 @@ class WorldzConfigTest {
 
         assertEquals(NetherStartPlan.MIN_SPAWN_Y, tooLow.netherStart.spawnY);
         assertEquals(NetherStartPlan.MAX_SPAWN_Y, tooHigh.netherStart.spawnY);
+    }
+
+    @Test
+    void endStartSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            endStart:
+              chestTier: hard
+              easyKit:
+                essentials: ["minecraft:firework_rocket:99"]
+                extras: []
+                extrasCount: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(StarterKitTier.HARD, config.endStart.chestTier);
+        assertEquals(List.of("minecraft:firework_rocket:99"), config.endStart.easyKit.essentials);
+        assertEquals(0, config.endStart.easyKit.extrasCount);
+    }
+
+    @Test
+    void endStartDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals(StarterKitTier.MEDIUM, config.endStart.chestTier);
+        assertFalse(config.endStart.easyKit.essentials.isEmpty());
+        assertFalse(config.endStart.mediumKit.essentials.isEmpty());
+        assertFalse(config.endStart.hardKit.essentials.isEmpty());
+    }
+
+    @Test
+    void endStartKitExtrasCountIsClampedWhenPoolIsEmpty() {
+        WorldzConfig config = WorldzConfig.parse("""
+            endStart:
+              hardKit:
+                essentials: []
+                extras: []
+                extrasCount: 5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.endStart.hardKit.extrasCount);
     }
 
     @Test

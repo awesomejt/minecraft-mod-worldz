@@ -216,6 +216,12 @@ public final class LimitedBiomeSource extends BiomeSource {
         // exactly like cave's own hint above.
         boolean netherStartDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("nether_start"::equals).orElse(false);
+        // Same fix, same reason, for end_start (GOALS 34, DESIGN §32): this hint only affects
+        // LimitedBiomeSource's own biome/starter/layout defaults -- EndStartPlan itself is read
+        // from EnvelopedChunkGenerator's own codec, never from here (§32.3), exactly like
+        // nether_start's own hint above.
+        boolean endStartDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("end_start"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -223,7 +229,8 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults
+                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
+                        || netherStartDefaults || endStartDefaults
                         ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                         : () -> resolveConfiguredBiomes(config, biomeGetter));
 

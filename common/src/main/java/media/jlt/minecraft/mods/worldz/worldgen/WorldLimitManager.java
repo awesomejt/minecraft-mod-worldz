@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.logic.BorderSchedule;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
@@ -95,6 +96,15 @@ public final class WorldLimitManager {
         NetherStartPlan netherStart = netherGenerator instanceof EnvelopedChunkGenerator enveloped
             ? enveloped.netherStart()
             : NetherStartPlan.disabled();
+        // End-start (GOALS 34, DESIGN §32) reads its plan straight off the End generator, mirroring
+        // Nether-start's own precedent exactly -- fetched early for the same reason netherStart is,
+        // though it likewise never joins the exteriorObjective gate (it's the primary mechanism,
+        // not a fallback) and gates on its own needsEndStart flag below instead.
+        ServerLevel end = server.getLevel(Level.END);
+        ChunkGenerator endGenerator = end == null ? null : end.getChunkSource().getGenerator();
+        EndStartPlan endStart = endGenerator instanceof EnvelopedChunkGenerator enveloped
+            ? enveloped.endStart()
+            : EndStartPlan.disabled();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
             && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()
                 || overworldIsland.enabled() || overworldSkyIsland.enabled() || overworldChunkIsland.enabled()))
@@ -122,8 +132,12 @@ public final class WorldLimitManager {
         // Same reasoning again for Nether-start's own safe-site resolution (GOALS 27, DESIGN
         // §31.2): every nether_start world needs its world-spawn redirect, unconditionally.
         boolean needsNetherStart = netherStart.enabled();
+        // Same reasoning again for End-start's own guaranteed-platform placement (GOALS 34,
+        // DESIGN §32.4): every end_start world needs its world-spawn redirect, unconditionally.
+        boolean needsEndStart = endStart.enabled();
         if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest
-            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsCaveChest && !needsNetherStart) {
+            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsCaveChest
+            && !needsNetherStart && !needsEndStart) {
             return;
         }
 
@@ -176,9 +190,12 @@ public final class WorldLimitManager {
                 StarterKitDeployment.spawnNetherStartChest(nether, site, netherStart);
             }
         }
-        ServerLevel end = server.getLevel(Level.END);
         if (end != null) {
             initializeEndBorder(end, plan.end(), plan.overworld());
+            if (needsEndStart) {
+                BlockPos site = EndStartDeployment.buildAndRedirectSpawn(overworld, end);
+                StarterKitDeployment.spawnEndStartChest(end, site, endStart);
+            }
         }
         overworld.getDataStorage().set(
             WorldLimitState.TYPE,

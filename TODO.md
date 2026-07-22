@@ -2316,7 +2316,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       always-available fallback (hand-mining the platform's own end stone
       to bridge across, §32.2). Split 15.2 into 15.2a-c below, mirroring
       Phase 13/14's own precedent for multi-part phases.
-- [ ] 15.2a Core mechanic: `EndStartPlan`/codec (persisted on the End's
+- [x] 15.2a Core mechanic: `EndStartPlan`/codec (persisted on the End's
       `EnvelopedChunkGenerator`, mirrors `NetherStartPlan`, DESIGN §32.3),
       `EndStartDeployment.buildEndPlatform` (guaranteed enclosed end-stone
       capsule at a fixed outer-island-belt point, DESIGN §32.4, no natural
@@ -2324,6 +2324,32 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       onServerStarted` hook that overwrites the world's default spawn to
       `Level.END` at the resolved site (DESIGN §32.4). JUnit-covered pure
       logic where possible, mirroring `NetherStartPlanTest`'s precedent.
+      **Done (0.2.67), backend only -- not yet in-game testable.** No
+      typed preset is registered yet (that's 15.2b), so `EndStartPlan` can
+      never resolve enabled today, matching 14.2a's own precedent exactly.
+      Implementation matched the design in DESIGN §32 with no deviations.
+      `EndStartConfig`/`EndStartPlan` also gained proper starter-kit
+      config plumbing (read/sanitize/summary all call `readStarterKitConfig`/
+      `sanitizeStarterKit`/`starterKitSummary` for `easyKit`/`mediumKit`/
+      `hardKit`) from day one -- while writing it, found that
+      `nether_start`'s own equivalent (`readNetherStartConfig`/
+      `sanitizeNetherStart`/`netherStartMap`/`netherStartSummary`, shipped
+      0.2.66) is missing all four of those calls, meaning a user's
+      `netherStart.easyKit`/`mediumKit`/`hardKit` YAML customization has
+      never actually been read, sanitized, or round-tripped back out --
+      silently falls back to the built-in defaults every time. Logged as
+      new tracked work below rather than fixed silently inside this
+      Phase-15 commit (it predates this phase, shipped in 14.2b).
+- [ ] 15.2a-bugfix **[found during 15.2a, not yet fixed]** `nether_start`'s
+      `WorldzConfig` plumbing (`readNetherStartConfig`/`sanitizeNetherStart`/
+      `netherStartMap`/`netherStartSummary`) never reads, sanitizes, or
+      writes back `easyKit`/`mediumKit`/`hardKit` -- copy `end_start`'s
+      now-correct equivalents (`readEndStartConfig`/`sanitizeEndStart`/
+      `endStartMap`/`endStartSummary`, DESIGN §32.6/TODO 15.2a) as the
+      reference shape. Low severity (the built-in defaults are still sane
+      and always apply), but a real defect: any of Jason's own
+      `netherStart.easyKit`/etc. YAML customizations are silently ignored
+      today.
 - [ ] 15.2b Starter chest tiers (DESIGN §32.5, reuses `StarterKitTier`/
       `StarterKitConfig`; easy = rockets + blocks + food + bow/armor,
       medium = fewer rockets/lighter gear, hard = no rockets, no
