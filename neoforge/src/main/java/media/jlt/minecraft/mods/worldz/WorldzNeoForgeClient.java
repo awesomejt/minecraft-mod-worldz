@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz;
 
 import media.jlt.minecraft.mods.worldz.client.CavePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.ChaosBiomesPresetEditor;
+import media.jlt.minecraft.mods.worldz.client.EndStartPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.NetherStartPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
@@ -31,5 +32,6 @@ final class WorldzNeoForgeClient {
         event.register(SkyChunkPresetEditor.SKY_CHUNK_PRESET, SkyChunkPresetEditor.INSTANCE);
         event.register(CavePresetEditor.CAVE_PRESET, CavePresetEditor.INSTANCE);
         event.register(NetherStartPresetEditor.NETHER_START_PRESET, NetherStartPresetEditor.INSTANCE);
+        event.register(EndStartPresetEditor.END_START_PRESET, EndStartPresetEditor.INSTANCE);
     }
 }

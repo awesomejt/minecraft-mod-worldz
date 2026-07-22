@@ -2350,7 +2350,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       and always apply), but a real defect: any of Jason's own
       `netherStart.easyKit`/etc. YAML customizations are silently ignored
       today.
-- [ ] 15.2b Starter chest tiers (DESIGN §32.5, reuses `StarterKitTier`/
+- [x] 15.2b Starter chest tiers (DESIGN §32.5, reuses `StarterKitTier`/
       `StarterKitConfig`; easy = rockets + blocks + food + bow/armor,
       medium = fewer rockets/lighter gear, hard = no rockets, no
       guaranteed weapon) placed at the resolved site, plus the typed
@@ -2359,6 +2359,21 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       `normal` tag + lang keys, both loaders' registration (wraps
       `LevelStem.END` with `EnvelopedChunkGenerator`, the second preset to
       do so after `sky_chunk`, DESIGN §29.5/§32.6).
+      **Done (0.2.68), in-game testable now.** `end_start` shows up as
+      the tenth "Worldz" World Type entry. `StarterKitDeployment.
+      spawnEndStartChest` places the chest the same way `nether_start`'s
+      own optional chest is (floor block beneath the resolved site,
+      `WorldLimitManager`'s new `needsEndStart`/`end != null` branch).
+      Typed-preset scaffolding mirrors `nether_start`'s exactly (§32.6)
+      with the same structural difference cave/nether_start already
+      established: `end_start`'s `world_type` hint sits on the *End's*
+      enveloped generator (its plan is End-attached, §32.3), not the
+      Overworld's or Nether's -- both of those wrap `EnvelopedChunkGenerator`
+      only for the uniform infra every preset already gets, carrying no
+      hint of their own. New structural regression tests mirroring every
+      prior typed preset's own precedent (`WorldPresetResourcesTest`,
+      `ProjectMetadataTest`), plus updated the `normal` tag's now-10-entry
+      count assertion.
 - [ ] 15.2c Test configs (default/each chest tier); docs (README,
       MANUAL_TESTING.md, config/tests/README.md); phase wrap-up. **[Jason]**
       acceptance (ideally including a hardcore run's early game) — does
