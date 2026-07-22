@@ -2470,3 +2470,34 @@ Durable decisions, verified API notes, and rationale that should survive across 
   equivalent code from scratch surfaced the missing calls by comparison
   against `cave`'s complete version, not through any dedicated review of
   `nether_start` itself.
+- 2026-07-22 — **Phase 16.1 (Flat worlds design pass, GOALS 15/16/22),
+  design only, DESIGN §33.** Verified against the real 26.2 decompiled
+  sources that `FlatLevelSource.applyCarvers` is a literal no-op --
+  vanilla's flat generator has zero noise/carving capability, confirming
+  GOALS 15 and 16 need two separate generators/typed presets, not one
+  preset with a toggle. `jlt_worldz:flat` (GOAL 15) wraps `FlatLevelSource`
+  directly, low risk. `jlt_worldz:deep_flat` (GOAL 16, caves/cave biomes/
+  rivers) wraps a real `NoiseBasedChunkGenerator` delegate with a new
+  "cap to a flat surface Y, biome-aware (land vs. river/ocean water),
+  keep real terrain below" `EnvelopedChunkGenerator` post-processing
+  pass -- reuses this project's own already-proven "delegate then
+  replace blocks" pattern instead of a materially riskier custom-
+  density-function approach (verified technically feasible via
+  `overworld/offset`'s spline graph, deliberately not chosen -- same
+  "prefer the boring, already-proven mechanism" reasoning that resolved
+  Phase 5c's own soft-void spike, DESIGN §21.2). This also means GOAL 16
+  gets real seed-driven caves/cave biomes/structures for free with zero
+  new noise code, and GOAL 22 (buried structures) is satisfied by
+  construction for `deep_flat` (structures place at their natural real
+  depth, already below the flat cap in the overwhelming majority of
+  columns) -- classic `flat` has no real terrain to bury into, so GOAL
+  22 there is a documented depth-guidance recommendation, not enforced.
+  Re-verified (not just carried forward) DESIGN §19's existing claim
+  that `trial_chambers` is an ordinary structure set with no special
+  terrain dependency, and the real Y-40 slime-spawn cutoff
+  (`Slime.checkSlimeSpawnRules`) for GOAL 15's spawn-Y option. No
+  genuine gameplay/scope question found this pass -- the generator-
+  architecture choice is an engineering call within the executor's own
+  remit, not gated on Jason's input. TODO 16.2 split into 16.2a (classic
+  flat)/16.2b (deep flat)/16.2c (structures/underground-content
+  acceptance, docs, wrap-up), mirroring Phase 13/14/15's own precedent.

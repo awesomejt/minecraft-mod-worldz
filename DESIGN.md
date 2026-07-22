@@ -4589,3 +4589,212 @@ test pattern every prior typed preset established (`WorldPresetResourcesTest`,
   `RespawnConfig` at all). Left here as a corrected pointer for any future
   preset that does need a real per-player forced spawn.
 
+## §33. Phase 16: Flat worlds (GOALS 15, 16, 22)
+
+### 33.1 Two architecturally distinct generators, not one preset with a toggle
+
+Verified directly against the real 26.2 decompiled sources
+(`FlatLevelSource.java`, `FlatLevelGeneratorSettings.java`): vanilla's flat
+generator has **no noise/carving capability whatsoever** —
+`FlatLevelSource.applyCarvers` is a literal empty override, and
+`fillFromNoise` just paints each column with the same fixed list of
+`BlockState` layers regardless of X/Z (`FlatLevelSource.java:67-89`). This
+confirms GOALS 15 and 16 need two different `ChunkGenerator`
+implementations, not one preset with a mode switch:
+
+- **GOAL 15 (classic flat)** — a genuine wrap of vanilla `FlatLevelSource`
+  itself, mirroring the "editor over an existing vanilla generator" shape
+  DESIGN §19 already scoped. Low risk: every method `EnvelopedChunkGenerator`
+  needs from its delegate (`fillFromNoise`, `buildSurface`, `applyCarvers`,
+  `getBaseHeight`, `getBaseColumn`, `getSpawnHeight`) is already implemented
+  by `FlatLevelSource`, so wrapping it works by substitution exactly like
+  wrapping `NoiseBasedChunkGenerator` does today. The few call sites that
+  special-case `instanceof NoiseBasedChunkGenerator` (real climate sampling
+  for `preferred_natural_biome`, natural-island search) already have a
+  graceful "can't build a real climate sampler" fallback for any other
+  delegate type (`SpawnOriginManager.resolveFreshOrigin`/
+  `resolveNaturalIslandOrigin`) — no new fallback code needed there.
+- **GOAL 16 (deep flat, seeded caves/cave biomes/rivers)** — cannot use
+  `FlatLevelSource` at all (confirmed above: zero carving). Two candidate
+  architectures were evaluated:
+  1. **Density-function surgery**: ship a custom `jlt_worldz`-namespaced
+     `noise_settings` overriding vanilla's `overworld/offset` (the
+     continentalness/erosion/ridge spline graph that shapes hills —
+     verified in `data/minecraft/worldgen/density_function/overworld/
+     offset.json`, a deeply nested spline keyed on
+     `minecraft:overworld/continents`/`erosion`) with a near-constant
+     value, while leaving `overworld/base_3d_noise` (the separate cave/
+     noise term combined into `sloped_cheese`, verified in
+     `.../sloped_cheese.json`) untouched. Technically real (this is the
+     same data-driven mechanism vanilla's own `amplified`/`large_biomes`
+     noise-settings variants use), but high risk for this project's
+     JUnit-only test policy: the result can only be judged by eye in-game,
+     tuning a hand-written spline-replacement is fiddly, and nothing in
+     this codebase has ever touched density functions before.
+  2. **Delegate-then-cap** (chosen): wrap a real, unmodified
+     `NoiseBasedChunkGenerator` delegate exactly like `cave`/`single_biome`/
+     `chaos_biomes` already do, and add one new `EnvelopedChunkGenerator`
+     post-processing pass (the same "replace blocks after the delegate
+     finishes" shape every existing envelope/exterior/starter-land feature
+     already uses, DESIGN §20) that, per column: clears everything above a
+     configured flat-surface Y to air (removing hills), and unconditionally
+     paints a fixed land-layer cap (the same editable layer list as GOAL
+     15) immediately below it — **except** where the real biome at that
+     column is a river/ocean biome, which gets a water-surface cap instead
+     (see §33.4). Everything below the cap is the delegate's own real
+     terrain, completely untouched: caves, cave biomes, aquifers, ores, and
+     buried structures all come from vanilla's own proven pipeline with
+     **zero new density-function code**. Chosen over option 1 because it
+     reuses a pattern already proven and tested throughout this entire
+     codebase instead of introducing a wholly new, unverifiable-by-JUnit
+     risk class — the same "prefer the boring, already-proven mechanism"
+     reasoning that resolved Phase 5c's soft-void spike (DESIGN §21.2)
+     toward its own lowest-risk option.
+
+Two separate typed presets follow from this, not one preset with a field:
+`jlt_worldz:flat` (GOAL 15) and `jlt_worldz:deep_flat` (GOAL 16) — matching
+this project's existing precedent of one typed preset per distinct
+generator shape (`nether_start`/`end_start` are separately typed despite
+being conceptually close for the same reason). TODO 16.2 splits into
+16.2a (classic flat)/16.2b (deep flat)/16.2c (structures, test configs,
+docs), mirroring Phase 13/14/15's own precedent for multi-part phases.
+
+### 33.2 `jlt_worldz:flat` (GOAL 15): classic flat, editor over `FlatLevelSource`
+
+`FlatLevelGeneratorSettings` (verified fields, `FlatLevelGeneratorSettings.
+java:35-59`): an ordered `layers` list (`FlatLayerInfo`: height + block,
+`updateLayers()` expands it into one `BlockState` per Y), a single fixed
+`biome` for the whole world (via `FixedBiomeSource`), `lakes`/`features`
+(`decoration`) booleans, and an optional `structure_overrides` — a
+`HolderSet<StructureSet>`; when absent, every registered structure set is
+eligible (`FlatLevelSource.createState`), when present only the listed
+sets place at all. A bedrock floor is not a separate toggle — it is just
+whether the layer list's bottom entry is a `Blocks.BEDROCK` layer or not,
+exactly like vanilla's own `classic_flat`/`overworld` presets already do
+it (verified: `data/minecraft/worldgen/flat_level_generator_preset/
+overworld.json`'s first layer is `{"block": "minecraft:bedrock",
+"height": 1}`).
+
+`FlatPlan` (new record, mirrors `CavePlan`'s "generator-owned, no
+`LimitedBiomeSource` involvement" shape, DESIGN §30.1): `enabled`,
+`layers` (ordered list of block id + thickness), `biome`, `lakes`,
+`decoration`, `structureOverrides` (list of structure-set ids, empty =
+every set eligible, matching vanilla's own "absent means all" default),
+`spawnY` (explicit override so the "avoid slimes" preset can force
+spawn at/above Y 40 regardless of layer total — see §33.3). Persists on
+`EnvelopedChunkGenerator`'s own codec (a new `flat` field, gated on
+`Dimension.OVERWORLD` like `cave`), which wraps a `FlatLevelSource` built
+from the resolved `FlatLevelGeneratorSettings` as its `delegate` instead
+of the usual `NoiseBasedChunkGenerator` — everything else about
+`EnvelopedChunkGenerator` (borders, exteriors, progression guarantees)
+applies identically regardless of delegate type (§33.1).
+
+**Structure checklist** (GOAL 22's "individually" requirement, DESIGN §19):
+exposes every real, verified structure-set id
+(`villages`/`strongholds`/`mineshafts`/`pillager_outposts`/
+`ruined_portals`/`ocean_monuments`/`ocean_ruins`/`shipwrecks`/
+`buried_treasures`/`desert_pyramids`/`jungle_temples`/`swamp_huts`/
+`trail_ruins`/`ancient_cities`/`trial_chambers`/`igloos`/`nether_fossils`/
+`woodland_mansions`; `nether_complexes`/`end_cities` excluded — this preset
+is Overworld-only) as independent toggles building the `structureOverrides`
+list. `trial_chambers` is a real, ordinary `random_spread` structure set
+(verified `data/minecraft/worldgen/structure_set/trial_chambers.json`) with
+no special terrain dependency, confirming DESIGN §19's existing finding
+that vanilla's own `overworld` flat preset simply never lists it by
+choice, not because it can't place on flat ground (§19's "structure
+difference is preset configuration rather than an inherent limitation"
+claim re-verified, not just carried forward).
+
+**GOAL 22 (buried structures) for classic flat, honestly scoped**: with no
+real terrain variance to bury into, an underground structure set (a
+stronghold, ancient city, or trial chambers) is only as "buried" as the
+layer editor's own stone depth makes it — this is a documentation
+recommendation (a minimum stone-layer depth guidance in the layer editor's
+own UI hint text and README), not a new validation rule enforced at codec
+level; a player who enables `ancient_cities` over a 5-block stone layer
+gets an honestly-clipped result, the same "player's own configuration
+choice" posture every other layer/depth setting in this project already
+takes.
+
+### 33.3 Spawn-Y / slime avoidance (GOAL 15)
+
+Verified against the real 26.2 source (`Slime.checkSlimeSpawnRules`,
+`net/minecraft/world/entity/monster/cubemob/Slime.java:73-92`): an
+underground slime only ever spawns where `pos.getY() < 40` **and** the
+chunk hashes as a "slime chunk" (`WorldgenRandom.seedSlimeChunk(...).
+nextInt(10) == 0`, roughly 1 in 10 chunks) — a hard Y-40 cutoff, not a
+darkness/biome condition. `FlatPlan.spawnY` defaults to the layer list's
+own natural top (vanilla's existing `FlatLevelSource.getSpawnHeight`
+behavior, unchanged) but can be forced to any explicit Y; the editor's
+"avoid slimes" preset simply sets both the surface layer height and
+`spawnY` at or above 40, while a "classic shallow" preset intentionally
+matches vanilla's own thin classic-flat layout (bedrock+stone+dirt+grass,
+surface around Y 4) for players who want the traditional look, slimes
+included.
+
+### 33.4 `jlt_worldz:deep_flat` (GOAL 16): real terrain, capped to a flat surface
+
+`DeepFlatPlan` (new record, generator-owned like `FlatPlan`): `enabled`,
+`surfaceY` (the flat cap height, default `64` — vanilla sea level, giving
+up to ~127 blocks of real generated terrain below for caves within the
+Overworld's 384-block build height), `capLayers` (the same editable
+land-layer list `FlatPlan` uses, painted immediately below `surfaceY`),
+`riversEnabled` (GOAL 16's own option), `riverExclusionRadiusBlocks`
+(GOAL 16's "far away from spawn" requirement — reuses this project's
+existing exclusion-zone convention, e.g. sky island's
+`exclusionZoneRadiusBlocks`, rather than a new mechanism).
+
+**The cap pass** (new `EnvelopedChunkGenerator` post-processing step,
+mirrors the existing envelope/starter-land "replace blocks after the
+delegate's own `fillFromNoise` runs" shape, DESIGN §20): for each column,
+above `surfaceY` everything clears to air (hills removed); the
+`capLayers` band paints unconditionally immediately below `surfaceY`
+**unless** the delegate's real biome at that column is a river or ocean
+biome (checked via the standard `BiomeTags.IS_RIVER`/`IS_OCEAN` tags the
+same way other biome-driven decisions in this codebase already read
+them, e.g. `SpawnOriginManager.isOceanBiomeAt`), in which case the cap
+band is a shallow water-surface fill instead (matching sea level's real
+water-top convention) — this is what makes a real river visible at the
+flat surface rather than silently paved over. Below the cap: completely
+untouched real vanilla terrain — caves, cave biomes (full vanilla
+variety already falls out for free the same way it does for `cave`/
+`single_biome`, no new code, since the delegate is an ordinary,
+unrestricted `NoiseBasedChunkGenerator`), aquifers, ores, and structures
+at their natural depth (GOAL 22 satisfied by construction here, unlike
+classic flat — a structure only ever generates where vanilla itself would
+place it, which for every underground-structure set is already below
+`surfaceY` in the overwhelming majority of columns as long as `surfaceY`
+is set at a reasonable height).
+
+**Known, accepted cosmetic gap, not engineered around** (same posture as
+every other "log it, don't chase it" entry in this project, e.g. §31.2's
+bonus-chest quirk): a natural cave or structure that happens to break the
+surface *above* `surfaceY` gets silently capped over by the flat pass —
+rare, harmless, not worth a special-case check.
+
+### 33.5 Layer text import/export (DESIGN §19's own requirement)
+
+Verified: unlike Bedrock Edition, vanilla Java's own flat-world screens
+(`CreateFlatWorldScreen`/`PresetFlatWorldScreen`) are pure GUI list
+editors with no string encode/decode API at all — there is no existing
+vanilla text format to reuse. Worldz defines its own, reusing the
+project's already-established `id:count`-style convention
+(`StarterKitPlan.ItemAmount.parse`, e.g. `minecraft:obsidian:10`) rather
+than inventing a new syntax: a comma-separated `block:height` list,
+bottom layer first (e.g. `minecraft:bedrock:1,minecraft:stone:59,
+minecraft:dirt:3,minecraft:grass_block:1`), parsed and re-serialized by
+both the layer editor's text box and the YAML config's own `layers`/
+`capLayers` list representation.
+
+### 33.6 Deferred, not in this phase's scope
+
+- **Density-function-based flattening** (§33.1's option 1) — logged as
+  the road not taken, not attempted; revisit only if the delegate-then-cap
+  approach's in-game results (surface transitions at the cap boundary,
+  river/ocean visual quality) turn out unacceptable after Jason's
+  acceptance testing.
+- **Non-Overworld flat variants** — GOALS 15/16/22 all read as Overworld-
+  scoped (a "flat world" challenge is about the Overworld experience);
+  no Nether/End flat variant is in scope here, matching Cave's own
+  Overworld-only precedent (DESIGN §30.6).
+

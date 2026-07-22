@@ -2402,7 +2402,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
 
 ## Phase 16 — Flat worlds (GOALS 15, 16, 22)
 
-- [ ] 16.1 Design pass against DESIGN §19's verified `FlatLevelSource`
+- [x] 16.1 Design pass against DESIGN §19's verified `FlatLevelSource`
       research: layer editor (arbitrary block layers/thicknesses, presets,
       text import/export), optional bedrock floor, structure toggles incl.
       the trial-chambers placement spike, spawn-Y/slime option (15);
@@ -2410,8 +2410,49 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       (16 — likely noise-based underground below a flat surface, spike
       needed); underground structures buried at natural depth rather than
       floating (22).
-- [ ] 16.2 Implement `flat` world type(s) per design; test configs; docs;
-      **[Jason]** acceptance.
+      **Done, no code (design only).** Full design in DESIGN §33. Verified
+      against real 26.2 sources that `FlatLevelSource` has zero noise/
+      carving capability at all (`applyCarvers` is a literal no-op) —
+      GOALS 15 and 16 need two architecturally different generators, not
+      one preset with a toggle: `jlt_worldz:flat` (GOAL 15) wraps vanilla
+      `FlatLevelSource` directly (low risk, mirrors DESIGN §19's original
+      scoping); `jlt_worldz:deep_flat` (GOAL 16) wraps a real, unmodified
+      `NoiseBasedChunkGenerator` delegate (same as `cave`/`single_biome`)
+      with a new post-processing "cap to a flat surface Y, keep real
+      terrain below" pass, giving genuine seed-driven caves/cave biomes/
+      structures for free with zero new noise-density-function code —
+      chosen over a custom-density-function approach (technically real,
+      verified feasible via `overworld/offset`'s spline graph, but
+      rejected as materially higher-risk and unverifiable by this
+      project's JUnit-only policy, §33.1). Verified `trial_chambers` is
+      an ordinary structure set with no special terrain dependency
+      (re-confirms, doesn't just carry forward, DESIGN §19's existing
+      claim). Verified the real Y-40 slime-spawn cutoff
+      (`Slime.checkSlimeSpawnRules`) for GOAL 15's spawn-Y option. No
+      genuine gameplay/scope question found needing Jason's decision —
+      the architecture choices above are engineering calls within the
+      executor's own remit (AGENTS.md's Roles section), flagged clearly
+      in DESIGN and here rather than gated on a question. TODO 16.2 split
+      into 16.2a (classic flat)/16.2b (deep flat)/16.2c (structures, test
+      configs, docs), mirroring Phase 13/14/15's own precedent for
+      multi-part phases.
+- [ ] 16.2a Implement `jlt_worldz:flat` (GOAL 15, DESIGN §33.2-33.3):
+      `FlatPlan`/codec, layer editor UI (arbitrary layers, text import/
+      export per §33.5, built-in presets), structure-set checklist,
+      spawn-Y/slime-avoidance option, typed preset + registration; test
+      configs; docs.
+- [ ] 16.2b Implement `jlt_worldz:deep_flat` (GOAL 16, DESIGN §33.4):
+      `DeepFlatPlan`/codec, the delegate-then-cap `EnvelopedChunkGenerator`
+      post-processing pass (biome-aware: land cap vs. river/ocean water
+      cap), rivers-enabled + exclusion-radius option, typed preset +
+      registration; test configs; docs.
+- [ ] 16.2c Structures/underground-content acceptance pass (GOAL 22): a
+      test config exercising an underground structure set (trial chambers
+      or ancient city) at both a shallow classic-flat depth (honestly
+      clipped, documented tradeoff) and a deep_flat world (buried at
+      natural depth); phase wrap-up docs (README, MANUAL_TESTING.md,
+      config/tests/README.md). **[Jason]** acceptance across both typed
+      presets.
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 
