@@ -1,0 +1,33 @@
+# GOAL 22 (Phase 16.2b/16.2c, DESIGN §33.4): deep-flat's own underground
+# structures, buried at their natural real depth by construction --
+# contrast with config 68's classic-flat "honestly clipped" case.
+# **Select "Worldz: Deep Flat"**.
+#
+# Unlike classic flat, deep_flat has no structureOverrides toggle at all
+# -- structures come from the real, unmodified delegate exactly like
+# every other typed preset with full vanilla variety (cave/single_biome/
+# etc.), so every vanilla structure set is eligible, each placing at
+# wherever vanilla itself would naturally put it.
+#
+# Steps once in-game:
+#  1. Use `/locate structure minecraft:trial_chambers` (or
+#     `minecraft:ancient_city`) to find the nearest one, then travel
+#     there and dig down.
+#  2. Confirm the structure is genuinely buried underground -- fully
+#     enclosed by real stone/deepslate on every side, nothing clipped or
+#     exposed by the flat surface above it. This is GOAL 22 satisfied by
+#     construction: the structure generated at its ordinary real depth,
+#     which is already well below `surfaceY` (64) in the overwhelming
+#     majority of cases.
+#  3. Compare against config 68's classic-flat result (same structure
+#     types, but honestly clipped there due to a deliberately shallow
+#     stone layer) -- deep_flat's version should look completely normal,
+#     no different from encountering it in an ordinary Worldz world.
+deepFlat:
+  surfaceY: 64
+  capLayers:
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+overworldBorder:
+  enabled: false
+  ensureEndPortal: false

@@ -2510,13 +2510,32 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       JUnit (`DeepFlatPlanTest`, `WorldzConfigTest` coverage) plus
       structural regression tests mirroring every prior typed preset's
       own precedent. Test configs and docs deferred to 16.2c.
-- [ ] 16.2c Structures/underground-content acceptance pass (GOAL 22): a
+- [x] 16.2c Structures/underground-content acceptance pass (GOAL 22): a
       test config exercising an underground structure set (trial chambers
       or ancient city) at both a shallow classic-flat depth (honestly
       clipped, documented tradeoff) and a deep_flat world (buried at
       natural depth); phase wrap-up docs (README, MANUAL_TESTING.md,
       config/tests/README.md). **[Jason]** acceptance across both typed
       presets.
+      **Configs and docs done (0.2.72):** `config/tests/66`-`71` (classic
+      flat default/traditional-shallow/shallow-structures, deep-flat
+      default/no-rivers/structures). New "Phase 16 acceptance" section in
+      MANUAL_TESTING.md (6 configs, explicitly cross-referencing #3 and
+      #6 so Jason can directly compare classic flat's honestly-clipped
+      structure result against deep_flat's naturally-buried one, and
+      flagging the water-into-caves gap from 16.2b as something to
+      specifically watch for). `config/tests/README.md`'s intro updated
+      for the twelfth World Type entry plus two new table rows describing
+      `flat:`/`deepFlat:`. README.md gained full "Flat challenge" and
+      "Deep flat challenge" sections (challenge-types table rows + prose
+      + settings tables + config examples) mirroring every prior typed
+      preset section's shape.
+      **This completes every non-[Jason] item in Phase 16** (16.1
+      design, 16.2a classic flat, 16.2b deep flat, 16.2c structures
+      acceptance/docs) — **do not start Phase 17 without Jason's
+      explicit go-ahead.** TODO 15.2a-bugfix (the pre-existing
+      `nether_start` config-plumbing gap) remains open and unscheduled,
+      unrelated to this phase.
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

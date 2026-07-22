@@ -1,0 +1,29 @@
+# GOAL 15 (Phase 16.2a, DESIGN §33.3): the traditional, thin classic-flat
+# look -- and its slime-spawning consequence. **Select "Worldz: Flat"**.
+#
+# Mirrors vanilla's own real classic_flat preset (bedrock + 2 dirt +
+# grass, 4 blocks total). Since this project's Overworld min Y is -64,
+# the surface lands at Y -60 -- deep enough that the whole world is
+# below the Y-40 slime-spawn cutoff (Slime.checkSlimeSpawnRules),
+# confirming GOAL 15's "avoid slimes if desired" is purely a property of
+# how tall the configured layers are, not a separate setting.
+#
+# Steps once in-game:
+#  1. Confirm you spawn at Y -60 (F3), standing on grass with only 3
+#     blocks of solid ground beneath you before bedrock.
+#  2. Wait for a night (or force one) near unlit areas and confirm
+#     slimes CAN spawn here -- unlike config 66's default, which sits
+#     safely above the Y-40 cutoff.
+#  3. Confirm villages/strongholds (the default structureOverrides) can
+#     still generate despite the shallow layer stack -- structures don't
+#     depend on layer depth to place, only underground ones need enough
+#     stone beneath them to look right (see config 68).
+flat:
+  layers:
+    - "minecraft:bedrock:1"
+    - "minecraft:dirt:2"
+    - "minecraft:grass_block:1"
+  biome: minecraft:plains
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

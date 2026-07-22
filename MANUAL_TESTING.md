@@ -835,6 +835,64 @@ really hard" requirement.
 **Not covered by this phase's acceptance:** nothing deferred — GOALS 34
 is fully in scope for Phase 15.
 
+## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b)
+
+Uses configs `66`-`71` (see [`config/tests/README.md`](config/tests/README.md)).
+Two typed presets this phase, not one — **select "Worldz: Flat"** for
+configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`.
+
+1. **Classic flat default**, `66-flat-default.yaml` (GOAL 15 core,
+   0.2.70+). Confirm the world is completely flat everywhere, no hills or
+   mountains, surface at Y 64. Confirm there are zero caves anywhere —
+   classic flat has no noise/carving of any kind. Confirm the biome is
+   plains everywhere. Locate a stronghold or village (both in the default
+   `structureOverrides`) and confirm it generates normally. Subjectively
+   compare world-creation speed against a real terrain preset (e.g.
+   config 01) — classic flat should feel closer to vanilla superflat's
+   own near-instant generation, since the real noise pipeline never runs
+   (DESIGN §33.1).
+2. **Classic flat, thin/traditional layers**, `67-flat-classic-shallow.yaml`
+   (0.2.70+). Confirm you spawn at Y -60 on grass with only 3 blocks of
+   solid ground before bedrock. Confirm slimes *can* spawn here (wait for
+   night in an unlit area) — unlike config 66's default, this stack sits
+   below the Y-40 slime cutoff, confirming "avoiding slimes" is purely a
+   property of layer height (DESIGN §33.3), not a separate setting.
+3. **Classic flat, shallow underground structures**, `68-flat-structures-shallow.yaml`
+   (0.2.70+, GOAL 22). Locate a trial chamber or ancient city (both
+   forced eligible, `structureOverrides` set explicitly) over only 10
+   blocks of stone. Confirm the structure still generates, but looks
+   honestly clipped/cut off near the bedrock — this is GOAL 22's
+   documented classic-flat tradeoff (depth is the player's own
+   configuration choice), not a bug. Keep this result in mind for #6.
+4. **Deep flat default**, `69-deep-flat-default.yaml` (GOAL 16 core,
+   0.2.71+). Confirm the surface is flat everywhere at Y 64. Dig straight
+   down from spawn and confirm you pass through ~3 blocks of cap into
+   real stone, then find genuine, varied real caves/ravines. Explore for
+   a real cave biome (lush caves, dripstone, deep dark). Find a river or
+   ocean biome (F3) and confirm it shows as water at the flat surface,
+   not paved over — **watch specifically for water draining down into any
+   nearby cave opening near the surface** (DESIGN §33.4's known
+   first-pass gap) and report back if you see it. Confirm spawn itself
+   lands exactly at Y 64, not wherever the real underlying terrain
+   height happens to be.
+5. **Deep flat, rivers disabled**, `70-deep-flat-no-rivers.yaml`
+   (0.2.71+). Confirm a river/ocean location shows the ordinary land cap
+   instead of water at the surface, confirming `riversEnabled: false`
+   works. Confirm caves/structures below the cap are otherwise unaffected.
+6. **Deep flat underground structures**, `71-deep-flat-structures.yaml`
+   (0.2.71+, GOAL 22). Use `/locate structure minecraft:trial_chambers`
+   (or `minecraft:ancient_city`), travel there, and dig down. Confirm the
+   structure is genuinely, fully buried — no clipping, nothing exposed by
+   the flat surface above it, GOAL 22 satisfied by construction. **Compare
+   directly against #3's classic-flat result** — same structure types,
+   completely different (correct) burial here.
+
+**Not covered by this phase's acceptance:** the exact `(1200, 64, 0)`-style
+fixture defaults for `flat`/`deep_flat` are first-pass numbers, same
+"tune after playtest" posture as every other numeric default in this
+project — report if `surfaceY: 64`/the default layer stack feel wrong,
+not just whether they work.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

@@ -2562,3 +2562,32 @@ Durable decisions, verified API notes, and rationale that should survive across 
   river/ocean column's water sits directly on whatever real terrain is
   immediately below the cap band, so a natural cave opening right at
   that boundary could source water down into it.
+- 2026-07-22 — **Phase 16 wrap-up (Flat worlds, GOALS 15/16/22).** All
+  four non-[Jason] tasks (16.1 design, 16.2a classic flat, 16.2b deep
+  flat, 16.2c structures acceptance/docs) done, 0.2.72. Two real
+  architecture corrections found and fixed *during* implementation, not
+  after -- both logged in DESIGN §33 rather than left as a silent
+  mismatch between the design doc and the shipped code: (a) classic
+  `flat` cannot wrap vanilla `FlatLevelSource` directly (would silently
+  disable every shared Worldz feature via `WorldLimitManager`'s
+  `LimitedBiomeSource` gate) -- fixed by keeping the standard delegate
+  shape and having `EnvelopedChunkGenerator` skip its real terrain
+  methods instead; (b) deep_flat's cap pass has to run after
+  `buildSurface`, not `fillFromNoise` as first drafted -- carving needs
+  to happen in between for real caves to exist. Both corrections were
+  made *before* writing the relevant code, once actually attempting the
+  implementation surfaced them -- the same "verify against the real
+  thing at the point you actually use it, not just an earlier adjacent
+  finding" lesson Phase 13's `getSharedSpawnPos` correction already
+  taught (MEMORY.md, 2026-07-21).
+  Also found and fixed two small pre-existing Phase 15 gaps in the
+  same `LimitedBiomeSource` lines being touched anyway: `end_start`'s own
+  `endStartDefaults` hint was missing from three fieldless-defaulting
+  branches -- low severity, fixed rather than deferred since it was
+  trivial in the same diff, unlike the still-open `nether_start`
+  kit-config gap (TODO 15.2a-bugfix), which needed a separate, larger
+  fix and stayed logged-not-fixed for that reason.
+  One new first-pass limitation flagged for Jason's acceptance testing,
+  not fixed speculatively: `deep_flat`'s water-capped river/ocean columns
+  could source water into a real cave that happens to open right at the
+  cap boundary -- watch for it in configs `69`/`71`.

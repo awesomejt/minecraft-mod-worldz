@@ -1,0 +1,38 @@
+# GOAL 16 (Phase 16.2b, DESIGN §33.4): the deep-flat challenge's core
+# mechanic -- a flat surface over real, seed-driven terrain. **Select
+# "Worldz: Deep Flat"**.
+#
+# The visible surface is completely flat everywhere (surfaceY 64), but
+# everything below it is real, unmodified vanilla generation: caves,
+# cave biomes, aquifers, ores, and structures at their natural depth --
+# all with zero new noise code (DESIGN §33.1's "delegate then cap"
+# choice, reusing the exact same proven mechanism cave/single_biome
+# already use).
+#
+# Steps once in-game:
+#  1. Confirm the surface is flat everywhere at Y 64 (dirt+grass cap) --
+#     no hills or mountains visible anywhere.
+#  2. Dig straight down from spawn. Confirm you pass through the cap
+#     layers (~3 blocks) into real stone, then real caves/ravines
+#     eventually appear -- genuinely varied, not a repeating pattern.
+#  3. Explore underground for a cave biome (lush caves, dripstone caves,
+#     deep dark) -- confirm real vanilla variety, the same as any normal
+#     world.
+#  4. Find a river or ocean biome at a distance from spawn (F3 biome
+#     readout) and confirm it shows as water at the flat surface, not
+#     paved over with the land cap -- this is riversEnabled's default
+#     (on). Watch specifically for water draining down into any nearby
+#     cave opening near the surface (DESIGN §33.4's known first-pass
+#     gap) and report back if you see it.
+#  5. Confirm spawn itself lands exactly on the flat surface (Y 64), not
+#     wherever the real underlying terrain height happens to be.
+deepFlat:
+  surfaceY: 64
+  capLayers:
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  riversEnabled: true
+  riverExclusionRadiusBlocks: 512
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

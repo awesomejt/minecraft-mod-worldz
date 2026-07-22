@@ -1,0 +1,22 @@
+# GOAL 16 (Phase 16.2b, DESIGN §33.4): deep-flat with rivers disabled --
+# confirms river/ocean columns fall back to the ordinary land cap instead
+# of a water surface. **Select "Worldz: Deep Flat"**.
+#
+# Steps once in-game:
+#  1. Confirm the surface is flat everywhere, same as config 69.
+#  2. Locate where a river or ocean would naturally be (F3 biome
+#     readout finds the real river/ocean biome boundary underground or
+#     via the real terrain below) and confirm the *surface* there is
+#     ordinary land cap (dirt/grass), not water -- riversEnabled: false
+#     means every column gets the same cap regardless of biome.
+#  3. Confirm caves/cave biomes/structures below the cap are unaffected
+#     -- this option only changes the cap band's own material choice.
+deepFlat:
+  surfaceY: 64
+  capLayers:
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  riversEnabled: false
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -42,6 +42,8 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Cave** | Cave-only start: the Overworld generates exactly as vanilla would (no biome restriction, no shape at all) — only your spawn changes, placed in a real, searched-out natural underground cavity. Optional solid roof sealing off sky access everywhere; optional large carved mega-cavern around spawn; optional starter chest. See [Cave challenge](#cave-challenge) below. | Small screen: spawn depth, sealed-surface toggle/Y, mega-cavern toggle/radius/height, chest toggle/tier, borders, Nether exterior. |
 | **Worldz: Nether Start** | Nether-start challenge: the Overworld generates exactly as vanilla would — you spawn in the Nether instead, in a real safe pocket (or a small carved fallback capsule), with a difficulty-tiered starter chest (easy hands over a ready-to-use portal frame, hard leans on exploration). Dying without a personal bed/anchor returns you to the same safe site. See [Nether-start challenge](#nether-start-challenge) below. | Small screen: spawn depth, chest tier, borders, Nether exterior. |
 | **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on hand-mining the platform's own end stone to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
+| **Worldz: Flat** | Classic flat challenge: my version of vanilla superflat, with more options — an editable bottom-to-top block layer stack, a single fixed biome, an optional bedrock floor (just whether the layer list's bottom entry is bedrock), an eligible-structure-set list, and an optional decoration toggle. Zero noise or caves of any kind, matching vanilla's own real superflat behavior — and genuinely as fast to generate, since the real noise pipeline never runs at all. See [Flat challenge](#flat-challenge) below. | Small screen: layers (text), biome, decoration, structure list (text), borders, exteriors. |
+| **Worldz: Deep Flat** | Deep-flat challenge: a flat surface capped over real, unmodified vanilla terrain — caves, cave biomes, aquifers, ores, and structures all come from the seed's own real generation below the cap, completely untouched. Rivers/oceans show as water at the flat surface (optional, with a spawn-adjacent exclusion radius). See [Deep flat challenge](#deep-flat-challenge) below. | Small screen: surface Y, cap layers (text), rivers toggle, exclusion radius, borders, exteriors. |
 
 ## Supported loaders
 
@@ -849,6 +851,106 @@ endStart:
 | Setting | Default | Description |
 |---|---|---|
 | `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+
+**New worlds only**, same restriction as every other typed preset here: no
+save-compat obligations for worlds created by an older mod version.
+
+## Flat challenge
+
+Select **Worldz: Flat** under **World Type** for a classic flat world —
+Worldz's own version of vanilla superflat, with more options. There is
+zero noise or caves of any kind, matching vanilla's own real flat-world
+behavior: the world is a fixed, editable stack of block layers from
+bottom to top, and nothing else. Generation is genuinely fast too, since
+the real terrain-noise pipeline never runs at all — only structure
+placement uses the real vanilla mechanism.
+
+Configure the layer stack, biome, decoration, and eligible structure sets
+with a `flat:` section in `config/jlt_worldz.yaml` (the in-game Customize
+screen edits the same fields as plain text):
+
+```yaml
+flat:
+  layers:
+    - "minecraft:bedrock:1"
+    - "minecraft:stone:123"
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  biome: minecraft:plains
+  decoration: false
+  structureOverrides:
+    - "minecraft:villages"
+    - "minecraft:strongholds"
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `layers` | 128 blocks total (bedrock, 123 stone, 3 dirt, grass) | Ordered bottom-to-top layer list, each entry `"<block id>"` (height 1) or `"<block id>:<height>"`. A bedrock floor is just whether the bottom entry is `minecraft:bedrock` — there is no separate toggle. |
+| `biome` | `minecraft:plains` | The single biome reported everywhere. |
+| `decoration` | `false` | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs, matching vanilla flat's own all-or-nothing `features` flag. |
+| `structureOverrides` | `["minecraft:villages", "minecraft:strongholds"]` | Structure sets eligible to place; empty means every registered set is eligible, matching vanilla's own default. |
+
+**Spawn Y and slimes**: there is no separate spawn-Y setting — spawn is
+always the top of the configured layer stack (this project's Overworld
+starts layer 0 at Y -64, so a 128-block stack like the default above
+lands the surface at Y 64). Since slimes only ever spawn where
+`Y < 40` in a "slime chunk" (a real, verified vanilla rule, unrelated to
+darkness or biome), keeping your layer stack tall enough to clear Y 40
+is what "avoiding slimes" means in practice; a short stack close to
+vanilla's own historical `classic_flat` numbers (4 blocks total, landing
+around Y -60) intentionally allows them.
+
+**Underground structures aren't automatically buried** — with no real
+terrain to bury into, a structure set like `trial_chambers` or
+`ancient_cities` is only as "buried" as your own stone-layer depth makes
+it. A shallow stack gives an honestly clipped result; that's an accepted
+tradeoff of classic flat, not a bug (see [Deep flat challenge](#deep-flat-challenge)
+below for a variant where structures are always naturally buried).
+
+**New worlds only**, same restriction as every other typed preset here: no
+save-compat obligations for worlds created by an older mod version.
+
+## Deep flat challenge
+
+Select **Worldz: Deep Flat** under **World Type** for a flat surface
+capped over real, unmodified vanilla terrain. Unlike classic flat, this
+variant delegates to the real noise-based generator (full vanilla biome
+variety, exactly like Cave/Single Biome) and only caps the *result*:
+everything above a configured Y clears to air, a land-layer band paints
+immediately below it, and everything further down is completely
+untouched — real caves, real cave biomes, real aquifers and ores, real
+structures at their natural depth. This means underground structures are
+buried automatically, by construction, unlike classic flat.
+
+River and ocean biome columns get a water surface at the cap instead of
+the land band (unless disabled, or within a configurable radius of
+spawn) — real rivers stay visible as rivers, just flattened into the cap
+plane rather than carved as a valley.
+
+Configure it with a `deepFlat:` section in `config/jlt_worldz.yaml`:
+
+```yaml
+deepFlat:
+  surfaceY: 64
+  capLayers:
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  riversEnabled: true
+  riverExclusionRadiusBlocks: 512
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `surfaceY` | `64` | The flat cap height — everything above clears to air, real terrain below stays. |
+| `capLayers` | `["minecraft:dirt:3", "minecraft:grass_block:1"]` | Land-cap layer stack, painted immediately below `surfaceY`, same `block` or `block:height` shorthand as classic flat's `layers`. |
+| `riversEnabled` | `true` | Whether a river/ocean biome column gets a water surface instead of the land cap. |
+| `riverExclusionRadiusBlocks` | `512` | Radius around spawn within which river/ocean columns always get the land cap regardless of `riversEnabled` — GOAL 16's "far away from spawn" option. |
+
+**Known first-pass limitation, not yet fixed:** a water-capped river/ocean
+column's water sits directly on whatever real terrain is immediately
+below the cap band — if a natural cave opening happens to sit right at
+that boundary, the placed water could source down into it. Report back if
+you actually see this during testing.
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.

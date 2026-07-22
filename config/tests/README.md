@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 15, the World Type dropdown has **ten** Worldz
+   new world. Since Phase 16, the World Type dropdown has **twelve** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -89,8 +89,22 @@ Every field not mentioned in a file falls back to Worldz's documented default
    on) picks the starter-chest difficulty -- easy hands over firework
    rockets, building blocks, and combat gear, hard gives no rockets and no
    guaranteed weapon at all, leaning entirely on hand-mining the
-   platform's own end stone to bridge toward the central island. Each
-   preset ignores every other type's dedicated section.
+   platform's own end stone to bridge toward the central island.
+   "Worldz: Flat" (files `66`-`68`, GOAL 15, Phase 16) reads only its own
+   `flat:` section -- a classic superflat world, zero noise/caves of any
+   kind; `flat.layers` is the editable bottom-to-top block stack (a
+   bedrock floor is just whether the bottom entry is bedrock, no separate
+   toggle), `flat.biome` the single fixed biome, `flat.decoration`
+   whether ordinary biome decoration runs, and `flat.structureOverrides`
+   which structure sets are eligible (empty means every set). "Worldz:
+   Deep Flat" (files `69`-`71`, GOAL 16, Phase 16) reads only its own
+   `deepFlat:` section -- a flat surface capped over real, unmodified
+   terrain (full vanilla biome variety, real caves/cave biomes/structures
+   below the cap); `deepFlat.surfaceY` the cap height, `deepFlat.capLayers`
+   the land-cap stack, `deepFlat.riversEnabled`/`riverExclusionRadiusBlocks`
+   whether river/ocean columns show as water at the surface and how close
+   to spawn that's suppressed. Each preset ignores every other type's
+   dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -164,6 +178,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `63-end-start-default.yaml` | GOALS 34 (Phase 15.2a/15.2b): the End-start challenge's core mechanic and default (medium) chest tier — the Overworld and Nether both generate exactly as vanilla would, spawn is a guaranteed end-stone platform far out along the outer-island belt. **Select "Worldz: End Start"**. Requires 0.2.68+. |
 | `64-end-start-chest-easy.yaml` | GOALS 34 (Phase 15.2b): the easy chest tier — rockets, cobblestone, food, and real combat gear for the dragon fight. **Select "Worldz: End Start"**. Requires 0.2.68+. |
 | `65-end-start-chest-hard.yaml` | GOALS 34 (Phase 15.2b): the hard chest tier — no rockets or guaranteed weapon at all, relies entirely on hand-mining the platform's own end stone to bridge toward the central island. **Select "Worldz: End Start"**. Requires 0.2.68+. |
+| `66-flat-default.yaml` | GOAL 15 (Phase 16.2a): classic flat's core mechanic and Worldz-native default layer stack (surface at Y 64, above the slime-spawn cutoff), zero caves. **Select "Worldz: Flat"**. Requires 0.2.70+. |
+| `67-flat-classic-shallow.yaml` | GOAL 15 (Phase 16.2a, DESIGN §33.3): a thin, vanilla-`classic_flat`-style layer stack (surface at Y -60) — confirms "avoiding slimes" is purely a property of layer height. **Select "Worldz: Flat"**. Requires 0.2.70+. |
+| `68-flat-structures-shallow.yaml` | GOAL 22 (Phase 16.2a): trial chambers/ancient cities forced eligible over only 10 blocks of stone — classic flat's "honestly clipped" underground-structure tradeoff, deliberately exercised. **Select "Worldz: Flat"**. Requires 0.2.70+. |
+| `69-deep-flat-default.yaml` | GOAL 16 (Phase 16.2b): deep-flat's core mechanic — a flat surface over real, seed-driven terrain (caves, cave biomes, rivers as water). **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
+| `70-deep-flat-no-rivers.yaml` | GOAL 16 (Phase 16.2b): `riversEnabled: false` — river/ocean columns get the ordinary land cap instead of water. **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
+| `71-deep-flat-structures.yaml` | GOAL 22 (Phase 16.2b): an underground structure set buried at its natural real depth by construction — contrast with `68`'s classic-flat clipped result. **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
 
 ### Why `01` showed ocean labeled as river
 

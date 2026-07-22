@@ -1,0 +1,37 @@
+# GOAL 22 (Phase 16.2a/16.2c, DESIGN §33.2): classic flat's "honestly
+# clipped" underground-structure tradeoff, deliberately exercised with
+# too little stone. **Select "Worldz: Flat"**.
+#
+# Classic flat has no real terrain to bury an underground structure
+# into -- it is only ever as "buried" as the layer editor's own stone
+# depth makes it. This config enables trial_chambers and ancient_cities
+# (both normally deep, multi-chunk-tall underground structures) over
+# only 10 blocks of stone, on purpose, to see the clipped result GOAL 22
+# is asking Worldz to avoid *by giving players the depth control*, not by
+# forcing every classic-flat world to be deep.
+#
+# Steps once in-game:
+#  1. Confirm the world is flat, surface at Y -50 (bedrock 1 + stone 10 +
+#     dirt 3 + grass 1, starting at Y -64).
+#  2. Locate a trial chamber or ancient city (structure block / locate
+#     command, or explore) and confirm it generates -- structure
+#     *placement* itself is unaffected by the shallow stone (DESIGN
+#     §33.2's trial_chambers finding).
+#  3. Confirm the structure looks honestly clipped/cut off where it
+#     would normally extend below Y -60 (past the bedrock) -- this is
+#     the expected, documented tradeoff, not a bug. Compare mentally
+#     against config 71 (deep_flat), where the same structure type
+#     generates fully buried at its natural real depth.
+flat:
+  layers:
+    - "minecraft:bedrock:1"
+    - "minecraft:stone:10"
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  biome: minecraft:plains
+  structureOverrides:
+    - "minecraft:trial_chambers"
+    - "minecraft:ancient_cities"
+overworldBorder:
+  enabled: false
+  ensureEndPortal: false
