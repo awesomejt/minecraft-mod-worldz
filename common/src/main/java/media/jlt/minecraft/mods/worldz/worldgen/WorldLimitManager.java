@@ -11,6 +11,7 @@ import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -171,7 +172,8 @@ public final class WorldLimitManager {
             netherResult = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether(), netherStrip, netherSkyIsland);
             if (needsNetherStart) {
-                NetherStartDeployment.resolveAndRedirectSpawn(overworld, nether, netherStart);
+                BlockPos site = NetherStartDeployment.resolveAndRedirectSpawn(overworld, nether, netherStart);
+                StarterKitDeployment.spawnNetherStartChest(nether, site, netherStart);
             }
         }
         ServerLevel end = server.getLevel(Level.END);

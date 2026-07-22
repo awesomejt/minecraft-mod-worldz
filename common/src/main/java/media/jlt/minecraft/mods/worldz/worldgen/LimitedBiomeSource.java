@@ -210,6 +210,12 @@ public final class LimitedBiomeSource extends BiomeSource {
         // (full vanilla variety, no starter, no coordinated layout).
         boolean caveDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("cave"::equals).orElse(false);
+        // Same fix, same reason, for nether_start (GOALS 27, DESIGN §31): this hint only
+        // affects LimitedBiomeSource's own biome/starter/layout defaults -- NetherStartPlan
+        // itself is read from EnvelopedChunkGenerator's own codec, never from here (§31.5),
+        // exactly like cave's own hint above.
+        boolean netherStartDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("nether_start"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -217,7 +223,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                 ? () -> resolveChaosBiomesAllowed(config, biomeGetter)
                 : singleBiomeDefaults
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
-                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
+                    : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults
                         ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                         : () -> resolveConfiguredBiomes(config, biomeGetter));
 
@@ -227,7 +233,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         // not a biome restriction) -- Optional.empty() directly, not a fallback lookup.
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
-            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
+            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -265,7 +271,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                         LayoutMode.SINGLE_BIOME, List.of(), Map.of(),
                         WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.singleBiome.landBiome, new Random().nextLong()
                     )
-                    : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
+                    : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults
                         ? WorldLayoutPlan.legacy()
                         : stripWorldDefaults && config.stripWorld.bands.enabled
                             ? WorldLayoutPlan.resolveBands(
@@ -283,7 +289,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     ? config.singleBiome.spawn.strategy
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
-                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
+                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults
                             ? SpawnStrategy.STARTER_AT_ORIGIN
                             : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config

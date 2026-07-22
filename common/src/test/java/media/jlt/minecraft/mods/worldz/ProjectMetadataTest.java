@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.65", properties.getProperty("version"));
+        assertEquals("0.2.66", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -223,6 +223,53 @@ class ProjectMetadataTest {
             ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
         )).getAsJsonObject();
         assertEquals("Worldz: Cave", lang.get("generator.jlt_worldz.cave").getAsString());
+    }
+
+    @Test
+    void netherStartTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("NetherStartPresetEditor.NETHER_START_PRESET"));
+        assertTrue(fabricMixin.contains("NetherStartPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains(
+            "event.register(NetherStartPresetEditor.NETHER_START_PRESET, NetherStartPresetEditor.INSTANCE);"
+        ));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Nether Start", lang.get("generator.jlt_worldz.nether_start").getAsString());
+    }
+
+    @Test
+    void limitedBiomeSourceAppliesNetherStartDefaultsWithoutCustomize() throws IOException {
+        // Same fix shape as cave's own (closed from day one): a never-customized nether_start
+        // world still gets full vanilla biome variety via the "world_type": "nether_start" hint
+        // (DESIGN §31.5) -- NetherStartPlan itself is resolved separately, on
+        // EnvelopedChunkGenerator's own codec, keyed to the Nether generator instance not the
+        // Overworld's (unlike cave, which keys to the Overworld).
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains(
+            "boolean netherStartDefaults = encodedStarterRadius.isEmpty()\n"
+                + "            && encodedWorldType.map(\"nether_start\"::equals).orElse(false);"
+        ));
+        assertTrue(source.contains(
+            "stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults"
+        ));
+
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+        assertTrue(generator.contains("dimension == Dimension.NETHER && worldType.filter(\"nether_start\"::equals).isPresent()"));
+        assertTrue(generator.contains("NetherStartPlan.fromConfig(WorldzCommon.config().netherStart)"));
     }
 
     @Test
@@ -613,7 +660,7 @@ class ProjectMetadataTest {
                 + "                    ? config.singleBiome.spawn.strategy\n"
                 + "                    : stripWorldDefaults\n"
                 + "                        ? config.stripWorld.spawn.strategy\n"
-                + "                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults\n"
+                + "                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults || netherStartDefaults\n"
                 + "                            ? SpawnStrategy.STARTER_AT_ORIGIN\n"
                 + "                            : config.spawn.strategy);"
         ));

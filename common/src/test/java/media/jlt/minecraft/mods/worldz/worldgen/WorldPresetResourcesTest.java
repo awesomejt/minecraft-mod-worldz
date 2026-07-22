@@ -76,7 +76,7 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(8, tag.getAsJsonArray("values").size());
+        assertEquals(9, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
         assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
         assertEquals("jlt_worldz:chaos_biomes", tag.getAsJsonArray("values").get(2).getAsString());
@@ -85,6 +85,7 @@ class WorldPresetResourcesTest {
         assertEquals("jlt_worldz:sky_island", tag.getAsJsonArray("values").get(5).getAsString());
         assertEquals("jlt_worldz:sky_chunk", tag.getAsJsonArray("values").get(6).getAsString());
         assertEquals("jlt_worldz:cave", tag.getAsJsonArray("values").get(7).getAsString());
+        assertEquals("jlt_worldz:nether_start", tag.getAsJsonArray("values").get(8).getAsString());
     }
 
     @Test
@@ -206,6 +207,29 @@ class WorldPresetResourcesTest {
 
         JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
         assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
+    }
+
+    @Test
+    void netherStartPresetFlagsWorldTypeOnTheNetherSideNotTheOverworld() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/nether_start.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject overworldGenerator = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator");
+        JsonObject biomeSource = overworldGenerator.getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("nether_start", biomeSource.get("world_type").getAsString());
+        // Unlike cave (whose CavePlan attaches to the Overworld), Nether-start's own
+        // NetherStartPlan attaches to the Nether generator (DESIGN §31.5) -- so unlike cave.json,
+        // the Overworld's own enveloped generator carries no "world_type" hint of its own here.
+        assertFalse(overworldGenerator.has("world_type"));
+
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        assertEquals("nether_start", netherGenerator.get("world_type").getAsString());
         JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
         assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
     }

@@ -2229,7 +2229,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       clamp/summary coverage; the deployment's own search/capsule logic has
       no unit test, matching `SpawnOriginManager`'s cave-search precedent
       exactly (needs a real `ServerLevel`, not pure-logic-testable).
-- [ ] 14.2b Starter chest tiers (DESIGN §31.6, reuses
+- [x] 14.2b Starter chest tiers (DESIGN §31.6, reuses
       `StarterKitTier`/`StarterKitConfig`; easy = obsidian + flint and
       steel + food/torches, medium = frame's worth of obsidian only,
       hard = none, relies on Nether exploration) placed at the resolved
@@ -2237,6 +2237,28 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       `NetherStartCustomization`, `NetherStartPresetEditor`,
       `NetherStartCustomizeScreen`, world-preset JSON + `normal` tag +
       lang keys, both loaders' registration.
+      **Done (0.2.66), in-game testable now.** `nether_start` shows up as
+      the ninth "Worldz" World Type entry. Easy kit: 10 obsidian (a full
+      frame, ready to place -- no cobblestone-generator/mining detour) +
+      1 flint and steel + bread + 3 random extras (golden tools, gold
+      ingots, torches). Medium: 10 obsidian, no ignition, less food.
+      Hard: no guaranteed obsidian at all -- essentials are just bread,
+      extras include gold ingots (a nod toward piglin bartering as one
+      of the "leans on exploration" paths GOALS 27 allows). Chest placed
+      the same way cave's own optional chest is (`StarterKitDeployment.
+      spawnNetherStartChest`, replaces the floor block beneath the
+      resolved site). Typed-preset scaffolding mirrors `cave`'s exactly
+      (§31.7) with one structural difference worth flagging: cave's
+      `world_type` hint sits on the *Overworld's* enveloped generator
+      (its plan is Overworld-attached); nether_start's sits on the
+      *Nether's* instead, since `NetherStartPlan` is Nether-attached
+      (§31.5) -- `nether_start.json`'s Overworld generator carries no
+      `world_type` field of its own, only its `jlt_worldz:limited`
+      biome_source does (for `LimitedBiomeSource`'s own separate
+      full-vanilla-variety default, unrelated to `NetherStartPlan`).
+      New structural regression tests mirroring every prior typed
+      preset's own precedent (`WorldPresetResourcesTest`,
+      `ProjectMetadataTest`).
 - [ ] 14.2c Test configs (default, each chest tier, a config exercising
       the guaranteed-capsule fallback path if forceable); docs (README,
       MANUAL_TESTING.md); phase wrap-up. **[Jason]** acceptance including

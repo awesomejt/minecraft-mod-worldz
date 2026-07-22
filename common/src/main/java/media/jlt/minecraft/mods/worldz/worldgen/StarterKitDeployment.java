@@ -2,9 +2,11 @@ package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
 import media.jlt.minecraft.mods.worldz.config.CaveConfig;
+import media.jlt.minecraft.mods.worldz.config.NetherStartConfig;
 import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitPlan;
@@ -122,6 +124,50 @@ final class StarterKitDeployment {
     }
 
     private static StarterKitConfig tierConfig(CaveConfig config, StarterKitTier tier) {
+        return switch (tier) {
+            case EASY -> config.easyKit;
+            case MEDIUM -> config.mediumKit;
+            case HARD -> config.hardKit;
+        };
+    }
+
+    /**
+     * Places a filled chest set into the floor directly beneath the resolved safe Nether-start
+     * site (GOALS 27, DESIGN §31.6) -- the same "replace solid ground within the already-
+     * validated safe area" placement {@link #spawnCaveStarterChest} uses. Filled from the selected
+     * difficulty tier's essentials/extras; no biome-driven item the way {@link #spawnStarterChest}
+     * has -- Nether-start has no biome concept of its own to key off (single fixed dimension).
+     * Called once, only for a new {@code nether_start} world.
+     *
+     * @param nether the Nether server level
+     * @param site the resolved safe spawn site (DESIGN §31.4)
+     * @param netherStart the world's resolved Nether-start plan
+     */
+    static void spawnNetherStartChest(ServerLevel nether, BlockPos site, NetherStartPlan netherStart) {
+        BlockPos pos = site.below();
+        nether.setBlock(pos, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+
+        StarterKitPlan plan = resolvePlan(tierConfig(WorldzCommon.config().netherStart, netherStart.chestTier()));
+        List<StarterKitPlan.ItemAmount> resolved = plan.resolve(nether.getSeed());
+
+        BlockEntity blockEntity = nether.getBlockEntity(pos);
+        if (!(blockEntity instanceof ChestBlockEntity chest)) {
+            WorldzCommon.LOGGER.warn("Could not create the GOALS 27 starter chest at {}.", pos);
+            return;
+        }
+        int slot = 0;
+        for (StarterKitPlan.ItemAmount amount : resolved) {
+            if (slot >= chest.getContainerSize()) {
+                break;
+            }
+            Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(amount.itemId()));
+            chest.setItem(slot, new ItemStack(item, amount.count()));
+            slot++;
+        }
+        WorldzCommon.LOGGER.info("Spawned the GOALS 27 Nether-start starter chest at {}.", pos);
+    }
+
+    private static StarterKitConfig tierConfig(NetherStartConfig config, StarterKitTier tier) {
         return switch (tier) {
             case EASY -> config.easyKit;
             case MEDIUM -> config.mediumKit;

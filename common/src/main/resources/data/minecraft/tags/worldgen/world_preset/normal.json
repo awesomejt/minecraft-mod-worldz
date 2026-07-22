@@ -8,6 +8,7 @@
     "jlt_worldz:ocean_island",
     "jlt_worldz:sky_island",
     "jlt_worldz:sky_chunk",
-    "jlt_worldz:cave"
+    "jlt_worldz:cave",
+    "jlt_worldz:nether_start"
   ]
 }
