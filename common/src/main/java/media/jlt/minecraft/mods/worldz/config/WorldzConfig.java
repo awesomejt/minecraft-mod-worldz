@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -125,6 +126,8 @@ public final class WorldzConfig {
     public ChunkIslandConfig chunkIsland = new ChunkIslandConfig();
     /** Defaults for the {@code jlt_worldz:cave} typed preset (GOALS 25-26; DESIGN §30). */
     public CaveConfig cave = new CaveConfig();
+    /** Defaults for the {@code jlt_worldz:nether_start} typed preset (GOALS 27; DESIGN §31). */
+    public NetherStartConfig netherStart = new NetherStartConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -239,6 +242,9 @@ public final class WorldzConfig {
         if (object.containsKey("cave")) {
             config.cave = readCaveConfig(object.get("cave"), "cave", logger);
         }
+        if (object.containsKey("netherStart")) {
+            config.netherStart = readNetherStartConfig(object.get("netherStart"), "netherStart", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -298,6 +304,7 @@ public final class WorldzConfig {
         skyIsland = sanitizeSkyIsland(skyIsland, logger);
         chunkIsland = sanitizeChunkIsland(chunkIsland, logger);
         cave = sanitizeCave(cave, logger);
+        netherStart = sanitizeNetherStart(netherStart, logger);
         return this;
     }
 
@@ -478,6 +485,15 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static NetherStartConfig sanitizeNetherStart(NetherStartConfig config, Logger logger) {
+        NetherStartConfig sanitized = config == null ? new NetherStartConfig() : config;
+        sanitized.spawnY = clampWithWarning(
+            sanitized.spawnY, NetherStartPlan.MIN_SPAWN_Y, NetherStartPlan.MAX_SPAWN_Y, "netherStart.spawnY", logger
+        );
+        sanitized.chestTier = sanitized.chestTier == null ? StarterKitTier.MEDIUM : sanitized.chestTier;
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -626,6 +642,7 @@ public final class WorldzConfig {
             + ", skyIsland=" + skyIslandSummary(skyIsland)
             + ", chunkIsland=" + chunkIslandSummary(chunkIsland)
             + ", cave=" + caveSummary(cave)
+            + ", netherStart=" + netherStartSummary(netherStart)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -653,6 +670,7 @@ public final class WorldzConfig {
         values.put("skyIsland", skyIslandMap(skyIsland));
         values.put("chunkIsland", chunkIslandMap(chunkIsland));
         values.put("cave", caveMap(cave));
+        values.put("netherStart", netherStartMap(netherStart));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1068,6 +1086,20 @@ public final class WorldzConfig {
         }
         if (map.containsKey("hardKit")) {
             config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
+        }
+        return config;
+    }
+
+    private static NetherStartConfig readNetherStartConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        NetherStartConfig config = new NetherStartConfig();
+        if (map.containsKey("spawnY")) {
+            config.spawnY = readInt(map.get("spawnY"), name + ".spawnY");
+        }
+        if (map.containsKey("chestTier")) {
+            config.chestTier = StarterKitTier.parse(readString(map.get("chestTier"), name + ".chestTier"));
         }
         return config;
     }
@@ -1572,6 +1604,13 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> netherStartMap(NetherStartConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("spawnY", config.spawnY);
+        values.put("chestTier", config.chestTier.serializedName());
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1735,6 +1774,10 @@ public final class WorldzConfig {
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
             + ", hardKit=" + starterKitSummary(config.hardKit);
+    }
+
+    private static String netherStartSummary(NetherStartConfig config) {
+        return "spawnY=" + config.spawnY + ", chestTier=" + config.chestTier.serializedName();
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

@@ -2202,7 +2202,7 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       own `resolveCaveOrigin` two-phase shape (§31.4) with an added
       lava-adjacency check Cave never needed. Split 14.2 into 14.2a-c
       below, mirroring Phase 13's own precedent for multi-part phases.
-- [ ] 14.2a Core mechanic: `NetherStartPlan`/codec (persisted on
+- [x] 14.2a Core mechanic: `NetherStartPlan`/codec (persisted on
       `EnvelopedChunkGenerator`, mirrors `CavePlan`, DESIGN §31.5), the
       natural-search-then-guaranteed-capsule safe-site resolver (DESIGN
       §31.4), and the `WorldLimitManager.onServerStarted` hook that
@@ -2210,6 +2210,25 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       (DESIGN §31.2). JUnit-covered pure logic where possible (search
       candidate ordering, capsule shape); the actual `MinecraftServer`
       lever itself is only exercisable in-game.
+      **Done (0.2.65), backend only -- not yet in-game testable.** No
+      typed preset is registered yet (that's 14.2b), so `NetherStartPlan`
+      can never resolve enabled today -- `EnvelopedChunkGenerator.resolve`'s
+      `world_type` hint never sees `"nether_start"` until 14.2b wires the
+      preset editor. `NetherStartDeployment.searchNetherStartSite` reads
+      every block through the Nether `ServerLevel` itself (not the raw
+      candidate `ChunkAccess` the way `SpawnOriginManager.searchCaveCavity`
+      does), since the added lava-adjacency check can legitimately cross
+      into a neighboring, not-yet-forced chunk -- `ChunkAccess.getBlockState`
+      would silently mis-read a position outside its own bounds instead of
+      correctly resolving the neighbor. Vertical search tolerance is 16
+      (vs. cave's 24) -- the Nether's usable Y range (bedrock floor near 0,
+      bedrock ceiling near 128) is narrower than the Overworld's, so a
+      smaller window keeps candidates closer to the configured `spawnY`
+      relative to that range. JUnit: `NetherStartPlanTest` (validation,
+      `disabled()`, `fromConfig()`) plus `WorldzConfigTest` parse/sanitize/
+      clamp/summary coverage; the deployment's own search/capsule logic has
+      no unit test, matching `SpawnOriginManager`'s cave-search precedent
+      exactly (needs a real `ServerLevel`, not pure-logic-testable).
 - [ ] 14.2b Starter chest tiers (DESIGN §31.6, reuses
       `StarterKitTier`/`StarterKitConfig`; easy = obsidian + flint and
       steel + food/torches, medium = frame's worth of obsidian only,

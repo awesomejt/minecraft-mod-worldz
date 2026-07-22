@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -581,6 +582,7 @@ class WorldzConfigTest {
                 + " extras=[minecraft:wooden_pickaxe:1, minecraft:cobblestone:16, minecraft:coal:8], extrasCount=2"
                 + ", hardKit=essentials=[minecraft:torch:8], extras=[minecraft:bread:2, minecraft:coal:4],"
                 + " extrasCount=1"
+                + ", netherStart=spawnY=32, chestTier=medium"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1081,6 +1083,41 @@ class WorldzConfigTest {
         assertEquals(CavePlan.MIN_CAVERN_BLOCKS, tooSmall.cave.cavernHeightBlocks);
         assertEquals(CavePlan.MAX_CAVERN_BLOCKS, tooLarge.cave.cavernRadiusBlocks);
         assertEquals(CavePlan.MAX_CAVERN_BLOCKS, tooLarge.cave.cavernHeightBlocks);
+    }
+
+    @Test
+    void netherStartSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            netherStart:
+              spawnY: 64
+              chestTier: hard
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(64, config.netherStart.spawnY);
+        assertEquals(StarterKitTier.HARD, config.netherStart.chestTier);
+    }
+
+    @Test
+    void netherStartDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals(NetherStartPlan.DEFAULT_SPAWN_Y, config.netherStart.spawnY);
+        assertEquals(StarterKitTier.MEDIUM, config.netherStart.chestTier);
+    }
+
+    @Test
+    void netherStartSpawnYIsClamped() {
+        WorldzConfig tooLow = WorldzConfig.parse("""
+            netherStart:
+              spawnY: -999
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooHigh = WorldzConfig.parse("""
+            netherStart:
+              spawnY: 9999999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(NetherStartPlan.MIN_SPAWN_Y, tooLow.netherStart.spawnY);
+        assertEquals(NetherStartPlan.MAX_SPAWN_Y, tooHigh.netherStart.spawnY);
     }
 
     @Test

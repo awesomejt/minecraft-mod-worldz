@@ -7,6 +7,7 @@ import media.jlt.minecraft.mods.worldz.logic.ChunkIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
@@ -82,6 +83,17 @@ public final class WorldLimitManager {
         SkyIslandPlan netherSkyIsland = netherGenerator instanceof EnvelopedChunkGenerator enveloped
             ? enveloped.skyIsland()
             : SkyIslandPlan.disabled();
+        // Nether-start (GOALS 27, DESIGN §31) reads its plan straight off the Nether generator,
+        // never LimitedBiomeSource -- see §31.5. Fetched here rather than only inside the
+        // `nether != null` block below purely to sit next to netherStrip/netherSkyIsland's own
+        // identical fetch, even though (unlike them) it doesn't join the exteriorObjective gate:
+        // Nether-start never expresses itself through ExteriorPlan either way (the Overworld and
+        // Nether both stay ordinary vanilla terrain, §31.5), but it also isn't a beatability
+        // fallback the way the End-portal/blaze guarantees are -- it's the primary mechanism, so
+        // it gates on its own needsNetherStart flag below instead.
+        NetherStartPlan netherStart = netherGenerator instanceof EnvelopedChunkGenerator enveloped
+            ? enveloped.netherStart()
+            : NetherStartPlan.disabled();
         boolean exteriorObjective = (plan.overworld().ensureObjective()
             && (exterior.overworld().mode() != ExteriorMode.NORMAL || overworldStrip.enabled()
                 || overworldIsland.enabled() || overworldSkyIsland.enabled() || overworldChunkIsland.enabled()))
@@ -106,8 +118,11 @@ public final class WorldLimitManager {
         // Same reasoning again for cave's own optional starter chest (GOALS 25, DESIGN §30.3):
         // every cave world with the chest option enabled gets one, regardless of border/objective.
         boolean needsCaveChest = overworldCave.enabled() && overworldCave.chestEnabled();
+        // Same reasoning again for Nether-start's own safe-site resolution (GOALS 27, DESIGN
+        // §31.2): every nether_start world needs its world-spawn redirect, unconditionally.
+        boolean needsNetherStart = netherStart.enabled();
         if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest
-            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsCaveChest) {
+            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsCaveChest && !needsNetherStart) {
             return;
         }
 
@@ -155,6 +170,9 @@ public final class WorldLimitManager {
             // progression objective remain centered at the world origin (0, 0).
             netherResult = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether(), netherStrip, netherSkyIsland);
+            if (needsNetherStart) {
+                NetherStartDeployment.resolveAndRedirectSpawn(overworld, nether, netherStart);
+            }
         }
         ServerLevel end = server.getLevel(Level.END);
         if (end != null) {
