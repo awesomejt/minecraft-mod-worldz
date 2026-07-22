@@ -41,6 +41,13 @@ import java.util.Optional;
  * @param lootChestEnabled whether each island gets one placed loot chest (GOALS 08, DESIGN
  *     §28.2), reusing {@link StarterKitPlan} directly. Same config-only-list precedent as {@link
  *     #oreDepositsEnabled}: the actual kit contents live in config, only this toggle is persisted
+ * @param naturalBiome whether each island reads the real underlying seed's own biome at its
+ *     location instead of {@link #biomeVariety}'s hash-picked pool (DESIGN §28.4). Takes
+ *     precedence over {@link #biomeVariety} when {@code true}; this pure-logic record cannot
+ *     resolve the real biome itself (no seed-biome-source access here), so {@link #at}/{@link
+ *     #nearbyIslands} still report {@code fallbackBiome} as a placeholder in that case -- the
+ *     runtime caller ({@code LimitedBiomeSource}/{@code EnvelopedChunkGenerator}, both of which do
+ *     have real biome-source access) is responsible for overriding it
  */
 public record FloatingIslandsPlan(
     boolean enabled,
@@ -53,8 +60,28 @@ public record FloatingIslandsPlan(
     List<String> islandBiomes,
     IslandPlan.ExclusionZone exclusionZone,
     boolean oreDepositsEnabled,
-    boolean lootChestEnabled
+    boolean lootChestEnabled,
+    boolean naturalBiome
 ) {
+    /** Legacy 11-arg construction, predating {@link #naturalBiome} (DESIGN §28.4). Defaults to {@code false} -- purely additive. */
+    public FloatingIslandsPlan(
+        boolean enabled,
+        int minRadiusBlocks,
+        int maxRadiusBlocks,
+        double shapeAmplitude,
+        int cellSizeBlocks,
+        double spawnChance,
+        boolean biomeVariety,
+        List<String> islandBiomes,
+        IslandPlan.ExclusionZone exclusionZone,
+        boolean oreDepositsEnabled,
+        boolean lootChestEnabled
+    ) {
+        this(
+            enabled, minRadiusBlocks, maxRadiusBlocks, shapeAmplitude, cellSizeBlocks, spawnChance, biomeVariety,
+            islandBiomes, exclusionZone, oreDepositsEnabled, lootChestEnabled, false
+        );
+    }
     /**
      * Fraction of {@code cellSizeBlocks} an island's center may be jittered off the cell's own
      * center, each axis independently -- kept well under 0.5 so a fully-jittered island in one
@@ -141,7 +168,7 @@ public record FloatingIslandsPlan(
             config.enabled, config.minRadiusBlocks, config.maxRadiusBlocks, config.shapeAmplitude, config.cellSizeBlocks,
             config.spawnChance, config.biomeVariety, config.islandBiomes,
             new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
-            config.oreDepositsEnabled, config.lootChestEnabled
+            config.oreDepositsEnabled, config.lootChestEnabled, config.naturalBiome
         );
     }
 
@@ -176,6 +203,46 @@ public record FloatingIslandsPlan(
         boolean oreDepositsEnabled,
         boolean lootChestEnabled
     ) {
+        return fromText(
+            enabled, minRadiusBlocks, maxRadiusBlocks, shapeAmplitude, cellSizeBlocks, spawnChance, biomeVariety,
+            islandBiomesText, exclusionZoneEnabled, exclusionZoneRadiusBlocks, oreDepositsEnabled, lootChestEnabled, false
+        );
+    }
+
+    /**
+     * Parses client text/toggle fields into validated values, including {@link #naturalBiome}
+     * (DESIGN §28.4).
+     *
+     * @param enabled whether scattered islands generate at all
+     * @param minRadiusBlocks decimal minimum radius
+     * @param maxRadiusBlocks decimal maximum radius
+     * @param shapeAmplitude decimal coastline perturbation strength
+     * @param cellSizeBlocks decimal grid-cell edge length
+     * @param spawnChance decimal spawn probability
+     * @param biomeVariety whether each island hash-picks its own biome
+     * @param islandBiomesText newline- or comma-separated candidate biome ids
+     * @param exclusionZoneEnabled whether a void buffer precedes scattered islands
+     * @param exclusionZoneRadiusBlocks decimal exclusion-zone radius
+     * @param oreDepositsEnabled whether each island gets one embedded ore-vein feature
+     * @param lootChestEnabled whether each island gets one placed loot chest
+     * @param naturalBiome whether each island uses the real seed's own biome instead of {@code biomeVariety}'s pool
+     * @return canonical immutable values
+     */
+    public static FloatingIslandsPlan fromText(
+        boolean enabled,
+        String minRadiusBlocks,
+        String maxRadiusBlocks,
+        String shapeAmplitude,
+        String cellSizeBlocks,
+        String spawnChance,
+        boolean biomeVariety,
+        String islandBiomesText,
+        boolean exclusionZoneEnabled,
+        String exclusionZoneRadiusBlocks,
+        boolean oreDepositsEnabled,
+        boolean lootChestEnabled,
+        boolean naturalBiome
+    ) {
         List<String> islandBiomes = Arrays.stream(islandBiomesText.split("[,\\r\\n]+"))
             .map(String::trim)
             .filter(value -> !value.isEmpty())
@@ -192,7 +259,7 @@ public record FloatingIslandsPlan(
             new IslandPlan.ExclusionZone(
                 exclusionZoneEnabled, parseInteger(exclusionZoneRadiusBlocks, "Floating island exclusion zone radius")
             ),
-            oreDepositsEnabled, lootChestEnabled
+            oreDepositsEnabled, lootChestEnabled, naturalBiome
         );
     }
 
@@ -378,7 +445,10 @@ public record FloatingIslandsPlan(
             return Optional.empty();
         }
         double radius = minRadiusBlocks + hash01(seed, "floating_island_radius", cellX, cellZ, 0) * (maxRadiusBlocks - minRadiusBlocks);
-        String biome = biomeVariety
+        // naturalBiome's real biome can only be resolved by a caller with actual seed-biome-source
+        // access (this record has none) -- fallbackBiome is a harmless placeholder here, overridden
+        // by the runtime caller (see the naturalBiome javadoc above).
+        String biome = !naturalBiome && biomeVariety
             ? islandBiomes.get(Math.floorMod((int) Math.floor(hash01(seed, "floating_island_biome", cellX, cellZ, 0) * islandBiomes.size()), islandBiomes.size()))
             : fallbackBiome;
         return Optional.of(new ResolvedIsland(centerX, centerZ, radius, biome));

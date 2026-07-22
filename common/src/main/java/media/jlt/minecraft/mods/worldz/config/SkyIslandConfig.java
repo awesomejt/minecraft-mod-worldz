@@ -30,6 +30,15 @@ public final class SkyIslandConfig {
      * configurable Nether dimensions (DESIGN §27.6, mirroring {@code StripConfig.applyToNether}).
      */
     public boolean applyToNether = false;
+    /**
+     * Whether a biome-pinning buffer surrounds the starter island before real-seed biomes resume
+     * beyond it (DESIGN §27.10, 2026-07-21 follow-up from Jason's in-game testing). On by default:
+     * without it, the void immediately past the island's own tiny footprint reports whatever the
+     * real seed's noise says there, with no buffer at all.
+     */
+    public boolean exclusionZoneEnabled = true;
+    /** Buffer radius in blocks beyond the island's own edge, when {@link #exclusionZoneEnabled}. */
+    public int exclusionZoneRadiusBlocks = 128;
     /** Generous starter-chest contents (DESIGN §27.8). */
     public StarterKitConfig easyKit = easyDefaults();
     /** Middle-ground starter-chest contents. */
@@ -45,7 +54,9 @@ public final class SkyIslandConfig {
 
     private static StarterKitConfig easyDefaults() {
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:oak_sapling:4", "minecraft:bread:8", "minecraft:crafting_table:1");
+        config.essentials = list(
+            "minecraft:oak_sapling:4", "minecraft:bread:8", "minecraft:crafting_table:1", "minecraft:lava_bucket:1"
+        );
         config.extras = list(
             "minecraft:wooden_pickaxe:1", "minecraft:wooden_axe:1", "minecraft:torch:16", "minecraft:cobblestone:32"
         );
@@ -55,7 +66,7 @@ public final class SkyIslandConfig {
 
     private static StarterKitConfig mediumDefaults() {
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:oak_sapling:3", "minecraft:bread:4");
+        config.essentials = list("minecraft:oak_sapling:3", "minecraft:bread:4", "minecraft:lava_bucket:1");
         config.extras = list("minecraft:wooden_pickaxe:1", "minecraft:torch:8", "minecraft:cobblestone:16");
         config.extrasCount = 2;
         return config;
@@ -63,7 +74,7 @@ public final class SkyIslandConfig {
 
     private static StarterKitConfig hardDefaults() {
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:oak_sapling:2");
+        config.essentials = list("minecraft:oak_sapling:2", "minecraft:lava_bucket:1");
         config.extras = list("minecraft:bread:2", "minecraft:torch:4");
         config.extrasCount = 1;
         return config;

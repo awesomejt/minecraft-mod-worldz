@@ -35,6 +35,37 @@ class SkyIslandCustomizationTest {
     }
 
     @Test
+    void fromConfigCopiesBiomeExclusionZoneSettings() {
+        WorldzConfig config = new WorldzConfig();
+        config.skyIsland.exclusionZoneEnabled = false;
+        config.skyIsland.exclusionZoneRadiusBlocks = 200;
+
+        SkyIslandCustomization customization = SkyIslandCustomization.fromConfig(config);
+
+        assertEquals(false, customization.biomeExclusionZone().enabled());
+        assertEquals(200, customization.biomeExclusionZone().radiusBlocks());
+        assertEquals(200, customization.skyIslandPlan().biomeExclusionZone().radiusBlocks());
+    }
+
+    @Test
+    void legacyConstructorDefaultsBiomeExclusionZoneToTodaysConfigDefaults() {
+        SkyIslandCustomization customization = create("minecraft:plains", 16, 0.3, 64, 6);
+        assertTrue(customization.biomeExclusionZone().enabled());
+        assertEquals(128, customization.biomeExclusionZone().radiusBlocks());
+    }
+
+    @Test
+    void netherSkyIslandPlanCarriesBiomeExclusionZoneThrough() {
+        SkyIslandCustomization customization = new SkyIslandCustomization(
+            "minecraft:plains", 16, 0.3, 64, 6, StarterKitTier.MEDIUM, true,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(false, 64)
+        );
+        assertEquals(64, customization.netherSkyIslandPlan().biomeExclusionZone().radiusBlocks());
+    }
+
+    @Test
     void fromConfigCopiesBorderAndEndBorderSettings() {
         WorldzConfig config = new WorldzConfig();
         config.overworldBorder.enabled = true;

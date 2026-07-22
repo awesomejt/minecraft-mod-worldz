@@ -43,11 +43,18 @@ Every field not mentioned in a file falls back to Worldz's documented default
    `chest_boat`, Phase 8) picks between three ways of sourcing the land,
    and `oceanIsland.fluid` (`water`/`lava`/`none`, Phase 9) independently
    picks the exterior ocean's fluid -- both within one preset, not
-   separate World Types. "Worldz: Sky Island" (files `38`-`43`, GOALS 05/06,
-   Phase 10) reads only its own `skyIsland:` section -- a thin,
-   fixed-thickness floating slab, void everywhere else; `skyIsland.chestTier`
-   (`easy`/`medium`/`hard`) picks the necessities-chest difficulty, and
-   `skyIsland.applyToNether` mirrors the same shape into the Nether.
+   separate World Types. "Worldz: Sky Island" (files `38`-`48`, `57`-`58`,
+   GOALS 05/06/07/08, Phase 10/11) reads only its own `skyIsland:` section
+   -- a thin, fixed-thickness floating slab, void everywhere else;
+   `skyIsland.chestTier` (`easy`/`medium`/`hard`) picks the
+   necessities-chest difficulty, `skyIsland.applyToNether` mirrors the
+   same shape into the Nether, `skyIsland.exclusionZoneEnabled`/
+   `exclusionZoneRadiusBlocks` (2026-07-21 follow-up) pins the biome to
+   `islandBiome` in a buffer beyond the island's own edge before the real
+   seed's biome resumes, and `skyIsland.floatingIslands` (GOALS 07/08)
+   adds scattered secondary islands beyond that buffer, including a
+   `naturalBiome` option (2026-07-21 follow-up) that reads each scattered
+   island's real seed biome instead of hash-picking from a pool.
    "Worldz: Sky Chunk" (files `49`-`52`, GOALS 09/37, Phase 12) reads only
    its own `chunkIsland:` section -- chunk-shaped islands cut from the
    seed's own natural chunks (real terrain untouched, only unselected
@@ -122,6 +129,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `46-sky-island-floating-ore-deposits.yaml` | GOALS 08 (Phase 11.3): `floatingIslands.oreDepositsEnabled: true` in isolation — each scattered island should have exactly one embedded vanilla ore vein, no chest. **Select "Worldz: Sky Island"**. Requires 0.2.49+. |
 | `47-sky-island-floating-loot-chests.yaml` | GOALS 08 (Phase 11.4): `floatingIslands.lootChestEnabled: true` in isolation with a custom `lootKit` — each scattered island should have exactly one filled chest, no ore. **Select "Worldz: Sky Island"**. Requires 0.2.50+. |
 | `48-sky-island-floating-guaranteed-village.yaml` | GOALS 07 (Phase 11.5): a real vanilla village always exists on one specific scattered island beyond the exclusion zone (check the server log for its coordinates) — the flagship "guaranteed, not best-effort" village. **Select "Worldz: Sky Island"**. Requires 0.2.51+. |
+| `57-sky-island-biome-exclusion-zone.yaml` | GOALS 05 (2026-07-21 follow-up, DESIGN §27.10): a bare starter island's new biome exclusion zone (64-block test radius) — confirms the biome stays pinned to the configured `islandBiome` out to the buffer, then switches to the real seed's own biome beyond it, with terrain (void) unaffected either way. **Select "Worldz: Sky Island"**. Requires 0.2.64+. |
+| `58-sky-island-floating-natural-biome.yaml` | GOALS 08 (2026-07-21 follow-up, DESIGN §28.6): `floatingIslands.naturalBiome: true` — each scattered island reads the real seed's own biome instead of `biomeVariety`'s hash-picked pool (which stays on here to also confirm precedence), producing large, coherent biome regions instead of a checkerboard. **Select "Worldz: Sky Island"**. Requires 0.2.64+. |
 | `49-sky-chunk-default.yaml` | GOALS 09 (Phase 12.2/12.3): default full-column chunk islands — a selected chunk's real vanilla terrain is untouched, every unselected chunk is void; a guaranteed portal-room stronghold and a forced amethyst geode each sit on their own reserved chunk (check the server log for coordinates). **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
 | `50-sky-chunk-top-only.yaml` | GOALS 09 (Phase 12.2): the top-only depth cutoff ("like 5 deep to ensure access to stone") — a real per-column cutoff measured from each column's own natural surface, not a flat world-absolute Y. **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |
 | `51-sky-chunk-nether-end.yaml` | GOALS 09 (Phase 12.4): `applyToNether`/`applyToEnd` — the first Worldz preset to wrap the End's own generator at all; confirms the dragon fight stays winnable when the End is also chunk islands. **Select "Worldz: Sky Chunk"**. Requires 0.2.54+. |

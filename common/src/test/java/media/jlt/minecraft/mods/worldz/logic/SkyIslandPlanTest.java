@@ -88,6 +88,47 @@ class SkyIslandPlanTest {
         assertEquals(StarterKitTier.HARD, SkyIslandPlan.fromConfig(config).chestTier());
     }
 
+    @Test
+    void fromConfigCarriesBiomeExclusionZoneThrough() {
+        SkyIslandConfig config = new SkyIslandConfig();
+        config.exclusionZoneEnabled = false;
+        config.exclusionZoneRadiusBlocks = 200;
+
+        SkyIslandPlan plan = SkyIslandPlan.fromConfig(config);
+
+        assertFalse(plan.biomeExclusionZone().enabled());
+        assertEquals(200, plan.biomeExclusionZone().radiusBlocks());
+    }
+
+    @Test
+    void legacyConstructorDefaultsBiomeExclusionZoneToTodaysConfigDefaults() {
+        SkyIslandPlan plan = plan(16, 0.0, "minecraft:plains", 64, 6);
+        assertTrue(plan.biomeExclusionZone().enabled());
+        assertEquals(128, plan.biomeExclusionZone().radiusBlocks());
+    }
+
+    @Test
+    void disabledPlanHasDisabledBiomeExclusionZone() {
+        assertFalse(SkyIslandPlan.disabled().biomeExclusionZone().enabled());
+    }
+
+    @Test
+    void withinBiomeExclusionZoneRespectsEnabledAndRadius() {
+        SkyIslandPlan enabled = new SkyIslandPlan(
+            true, 16, 0.0, "minecraft:desert", 64, 6, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(true, 128)
+        );
+        assertTrue(enabled.withinBiomeExclusionZone(50.0));
+        assertTrue(enabled.withinBiomeExclusionZone(128.0));
+        assertFalse(enabled.withinBiomeExclusionZone(128.1));
+
+        SkyIslandPlan disabled = new SkyIslandPlan(
+            true, 16, 0.0, "minecraft:desert", 64, 6, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(false, 128)
+        );
+        assertFalse(disabled.withinBiomeExclusionZone(1.0));
+    }
+
     private static SkyIslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int surfaceY, int thicknessBlocks) {
         return new SkyIslandPlan(
             true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled()

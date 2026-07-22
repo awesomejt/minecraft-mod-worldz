@@ -1,0 +1,38 @@
+# GOALS 05 (2026-07-21 follow-up, DESIGN §27.10): the new biome exclusion
+# zone around a bare starter sky island (no floating islands) -- a buffer
+# where the biome stays pinned to the configured islandBiome, beyond which
+# the real seed's own biome takes over. Uses a smaller-than-default radius
+# (64 instead of 128) purely so the buffer's edge is reachable on foot in a
+# reasonable time for testing. **Select "Worldz: Sky Island"**.
+#
+# The terrain itself is unaffected either way -- everywhere beyond the tiny
+# island footprint is void regardless of the biome buffer. This is purely
+# about what F3's debug biome readout reports (and, indirectly, ambient/
+# mob-spawning rules), not what's visually built.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the small starter sky island (desert) as usual.
+#  2. Open F3 and note the biome reading while standing on the island
+#     itself: should be the configured `minecraft:desert`.
+#  3. Bridge outward (any direction) and watch F3's biome line as you
+#     cross the island's own edge. Confirm it keeps reading
+#     `minecraft:desert` out to roughly 64 blocks past the edge (the
+#     configured buffer), not whatever the real seed says there.
+#  4. Keep going past ~64 blocks. Confirm the biome reading changes to
+#     whatever the real seed's own noise reports at that location --
+#     it will likely differ from desert, and will vary again as you keep
+#     moving, exactly like ordinary vanilla biome variety.
+#  5. The terrain should stay void/unbuilt the whole way in both zones --
+#     confirm nothing about the biome buffer changes what's actually
+#     placed underfoot.
+skyIsland:
+  islandBiome: 'minecraft:desert'
+  radiusBlocks: 16
+  shapeAmplitude: 0.3
+  surfaceY: 64
+  thicknessBlocks: 6
+  exclusionZoneEnabled: true
+  exclusionZoneRadiusBlocks: 64
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

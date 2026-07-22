@@ -28,6 +28,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -116,6 +117,17 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * server thread by whatever schedule driver ends up owning the live radius.
      */
     private volatile ExteriorPlan.DimensionEnvelope envelope;
+    /**
+     * Cached from whichever of {@link #applyCarvers}/{@link #buildSurface}/{@link #fillFromNoise}
+     * runs first for this generator (DESIGN §28.4's natural-biome floating islands): {@link
+     * #applyBiomeDecoration} runs later in vanilla's own chunk-status pipeline but is never handed
+     * a {@link RandomState} directly, unlike every other override here, so {@link
+     * #skyIslandHitAtForTerrain} needs a fallback source for the real seed's {@code
+     * Climate.Sampler}. A plain volatile reference is enough for the same reason {@link #envelope}
+     * is: this generator resolves one seed for its whole lifetime, so whichever call wins the
+     * race writes the same value any other would have.
+     */
+    private volatile RandomState cachedRandomState;
     /**
      * A narrow corridor's width constraint (GOALS 32), layered additively on top of
      * {@link #envelope} rather than replacing it -- see DESIGN §23. Static for the corridor's
@@ -676,7 +688,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     ) {
         this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
         applyTerrainAdjustments(chunk, randomState, true);
-        applyEnvelope(chunk);
+        applyEnvelope(chunk, randomState);
     }
 
     @Override
@@ -687,7 +699,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkAccess protoChunk
     ) {
         this.delegate.buildSurface(level, structureManager, randomState, protoChunk);
-        applyEnvelope(protoChunk);
+        applyEnvelope(protoChunk, randomState);
     }
 
     @Override
@@ -702,7 +714,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // (kelp, seagrass, structure pieces) just placed -- skip it for a chunk we deliberately
         // decorated; the earlier applyCarvers/buildSurface passes already shaped its terrain.
         if (!decorateExteriorOcean) {
-            applyEnvelope(chunk);
+            applyEnvelope(chunk, this.cachedRandomState);
             if (activeSkyIsland().enabled()) {
                 applyFloatingIslandOre(level, chunk);
                 applyFloatingIslandLoot(level, chunk);
@@ -915,7 +927,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
                 applyTerrainAdjustments(chunk, randomState, false);
-                applyEnvelope(chunk);
+                applyEnvelope(chunk, randomState);
                 return chunk;
             });
     }
@@ -1007,6 +1019,37 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             : new SkyIslandHit(false, starterDistance, active.islandBiome());
     }
 
+    /**
+     * Same as {@link #skyIslandHitAt(int, int, SkyIslandPlan)}, except a scattered floating
+     * island's biome is resolved from the real seed (DESIGN §28.4) when {@code naturalBiome} is
+     * set, instead of {@link FloatingIslandsPlan.Hit#biome()}'s hash-picked placeholder -- needed
+     * only by callers that actually consume {@link SkyIslandHit#biome()} for the terrain palette
+     * ({@link #skyIslandStateAt}), not by height-only callers like {@link #skyIslandBaseHeight}.
+     */
+    private SkyIslandHit skyIslandHitAtForTerrain(int relativeX, int relativeZ, SkyIslandPlan active, RandomState randomState) {
+        SkyIslandHit hit = skyIslandHitAt(relativeX, relativeZ, active);
+        if (!hit.present() || !active.floatingIslands().naturalBiome() || randomState == null) {
+            // A null randomState only happens if this generator's very first chunk call ever
+            // lands on applyBiomeDecoration before any of fillFromNoise/applyCarvers/buildSurface
+            // populated the cache -- not expected given vanilla's own chunk-status ordering, but
+            // falling back to the placeholder biome is harmless (just skips natural-biome for
+            // this one call) rather than crashing worldgen outright.
+            return hit;
+        }
+        double starterDistance = active.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
+        if (starterDistance <= 0.0) {
+            // The starter footprint itself always keeps its own configured biome, natural-biome
+            // mode only applies to scattered floating islands beyond it.
+            return hit;
+        }
+        int quartX = QuartPos.fromBlock(relativeX + originX());
+        int quartZ = QuartPos.fromBlock(relativeZ + originZ());
+        int quartY = QuartPos.fromBlock(active.surfaceY());
+        Holder<Biome> natural = this.delegate.getBiomeSource().getNoiseBiome(quartX, quartY, quartZ, randomState.sampler());
+        String naturalId = natural.unwrapKey().map(key -> key.identifier().toString()).orElseGet(natural::getRegisteredName);
+        return new SkyIslandHit(true, hit.distanceFromShore(), naturalId);
+    }
+
     @Override
     public NoiseColumn getBaseColumn(
         int x,
@@ -1061,7 +1104,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             return states == null ? naturalColumn : new NoiseColumn(heightAccessor.getMinY(), states);
         }
         if (activeSkyIsland().enabled()) {
-            SkyIslandHit hit = skyIslandHitAt(x - originX(), z - originZ(), activeSkyIsland());
+            SkyIslandHit hit = skyIslandHitAtForTerrain(x - originX(), z - originZ(), activeSkyIsland(), randomState);
             BlockState[] skyStates = new BlockState[heightAccessor.getHeight()];
             int skyMinY = heightAccessor.getMinY();
             for (int index = 0; index < skyStates.length; index++) {
@@ -1150,7 +1193,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return this.delegate.getBiomeGenerationSettings(biome);
     }
 
-    private void applyEnvelope(ChunkAccess chunk) {
+    private void applyEnvelope(ChunkAccess chunk, RandomState randomState) {
+        if (randomState != null) {
+            this.cachedRandomState = randomState;
+        }
         if (!hasActiveExterior()) {
             return;
         }
@@ -1165,7 +1211,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 ExteriorMode mode = this.effectiveModeAt(relativeX, relativeZ);
                 if (mode != ExteriorMode.NORMAL) {
                     if (activeSkyIsland().enabled()) {
-                        SkyIslandHit hit = skyIslandHitAt(relativeX, relativeZ, activeSkyIsland());
+                        SkyIslandHit hit = skyIslandHitAtForTerrain(relativeX, relativeZ, activeSkyIsland(), this.cachedRandomState);
                         for (int y = minY; y <= maxY; y++) {
                             pos.set(x, y, z);
                             BlockState state = skyIslandStateAt(hit, y);

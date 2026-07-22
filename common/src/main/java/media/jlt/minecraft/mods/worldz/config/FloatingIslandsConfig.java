@@ -30,6 +30,16 @@ public final class FloatingIslandsConfig {
     public List<String> islandBiomes = list(
         "minecraft:plains", "minecraft:forest", "minecraft:desert", "minecraft:taiga", "minecraft:savanna"
     );
+    /**
+     * Whether each island reads the real underlying seed's own biome at its location instead of
+     * {@link #biomeVariety}'s hash-picked pool (DESIGN §28.4, 2026-07-21 follow-up). Takes
+     * precedence over {@link #biomeVariety} when {@code true}. Off by default -- purely additive,
+     * existing worlds keep {@link #biomeVariety}'s curated-pool behavior unless they opt in. Real
+     * biome regions are naturally large and coherently spaced (unlike a per-256-block-cell hash
+     * pick, which is closer to a checkerboard), which is the point: it produces biome variety
+     * actually worth bridging toward.
+     */
+    public boolean naturalBiome = false;
     /** Whether a void buffer surrounds the starter island before scattered islands begin (GOALS 07/08). */
     public boolean exclusionZoneEnabled = true;
     /** Radius of the exclusion-zone buffer, when enabled. */

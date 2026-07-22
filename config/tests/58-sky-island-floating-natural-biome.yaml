@@ -1,0 +1,43 @@
+# GOALS 08 (2026-07-21 follow-up, DESIGN §28.6): scattered floating
+# islands using the real seed's own biome at each island's location
+# instead of biomeVariety's hash-picked pool. **Select "Worldz: Sky
+# Island"**.
+#
+# biomeVariety is left on here deliberately -- naturalBiome takes
+# precedence over it (DESIGN §28.6), so this also doubles as confirmation
+# of that precedence, not just of naturalBiome working in isolation.
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the small starter sky island (plains) as usual.
+#  2. Bridge to several nearby scattered islands (small cells, high spawn
+#     chance -- they should be common). Confirm each one's surface
+#     material reflects a real vanilla biome (grass, sand, snow, etc. as
+#     applicable) rather than a value from the `islandBiomes` pool below.
+#  3. Compare neighboring islands: confirm biome regions read as
+#     coherent and spatially sensible (nearby islands more likely to
+#     share or have related biomes) rather than the checkerboard variety
+#     configs 44/45 show with biomeVariety alone -- that's the actual
+#     point of this mode (large, real biome regions worth bridging
+#     across, GOALS 08's own "sufficiently far away to require a lot of
+#     bridging" framing).
+#  4. Open F3 on a couple of islands and confirm the reported biome
+#     matches what the surface material suggests (e.g. sand reads as a
+#     desert-family biome), not a mismatch.
+skyIsland:
+  floatingIslands:
+    enabled: true
+    minRadiusBlocks: 10
+    maxRadiusBlocks: 24
+    shapeAmplitude: 0.3
+    cellSizeBlocks: 128
+    spawnChance: 0.9
+    biomeVariety: true
+    islandBiomes:
+      - 'minecraft:plains'
+      - 'minecraft:forest'
+      - 'minecraft:desert'
+    naturalBiome: true
+    exclusionZoneEnabled: false
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

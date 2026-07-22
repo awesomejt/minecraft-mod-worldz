@@ -1438,6 +1438,29 @@ island's 7.1–7.4/8.1–8.3 split):
       **do not start Phase 11 without Jason's explicit go-ahead**, and
       note 10.5's own outstanding go/no-go on the End (DESIGN §27.7) is
       independent of that phase gate.
+      **Beatability follow-up (2026-07-21, from Jason's real config-41
+      testing):** two real gaps found, not just tuning -- desert islands
+      had no plantable dirt/seeds (sand can't hold a sapling and there's
+      no grass to break for seeds) and no sky island of any biome had a
+      lava source (needed for obsidian, without which the Nether/End are
+      unreachable on a void-isolated island). Fixed: `lava_bucket:1`
+      added to all three `SkyIslandConfig` kits; desert-family biomes now
+      also get tier-scaled dirt/seeds and an upgraded easy-tier water item
+      (2 ice blocks instead of 1 bucket, for a real infinite source) via
+      `StarterKitDeployment.biomeEssentialItems` (DESIGN §27.8). Configs
+      41/42 comments updated with the new expected contents and an
+      obsidian/portal beatability check. **Quantities are a first pass,
+      not sign-off** -- still covered by 10.6's outstanding acceptance
+      pass, same as everything else in this task.
+      **Biome exclusion zone follow-up (2026-07-21, same testing
+      session):** a bare sky_island world had no buffer at all between the
+      starter island's own configured biome and the real seed's biome one
+      column past the edge. Fixed: new `SkyIslandConfig.exclusionZoneEnabled`
+      /`exclusionZoneRadiusBlocks` (default on, 128 blocks), threaded
+      through `SkyIslandPlan`/`SkyIslandCustomization`/codecs/Customize
+      screen (DESIGN §27.10). Biome only, not terrain -- the void beyond
+      the island is unaffected. New test config 57 exercises it. Still
+      covered by 10.6's outstanding acceptance pass.
 
 ## Phase 11 — Floating resource islands (GOALS 07–08)
 
@@ -1701,6 +1724,22 @@ in full per the Phase 10 header's own note.
       deposits, 11.4 loot chests, 11.5 guaranteed village, 11.6
       docs/configs) — **do not start Phase 12 without Jason's explicit
       go-ahead.**
+      **Natural biome follow-up (2026-07-21, from Jason's in-game
+      testing):** `biomeVariety`'s hash-picked pool rolls a biome per
+      256-block grid cell independently -- adjacent islands land on
+      unrelated biomes with no spatial coherence, closer to a checkerboard
+      than something worth bridging toward (GOALS 08's own "sufficiently
+      far away to require a lot of bridging" framing implies real biome
+      regions, not random tiles). Chunk islands (§29.6) already read the
+      real seed's biome by construction; floating islands had no
+      equivalent since `FloatingIslandsPlan` *is* the override, with no
+      real terrain underneath its synthetic slab to read a biome from.
+      Fixed: `FloatingIslandsConfig.naturalBiome` (default `false`, opt-in
+      third mode alongside `biomeVariety`, takes precedence when set) --
+      `LimitedBiomeSource`/`EnvelopedChunkGenerator` resolve the real
+      biome via their own seed-biome-source access, since the pure-logic
+      `FloatingIslandsPlan` has none (DESIGN §28.6). New test config 58
+      exercises it. Still covered by 11.6's outstanding acceptance pass.
 
 ## Phase 12 — Sky chunk challenge (GOALS 09, 37)
 

@@ -530,8 +530,9 @@ there is no separate World Type for either.
 
 ## Phase 10 acceptance (sky island, GOALS 05/06, TODO 10.2-10.4)
 
-Uses configs `38`-`43` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: Sky Island"** for all six. Requires 0.2.45+.
+Uses configs `38`-`43`, `57` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Sky Island"** for all seven. Requires 0.2.45+ (`57`
+requires 0.2.64+).
 
 1. **Default island**, `38-sky-island-default.yaml` (GOALS 05 core).
    Confirm you spawn on a small, natural-looking, grass-topped island at
@@ -558,11 +559,18 @@ Uses configs `38`-`43` (see [`config/tests/README.md`](config/tests/README.md)).
 4. **Chest tiers and the biome water-item swap**, `41-sky-island-chest-easy-desert.yaml`
    and `42-sky-island-chest-hard.yaml`. On 41 (desert, easy tier): confirm
    the surface reads as sand-over-sandstone (not grass), and the chest
-   holds the generous easy-tier contents plus a water bucket (not a
-   cauldron — deserts never get rain, DESIGN §27.8). On 42 (plains, hard
-   tier): confirm the chest holds only the bare-essentials hard-tier
-   contents plus a cauldron, and that the world still feels beatable from
-   this minimal a start.
+   holds the generous easy-tier contents (saplings, bread, crafting table,
+   a lava bucket, 3 random extras) plus, in place of a cauldron: 2 ice
+   blocks, 6 dirt, and 4 wheat seeds (2026-07-21 beatability follow-up,
+   DESIGN §27.8). Confirm the ice melts into two adjacent water sources
+   when placed (a real infinite supply), the dirt is enough to plant the
+   saplings plus a small crop plot, and the lava bucket can produce
+   obsidian for a Nether portal frame. On 42 (plains, hard tier): confirm
+   the chest holds only the bare-essentials hard-tier contents (2
+   saplings, a lava bucket, 1 random extra) plus a cauldron — plains
+   already has natural dirt, so no extra dirt/seeds here — and that the
+   world still feels beatable from this minimal a start, including
+   reaching the Nether via the lava bucket.
 5. **Nether variant**, `43-sky-island-nether.yaml` (GOALS 06). Build a
    portal on the Overworld island and step through. Confirm the Nether is
    also a small floating slab surrounded by void at the same radius —
@@ -570,6 +578,13 @@ Uses configs `38`-`43` (see [`config/tests/README.md`](config/tests/README.md)).
    Overworld's biome (DESIGN §27.6), nothing generating naturally beyond
    its footprint (no fortress, vegetation, piglins/hoglins). Confirm a
    fallback blaze spawner exists and blaze rods are obtainable.
+6. **Biome exclusion zone**, `57-sky-island-biome-exclusion-zone.yaml`
+   (2026-07-21 follow-up, DESIGN §27.10, 0.2.64+). With F3 open, bridge
+   outward from the island. Confirm the biome reading stays pinned to the
+   configured `minecraft:desert` for roughly 64 blocks past the island's
+   own edge (the configured buffer), then switches to whatever the real
+   seed's own biome noise reports beyond that — confirm the terrain stays
+   void/unbuilt the whole way regardless of which biome F3 reports.
 
 **Not covered by this phase's acceptance, by design:** the End (GOALS 06's
 other dimension). Phase 10.5's research spike concluded vanilla End
@@ -580,8 +595,8 @@ satisfied.
 
 ## Phase 11 acceptance (floating resource islands, GOALS 07/08, TODO 11.2-11.5)
 
-Uses configs `44`-`48` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: Sky Island"** for all five.
+Uses configs `44`-`48`, `58` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Sky Island"** for all six.
 
 1. **Dense scatter**, `44-sky-island-floating-dense.yaml` (GOALS 08 core,
    0.2.48+). Confirm you spawn on the starter island as usual, and that
@@ -622,6 +637,16 @@ Uses configs `44`-`48` (see [`config/tests/README.md`](config/tests/README.md)).
    village meets the island's synthetic slab edge** (overhanging jigsaw
    pieces, floating fragments) — this is a known, deliberately
    unverified-from-source-reading risk flagged in DESIGN §28.3.
+
+6. **Natural biome**, `58-sky-island-floating-natural-biome.yaml`
+   (2026-07-21 follow-up, DESIGN §28.6, 0.2.64+). Bridge to several
+   scattered islands. Confirm each island's surface material reflects a
+   real vanilla biome (not one drawn from the `islandBiomes` pool, even
+   though `biomeVariety` is also on here — `naturalBiome` should win).
+   Confirm neighboring islands' biomes read as spatially coherent (nearby
+   islands more likely related) rather than the checkerboard variety
+   configs 44/45 show, and that F3's reported biome matches the surface
+   material you see.
 
 **Not covered by this phase's acceptance:** Nether floating islands
 (deliberately out of scope this phase, DESIGN §28.5 — GOALS 08's text has

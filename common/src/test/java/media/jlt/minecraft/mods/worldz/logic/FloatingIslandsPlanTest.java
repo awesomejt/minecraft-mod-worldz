@@ -126,6 +126,41 @@ class FloatingIslandsPlanTest {
     }
 
     @Test
+    void legacyConstructorDefaultsNaturalBiomeToFalse() {
+        assertFalse(plan(true, 1.0, true, 256, new IslandPlan.ExclusionZone(false, 0)).naturalBiome());
+    }
+
+    @Test
+    void fromConfigCarriesNaturalBiomeThrough() {
+        FloatingIslandsConfig config = new FloatingIslandsConfig();
+        config.naturalBiome = true;
+        assertTrue(FloatingIslandsPlan.fromConfig(config).naturalBiome());
+    }
+
+    @Test
+    void naturalBiomeTakesPrecedenceOverBiomeVarietyAndReportsThePlaceholderFallback() {
+        FloatingIslandsPlan plan = new FloatingIslandsPlan(
+            true, 100, 100, 0.0, 256, 1.0, true, List.of("minecraft:desert"), new IslandPlan.ExclusionZone(false, 0),
+            false, false, true
+        );
+        FloatingIslandsPlan.Hit hit = plan.at(128, 128, 42L, "minecraft:plains");
+        assertTrue(hit.present());
+        // naturalBiome is true, so biomeVariety's pool is ignored -- the real biome can only be
+        // resolved by a runtime caller with seed-biome-source access, which this pure-logic class
+        // doesn't have, so it reports the fallback as a placeholder for that caller to override.
+        assertEquals("minecraft:plains", hit.biome());
+    }
+
+    @Test
+    void fromTextParsesNaturalBiome() {
+        FloatingIslandsPlan plan = FloatingIslandsPlan.fromText(
+            true, "20", "40", "0.4", "300", "0.7", true, "minecraft:plains",
+            true, "500", true, true, true
+        );
+        assertTrue(plan.naturalBiome());
+    }
+
+    @Test
     void fromTextParsesDecimalFieldsAndSplitsBiomes() {
         FloatingIslandsPlan plan = FloatingIslandsPlan.fromText(
             true, "20", "40", "0.4", "300", "0.7", true, "minecraft:plains, minecraft:desert\nminecraft:taiga",

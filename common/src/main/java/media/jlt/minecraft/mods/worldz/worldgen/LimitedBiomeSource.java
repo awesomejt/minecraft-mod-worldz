@@ -1150,6 +1150,7 @@ public final class LimitedBiomeSource extends BiomeSource {
             long skyIslandSeed = this.effectiveLayoutPlan.seed();
             double distance = this.skyIsland.distanceFromShore(blockX - originX, blockZ - originZ, skyIslandSeed);
             String biomeId = this.skyIsland.islandBiome();
+            boolean scatteredHit = false;
             if (distance > 0.0) {
                 // Outside the starter island's own footprint: check the scattered floating-island
                 // grid beyond it (GOALS 07-08, DESIGN §28.1) before giving up.
@@ -1159,16 +1160,28 @@ public final class LimitedBiomeSource extends BiomeSource {
                 if (hit.present()) {
                     distance = hit.distanceFromShore();
                     biomeId = hit.biome();
+                    scatteredHit = true;
+                } else if (this.skyIsland.withinBiomeExclusionZone(distance)) {
+                    // Beyond every footprint but still inside the starter island's own biome
+                    // buffer (DESIGN §27.10): keep reporting islandBiome rather than falling
+                    // through to the real seed immediately -- the terrain here is void either way.
+                    distance = 0.0;
                 }
             }
             if (distance <= 0.0) {
+                if (scatteredHit && this.skyIsland.floatingIslands().naturalBiome()) {
+                    // DESIGN §28.4: real seed biome instead of a hash-picked pool, the same
+                    // delegate this method's own final fallback uses below.
+                    return this.resolution.get().delegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
+                }
                 Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(biomeId);
                 if (biome != null) {
                     return biome;
                 }
             }
-            // Outside every footprint (or the lookup failed): fall through to whatever the rest of
-            // this method would normally report -- harmless, since nothing ever generates there.
+            // Outside every footprint and buffer (or the lookup failed): fall through to whatever
+            // the rest of this method would normally report -- harmless, since nothing ever
+            // generates there.
         }
         if (this.exteriorPlan.overworld().modeAt(blockX - originX, blockZ - originZ) == ExteriorMode.OCEAN) {
             return this.oceanBiome.orElseThrow(() -> new IllegalStateException("Deep ocean biome is unavailable."));

@@ -1719,6 +1719,7 @@ public final class WorldzConfig {
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
             + ", hardKit=" + starterKitSummary(config.hardKit)
             + ", applyToNether=" + config.applyToNether
+            + ", exclusionZone=" + (config.exclusionZoneEnabled ? "radius=" + config.exclusionZoneRadiusBlocks : "<disabled>")
             + ", floatingIslands=" + floatingIslandsSummary(config.floatingIslands);
     }
 
@@ -1745,6 +1746,7 @@ public final class WorldzConfig {
             + ", cellSizeBlocks=" + config.cellSizeBlocks
             + ", spawnChance=" + config.spawnChance
             + ", biomeVariety=" + config.biomeVariety
+            + ", naturalBiome=" + config.naturalBiome
             + ", islandBiomes=" + config.islandBiomes
             + ", exclusionZone=" + (config.exclusionZoneEnabled ? "radius=" + config.exclusionZoneRadiusBlocks : "<disabled>")
             + ", oreDeposits=" + (config.oreDepositsEnabled ? "features=" + config.oreFeatureIds : "<disabled>")

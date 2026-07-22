@@ -144,7 +144,8 @@ public final class SkyIslandPresetEditor implements PresetEditor {
             fromPlan(plan.nether()),
             fromPlan(plan.end()),
             fromPlan(exterior.nether()),
-            skyIsland.floatingIslands()
+            skyIsland.floatingIslands(),
+            skyIsland.biomeExclusionZone()
         );
     }
 

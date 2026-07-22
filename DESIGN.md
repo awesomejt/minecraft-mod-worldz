@@ -3213,13 +3213,58 @@ separate sentence entirely ("Biome... informs what is necessities
 chest"). Since every sky island is surrounded by void with vegetation/
 decoration fully suppressed (§27.2), the *only* water a desert-family
 (no-rain) biome will ever see is whatever's in the chest — it gets a
-guaranteed water bucket. Every other family gets a cauldron instead,
-since rain will fill it naturally over time and a bucket would be
-redundant. Reuses `SkyIslandProfile.familyFor`'s existing DESERT
-classification (§27.3) rather than inventing a second biome-family axis
-— the item is appended to the resolved kit's essentials
-(`StarterKitDeployment.spawnStarterChest`), not stored in config, since
-it's fully determined by the already-configured `islandBiome`.
+guaranteed water item. Every other family gets a cauldron instead, since
+rain will fill it naturally over time and a bucket would be redundant.
+Reuses `SkyIslandProfile.familyFor`'s existing DESERT classification
+(§27.3) rather than inventing a second biome-family axis — the items are
+appended to the resolved kit's essentials
+(`StarterKitDeployment.biomeEssentialItems`, called from
+`spawnStarterChest`), not stored in config, since they're fully
+determined by the already-configured `islandBiome` (and, below, the
+already-configured `chestTier`).
+
+**Beatability follow-up (2026-07-21, from Jason's real in-game testing of
+config 41):** the water-item swap alone left two gaps GOALS 05's "all
+tiers beatable" promise doesn't tolerate, found by walking through what a
+desert island actually hands the player versus what it needs:
+
+- **No dirt, anywhere, ever, on a desert island.** `SkyIslandProfile`
+  (§27.3) makes a desert-family slab sand-over-sandstone end to end —
+  there is no dirt block on the whole island. Every chest tier hands out
+  oak saplings regardless of biome, but vanilla saplings cannot be
+  planted on sand at all; a desert island's kit was handing out
+  unplantable saplings. The same slab check also has no tall grass to
+  break (§27.2 suppresses all vegetation), so there is no wheat-seed
+  source either — "grow crops" needs seeds, not just dirt.
+- **No lava, anywhere, on any biome, in either dimension.** The island's
+  core is always plain `STONE` (Overworld) or `BASALT` (Nether, §27.6) —
+  no ore, no lava pocket. Sky islands are void-isolated (no natural
+  Nether portal in reach), and `ProgressionGuarantees` only builds the
+  fallback End-portal room and Nether blaze-spawner room, never an actual
+  portal — so without a lava source for obsidian, the Nether/End are
+  categorically unreachable, on every tier, independent of biome. This
+  is a beatability floor, not a difficulty axis, so a `lava_bucket:1`
+  essential was added to all three `SkyIslandConfig` kits directly
+  (`easyKit`/`mediumKit`/`hardKit`), unconditional on biome.
+
+`StarterKitDeployment.biomeEssentialItems` now returns a *list* (not one
+item) for the desert-family case: a water item (2 `minecraft:ice` for
+easy — melts in a desert's warmth into two adjacent water sources, a real
+infinite supply, versus 1 `minecraft:water_bucket` for medium/hard,
+unchanged from the original single-bucket behavior since Jason's
+feedback only called out easy explicitly), a tier-scaled `minecraft:dirt`
+count roughly matching each tier's own sapling count plus a small farm
+buffer (6/4/2 for easy/medium/hard), and `minecraft:wheat_seeds` for
+easy/medium only (4/2) — hard tier deliberately omits seeds, leaning on
+mob drops (zombies/husks can drop carrots/potatoes) and, once GOALS 08's
+floating islands are enabled, bridging to a rainy biome for a cauldron,
+matching every other hard-tier kit's "harder, still beatable" posture in
+this project. Non-desert families are unaffected (still just the one
+cauldron) since they already have natural dirt (§27.3) and eventual rain.
+**Chosen quantities are a first pass, not sign-off** — adjustable via
+YAML like every other kit default in this project, expected to be
+corrected from further in-game testing across tiers/biomes exactly like
+Phase 8's own starter-kit defaults were (§25.3).
 
 The chest itself is a literal placed `minecraft:chest` block at the
 world origin, on top of the slab (`Y = surfaceY`) — mirrors the chest
@@ -3248,6 +3293,56 @@ established (`WorldPresetResourcesTest`, `ProjectMetadataTest`). Like
 origin) and no separate Overworld Exterior field (`SkyIslandPlan`
 unconditionally supplies the entire Overworld — and, when enabled, Nether
 — exterior itself, the same reasoning as DESIGN §24.8).
+
+### 27.10 Biome exclusion zone beyond the starter island (2026-07-21 follow-up, from Jason's in-game testing)
+
+**The gap:** a bare `sky_island` world (no floating islands) had no
+exclusion zone at all — `LimitedBiomeSource.getNoiseBiome` only overrode
+the biome inside the starter footprint (§27.3's tiny 8–65536-block
+radius); one column past the edge, it fell straight through to the real
+seed's own `MultiNoiseBiomeSource`. Jason's observation testing config 41:
+the void beyond the island already correctly reads real-seed biomes (a
+desert island floating over what the seed says is a swamp, say) — "which
+is fine" — but with *zero* buffer, meaning the starter island's own
+configured `islandBiome` could butt directly up against an unrelated real
+biome one block past the edge, and there was no way to widen that buffer.
+
+**The fix:** `SkyIslandPlan` gains a ninth component,
+`IslandPlan.ExclusionZone biomeExclusionZone` — reusing the same
+`(enabled, radiusBlocks)` record `FloatingIslandsPlan.exclusionZone`
+already established (§28.1), not a new type. `SkyIslandConfig` gains
+`exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`, on by default at 128
+blocks (Jason's own suggested default). `SkyIslandPlan.withinBiomeExclusionZone
+(distanceFromShore)` reuses `distanceFromShore`'s existing positive-outside/
+negative-inside convention (§27.4) directly — no separate radius-from-origin
+math, so the buffer scales with the island's own jagged coastline exactly
+like every other distance check in this codebase, and a "huge" island
+(config 40, 256-block radius) doesn't accidentally end up with a buffer
+smaller than the island itself.
+
+**Scope: biome only, never terrain.** The exclusion zone changes what
+`LimitedBiomeSource.getNoiseBiome` reports for mob-spawning/ambient/fog
+purposes; it does not touch `EnvelopedChunkGenerator`'s terrain painting
+at all, which only ever cared about "inside the footprint = solid slab,
+outside = void" — unaffected either way, exactly as Jason specified
+("even in the void"). `LimitedBiomeSource.getNoiseBiome`'s existing
+footprint-then-floating-island-then-fallback chain gained one more rung:
+outside every footprint but still within the buffer, keep reporting
+`islandBiome` instead of falling through immediately.
+
+**Codec:** nests inside `SkyIslandCodecs.PLAN_CODEC`'s own group (now 9
+fields), reusing the existing `EXCLUSION_ZONE_CODEC` a second time — well
+under any DFU ceiling, same non-issue §28.4 already noted for
+`floatingIslands`. `SkyIslandCustomization` gained the same field,
+threaded through `fromConfig`/a new `fromText` overload/`skyIslandPlan()`/
+`netherSkyIslandPlan()`; the Nether variant reuses the same value
+structurally (like `radiusBlocks`/`shapeAmplitude`) even though, like
+`islandBiome` itself, it's presently inert there (§27.6: the Nether
+palette is always netherrack, keyed off nothing biome-related). Every
+pre-existing constructor call site (mostly test fixtures) keeps compiling
+unchanged via a legacy overload defaulting to today's real posture
+(`enabled=true, radius=128`), not a silent behavior change for existing
+callers.
 
 ## 28. Floating resource islands (GOALS 07–08) — design pass (TODO 11.1)
 
@@ -3455,6 +3550,73 @@ need floating islands doesn't share, being sky-island-only. Follows
   (§24.9) to scattered islands; the starter island's own guarantee (§27.5)
   is untouched, since scattered islands are optional exploration content,
   not part of the progression gate.
+
+### 28.6 Natural biome mode (2026-07-21 follow-up, from Jason's in-game testing)
+
+**The problem `biomeVariety` doesn't actually solve:** GOALS 08 wants
+biomes "sufficiently large and spaced apart to encourage bridging."
+`biomeVariety`'s hash-picked pool (§28.2) instead independently rolls a
+biome per 256-block grid cell (the default `cellSizeBlocks`) — adjacent
+islands can land on completely unrelated biomes with zero spatial
+coherence, closer to a checkerboard than a real biome map. Real vanilla
+biome regions, by contrast, are naturally large and contiguous by
+construction (the same noise-based generation every other Overworld biome
+already uses). Jason's own framing: pin the starter island's biome inside
+an exclusion zone (§27.10), then "use the underlying biomes of the seed —
+even in the void" beyond it. Chunk islands (§29.6) already do exactly
+this by construction — every chunk's biome is whatever the real seed
+naturally has there, no override mechanism at all — confirmed by tracing
+`LimitedBiomeSource.getNoiseBiome`: `chunkIsland` is never read there.
+Floating islands had no equivalent, since `FloatingIslandsPlan` *is* the
+override mechanism (`biomeVariety`'s hash pick or the shared fallback) —
+there's no vanilla terrain underneath a synthetic slab island to read a
+"real" biome from in the first place, except the biome *classification*,
+which vanilla still computes for every column regardless of what terrain
+(if any) actually sits there.
+
+**The fix:** `FloatingIslandsConfig`/`FloatingIslandsPlan` gain
+`naturalBiome` (boolean, default `false` — purely additive, opt-in per
+Jason's own preference for a new mode over changing `biomeVariety`'s
+default). Takes precedence over `biomeVariety` when `true`. Structural
+constraint that shaped the implementation: `FloatingIslandsPlan` is pure
+logic (DESIGN §28.1's own framing, no Minecraft runtime dependency,
+JUnit-testable without bootstrapping a world) with no `Climate.Sampler`/
+biome-source access at all — it cannot resolve "the real biome here"
+itself. `resolveCell` reports the ordinary `fallbackBiome` as a
+placeholder when `naturalBiome` is set (deliberately not a sentinel value
+— callers key off the plan's own `naturalBiome()` flag, not off inspecting
+the returned string), and the two runtime callers that *do* have real
+biome-source access override it:
+
+- **`LimitedBiomeSource.getNoiseBiome`** (the actual biome classification
+  players/mobs/weather see): when a column resolves inside a scattered
+  island and `naturalBiome` is set, returns
+  `this.resolution.get().delegate().getNoiseBiome(...)` directly — the
+  exact same real-seed delegate this method's own final fallback already
+  uses for columns with no island at all, just reached one branch earlier.
+- **`EnvelopedChunkGenerator`** (the terrain palette, since a floating
+  island's surface material/family classification is keyed off its own
+  biome string, §27.3): a new `skyIslandHitAtForTerrain` resolves the real
+  `Holder<Biome>` via `this.delegate.getBiomeSource().getNoiseBiome(...)`
+  once per column (not per Y — called once by `getBaseColumn`/`applyEnvelope`,
+  reused for every block in that column's slab) and converts it to an id
+  string via `unwrapKey()`, mirroring `SpawnOriginManager`'s own existing
+  `holder.unwrapKey().map(key -> key.identifier().toString())` precedent
+  (`SpawnOriginManager.java:439`) rather than inventing a new conversion.
+  Needs a `Climate.Sampler`, which `applyBiomeDecoration`'s override
+  doesn't receive directly (unlike every other terrain hook here) — a new
+  `cachedRandomState` volatile field (same posture as `envelope`'s own
+  documented "one seed for this generator's whole lifetime" reasoning)
+  caught from whichever of `fillFromNoise`/`applyCarvers`/`buildSurface`
+  runs first, since vanilla's own chunk-status ordering always runs one of
+  those before decoration.
+
+**Not touched:** ore deposits (§28.2) and the guaranteed village (§28.3)
+keep drawing from the plan's own `ResolvedIsland.biome()` (the
+placeholder in natural mode) — village biome/structure selection already
+has its own independent hash-pick (`villageBiome`/`villageStructureId`,
+unrelated to `islandBiomes`/`biomeVariety`) and ore feature ids aren't
+biome-keyed at all, so neither needed any change.
 
 ## 29. Sky chunk challenge (GOALS 09, 37) — design pass (TODO 12.1)
 

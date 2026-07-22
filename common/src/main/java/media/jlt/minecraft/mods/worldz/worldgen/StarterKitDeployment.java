@@ -37,10 +37,9 @@ final class StarterKitDeployment {
 
     /**
      * Places a filled chest on top of the sky island at the world origin (GOALS 05, DESIGN
-     * §27.8): the selected difficulty tier's essentials/extras, plus one guaranteed water-source
-     * item chosen from the island's biome -- a water bucket for a dry (desert-family) biome, since
-     * no rain will ever fill a cauldron there, or a cauldron otherwise (rain naturally fills it
-     * over time). Called once, only for a new sky island world.
+     * §27.8): the selected difficulty tier's essentials/extras, plus guaranteed biome-driven
+     * items chosen from the island's biome and tier (see {@link #biomeEssentialItems}). Called
+     * once, only for a new sky island world.
      *
      * @param overworld the Overworld server level
      * @param originX world spawn origin block X
@@ -54,9 +53,9 @@ final class StarterKitDeployment {
 
         StarterKitPlan plan = resolvePlan(tierConfig(WorldzCommon.config().skyIsland, skyIsland.chestTier()));
         List<StarterKitPlan.ItemAmount> essentials = new ArrayList<>(plan.essentials());
-        essentials.add(waterSourceItem(skyIsland.islandBiome()));
-        StarterKitPlan withWaterSource = new StarterKitPlan(essentials, plan.extras(), plan.extrasCount());
-        List<StarterKitPlan.ItemAmount> resolved = withWaterSource.resolve(overworld.getSeed());
+        essentials.addAll(biomeEssentialItems(skyIsland.islandBiome(), skyIsland.chestTier()));
+        StarterKitPlan withBiomeItems = new StarterKitPlan(essentials, plan.extras(), plan.extrasCount());
+        List<StarterKitPlan.ItemAmount> resolved = withBiomeItems.resolve(overworld.getSeed());
 
         BlockEntity blockEntity = overworld.getBlockEntity(pos);
         if (!(blockEntity instanceof ChestBlockEntity chest)) {
@@ -131,14 +130,42 @@ final class StarterKitDeployment {
     }
 
     /**
-     * A dry (desert-family) biome never gets rain, so a cauldron there would never fill -- it
-     * gets a ready-to-use water bucket instead, the only water this island's life will ever see.
-     * Every other biome family gets a cauldron, since rain will fill it naturally over time.
+     * Biome- and tier-driven essentials on top of the configured kit (DESIGN §27.8, beatability
+     * follow-up from real in-game testing of config 41). Every non-desert-family biome already
+     * has natural dirt in its own slab (grass/snow/mycelium-over-dirt, §27.3) and eventual rain,
+     * so it only needs a cauldron. A desert-family biome has neither -- sand-over-sandstone all
+     * the way down, and no rain ever -- so on top of the water item it also needs a guaranteed
+     * dirt allotment (otherwise the kit's own saplings have nowhere plantable, since sand cannot
+     * hold a sapling) and, below hard tier, wheat seeds (there is no tall grass to break for them
+     * either, since sky islands suppress vegetation entirely, §27.2). Hard tier deliberately omits
+     * seeds and gets only a single-use water bucket like medium -- it is meant to lean on mob
+     * drops (zombies/husks can drop carrots and potatoes) and, once GOALS 08's floating islands
+     * are enabled, bridging to a rainy biome for a cauldron, same "harder but still beatable"
+     * posture as every other hard-tier kit in this project. Easy tier gets 2 ice blocks instead of
+     * a single bucket -- melted (desert biomes are warm enough) into two adjacent water sources,
+     * a real infinite supply rather than one disposable bucket's worth.
      */
-    private static StarterKitPlan.ItemAmount waterSourceItem(String islandBiome) {
-        return SkyIslandProfile.familyFor(islandBiome) == SkyIslandProfile.BiomeFamily.DESERT
-            ? new StarterKitPlan.ItemAmount("minecraft:water_bucket", 1)
-            : new StarterKitPlan.ItemAmount("minecraft:cauldron", 1);
+    private static List<StarterKitPlan.ItemAmount> biomeEssentialItems(String islandBiome, StarterKitTier tier) {
+        if (SkyIslandProfile.familyFor(islandBiome) != SkyIslandProfile.BiomeFamily.DESERT) {
+            return List.of(new StarterKitPlan.ItemAmount("minecraft:cauldron", 1));
+        }
+        List<StarterKitPlan.ItemAmount> items = new ArrayList<>();
+        items.add(tier == StarterKitTier.EASY
+            ? new StarterKitPlan.ItemAmount("minecraft:ice", 2)
+            : new StarterKitPlan.ItemAmount("minecraft:water_bucket", 1));
+        items.add(new StarterKitPlan.ItemAmount("minecraft:dirt", dirtCountFor(tier)));
+        if (tier != StarterKitTier.HARD) {
+            items.add(new StarterKitPlan.ItemAmount("minecraft:wheat_seeds", tier == StarterKitTier.EASY ? 4 : 2));
+        }
+        return items;
+    }
+
+    private static int dirtCountFor(StarterKitTier tier) {
+        return switch (tier) {
+            case EASY -> 6;
+            case MEDIUM -> 4;
+            case HARD -> 2;
+        };
     }
 
     /**

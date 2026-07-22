@@ -32,7 +32,8 @@ final class SkyIslandCodecs {
         Codec.STRING.listOf().fieldOf("island_biomes").forGetter(FloatingIslandsPlan::islandBiomes),
         EXCLUSION_ZONE_CODEC.fieldOf("exclusion_zone").forGetter(FloatingIslandsPlan::exclusionZone),
         Codec.BOOL.fieldOf("ore_deposits_enabled").forGetter(FloatingIslandsPlan::oreDepositsEnabled),
-        Codec.BOOL.fieldOf("loot_chest_enabled").forGetter(FloatingIslandsPlan::lootChestEnabled)
+        Codec.BOOL.fieldOf("loot_chest_enabled").forGetter(FloatingIslandsPlan::lootChestEnabled),
+        Codec.BOOL.fieldOf("natural_biome").forGetter(FloatingIslandsPlan::naturalBiome)
     ).apply(instance, FloatingIslandsPlan::new));
 
     static final Codec<SkyIslandPlan> PLAN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -43,7 +44,8 @@ final class SkyIslandCodecs {
         Codec.INT.fieldOf("surface_y").forGetter(SkyIslandPlan::surfaceY),
         Codec.INT.fieldOf("thickness").forGetter(SkyIslandPlan::thicknessBlocks),
         TIER_CODEC.fieldOf("chest_tier").forGetter(SkyIslandPlan::chestTier),
-        FLOATING_ISLANDS_CODEC.fieldOf("floating_islands").forGetter(SkyIslandPlan::floatingIslands)
+        FLOATING_ISLANDS_CODEC.fieldOf("floating_islands").forGetter(SkyIslandPlan::floatingIslands),
+        EXCLUSION_ZONE_CODEC.fieldOf("biome_exclusion_zone").forGetter(SkyIslandPlan::biomeExclusionZone)
     ).apply(instance, SkyIslandPlan::new));
 
     private SkyIslandCodecs() {

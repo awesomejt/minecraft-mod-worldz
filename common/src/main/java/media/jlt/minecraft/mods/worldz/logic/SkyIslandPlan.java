@@ -21,6 +21,10 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  * @param chestTier the necessities-chest difficulty tier (GOALS 05, DESIGN §27.8)
  * @param floatingIslands scattered small floating islands beyond this island's own footprint
  *     (GOALS 07-08, DESIGN §28), disabled unless explicitly configured
+ * @param biomeExclusionZone buffer beyond the island's own edge where the biome (not the terrain,
+ *     which stays void either way) stays pinned to {@link #islandBiome} before real-seed biomes
+ *     resume beyond it (DESIGN §27.10, reuses {@link IslandPlan.ExclusionZone} directly like
+ *     {@link FloatingIslandsPlan#exclusionZone} already does)
  */
 public record SkyIslandPlan(
     boolean enabled,
@@ -30,8 +34,30 @@ public record SkyIslandPlan(
     int surfaceY,
     int thicknessBlocks,
     StarterKitTier chestTier,
-    FloatingIslandsPlan floatingIslands
+    FloatingIslandsPlan floatingIslands,
+    IslandPlan.ExclusionZone biomeExclusionZone
 ) {
+    /**
+     * Legacy 8-arg construction, predating {@link #biomeExclusionZone} (DESIGN §27.10). Defaults
+     * to the same always-on, 128-block posture {@link media.jlt.minecraft.mods.worldz.config.SkyIslandConfig}
+     * ships -- existing callers (mostly test fixtures) get today's real behavior, not a silent
+     * opt-out.
+     */
+    public SkyIslandPlan(
+        boolean enabled,
+        int radiusBlocks,
+        double shapeAmplitude,
+        String islandBiome,
+        int surfaceY,
+        int thicknessBlocks,
+        StarterKitTier chestTier,
+        FloatingIslandsPlan floatingIslands
+    ) {
+        this(
+            enabled, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, floatingIslands,
+            new IslandPlan.ExclusionZone(true, 128)
+        );
+    }
     /** GOALS 05's own default: spawn at Y 64 to avoid slimes. */
     public static final int DEFAULT_SURFACE_Y = 64;
     /** Fixture-verified default slab thickness -- enough for a believable island, still clearly bounded. */
@@ -68,6 +94,9 @@ public record SkyIslandPlan(
         if (floatingIslands == null) {
             throw new IllegalArgumentException("Floating islands plan is required.");
         }
+        if (biomeExclusionZone == null) {
+            throw new IllegalArgumentException("Biome exclusion zone is required.");
+        }
     }
 
     /**
@@ -78,7 +107,8 @@ public record SkyIslandPlan(
     public static SkyIslandPlan disabled() {
         return new SkyIslandPlan(
             false, WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, 0.0, "minecraft:plains",
-            DEFAULT_SURFACE_Y, DEFAULT_THICKNESS_BLOCKS, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled()
+            DEFAULT_SURFACE_Y, DEFAULT_THICKNESS_BLOCKS, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(false, 128)
         );
     }
 
@@ -91,7 +121,8 @@ public record SkyIslandPlan(
     public static SkyIslandPlan fromConfig(SkyIslandConfig config) {
         return new SkyIslandPlan(
             true, config.radiusBlocks, config.shapeAmplitude, config.islandBiome, config.surfaceY, config.thicknessBlocks,
-            config.chestTier, FloatingIslandsPlan.fromConfig(config.floatingIslands)
+            config.chestTier, FloatingIslandsPlan.fromConfig(config.floatingIslands),
+            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks)
         );
     }
 
@@ -107,6 +138,21 @@ public record SkyIslandPlan(
      */
     public double distanceFromShore(int x, int z, long seed) {
         return IslandShapeProfile.distanceFromShore(x, z, radiusBlocks, shapeAmplitude, seed);
+    }
+
+    /**
+     * Whether a column already known to be outside the island's own footprint still falls within
+     * {@link #biomeExclusionZone}'s buffer (DESIGN §27.10) -- the biome there should still report
+     * {@link #islandBiome} rather than falling through to the real seed's own biome, even though
+     * the terrain itself is void either way.
+     *
+     * @param distanceFromShore this column's own {@link #distanceFromShore} result; only
+     *     meaningful when positive (outside the footprint), same precondition every caller of
+     *     {@link #distanceFromShore} already checks before reaching here
+     * @return {@code true} if the biome should stay pinned to {@link #islandBiome}
+     */
+    public boolean withinBiomeExclusionZone(double distanceFromShore) {
+        return biomeExclusionZone.enabled() && distanceFromShore <= biomeExclusionZone.radiusBlocks();
     }
 
     /**

@@ -1,15 +1,21 @@
 # GOALS 05 (Phase 10.3): the hard chest tier, on the default plains biome
 # (not a dry family, so the guaranteed water item is a cauldron -- see
-# config 41 for the desert/water-bucket case). **Select "Worldz: Sky
-# Island"**.
+# config 41 for the desert/water-bucket+dirt+seeds case). **Select
+# "Worldz: Sky Island"**.
 #
 # Steps once in-game:
 #  1. Confirm the chest contains the hard tier's bare-essentials contents
-#     (2 saplings, plus 1 random extra from bread/torches) and one
-#     cauldron.
+#     (2 saplings, a lava bucket, plus 1 random extra from bread/torches)
+#     and one cauldron. Plains is DEFAULT family (§27.3), so it already
+#     has natural dirt in its own slab -- no extra dirt/seeds needed here,
+#     unlike config 41's desert case (DESIGN §27.8's 2026-07-21
+#     beatability follow-up).
 #  2. Confirm the world is still genuinely beatable from this starting
 #     point given enough time -- GOALS 05 requires every tier to be, even
-#     the hardest one.
+#     the hardest one. The lava bucket is what makes a Nether portal
+#     (hence the Nether/End) reachable at all on a void-isolated sky
+#     island -- confirm it can be poured into a dug frame alongside
+#     cauldron-collected water to produce obsidian.
 skyIsland:
   islandBiome: 'minecraft:plains'
   radiusBlocks: 16

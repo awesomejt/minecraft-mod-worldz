@@ -26,6 +26,8 @@ import java.util.List;
  * @param netherExterior Nether exterior-terrain selection
  * @param floatingIslands scattered small floating islands beyond this island's own footprint
  *     (GOALS 07-08, DESIGN §28)
+ * @param biomeExclusionZone buffer beyond the island's own edge where the biome stays pinned to
+ *     {@code islandBiome} before real-seed biomes resume beyond it (DESIGN §27.10)
  */
 public record SkyIslandCustomization(
     String islandBiome,
@@ -39,8 +41,34 @@ public record SkyIslandCustomization(
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
     WorldzCustomization.ExteriorSettings netherExterior,
-    FloatingIslandsPlan floatingIslands
+    FloatingIslandsPlan floatingIslands,
+    IslandPlan.ExclusionZone biomeExclusionZone
 ) {
+    /**
+     * Legacy 12-arg construction, predating {@link #biomeExclusionZone} (DESIGN §27.10). Defaults
+     * to the same always-on, 128-block posture {@code SkyIslandConfig} ships.
+     */
+    public SkyIslandCustomization(
+        String islandBiome,
+        int radiusBlocks,
+        double shapeAmplitude,
+        int surfaceY,
+        int thicknessBlocks,
+        StarterKitTier chestTier,
+        boolean applyToNether,
+        WorldzCustomization.BorderSettings overworldBorder,
+        WorldzCustomization.BorderSettings netherBorder,
+        WorldzCustomization.EndBorderSettings endBorder,
+        WorldzCustomization.ExteriorSettings netherExterior,
+        FloatingIslandsPlan floatingIslands
+    ) {
+        this(
+            islandBiome, radiusBlocks, shapeAmplitude, surfaceY, thicknessBlocks, chestTier, applyToNether,
+            overworldBorder, netherBorder, endBorder, netherExterior, floatingIslands,
+            new IslandPlan.ExclusionZone(true, 128)
+        );
+    }
+
     /** Validates and canonicalizes customization values. */
     public SkyIslandCustomization {
         islandBiome = requireSingleBiomeId(islandBiome, "Island biome");
@@ -63,6 +91,9 @@ public record SkyIslandCustomization(
         }
         if (overworldBorder == null || netherBorder == null || endBorder == null || netherExterior == null) {
             throw new IllegalArgumentException("Border and exterior settings are required.");
+        }
+        if (biomeExclusionZone == null) {
+            throw new IllegalArgumentException("Biome exclusion zone is required.");
         }
         if (netherExterior.mode() == ExteriorMode.OCEAN) {
             throw new IllegalArgumentException("Ocean exterior is only supported in the Overworld.");
@@ -88,7 +119,8 @@ public record SkyIslandCustomization(
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
             WorldzCustomization.ExteriorSettings.fromConfig(config.netherExterior),
-            FloatingIslandsPlan.fromConfig(config.skyIsland.floatingIslands)
+            FloatingIslandsPlan.fromConfig(config.skyIsland.floatingIslands),
+            new IslandPlan.ExclusionZone(config.skyIsland.exclusionZoneEnabled, config.skyIsland.exclusionZoneRadiusBlocks)
         );
     }
 
@@ -140,12 +172,69 @@ public record SkyIslandCustomization(
     }
 
     /**
+     * Parses client text/toggle fields into validated customization values, including {@link
+     * #biomeExclusionZone} (DESIGN §27.10).
+     *
+     * @param islandBiome the one biome that fills the island's interior
+     * @param radiusBlocks decimal island radius
+     * @param shapeAmplitude decimal coastline perturbation strength
+     * @param surfaceY decimal surface Y
+     * @param thicknessBlocks decimal slab thickness
+     * @param chestTier the necessities-chest difficulty tier
+     * @param applyToNether whether the Nether is also a sky island
+     * @param overworldBorder validated Overworld border values
+     * @param netherBorder validated Nether border values
+     * @param endBorder validated End border values
+     * @param netherExterior validated Nether exterior values
+     * @param floatingIslands validated scattered-floating-islands values (GOALS 07-08)
+     * @param exclusionZoneEnabled whether a biome-pinning buffer surrounds the starter island
+     * @param exclusionZoneRadiusBlocks decimal buffer radius beyond the island's own edge
+     * @return canonical immutable customization values
+     */
+    public static SkyIslandCustomization fromText(
+        String islandBiome,
+        String radiusBlocks,
+        String shapeAmplitude,
+        String surfaceY,
+        String thicknessBlocks,
+        StarterKitTier chestTier,
+        boolean applyToNether,
+        WorldzCustomization.BorderSettings overworldBorder,
+        WorldzCustomization.BorderSettings netherBorder,
+        WorldzCustomization.EndBorderSettings endBorder,
+        WorldzCustomization.ExteriorSettings netherExterior,
+        FloatingIslandsPlan floatingIslands,
+        boolean exclusionZoneEnabled,
+        String exclusionZoneRadiusBlocks
+    ) {
+        return new SkyIslandCustomization(
+            islandBiome,
+            parseInteger(radiusBlocks, "Island radius"),
+            parseDouble(shapeAmplitude, "Island shape amplitude"),
+            parseInteger(surfaceY, "Surface Y"),
+            parseInteger(thicknessBlocks, "Slab thickness"),
+            chestTier,
+            applyToNether,
+            overworldBorder,
+            netherBorder,
+            endBorder,
+            netherExterior,
+            floatingIslands,
+            new IslandPlan.ExclusionZone(
+                exclusionZoneEnabled, parseInteger(exclusionZoneRadiusBlocks, "Biome exclusion zone radius")
+            )
+        );
+    }
+
+    /**
      * Resolves this world's sky island plan.
      *
      * @return immutable, always-enabled sky island plan
      */
     public SkyIslandPlan skyIslandPlan() {
-        return new SkyIslandPlan(true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, floatingIslands);
+        return new SkyIslandPlan(
+            true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, floatingIslands, biomeExclusionZone
+        );
     }
 
     /**
@@ -161,7 +250,8 @@ public record SkyIslandCustomization(
     public SkyIslandPlan netherSkyIslandPlan() {
         return applyToNether
             ? new SkyIslandPlan(
-                true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, FloatingIslandsPlan.disabled()
+                true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier,
+                FloatingIslandsPlan.disabled(), biomeExclusionZone
             )
             : SkyIslandPlan.disabled();
     }
