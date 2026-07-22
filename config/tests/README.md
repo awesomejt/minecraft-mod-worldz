@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 14, the World Type dropdown has **nine** Worldz
+   new world. Since Phase 15, the World Type dropdown has **ten** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -80,7 +80,17 @@ Every field not mentioned in a file falls back to Worldz's documented default
    (`easy`/`medium`/`hard`, always on, unlike cave's optional one) picks
    the starter-chest difficulty -- easy hands over a full 10-obsidian
    portal frame plus flint and steel, hard gives no guaranteed obsidian at
-   all. Each preset ignores every other type's dedicated section.
+   all. "Worldz: End Start" (files `63`-`65`, GOALS 34, Phase 15) reads
+   only its own `endStart:` section -- the Overworld and the Nether both
+   generate exactly as vanilla would, and you spawn on a guaranteed
+   end-stone platform in the End instead (always built, no natural
+   search -- the End's outer regions are too void-heavy for one to be
+   worth the cost); `endStart.chestTier` (`easy`/`medium`/`hard`, always
+   on) picks the starter-chest difficulty -- easy hands over firework
+   rockets, building blocks, and combat gear, hard gives no rockets and no
+   guaranteed weapon at all, leaning entirely on hand-mining the
+   platform's own end stone to bridge toward the central island. Each
+   preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -151,6 +161,9 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `60-nether-start-chest-easy.yaml` | GOALS 27 (Phase 14.2b): the easy chest tier — 10 obsidian (a full portal frame) plus flint and steel, the "everything needed to build a portal out" GOALS 27 names by name. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
 | `61-nether-start-chest-hard.yaml` | GOALS 27 (Phase 14.2b): the hard chest tier — no guaranteed obsidian or flint and steel at all, relies entirely on Nether exploration; confirms the world still feels beatable from this minimal a start. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
 | `62-nether-start-capsule-fallback.yaml` | GOALS 27 (Phase 14.2a, DESIGN §31.4): `spawnY: 4`, biased (not guaranteed) toward the guaranteed-capsule safe-site fallback rather than a natural pocket — confirms the fully-enclosed nether-brick capsule shell when it fires. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
+| `63-end-start-default.yaml` | GOALS 34 (Phase 15.2a/15.2b): the End-start challenge's core mechanic and default (medium) chest tier — the Overworld and Nether both generate exactly as vanilla would, spawn is a guaranteed end-stone platform far out along the outer-island belt. **Select "Worldz: End Start"**. Requires 0.2.68+. |
+| `64-end-start-chest-easy.yaml` | GOALS 34 (Phase 15.2b): the easy chest tier — rockets, cobblestone, food, and real combat gear for the dragon fight. **Select "Worldz: End Start"**. Requires 0.2.68+. |
+| `65-end-start-chest-hard.yaml` | GOALS 34 (Phase 15.2b): the hard chest tier — no rockets or guaranteed weapon at all, relies entirely on hand-mining the platform's own end stone to bridge toward the central island. **Select "Worldz: End Start"**. Requires 0.2.68+. |
 
 ### Why `01` showed ocean labeled as river
 

@@ -1,0 +1,32 @@
+# GOALS 34 (Phase 15.2a/15.2b, DESIGN §32): the End-start challenge's
+# core mechanic and default (medium) chest tier. **Select "Worldz: End
+# Start"**.
+#
+# The Overworld and the Nether both generate exactly as vanilla would --
+# no biome restriction, no shape at all. The only change is where you
+# spawn: a guaranteed, always-built safe platform in the End, far out
+# along the outer-island belt (never the central island itself).
+#
+# Steps once in-game:
+#  1. Confirm you spawn in the End, not the Overworld -- standing inside
+#     a small, fully enclosed end-stone room (floor, ceiling, all four
+#     walls solid, not just corner posts), far from the central island
+#     (F3 coordinates should read roughly X=1200, Z=0).
+#  2. Check the server log for "Set the GOALS 34 End-start world spawn
+#     at ..." and confirm the coordinates match where you actually spawned.
+#  3. Confirm a chest sits directly beneath your feet (replacing the
+#     floor block) with the medium tier's contents: 8 firework rockets,
+#     32 cobblestone, 4 bread, 1 iron sword, plus random extras.
+#  4. Die (no bed/anchor is ever possible in the End -- vanilla's own
+#     rule) and confirm you respawn at the exact same End platform, not
+#     back in the Overworld -- this is the core beatability mechanic
+#     (DESIGN §32.4).
+#  5. Mine the platform's own end stone (always available, every tier) to
+#     start bridging toward the central island, or explore for an End
+#     City to find an Elytra -- confirm the rockets are usable once you
+#     have one. Report back on how the "reach the dragon" journey felt.
+endStart:
+  chestTier: medium
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

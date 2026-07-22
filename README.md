@@ -41,6 +41,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Sky Chunk** | Chunk-shaped islands cut from the seed's own natural chunks: unlike every other island type, a selected chunk's real vanilla terrain (biome, caves, structures) is left completely untouched — only unselected chunks mask to void. Optional top-only depth cutoff; a guaranteed portal-room stronghold and a forced amethyst geode; optional Nether/End application; optional underground-content showcasing. See [Sky chunk challenge](#sky-chunk-challenge) below. | Small screen: spawn chance, cell size, top-only toggle/depth, scattered top-only chance, exclusion zone, apply-to-Nether/End, borders, Nether exterior. |
 | **Worldz: Cave** | Cave-only start: the Overworld generates exactly as vanilla would (no biome restriction, no shape at all) — only your spawn changes, placed in a real, searched-out natural underground cavity. Optional solid roof sealing off sky access everywhere; optional large carved mega-cavern around spawn; optional starter chest. See [Cave challenge](#cave-challenge) below. | Small screen: spawn depth, sealed-surface toggle/Y, mega-cavern toggle/radius/height, chest toggle/tier, borders, Nether exterior. |
 | **Worldz: Nether Start** | Nether-start challenge: the Overworld generates exactly as vanilla would — you spawn in the Nether instead, in a real safe pocket (or a small carved fallback capsule), with a difficulty-tiered starter chest (easy hands over a ready-to-use portal frame, hard leans on exploration). Dying without a personal bed/anchor returns you to the same safe site. See [Nether-start challenge](#nether-start-challenge) below. | Small screen: spawn depth, chest tier, borders, Nether exterior. |
+| **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on hand-mining the platform's own end stone to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
 
 ## Supported loaders
 
@@ -797,6 +798,56 @@ netherStart:
 | Setting | Default | Description |
 |---|---|---|
 | `spawnY` | `32` | Target Y for the safe-site search. |
+| `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+
+**New worlds only**, same restriction as every other typed preset here: no
+save-compat obligations for worlds created by an older mod version.
+
+## End-start challenge
+
+Select **Worldz: End Start** under **World Type** to begin in the End
+instead of the Overworld. The Overworld and the Nether both generate
+exactly as vanilla would — full biome variety, real seed terrain, no
+shape or restriction of any kind. The only change is where you spawn: a
+small, fully enclosed end-stone platform, always built (no natural-site
+search — the End's outer regions are mostly void, so a Nether/Cave-style
+search would rarely find real terrain worth the cost) far out along the
+outer-island belt, never the central island itself.
+
+**Death and respawn work like this:** the world's own default spawn point
+is redirected to the platform at world creation, so both your very first
+join *and* any future death return you to that same safe site — beds and
+respawn anchors are both impossible in the End (vanilla's own rule, they
+explode on use), so there is no personal-spawn override to layer on top
+the way Nether-start's respawn anchors work.
+
+**Reaching the Ender Dragon is part of the challenge.** No guaranteed
+gateway or teleporter is built, and no Elytra is handed over — Elytra
+stays an ordinary End City find, the same way vanilla intends. A
+difficulty-tiered starter chest (`chestTier`, easy/medium/hard) is set
+into the floor directly beneath the platform:
+
+| Tier | Contents |
+|---|---|
+| `easy` | 16 firework rockets, 64 cobblestone, 8 bread, a bow, 32 arrows, an iron sword, plus 3 random extras (iron armor pieces, golden apples, ender pearls). |
+| `medium` | Fewer rockets and cobblestone, less food, lighter combat gear. |
+| `hard` | No rockets and no guaranteed weapon at all — leans entirely on the platform's own end stone (minable by hand, no tool required) to bridge across the void, plus whatever an End City visit turns up. |
+
+Every tier keeps one guaranteed, always-available path to beatability
+regardless of chest contents: the platform itself is minable end stone,
+so even a zero-rockets hard-tier world can be hand-bridged toward the
+central island.
+
+Configure its defaults with an `endStart:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+endStart:
+  chestTier: medium
+```
+
+| Setting | Default | Description |
+|---|---|---|
 | `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
 
 **New worlds only**, same restriction as every other typed preset here: no

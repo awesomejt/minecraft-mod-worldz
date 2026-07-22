@@ -1,0 +1,18 @@
+# GOALS 34 (Phase 15.2b, DESIGN §32.5): the End-start challenge's easy
+# chest tier. **Select "Worldz: End Start"**.
+#
+# Steps once in-game:
+#  1. Confirm the chest holds 16 firework rockets, 64 cobblestone, 8
+#     bread, a bow, 32 arrows, an iron sword, plus 3 random extras (iron
+#     armor pieces, golden apples, ender pearls).
+#  2. Confirm the cobblestone alone is enough to build a real bridge
+#     start toward the central island without touching the platform's
+#     own end stone.
+#  3. Find or fight your way to the Ender Dragon and confirm the combat
+#     gear (bow, arrows, sword) feels like a genuine fighting chance, not
+#     just flavor.
+endStart:
+  chestTier: easy
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

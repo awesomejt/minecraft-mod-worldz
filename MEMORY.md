@@ -2452,3 +2452,21 @@ Durable decisions, verified API notes, and rationale that should survive across 
   built-in defaults are still sane) but a genuine defect, distinct from
   every other kit-bearing typed preset (`skyIsland`/`cave`/`oceanIsland`/
   the new `endStart`), all of which correctly wire all four touch points.
+- 2026-07-22 — **Phase 15 wrap-up (End-start challenge, GOALS 34).** All
+  three non-[Jason] tasks (15.1 design, 15.2a core mechanic, 15.2b chest
+  tiers + typed preset UI, 15.2c test configs/docs) done, 0.2.69.
+  Implementation matched the 15.1 design exactly, no deviations found
+  along the way -- confirming the earlier-flagged risk (whether
+  `nether_start`'s exact `setRespawnData`-based mechanism really
+  generalizes unmodified to the End) held up as designed once actually
+  wired through `WorldLimitManager.onServerStarted`, same as Phase 14's
+  own wrap-up note about its own risk holding up. The one real defect
+  found this phase (`nether_start`'s config plumbing gap, above) was
+  deliberately *not* fixed here -- tracked as TODO 15.2a-bugfix instead,
+  since it predates Phase 15 and isn't part of GOALS 34's own scope. A
+  reminder worth keeping: mirroring an existing typed preset's shape is
+  also a good moment to spot-check the original for gaps, not just copy
+  it forward -- this bug was found only because writing `end_start`'s
+  equivalent code from scratch surfaced the missing calls by comparison
+  against `cave`'s complete version, not through any dedicated review of
+  `nether_start` itself.

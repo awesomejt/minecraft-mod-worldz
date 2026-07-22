@@ -791,6 +791,50 @@ only where you spawn (and which chest tier you get) differ.
 Phase 15, sharing this phase's own respawn-mechanics research, DESIGN
 §31.1/§31.3).
 
+## Phase 15 acceptance (End-start challenge, GOALS 34, TODO 15.2a-15.2b)
+
+Uses configs `63`-`65` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: End Start"** for all three. Unlike every other typed
+preset except Nether Start, the Overworld itself is completely untouched
+vanilla terrain — this time the Nether is too, and only the End (where
+you spawn) and the chest tier differ.
+
+1. **Default core mechanic**, `63-end-start-default.yaml` (GOALS 34 core,
+   0.2.68+). Confirm you spawn in the End, not the Overworld — inside a
+   small, fully enclosed end-stone room (floor, ceiling, all four walls
+   solid, not just corner posts), far from the central island (F3 should
+   read roughly X=1200, Z=0). Check the server log for "Set the GOALS 34
+   End-start world spawn at ..." and confirm the coordinates match. Confirm
+   a chest sits in the floor beneath your feet with the medium tier's
+   contents (8 firework rockets, 32 cobblestone, 4 bread, 1 iron sword,
+   one random extra). **Die and confirm you respawn at the exact same End
+   platform** — beds and respawn anchors are both impossible in the End
+   (vanilla's own rule), so this is the single most important thing to
+   verify this phase, the same way it was for Nether-start (DESIGN §32.1/
+   §32.4). Confirm the platform's own end stone is minable by hand.
+2. **Easy chest tier**, `64-end-start-chest-easy.yaml` (0.2.68+). Confirm
+   the chest holds 16 firework rockets, 64 cobblestone, 8 bread, a bow, 32
+   arrows, an iron sword, and 3 random extras. Confirm the cobblestone
+   alone is enough to start a real bridge toward the central island.
+3. **Hard chest tier**, `65-end-start-chest-hard.yaml` (0.2.68+). Confirm
+   the chest holds only 2 bread plus 1 random extra — no rockets, no
+   guaranteed weapon. Confirm hand-mining the platform's own end stone and
+   bridging toward the center is still genuinely possible, if slow — this
+   is hard tier's *only* guaranteed path (no gateway/Elytra is ever
+   provided, per Jason's 15.1 decision), so report back whether it felt
+   like a long grind (expected) or unreasonably punishing. DESIGN §32.5
+   flags these defaults as a first pass, not signed off.
+
+**Ideally also attempt a full run** on at least one config: find or fight
+your way to an End City for an Elytra, use the chest's rockets to fly (or
+bridge by hand) to the central island, and confirm defeating the Ender
+Dragon is genuinely achievable — including a hardcore attempt if you're
+up for it, per GOALS 34's own "must be beatable in hardcore, even if
+really hard" requirement.
+
+**Not covered by this phase's acceptance:** nothing deferred — GOALS 34
+is fully in scope for Phase 15.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

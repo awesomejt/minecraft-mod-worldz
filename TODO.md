@@ -2374,13 +2374,31 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       prior typed preset's own precedent (`WorldPresetResourcesTest`,
       `ProjectMetadataTest`), plus updated the `normal` tag's now-10-entry
       count assertion.
-- [ ] 15.2c Test configs (default/each chest tier); docs (README,
+- [x] 15.2c Test configs (default/each chest tier); docs (README,
       MANUAL_TESTING.md, config/tests/README.md); phase wrap-up. **[Jason]**
       acceptance (ideally including a hardcore run's early game) — does
       dying without a bed/anchor really return you to the same platform;
       is the platform reachable/safe on arrival; is a full dragon-fight
       run (with an End City detour for Elytra) genuinely achievable at
       each tier, including a hand-bridged hard-tier attempt.
+      **Configs and docs done (0.2.69):** `config/tests/63`-`65`
+      (default/medium tier exercising the core redirect+respawn
+      mechanic; easy and hard chest tiers). New "Phase 15 acceptance"
+      section in MANUAL_TESTING.md (3 configs + a full-run item,
+      explicitly flagging the same-platform-respawn check as the single
+      most important thing to verify, mirroring Phase 14's own posture).
+      `config/tests/README.md`'s intro updated for the tenth World Type
+      entry plus a new table row describing `endStart:`. README.md
+      gained a full "End-start challenge" section (challenge-types table
+      row + prose + chest-tier table + config example + settings table)
+      mirroring the Nether-start section's shape.
+      **This completes every non-[Jason] item in Phase 15** (15.1
+      design, 15.2a core mechanic, 15.2b chest tiers + typed preset UI,
+      15.2c test configs/docs) — **do not start Phase 16 without Jason's
+      explicit go-ahead.** TODO 15.2a-bugfix (the pre-existing
+      `nether_start` config-plumbing gap found while writing this phase,
+      not itself part of GOALS 34) remains open and unscheduled; pick it
+      up whenever convenient, it doesn't block Phase 16.
 
 ## Phase 16 — Flat worlds (GOALS 15, 16, 22)
 
