@@ -4383,3 +4383,209 @@ prior typed preset established (`WorldPresetResourcesTest`,
   spawn point.
 - **Bonus-chest placement quirk** — logged, not fixed (§31.2).
 
+## §32. Phase 15: End-start challenge (GOALS 34)
+
+### 32.1 Building on Phase 14's spike: End-specific respawn findings
+
+Confirms §31.1/§31.3's mechanism generalizes to the End with no new lever
+needed. `ServerPlayer.findRespawnPositionAndUseSpawnBlock`
+(`ServerPlayer.java:1009-1023`) only calls the block-type-checked
+`findRespawnAndUseSpawnBlock` when the player has a personal
+`RespawnConfig` (set by sleeping in a bed or charging a respawn anchor) —
+neither is ever possible in the End (`dimension_type/the_end.json`,
+verified directly against the real 26.2 data rather than assumed from
+§31.3's earlier finding: `bed_rule.can_set_spawn: "never"`,
+`respawn_anchor_works: false`, both explode on attempt). So every
+End-start player, forever, falls through to `TeleportTransition.
+createDefault` → `MinecraftServer.findRespawnDimension()` → the same
+single stored `LevelData.RespawnData` value `nether_start` already reuses
+(§31.2) — meaning `nether_start`'s exact "one `setRespawnData` call
+redirects both first join and every future no-personal-spawn death"
+mechanism applies verbatim, just targeting `Level.END` instead of
+`Level.NETHER`. The `forced` `RespawnConfig` flagged as "relevant to
+Phase 15" in §31.3 turns out not to be needed after all — it exists to
+bypass a *personal* bed/anchor's block-type check, a path End-start never
+enters.
+
+**New risk specific to the End, verified against the real
+`TeleportTransition`/`Entity`/`PlayerSpawnFinder`/`ServerPlayer` sources
+(not present for `nether_start`)**: the exact landing position isn't
+simply "the stored coordinates." `TeleportTransition.createDefault`
+resolves position via `Entity.adjustSpawnLocation`, overridden on
+`ServerPlayer` (`ServerPlayer.java:384-388`) to call `PlayerSpawnFinder.
+findSpawn(level, spawnSuggestion)` — which, for the default respawn-radius
+gamerule (`0`), tries exactly one heightmap-based candidate at the stored
+X/Z (`PlayerSpawnFinder.getLevelRespawnPos`, using `Heightmap.Types.
+MOTION_BLOCKING` since the End's own dimension type has `has_ceiling:
+false`, confirmed from the real `dimension_type/the_end.json`) before
+falling back to `fixupSpawnHeight` (walk up/down from the stored Y until
+non-colliding/non-liquid). In the Nether this always lands safely because
+the dimension is contiguous solid terrain almost everywhere; in the End,
+most columns are pure void from `min_y` (`0`) to `height` (`256`) — if the
+guaranteed platform's own X/Z column somehow had no terrain there,
+`fixupSpawnHeight` would walk all the way down to `level.getMinY()` with
+nothing ever registering as a collision, stranding the player at the
+literal bottom of the dimension with nothing beneath them. **Design
+consequence**: End-start's guaranteed platform must be real, solid,
+generated terrain occupying its own X/Z column (not a purely "floating in
+the air with nothing below" marker) — satisfied automatically by building
+an enclosed capsule the same shape `buildNetherStartCapsule` uses (§31.4),
+which places a real floor block at the site.
+
+### 32.2 Jason's decisions (2026-07-22)
+
+- **Spawn site: always a guaranteed platform, no natural search.** Unlike
+  the Nether (contiguous terrain nearly everywhere), the End's outer
+  regions are mostly void — island density is sparse enough that a
+  Nether/Cave-style bounded natural search would fail (and fall through to
+  the guaranteed fallback) most of the time, wasting its entire
+  force-generation budget on nothing. Jason's call: skip the natural-search
+  phase entirely for `end_start` and always place a small enclosed
+  end-stone capsule (mirrors §31.4's `buildNetherStartCapsule` shape,
+  `Blocks.NETHER_BRICKS` swapped for `Blocks.END_STONE` — the material the
+  End's own natural islands are made of, same "visual consistency within
+  the dimension" reasoning §31.4 already used) at a fixed point along the
+  outer-island belt.
+- **Return path to the central island: firework rockets in the chest, not
+  a guaranteed gateway/teleporter and not a free Elytra.** GOALS 34
+  requires "reaching *and* defeating the Ender Dragon" to be achievable,
+  not handed over — Jason's explicit call was that reaching the dragon is
+  meant to be part of the challenge. Elytra is not given; it's already
+  obtainable the ordinary vanilla way (End City loot). The chest instead
+  guarantees firework rockets (tiered by difficulty, §32.5) so a player who
+  finds an Elytra can fly the distance back — ingredients alone (paper,
+  gunpowder) aren't a viable alternative since neither is obtainable
+  anywhere in the End itself, so a "craft your own" tier would be
+  uncraftable in practice. A player with no Elytra and no patience can
+  still bridge across the void by hand: the guaranteed platform is built
+  from end stone, and end stone is minable (by hand, slowly, or with any
+  pickaxe) directly beneath the platform, so every tier — even one with
+  zero rockets — has an always-available, if slow, path to beatability
+  consistent with "every tier must leave the game beatable" (§27.8/§31.6's
+  established principle).
+
+### 32.3 `EndStartPlan` shape and persistence
+
+Mirrors `NetherStartPlan` almost exactly (§31.5), with one shape
+difference driven by §32.2's "no natural search" decision — there's no
+`spawnY` field (the platform's Y is a fixed implementation constant, not a
+search target, since there's no search):
+
+```
+EndStartPlan(
+    boolean enabled,
+    StarterKitTier chestTier
+)
+```
+
+Persists entirely on `EnvelopedChunkGenerator`'s own codec, a new
+`EndStartCodecs.PLAN_CODEC` `optionalFieldOf("end_start")`, exactly like
+`netherStart` (§31.5) — no `LimitedBiomeSource` involvement, the Overworld
+and Nether both stay ordinary vanilla terrain (Jason's decision, §32.2,
+extending `nether_start`'s own "Overworld untouched" precedent to
+"Overworld *and* Nether untouched" for `end_start`). Unlike `nether_start`
+(whose plan attaches to the Nether's own generator instance, dimension
+roles reversed from a Cave-style Overworld attachment), `end_start`'s plan
+attaches to the **End's** generator — the first typed preset to persist a
+spawn-mechanism plan on `Dimension.END` specifically, though
+`Dimension.END` itself already exists as a wrapped generator target
+(`sky_chunk`'s own precedent, DESIGN §29.5) so no new `Dimension` enum
+work is needed, only a new gated field following `cave`'s
+(`Dimension.OVERWORLD`-gated) and `netherStart`'s (`Dimension.NETHER`-
+gated) exact precedent, gated on `Dimension.END` instead.
+
+### 32.4 Guaranteed platform placement
+
+`EndStartDeployment.buildEndPlatform` (new class, mirrors
+`NetherStartDeployment`'s shape): builds the same fully-enclosed-shell
+capsule §31.4 already established (not corner-posts-only, the Phase 7
+test-2 lesson) out of `Blocks.END_STONE`, centered at a fixed point along
+the outer-island belt — **(X, Y, Z) = (1200, 64, 0)**, chosen as: far
+enough out (~1200 blocks) to be unambiguously "the outer islands" as
+GOALS 34 literally asks for (vanilla's own outer-island generation starts
+noticeably populating somewhere past ~1000 blocks from center), comfortably
+within the End's Y range (`min_y 0`, `height 256`) with headroom either
+direction, and a fixed non-zero X (never `(0,0,*)`, which is the *main*
+island GOALS 34 explicitly says is not the spawn point) chosen arbitrarily
+since there's no natural terrain to align with — adjustable later the same
+"fixture-verified default, tune after playtest" way every other numeric
+default in this project is. Called once, unconditionally, for every
+`end_start` world (mirrors `needsNetherStart`'s own unconditional gate,
+§31.2) from `WorldLimitManager.onServerStarted`, at the point the End
+`ServerLevel` already exists.
+
+Then calls `overworld.getServer().setRespawnData(LevelData.RespawnData.
+of(Level.END, site, 0.0F, 0.0F))` — the exact same lever `nether_start`
+uses (§31.2), just targeting `Level.END`. Both a brand-new player's first
+join and any future no-personal-spawn death read this one stored value
+(§32.1's confirmation that this generalizes unmodified to the End).
+
+**Known, accepted quirk, not fixed** (mirrors §31.2's own logged
+Nether-start quirk exactly): `setInitialSpawn` still places an ordinary
+Overworld default spawn (and bonus chest, if enabled) before this redirect
+runs — harmless and unreachable, not engineered around, same posture.
+
+### 32.5 Starter chest tiers (GOALS 34's dragon-fight beatability)
+
+Reuses `StarterKitTier`/`StarterKitConfig` unchanged, same three-tier
+shape as every other typed preset's chest. Tuned toward "genuinely
+achievable to reach and defeat the Ender Dragon," first-pass defaults
+(adjustable via YAML, same "first pass, not sign-off" posture as every
+prior chest, DESIGN §27.8/§31.6):
+
+- **Easy**: a generous stash of firework rockets (for the return flight
+  once an Elytra is found), building blocks for bridging (the platform's
+  own end stone works too, but a head start helps), food, and real combat
+  gear for the dragon fight itself (bow + arrows, since the dragon spends
+  much of the fight perched or airborne; a sword and basic armor for the
+  close-quarters portion).
+- **Medium**: fewer rockets, less food, lighter combat gear (no armor,
+  fewer arrows).
+- **Hard**: no rockets at all, minimal food, no guaranteed weapon — leans
+  entirely on the always-available "mine the platform's own end stone and
+  bridge by hand" path (§32.2) plus whatever an End City visit turns up
+  (Elytra, rockets, enchanted gear), same "harder, still beatable" posture
+  GOALS 05/27's own hard tiers already established.
+
+**Deviation flag, needs a real playtest**: whether hard tier's "bridge by
+hand, no weapon" path is genuinely beatable in reasonable time (bridging
+~1200 blocks by hand is a very long grind) rather than just theoretically
+possible — a candidate for tuning (e.g. a shorter platform distance, or a
+minimal pickaxe/food guarantee even at hard) once Jason tests it, same
+posture as `nether_start`'s own medium-tier deviation flag (§31.6).
+
+### 32.6 New typed preset shape (`jlt_worldz:end_start`)
+
+Mirrors `nether_start`'s scaffolding (§31.7) almost exactly: `EndStartConfig`
+(YAML defaults: `chestTier` plus `easyKit`/`mediumKit`/`hardKit` — no
+`spawnY`, §32.3), `EndStartCustomization` (record: chestTier,
+overworldBorder, netherBorder, endBorder — no exterior field at all, since
+neither the Overworld nor the Nether nor the End get any shape/envelope
+change for this preset, extending `nether_start`'s "no Overworld-exterior
+field" reasoning to all three dimensions), no spawn-strategy field (spawn
+is always this preset's own mechanism), `EndStartPresetEditor`,
+`EndStartCustomizeScreen`, world-preset JSON + `normal` tag entry + lang
+keys, both loaders' registration — each verified by the same structural-
+test pattern every prior typed preset established (`WorldPresetResourcesTest`,
+`ProjectMetadataTest`). Registration wraps `LevelStem.END` with
+`EnvelopedChunkGenerator` the same way `sky_chunk` first established
+(§29.5) — the second preset to do so, not the first.
+
+### 32.7 Deferred, not in this phase's scope
+
+- **Elytra/gateway guarantees** — deliberately not built (§32.2); a player
+  who never finds an End City (Elytra's only obtainable source) still has
+  the hand-bridge fallback, but no other traversal aid. Revisit only if
+  playtesting shows this is unreasonably punishing even accounting for
+  "hard tier is allowed to be very hard."
+- **Platform distance/placement tuning** — the `(1200, 64, 0)` constant is
+  a first-pass fixture default (§32.4), not a config option; promote to
+  config if playtesting suggests it needs adjusting per-tier or per-seed.
+- **`forced` `ServerPlayer.RespawnConfig`** — confirmed not needed after
+  all (§32.1); the note in §31.3 flagging it as "relevant to Phase 15"
+  turned out to be based on the wrong assumption (that a *personal* spawn
+  mechanism was needed here, when in fact End-start uses the exact same
+  *world-default* lever as `nether_start`, which never touches personal
+  `RespawnConfig` at all). Left here as a corrected pointer for any future
+  preset that does need a real per-player forced spawn.
+

@@ -2391,3 +2391,46 @@ Durable decisions, verified API notes, and rationale that should survive across 
   the first place in this codebase to hit that; `SpawnOriginManager.
   searchCaveCavity` never needed it since every one of its checks stays
   within the single already-forced candidate chunk.
+- 2026-07-22 — **Phase 15.1 (End-start design pass, GOALS 34), design
+  only, DESIGN §32.** Verified against the real 26.2 decompiled sources
+  that `nether_start`'s "one `MinecraftServer.setRespawnData` overwrite
+  covers both first-join and no-personal-spawn death" mechanism (§31.2)
+  generalizes to the End completely unmodified -- `ServerPlayer.
+  findRespawnPositionAndUseSpawnBlock` only takes the block-type-checked
+  bed/anchor path when the player already has a personal `RespawnConfig`,
+  which is never possible in the End (`dimension_type/the_end.json`:
+  `bed_rule.can_set_spawn: "never"`, `respawn_anchor_works: false`, both
+  confirmed straight from the real data, not assumed). This means the
+  `forced` `RespawnConfig` mechanism §31.3 flagged as "relevant to Phase
+  15" turned out not to be needed -- that flag was based on the wrong
+  assumption (that a *personal* spawn mechanism would be required); it's
+  corrected in DESIGN §32.7 as a lesson for any future preset that
+  actually does need one. Found one new risk `nether_start` never had to
+  consider: `PlayerSpawnFinder`/`Entity.adjustSpawnLocation`'s heightmap-
+  based landing search (confirmed via `ServerPlayer.java`/
+  `PlayerSpawnFinder.java`) can walk a player all the way down to the
+  dimension's `min_y` with nothing ever registering as solid if the
+  stored spawn column has no real terrain -- harmless in the Nether
+  (contiguous terrain nearly everywhere) but a real void-stranding risk
+  in the End (mostly void outside the islands). Design response: the
+  guaranteed platform must occupy real terrain at its own column by
+  construction (an enclosed end-stone capsule, not a bare marker), so
+  this never triggers.
+  **Jason's decisions (2026-07-22), gathered up front since both were
+  genuine gameplay/scope questions the design pass couldn't resolve on
+  its own:** (a) the outer-island spawn site always builds a guaranteed
+  end-stone platform, skipping a Nether/Cave-style natural-search phase
+  entirely -- the End's outer terrain is mostly void, so a bounded
+  force-generation search would fail (and fall back) most of the time,
+  unlike the Nether's contiguous terrain; (b) the return path to the
+  central island (for the Ender Dragon fight) is firework rockets in the
+  starter chest, tiered by difficulty -- not a guaranteed gateway/
+  teleporter, and not a free Elytra (Elytra stays an ordinary End City
+  find, since Jason's explicit call was that "reaching" the dragon,
+  per GOALS 34's own wording, is meant to be part of the challenge, not
+  handed over). Every tier still keeps a slow-but-always-available
+  fallback: the guaranteed platform is minable end stone, so even a
+  zero-rockets hard tier can hand-bridge across the void. TODO 15.2 split
+  into 15.2a (core mechanic)/15.2b (chest tiers + typed preset UI)/15.2c
+  (test configs/docs/wrap-up), mirroring Phase 13/14's own precedent for
+  multi-part phases.

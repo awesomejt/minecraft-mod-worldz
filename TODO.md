@@ -2290,13 +2290,56 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
 
 ## Phase 15 — End-start challenge (GOALS 34)
 
-- [ ] 15.1 Design pass building on 14.1's spike: spawn on the outer End
+- [x] 15.1 Design pass building on 14.1's spike: spawn on the outer End
       islands, starter chest tuned so survival through to defeating the
       Ender Dragon is genuinely achievable, hardcore-beatable even if very
       hard. Respawn semantics are the hard part (beds explode in the End, no
       anchors) — decide and document before implementing.
-- [ ] 15.2 Implement `end_start` world type; test configs; docs; **[Jason]**
-      acceptance (ideally including a hardcore run's early game).
+      **Done, no code (design only).** Full design in DESIGN §32.
+      Confirmed against real 26.2 sources that `nether_start`'s exact
+      "one `setRespawnData` overwrite" mechanism (§31.2) generalizes to
+      the End unmodified — no `forced` RespawnConfig needed after all,
+      correcting §31.3's earlier speculation (§32.1). Found a new,
+      End-specific risk not present for `nether_start`: `PlayerSpawnFinder`/
+      `Entity.adjustSpawnLocation`'s heightmap-based landing search can
+      strand a player at the bottom of the dimension if the stored
+      column has no real terrain (§32.1) — the guaranteed platform design
+      (§32.4) accounts for this by construction.
+      **Jason's decisions (2026-07-22, gathered up front per this phase's
+      two genuine gameplay questions):** (a) always build a guaranteed
+      end-stone platform, no natural-island search first (End terrain is
+      too sparse/void-heavy for a Nether/Cave-style search to be worth
+      its cost, §32.2); (b) the return path to the central island is
+      firework rockets in the starter chest (tiered by difficulty), not a
+      guaranteed gateway/teleporter and not a free Elytra — Elytra stays
+      an ordinary End City find, and every tier still has a slow-but-
+      always-available fallback (hand-mining the platform's own end stone
+      to bridge across, §32.2). Split 15.2 into 15.2a-c below, mirroring
+      Phase 13/14's own precedent for multi-part phases.
+- [ ] 15.2a Core mechanic: `EndStartPlan`/codec (persisted on the End's
+      `EnvelopedChunkGenerator`, mirrors `NetherStartPlan`, DESIGN §32.3),
+      `EndStartDeployment.buildEndPlatform` (guaranteed enclosed end-stone
+      capsule at a fixed outer-island-belt point, DESIGN §32.4, no natural
+      search per Jason's decision), and the `WorldLimitManager.
+      onServerStarted` hook that overwrites the world's default spawn to
+      `Level.END` at the resolved site (DESIGN §32.4). JUnit-covered pure
+      logic where possible, mirroring `NetherStartPlanTest`'s precedent.
+- [ ] 15.2b Starter chest tiers (DESIGN §32.5, reuses `StarterKitTier`/
+      `StarterKitConfig`; easy = rockets + blocks + food + bow/armor,
+      medium = fewer rockets/lighter gear, hard = no rockets, no
+      guaranteed weapon) placed at the resolved site, plus the typed
+      preset shape (DESIGN §32.6): `EndStartConfig`, `EndStartCustomization`,
+      `EndStartPresetEditor`, `EndStartCustomizeScreen`, world-preset JSON +
+      `normal` tag + lang keys, both loaders' registration (wraps
+      `LevelStem.END` with `EnvelopedChunkGenerator`, the second preset to
+      do so after `sky_chunk`, DESIGN §29.5/§32.6).
+- [ ] 15.2c Test configs (default/each chest tier); docs (README,
+      MANUAL_TESTING.md, config/tests/README.md); phase wrap-up. **[Jason]**
+      acceptance (ideally including a hardcore run's early game) — does
+      dying without a bed/anchor really return you to the same platform;
+      is the platform reachable/safe on arrival; is a full dragon-fight
+      run (with an End City detour for Elytra) genuinely achievable at
+      each tier, including a hand-bridged hard-tier attempt.
 
 ## Phase 16 — Flat worlds (GOALS 15, 16, 22)
 
