@@ -2536,3 +2536,29 @@ Durable decisions, verified API notes, and rationale that should survive across 
   since it was trivial in the same diff, unlike Phase 15's own
   `nether_start` kit-config gap (a bigger, separate fix, still open as
   TODO 15.2a-bugfix).
+- 2026-07-22 — **Phase 16.2b (deep flat, GOAL 16), 0.2.71.** Unlike
+  classic `flat`'s corrected architecture (16.2a), this half of DESIGN
+  §33.1's original plan held up as designed: the delegate stays a real,
+  unrestricted `NoiseBasedChunkGenerator` + `LimitedBiomeSource` (full
+  vanilla biome variety, mirrors `cave`'s exact precedent), so real
+  caves/cave biomes/aquifers/ores/structures come from vanilla's own
+  proven pipeline with zero new noise code. One real correction found
+  while implementing though: the cap pass has to run right after the
+  delegate's own real `buildSurface` call, not `fillFromNoise` as DESIGN
+  §33.4's first draft assumed -- carving (`applyCarvers`) needs to run in
+  between for real caves to exist at all, and capping before
+  `buildSurface` would let the delegate's own biome-specific surface
+  rules paint over the freshly-capped band. Also found `getSpawnHeight`
+  needed a `deepFlat`-aware override (returns `surfaceY` directly, since
+  it's verified to be a dimension-wide constant with no x/z of its own)
+  -- without it spawn would land wherever the real, uncapped delegate
+  terrain happens to be tall, not on the flat cap. Deliberately left
+  `getBaseHeight`/`getBaseColumn` untouched (matching classic flat's own
+  full override would have meant discarding real terrain data those
+  methods need for other in-generation decisions; the player-visible
+  result only ever comes from the world's actual persisted blocks, which
+  the cap pass already sets correctly). New known gap flagged for
+  Jason's 16.2c acceptance, not fixed speculatively: a water-capped
+  river/ocean column's water sits directly on whatever real terrain is
+  immediately below the cap band, so a natural cave opening right at
+  that boundary could source water down into it.

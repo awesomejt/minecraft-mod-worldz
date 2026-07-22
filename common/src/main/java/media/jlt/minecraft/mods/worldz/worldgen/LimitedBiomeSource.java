@@ -230,6 +230,12 @@ public final class LimitedBiomeSource extends BiomeSource {
         // generator-owned plan already uses.
         boolean flatDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("flat"::equals).orElse(false);
+        // Same fix shape again for deep_flat (GOAL 16, DESIGN §33.4): unlike flat, deep_flat
+        // needs full vanilla biome variety (real caves/cave biomes/rivers below the cap), so it
+        // mirrors cave/nether_start/end_start's own hint instead of flat's single-biome one.
+        // DeepFlatPlan itself is read from EnvelopedChunkGenerator's own codec, never from here.
+        boolean deepFlatDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("deep_flat"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -240,7 +246,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     : flatDefaults
                         ? () -> resolveFlatAllowed(config, biomeGetter)
                         : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                            || netherStartDefaults || endStartDefaults
+                            || netherStartDefaults || endStartDefaults || deepFlatDefaults
                             ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
                             : () -> resolveConfiguredBiomes(config, biomeGetter));
 
@@ -251,7 +257,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
             : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                || netherStartDefaults || endStartDefaults || flatDefaults
+                || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -295,7 +301,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                             WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.flat.biome, new Random().nextLong()
                         )
                     : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                        || netherStartDefaults || endStartDefaults
+                        || netherStartDefaults || endStartDefaults || deepFlatDefaults
                         ? WorldLayoutPlan.legacy()
                         : stripWorldDefaults && config.stripWorld.bands.enabled
                             ? WorldLayoutPlan.resolveBands(
@@ -314,7 +320,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
                         : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                            || netherStartDefaults || endStartDefaults || flatDefaults
+                            || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults
                             ? SpawnStrategy.STARTER_AT_ORIGIN
                             : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config

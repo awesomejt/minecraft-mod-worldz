@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.DeepFlatPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
@@ -596,6 +597,8 @@ class WorldzConfigTest {
                 + ", flat=layers=[minecraft:bedrock:1, minecraft:stone:123, minecraft:dirt:3, minecraft:grass_block:1],"
                 + " biome=minecraft:plains, decoration=false,"
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
+                + ", deepFlat=surfaceY=64, capLayers=[minecraft:dirt:3, minecraft:grass_block:1],"
+                + " riversEnabled=true, riverExclusionRadiusBlocks=512"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1206,6 +1209,57 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertFalse(config.flat.layers.isEmpty());
+    }
+
+    @Test
+    void deepFlatSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            deepFlat:
+              surfaceY: 80
+              capLayers: ["minecraft:dirt:2", "minecraft:grass_block:1"]
+              riversEnabled: false
+              riverExclusionRadiusBlocks: 256
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(80, config.deepFlat.surfaceY);
+        assertEquals(List.of("minecraft:dirt:2", "minecraft:grass_block:1"), config.deepFlat.capLayers);
+        assertFalse(config.deepFlat.riversEnabled);
+        assertEquals(256, config.deepFlat.riverExclusionRadiusBlocks);
+    }
+
+    @Test
+    void deepFlatDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals(DeepFlatPlan.DEFAULT_SURFACE_Y, config.deepFlat.surfaceY);
+        assertFalse(config.deepFlat.capLayers.isEmpty());
+        assertTrue(config.deepFlat.riversEnabled);
+        assertEquals(DeepFlatPlan.DEFAULT_RIVER_EXCLUSION_RADIUS_BLOCKS, config.deepFlat.riverExclusionRadiusBlocks);
+    }
+
+    @Test
+    void deepFlatSurfaceYIsClamped() {
+        WorldzConfig tooLow = WorldzConfig.parse("""
+            deepFlat:
+              surfaceY: -999
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooHigh = WorldzConfig.parse("""
+            deepFlat:
+              surfaceY: 9999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(DeepFlatPlan.MIN_SURFACE_Y, tooLow.deepFlat.surfaceY);
+        assertEquals(DeepFlatPlan.MAX_SURFACE_Y, tooHigh.deepFlat.surfaceY);
+    }
+
+    @Test
+    void deepFlatEmptyCapLayersFallBackToDefaults() {
+        WorldzConfig config = WorldzConfig.parse("""
+            deepFlat:
+              capLayers: []
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.deepFlat.capLayers.isEmpty());
     }
 
     @Test

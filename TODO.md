@@ -2473,11 +2473,43 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       preset's own precedent. Test configs and docs deferred to 16.2c
       per Phase 13/14/15's own precedent (config/docs land in the final
       sub-task of a multi-part phase).
-- [ ] 16.2b Implement `jlt_worldz:deep_flat` (GOAL 16, DESIGN §33.4):
+- [x] 16.2b Implement `jlt_worldz:deep_flat` (GOAL 16, DESIGN §33.4):
       `DeepFlatPlan`/codec, the delegate-then-cap `EnvelopedChunkGenerator`
       post-processing pass (biome-aware: land cap vs. river/ocean water
       cap), rivers-enabled + exclusion-radius option, typed preset +
       registration; test configs; docs.
+      **Done (0.2.71), in-game testable now.** `deep_flat` shows up as
+      the twelfth "Worldz" World Type entry. Delegate stays a real,
+      unrestricted `NoiseBasedChunkGenerator` + `LimitedBiomeSource`
+      (full vanilla biome variety, mirrors `cave`'s exact precedent) so
+      real caves/cave biomes/aquifers/ores/structures all come from
+      vanilla's own proven pipeline with zero new noise code, exactly as
+      DESIGN §33.1 originally planned (unlike classic `flat`, this half
+      of the design didn't need correcting). The cap pass runs right
+      after the delegate's own real `buildSurface` call (not
+      `fillFromNoise`, which DESIGN §33.4's first draft assumed --
+      carving has to happen in between for real caves to exist, and
+      capping before `buildSurface` would let the delegate's own surface
+      rules paint over the cap band) -- late enough that real terrain/
+      caves/surface materials already exist below the cap, early enough
+      that biome decoration plants on the fresh capped surface next.
+      `getSpawnHeight` also needed a `deepFlat`-aware override (returns
+      `surfaceY` directly, verified it's a dimension-wide constant with
+      no x/z of its own) so spawn actually lands on the flat cap instead
+      of wherever the real, uncapped terrain happens to be tall;
+      `getBaseHeight`/`getBaseColumn` deliberately were not touched (see
+      DESIGN §33.4's implementation notes for why that's an acceptable
+      first-pass gap, not a player-visible correctness bug). Flagged a
+      new known gap for Jason's acceptance to watch for: a water-capped
+      river/ocean column's water sits directly on whatever real terrain
+      is immediately below the cap, so a natural cave opening right at
+      that boundary could source water down into it -- not fixed
+      speculatively, watch for it in 16.2c's acceptance pass. Closed the
+      fieldless-preset defaulting gap from day one (`deepFlatDefaults`
+      hint, full vanilla variety mirroring `cave`'s own precedent). New
+      JUnit (`DeepFlatPlanTest`, `WorldzConfigTest` coverage) plus
+      structural regression tests mirroring every prior typed preset's
+      own precedent. Test configs and docs deferred to 16.2c.
 - [ ] 16.2c Structures/underground-content acceptance pass (GOAL 22): a
       test config exercising an underground structure set (trial chambers
       or ancient city) at both a shallow classic-flat depth (honestly

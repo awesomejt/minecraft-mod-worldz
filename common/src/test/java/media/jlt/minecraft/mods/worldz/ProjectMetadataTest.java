@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.70", properties.getProperty("version"));
+        assertEquals("0.2.71", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -334,6 +334,52 @@ class ProjectMetadataTest {
         ));
         assertTrue(generator.contains("dimension == Dimension.OVERWORLD && worldType.filter(\"flat\"::equals).isPresent()"));
         assertTrue(generator.contains("FlatPlan.fromConfig(WorldzCommon.config().flat)"));
+    }
+
+    @Test
+    void deepFlatTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("DeepFlatPresetEditor.DEEP_FLAT_PRESET"));
+        assertTrue(fabricMixin.contains("DeepFlatPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(DeepFlatPresetEditor.DEEP_FLAT_PRESET, DeepFlatPresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Deep Flat", lang.get("generator.jlt_worldz.deep_flat").getAsString());
+    }
+
+    @Test
+    void limitedBiomeSourceAppliesDeepFlatDefaultsWithoutCustomize() throws IOException {
+        // Same fix shape as cave's own (closed from day one): a never-customized deep_flat world
+        // still gets full vanilla biome variety via the "world_type": "deep_flat" hint (DESIGN
+        // §33.4) -- real caves/cave biomes/rivers below the cap need the real, unrestricted
+        // biome source, unlike flat's single-biome restriction. DeepFlatPlan itself is resolved
+        // separately, on EnvelopedChunkGenerator's own codec, keyed to the Overworld generator
+        // instance (like cave/flat).
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains(
+            "boolean deepFlatDefaults = encodedStarterRadius.isEmpty()\n"
+                + "            && encodedWorldType.map(\"deep_flat\"::equals).orElse(false);"
+        ));
+        assertTrue(source.contains(
+            "|| netherStartDefaults || endStartDefaults || deepFlatDefaults"
+        ));
+
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+        assertTrue(generator.contains("dimension == Dimension.OVERWORLD && worldType.filter(\"deep_flat\"::equals).isPresent()"));
+        assertTrue(generator.contains("DeepFlatPlan.fromConfig(WorldzCommon.config().deepFlat)"));
     }
 
     @Test
@@ -752,7 +798,7 @@ class ProjectMetadataTest {
                 + "                    : stripWorldDefaults\n"
                 + "                        ? config.stripWorld.spawn.strategy\n"
                 + "                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults\n"
-                + "                            || netherStartDefaults || endStartDefaults || flatDefaults\n"
+                + "                            || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults\n"
                 + "                            ? SpawnStrategy.STARTER_AT_ORIGIN\n"
                 + "                            : config.spawn.strategy);"
         ));

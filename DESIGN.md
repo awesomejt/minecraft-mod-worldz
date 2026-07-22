@@ -4792,17 +4792,15 @@ land-layer list `FlatPlan` uses, painted immediately below `surfaceY`),
 existing exclusion-zone convention, e.g. sky island's
 `exclusionZoneRadiusBlocks`, rather than a new mechanism).
 
-**The cap pass** (new `EnvelopedChunkGenerator` post-processing step,
-mirrors the existing envelope/starter-land "replace blocks after the
-delegate's own `fillFromNoise` runs" shape, DESIGN §20): for each column,
-above `surfaceY` everything clears to air (hills removed); the
-`capLayers` band paints unconditionally immediately below `surfaceY`
+**The cap pass** (new `EnvelopedChunkGenerator` post-processing step): for
+each column, above `surfaceY` everything clears to air (hills removed);
+the `capLayers` band paints unconditionally immediately below `surfaceY`
 **unless** the delegate's real biome at that column is a river or ocean
 biome (checked via the standard `BiomeTags.IS_RIVER`/`IS_OCEAN` tags the
 same way other biome-driven decisions in this codebase already read
-them, e.g. `SpawnOriginManager.isOceanBiomeAt`), in which case the cap
-band is a shallow water-surface fill instead (matching sea level's real
-water-top convention) — this is what makes a real river visible at the
+them, e.g. `SpawnOriginManager.isOceanBiomeAt`) and the column is outside
+`riverExclusionRadiusBlocks` of the origin, in which case the cap band is
+a water fill instead — this is what makes a real river visible at the
 flat surface rather than silently paved over. Below the cap: completely
 untouched real vanilla terrain — caves, cave biomes (full vanilla
 variety already falls out for free the same way it does for `cave`/
@@ -4814,11 +4812,50 @@ place it, which for every underground-structure set is already below
 `surfaceY` in the overwhelming majority of columns as long as `surfaceY`
 is set at a reasonable height).
 
-**Known, accepted cosmetic gap, not engineered around** (same posture as
-every other "log it, don't chase it" entry in this project, e.g. §31.2's
-bonus-chest quirk): a natural cave or structure that happens to break the
-surface *above* `surfaceY` gets silently capped over by the flat pass —
-rare, harmless, not worth a special-case check.
+**Implementation notes (found while building 16.2b, correcting this
+section's first draft):**
+
+- The cap pass actually runs right after the delegate's own real
+  `buildSurface` call, not `fillFromNoise` — carving (`applyCarvers`) has
+  to run *between* `fillFromNoise` and the cap for real caves to exist at
+  all, and capping before `buildSurface` would let the delegate's own
+  biome-specific surface rules (grass/sand placement) paint over the cap
+  band incorrectly. Capping right after `buildSurface`, before biome
+  decoration, means real terrain/caves/surface materials already exist
+  below the cap, and decoration (trees, grass) plants on the fresh capped
+  surface next rather than the hidden original one.
+- `getSpawnHeight` also needed a `deepFlat`-aware override, returning
+  `surfaceY` directly — verified from the real `ChunkGenerator`/
+  `NoiseBasedChunkGenerator` signature that it takes no x/z at all (a
+  dimension-wide constant, not per-column), and `SpawnOriginManager.
+  safeSpawnNear` reads it directly as the spawn Y with no further height
+  lookup — without this override, spawn would land at whatever height the
+  real, uncapped delegate terrain happens to be, not the flat surface.
+  `getBaseHeight`/`getBaseColumn` were deliberately *not* given a
+  matching override (unlike classic `flat`'s full override of both) —
+  during generation these mostly drive structure/feature placement
+  decisions against the delegate's real (pre-cap) terrain, and the
+  world's actual persisted blocks (with the cap already applied) are what
+  every post-generation query reads directly; reporting the real height
+  here is an acceptable first-pass gap, not a correctness bug for the
+  player-visible result.
+
+**Known, accepted gaps, not engineered around** (same posture as every
+other "log it, don't chase it" entry in this project, e.g. §31.2's
+bonus-chest quirk):
+
+- A natural cave or structure that happens to break the surface *above*
+  `surfaceY` gets silently capped over by the flat pass — rare, harmless,
+  not worth a special-case check.
+- A water-capped river/ocean column doesn't get its own solid floor
+  separate from the cap band — the water fill sits directly on whatever
+  real terrain happens to be immediately below `surfaceY - capThickness`.
+  If a natural cave opening happens to sit right at that boundary, the
+  placed water could source down into it. Not fixed speculatively (no
+  report of it actually happening yet); flagged explicitly in Phase
+  16.2c's acceptance notes as something to watch for near rivers/oceans
+  specifically, the same "test first" posture Phase 5.5/5.6's border-
+  radius-floor bug actually followed.
 
 ### 33.5 Layer text import/export (DESIGN §19's own requirement)
 

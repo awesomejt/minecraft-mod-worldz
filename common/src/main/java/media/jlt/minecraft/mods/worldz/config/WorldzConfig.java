@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.DeepFlatPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
@@ -132,6 +133,8 @@ public final class WorldzConfig {
     public EndStartConfig endStart = new EndStartConfig();
     /** Defaults for the {@code jlt_worldz:flat} typed preset (GOAL 15; DESIGN §33.2). */
     public FlatConfig flat = new FlatConfig();
+    /** Defaults for the {@code jlt_worldz:deep_flat} typed preset (GOAL 16; DESIGN §33.4). */
+    public DeepFlatConfig deepFlat = new DeepFlatConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -255,6 +258,9 @@ public final class WorldzConfig {
         if (object.containsKey("flat")) {
             config.flat = readFlatConfig(object.get("flat"), "flat", logger);
         }
+        if (object.containsKey("deepFlat")) {
+            config.deepFlat = readDeepFlatConfig(object.get("deepFlat"), "deepFlat", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -317,6 +323,7 @@ public final class WorldzConfig {
         netherStart = sanitizeNetherStart(netherStart, logger);
         endStart = sanitizeEndStart(endStart, logger);
         flat = sanitizeFlat(flat, logger);
+        deepFlat = sanitizeDeepFlat(deepFlat, logger);
         return this;
     }
 
@@ -531,6 +538,22 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static DeepFlatConfig sanitizeDeepFlat(DeepFlatConfig config, Logger logger) {
+        DeepFlatConfig sanitized = config == null ? new DeepFlatConfig() : config;
+        sanitized.surfaceY = clampWithWarning(
+            sanitized.surfaceY, DeepFlatPlan.MIN_SURFACE_Y, DeepFlatPlan.MAX_SURFACE_Y, "deepFlat.surfaceY", logger
+        );
+        if (sanitized.capLayers == null || sanitized.capLayers.isEmpty()) {
+            logger.warn("deepFlat.capLayers was empty; using the default cap layer stack.");
+            sanitized.capLayers = new DeepFlatConfig().capLayers;
+        }
+        if (sanitized.riverExclusionRadiusBlocks < 0) {
+            logger.warn("Clamped deepFlat.riverExclusionRadiusBlocks from {} to 0.", sanitized.riverExclusionRadiusBlocks);
+            sanitized.riverExclusionRadiusBlocks = 0;
+        }
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -682,6 +705,7 @@ public final class WorldzConfig {
             + ", netherStart=" + netherStartSummary(netherStart)
             + ", endStart=" + endStartSummary(endStart)
             + ", flat=" + flatSummary(flat)
+            + ", deepFlat=" + deepFlatSummary(deepFlat)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -712,6 +736,7 @@ public final class WorldzConfig {
         values.put("netherStart", netherStartMap(netherStart));
         values.put("endStart", endStartMap(endStart));
         values.put("flat", flatMap(flat));
+        values.put("deepFlat", deepFlatMap(deepFlat));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1181,6 +1206,26 @@ public final class WorldzConfig {
         }
         if (map.containsKey("structureOverrides")) {
             config.structureOverrides = readStringList(map.get("structureOverrides"), name + ".structureOverrides", logger);
+        }
+        return config;
+    }
+
+    private static DeepFlatConfig readDeepFlatConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        DeepFlatConfig config = new DeepFlatConfig();
+        if (map.containsKey("surfaceY")) {
+            config.surfaceY = readInt(map.get("surfaceY"), name + ".surfaceY");
+        }
+        if (map.containsKey("capLayers")) {
+            config.capLayers = readStringList(map.get("capLayers"), name + ".capLayers", logger);
+        }
+        if (map.containsKey("riversEnabled")) {
+            config.riversEnabled = readBoolean(map.get("riversEnabled"), name + ".riversEnabled");
+        }
+        if (map.containsKey("riverExclusionRadiusBlocks")) {
+            config.riverExclusionRadiusBlocks = readInt(map.get("riverExclusionRadiusBlocks"), name + ".riverExclusionRadiusBlocks");
         }
         return config;
     }
@@ -1710,6 +1755,15 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> deepFlatMap(DeepFlatConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("surfaceY", config.surfaceY);
+        values.put("capLayers", config.capLayers);
+        values.put("riversEnabled", config.riversEnabled);
+        values.put("riverExclusionRadiusBlocks", config.riverExclusionRadiusBlocks);
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1891,6 +1945,13 @@ public final class WorldzConfig {
             + ", biome=" + config.biome
             + ", decoration=" + config.decoration
             + ", structureOverrides=" + config.structureOverrides;
+    }
+
+    private static String deepFlatSummary(DeepFlatConfig config) {
+        return "surfaceY=" + config.surfaceY
+            + ", capLayers=" + config.capLayers
+            + ", riversEnabled=" + config.riversEnabled
+            + ", riverExclusionRadiusBlocks=" + config.riverExclusionRadiusBlocks;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

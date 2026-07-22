@@ -11,6 +11,7 @@
     "jlt_worldz:cave",
     "jlt_worldz:nether_start",
     "jlt_worldz:end_start",
-    "jlt_worldz:flat"
+    "jlt_worldz:flat",
+    "jlt_worldz:deep_flat"
   ]
 }
