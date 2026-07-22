@@ -744,6 +744,53 @@ placement (and the two optional pieces below) differ.
 **Not covered by this phase's acceptance:** a Nether or End variant of any
 cave option (GOALS 25/26 are Overworld-only in scope, DESIGN §30.6).
 
+## Phase 14 acceptance (Nether-start challenge, GOALS 27, TODO 14.2a-14.2b)
+
+Uses configs `59`-`62` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Nether Start"** for all four. Unlike every other typed
+preset, the Overworld itself is completely untouched vanilla terrain —
+only where you spawn (and which chest tier you get) differ.
+
+1. **Default core mechanic**, `59-nether-start-default.yaml` (GOALS 27
+   core, 0.2.66+). Confirm you spawn in the Nether, not the Overworld —
+   standing on solid ground, two blocks of headroom, no lava immediately
+   adjacent. Check the server log for "Set the GOALS 27 Nether-start world
+   spawn at ..." and confirm the coordinates match. Confirm a chest sits
+   in the floor beneath your feet with the medium tier's contents (10
+   obsidian, no flint and steel, some bread, one random extra). **Die
+   without placing a bed/respawn anchor first and confirm you respawn at
+   the exact same Nether site** — this is the core beatability mechanic
+   (DESIGN §31.2), the single most important thing to verify this phase.
+   Build a portal (find/craft ignition yourself) and confirm the Overworld
+   beyond it is genuinely ordinary vanilla terrain. Then place a real
+   Nether respawn anchor somewhere else, charge it, die again, and confirm
+   you now respawn at the anchor instead — ordinary vanilla behavior
+   layering on cleanly on top of the redirected world-spawn default.
+2. **Easy chest tier**, `60-nether-start-chest-easy.yaml` (0.2.66+).
+   Confirm the chest holds 10 obsidian, 1 flint and steel, 8 bread, and
+   3 random extras. Confirm you can build and ignite a complete portal
+   frame immediately with no mining/cobblestone-generator detour needed.
+3. **Hard chest tier**, `61-nether-start-chest-hard.yaml` (0.2.66+).
+   Confirm the chest holds only 2 bread plus 1 random extra — no obsidian,
+   no flint and steel. Explore for a way out (ruined portal, bastion/piglin
+   bartering, natural lava+water) and report back whether a path out felt
+   reasonably discoverable, or whether hard tier needs a small guaranteed
+   nudge after all — DESIGN §31.6 flags these defaults as a first pass,
+   not signed off.
+4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml`
+   (0.2.66+). Check the server log: did the natural-pocket search succeed,
+   or did it log "carving a safe capsule instead"? If the capsule fired,
+   confirm you spawn inside a small, fully enclosed nether-brick room
+   (floor, ceiling, all four walls solid, not just corner posts) with no
+   way to fall into surrounding lava/void from inside it. If the first
+   world happens to land in a natural pocket instead, that's a valid
+   outcome too — try a different seed if you specifically want to see the
+   capsule.
+
+**Not covered by this phase's acceptance:** an End variant (GOALS 34 is
+Phase 15, sharing this phase's own respawn-mechanics research, DESIGN
+§31.1/§31.3).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

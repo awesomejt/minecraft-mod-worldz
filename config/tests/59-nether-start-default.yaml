@@ -1,0 +1,36 @@
+# GOALS 27 (Phase 14.2a/14.2b, DESIGN §31): the Nether-start challenge's
+# core mechanic and default (medium) chest tier. **Select "Worldz: Nether
+# Start"**.
+#
+# The Overworld generates exactly as vanilla would -- no biome
+# restriction, no shape at all. The only change is where you spawn: a
+# real, safe Nether pocket searched out near `netherStart.spawnY` (or a
+# small carved nether-brick capsule if no natural pocket was found within
+# budget -- check the server log for "carving a safe capsule instead" to
+# know which one happened).
+#
+# Steps once in-game:
+#  1. Confirm you spawn in the Nether, not the Overworld, standing on
+#     solid ground with two blocks of headroom and no lava immediately
+#     adjacent.
+#  2. Check the server log for "Set the GOALS 27 Nether-start world spawn
+#     at ..." and confirm the coordinates match where you actually spawned.
+#  3. Confirm a chest sits directly beneath your feet (replacing the
+#     floor block) with the medium tier's contents: 10 obsidian, no
+#     flint and steel, some bread, plus random extras.
+#  4. Die (without placing a bed/respawn anchor first) and confirm you
+#     respawn at the exact same Nether site, not back in the Overworld --
+#     this is the core beatability mechanic (DESIGN §31.2).
+#  5. Build a portal from the 10 obsidian (you'll need to find or craft
+#     ignition -- flint and iron, or another fire source) and step through
+#     to the Overworld. Confirm the Overworld is genuinely ordinary vanilla
+#     terrain with no restrictions.
+#  6. Place a real Nether respawn anchor somewhere else, charge it, die
+#     again, and confirm you now respawn at the anchor instead of the
+#     original site -- ordinary vanilla behavior layering on top cleanly.
+netherStart:
+  spawnY: 32
+  chestTier: medium
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

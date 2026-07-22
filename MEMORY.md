@@ -2373,3 +2373,21 @@ Durable decisions, verified API notes, and rationale that should survive across 
   split into 14.2a (core mechanic)/14.2b (chest tiers + typed preset
   UI)/14.2c (test configs/docs/wrap-up), mirroring Phase 13's own
   precedent for multi-part phases.
+- 2026-07-22 — **Phase 14 wrap-up (Nether-start challenge, GOALS 27).**
+  All three non-[Jason] tasks (14.2a core mechanic, 14.2b chest tiers +
+  typed preset UI, 14.2c test configs/docs) done, 0.2.66. Implementation
+  matched the 14.1 design exactly, no deviations found along the way (the
+  earlier-flagged risk -- whether `MinecraftServer.setRespawnData` really
+  covers both first-join and no-anchor-death with one overwrite -- held
+  up as designed once actually wired through `WorldLimitManager.
+  onServerStarted`). One small correctness detail worth remembering for
+  any future safe-site search that adds a *neighbor* check (not just a
+  same-column check the way Cave's own cavity search does): read through
+  the `ServerLevel` itself, not the raw candidate `ChunkAccess` --
+  `ChunkAccess.getBlockState` silently mis-reads a position outside its
+  own 16x16 bounds instead of correctly resolving the neighboring chunk,
+  and a lava-adjacency check can legitimately need to look past the
+  current chunk's edge. `NetherStartDeployment.searchNetherStartSite` is
+  the first place in this codebase to hit that; `SpawnOriginManager.
+  searchCaveCavity` never needed it since every one of its checks stays
+  within the single already-forced candidate chunk.

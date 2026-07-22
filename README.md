@@ -40,6 +40,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Sky Island** | A true floating island: a thin, fixed-thickness slab surrounded by void above, below, and beyond its footprint — Skyblock-style. Necessities chest with easy/medium/hard tiers plus a biome-driven water-source item. Optional matching Nether sky island. See [Sky island challenge](#sky-island-challenge) below. | Small screen: island biome, radius, coastline shape, surface Y, slab thickness, chest tier, apply-to-Nether, borders, Nether exterior. |
 | **Worldz: Sky Chunk** | Chunk-shaped islands cut from the seed's own natural chunks: unlike every other island type, a selected chunk's real vanilla terrain (biome, caves, structures) is left completely untouched — only unselected chunks mask to void. Optional top-only depth cutoff; a guaranteed portal-room stronghold and a forced amethyst geode; optional Nether/End application; optional underground-content showcasing. See [Sky chunk challenge](#sky-chunk-challenge) below. | Small screen: spawn chance, cell size, top-only toggle/depth, scattered top-only chance, exclusion zone, apply-to-Nether/End, borders, Nether exterior. |
 | **Worldz: Cave** | Cave-only start: the Overworld generates exactly as vanilla would (no biome restriction, no shape at all) — only your spawn changes, placed in a real, searched-out natural underground cavity. Optional solid roof sealing off sky access everywhere; optional large carved mega-cavern around spawn; optional starter chest. See [Cave challenge](#cave-challenge) below. | Small screen: spawn depth, sealed-surface toggle/Y, mega-cavern toggle/radius/height, chest toggle/tier, borders, Nether exterior. |
+| **Worldz: Nether Start** | Nether-start challenge: the Overworld generates exactly as vanilla would — you spawn in the Nether instead, in a real safe pocket (or a small carved fallback capsule), with a difficulty-tiered starter chest (easy hands over a ready-to-use portal frame, hard leans on exploration). Dying without a personal bed/anchor returns you to the same safe site. See [Nether-start challenge](#nether-start-challenge) below. | Small screen: spawn depth, chest tier, borders, Nether exterior. |
 
 ## Supported loaders
 
@@ -746,6 +747,56 @@ cave:
 | `cavernRadiusBlocks` | `48` | The mega-cavern's horizontal half-width in blocks (`8`-`256`). |
 | `cavernHeightBlocks` | `24` | The mega-cavern's vertical half-height in blocks (`8`-`256`). |
 | `chestEnabled` | `false` | Whether a starter chest is placed at spawn. |
+| `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+
+**New worlds only**, same restriction as every other typed preset here: no
+save-compat obligations for worlds created by an older mod version.
+
+## Nether-start challenge
+
+Select **Worldz: Nether Start** under **World Type** to begin in the
+Nether instead of the Overworld. Like Cave, the Overworld generates
+exactly as vanilla would — full biome variety, real seed terrain, no
+shape or restriction of any kind, reachable by an ordinary portal once
+you build one out. The only change is where you spawn: a real safe Nether
+pocket, searched out near a configurable depth (`spawnY`), rather than a
+carved cavity or the surface.
+
+If no natural pocket is found near the configured depth within the search
+budget, a small safe capsule (a sealed nether-brick room) is carved
+instead so world creation can never fail to produce a safe spawn (check
+the server log for a warning if this happens).
+
+**Death and respawn work like this:** the world's own default spawn point
+is redirected to the resolved Nether site at world creation, so both your
+very first join *and* any future death without a personal bed/respawn
+anchor return you to that same safe site. Nether respawn anchors work
+normally in the Nether (beds don't — vanilla's own rule); place and charge
+one anywhere you like, and it overrides the default the same way a bed
+would in the Overworld.
+
+A difficulty-tiered starter chest (`chestTier`, easy/medium/hard — always
+on, unlike Cave's optional one) is set into the floor directly beneath
+your spawn position:
+
+| Tier | Contents |
+|---|---|
+| `easy` | 10 obsidian (a full portal frame, ready to place) + 1 flint and steel + 8 bread, plus 3 random extras (golden tools, gold ingots, torches). |
+| `medium` | 10 obsidian with no guaranteed ignition, plus less food and fewer extras. |
+| `hard` | No guaranteed obsidian or flint and steel at all — leans entirely on Nether exploration (ruined portals, bastion/piglin bartering, a natural lava+water combination) to stay beatable. |
+
+Configure its defaults with a `netherStart:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+netherStart:
+  spawnY: 32
+  chestTier: medium
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `spawnY` | `32` | Target Y for the safe-site search. |
 | `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
 
 **New worlds only**, same restriction as every other typed preset here: no

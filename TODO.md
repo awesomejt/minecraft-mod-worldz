@@ -2259,13 +2259,34 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       New structural regression tests mirroring every prior typed
       preset's own precedent (`WorldPresetResourcesTest`,
       `ProjectMetadataTest`).
-- [ ] 14.2c Test configs (default, each chest tier, a config exercising
+- [x] 14.2c Test configs (default, each chest tier, a config exercising
       the guaranteed-capsule fallback path if forceable); docs (README,
       MANUAL_TESTING.md); phase wrap-up. **[Jason]** acceptance including
       death/respawn behavior (does dying without a personal anchor really
       return you to the same safe site; does a placed anchor elsewhere
       correctly override it; is the natural-vs-capsule site genuinely
       safe on arrival).
+      **Configs and docs done (0.2.66):** `config/tests/59`-`62` (default/
+      medium tier exercising the core redirect+respawn mechanic; easy and
+      hard chest tiers; `spawnY: 4` biased toward, not guaranteed to hit,
+      the capsule fallback -- not deterministically forceable from config
+      alone since the natural search always tries first, Jason's own
+      chosen design §31.4). New "Phase 14 acceptance" section in
+      MANUAL_TESTING.md (4 items, explicitly flagging the same-site-
+      respawn check as the single most important thing to verify).
+      `config/tests/README.md`'s intro updated for the ninth World Type
+      entry plus a new table row describing `netherStart:`. README.md
+      gained a full "Nether-start challenge" section (challenge-types
+      table row + prose + chest-tier table + config example + settings
+      table) mirroring the cave section's shape.
+      **This completes every non-[Jason] item in Phase 14** (14.1 design,
+      14.2a core mechanic, 14.2b chest tiers + typed preset UI, 14.2c
+      test configs/docs) — **do not start Phase 15 without Jason's
+      explicit go-ahead.** Phase 15 (End start, GOALS 34) directly reuses
+      this phase's own respawn-mechanics research (DESIGN §31.1/§31.3) --
+      neither beds nor anchors work in the End, so it will need the
+      `forced` `ServerPlayer.RespawnConfig` mechanism flagged as deferred
+      here (DESIGN §31.8), not scheduled to be re-derived from scratch.
 
 ## Phase 15 — End-start challenge (GOALS 34)
 

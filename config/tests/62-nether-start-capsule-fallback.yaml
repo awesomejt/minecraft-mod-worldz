@@ -1,0 +1,32 @@
+# GOALS 27 (Phase 14.2a, DESIGN §31.4): biased toward the guaranteed
+# capsule fallback path, to actually exercise it (not just the natural-
+# pocket path every other Nether-start config is more likely to hit).
+# **Select "Worldz: Nether Start"**.
+#
+# Not deterministically forceable from config alone -- the safe-site
+# search still tries a real natural pocket first (Jason's own chosen
+# design, DESIGN §31.4) -- but `spawnY: 4` targets a Y very close to the
+# Nether's own bedrock floor, where large open natural pockets are rare
+# (mostly solid netherrack/blackstone/bedrock down there), making the
+# carved nether-brick capsule fallback meaningfully more likely to fire
+# than at the default spawnY 32. If the first world you create lands in a
+# natural pocket anyway, that's a valid outcome too -- just try a couple
+# of different seeds until the server log shows "carving a safe capsule
+# instead" if you specifically want to see the fallback shell.
+#
+# Steps once in-game:
+#  1. Check the server log at world creation: does it say "carving a
+#     safe capsule instead", or did a natural pocket search succeed?
+#  2. If the capsule fired: confirm you spawn inside a small, fully
+#     enclosed 3x3x4 nether-brick room (floor, ceiling, and all four
+#     walls solid -- not just corner posts) with the chest set into the
+#     floor. Confirm there's no way to fall into surrounding lava/void
+#     from inside it -- it's genuinely sealed.
+#  3. Confirm the capsule doesn't overwrite anything unexpected outside
+#     its own small footprint.
+netherStart:
+  spawnY: 4
+  chestTier: easy
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

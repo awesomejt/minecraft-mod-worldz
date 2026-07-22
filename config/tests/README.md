@@ -27,7 +27,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 13, the World Type dropdown has **eight** Worldz
+   new world. Since Phase 14, the World Type dropdown has **nine** Worldz
    entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
@@ -72,7 +72,15 @@ Every field not mentioned in a file falls back to Worldz's documented default
    spawn, `cave.cavernRadiusBlocks`/`cavernHeightBlocks`). `cave.chestEnabled`
    plus `cave.chestTier` (`easy`/`medium`/`hard`) optionally place a
    starter chest at spawn, unlike every other typed preset's chest (which
-   is always on). Each preset ignores every other type's dedicated section.
+   is always on). "Worldz: Nether Start" (files `59`-`61`, GOALS 27,
+   Phase 14) reads only its own `netherStart:` section -- the Overworld
+   generates exactly as vanilla would, and you spawn in the Nether instead
+   (a real safe pocket searched out near `netherStart.spawnY`, or a small
+   carved capsule if none is found); `netherStart.chestTier`
+   (`easy`/`medium`/`hard`, always on, unlike cave's optional one) picks
+   the starter-chest difficulty -- easy hands over a full 10-obsidian
+   portal frame plus flint and steel, hard gives no guaranteed obsidian at
+   all. Each preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -139,6 +147,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `54-cave-sealed-surface.yaml` | GOALS 25 (Phase 13.2b): `sealedSurface: true` — a solid roof at Y 128 seals off sky access everywhere; confirms no way through without breaking it and no phantom spawns. **Select "Worldz: Cave"**. Requires 0.2.61+. |
 | `55-cave-mega-cavern.yaml` | GOALS 26 (Phase 13.2c): `cavernEnabled: true` — a large, naturally-edged cavern around spawn with room to build; confirms the perturbed boundary blends into real cave systems and never overwrites existing air/fluid. **Select "Worldz: Cave"**. Requires 0.2.62+. |
 | `56-cave-chest-and-sealed.yaml` | GOALS 25 (Phase 13.2d): `chestEnabled: true` with `chestTier: hard`, combined with the sealed surface — confirms the optional starter chest (set into the floor beneath spawn) composes cleanly with another cave option. **Select "Worldz: Cave"**. Requires 0.2.63+. |
+| `59-nether-start-default.yaml` | GOALS 27 (Phase 14.2a/14.2b, DESIGN §31): the core mechanic and default (medium) chest tier — spawn is a real, safe Nether pocket (or a carved capsule fallback), the world's default spawn is redirected there so both first join and no-anchor deaths land back at the same site, and a real Nether respawn anchor placed elsewhere correctly overrides it. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
+| `60-nether-start-chest-easy.yaml` | GOALS 27 (Phase 14.2b): the easy chest tier — 10 obsidian (a full portal frame) plus flint and steel, the "everything needed to build a portal out" GOALS 27 names by name. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
+| `61-nether-start-chest-hard.yaml` | GOALS 27 (Phase 14.2b): the hard chest tier — no guaranteed obsidian or flint and steel at all, relies entirely on Nether exploration; confirms the world still feels beatable from this minimal a start. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
+| `62-nether-start-capsule-fallback.yaml` | GOALS 27 (Phase 14.2a, DESIGN §31.4): `spawnY: 4`, biased (not guaranteed) toward the guaranteed-capsule safe-site fallback rather than a natural pocket — confirms the fully-enclosed nether-brick capsule shell when it fires. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
 
 ### Why `01` showed ocean labeled as river
 

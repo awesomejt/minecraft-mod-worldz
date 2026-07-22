@@ -1,0 +1,27 @@
+# GOALS 27 (Phase 14.2b, DESIGN §31.6): the hard chest tier -- no
+# guaranteed obsidian or flint and steel at all, leaning entirely on
+# Nether exploration to leave the world reachable-but-hard, the same
+# "harder, still beatable" posture GOALS 05's own hard sky-island tier
+# already established. **Select "Worldz: Nether Start"**.
+#
+# Steps once in-game:
+#  1. Confirm you spawn safely in the Nether as usual (see config 59 for
+#     the general safety/respawn checks -- not repeated here).
+#  2. Confirm the chest holds only the hard tier's bare-essentials
+#     contents: 2 bread, plus 1 random extra from (2 gold ingots, 4
+#     torches) -- no obsidian, no flint and steel.
+#  3. Confirm the world still feels genuinely beatable from this minimal
+#     a start: explore for a ruined portal (often carries salvageable
+#     obsidian), a bastion/piglin trade route (gold ingots -- provided by
+#     the extras roll, or minable -- can barter for useful items), or a
+#     natural lava+water combination to make your own obsidian. Report
+#     back whether at least one of these paths felt reasonably
+#     discoverable, or whether hard tier needs a small guaranteed nudge
+#     after all (first-pass defaults, DESIGN §31.6 flags this as needing
+#     real playtesting).
+netherStart:
+  spawnY: 32
+  chestTier: hard
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

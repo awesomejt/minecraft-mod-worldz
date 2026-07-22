@@ -1,0 +1,21 @@
+# GOALS 27 (Phase 14.2b, DESIGN §31.6): the easy chest tier -- a
+# ready-to-use portal escape kit, matching GOALS 27's own worked example
+# ("easy includes what is needed to build a portal out: obsidian, flint
+# and steel"). **Select "Worldz: Nether Start"**.
+#
+# Steps once in-game:
+#  1. Confirm you spawn safely in the Nether as usual (see config 59 for
+#     the general safety/respawn checks -- not repeated here).
+#  2. Confirm the chest holds the easy tier's contents: 10 obsidian, 1
+#     flint and steel, 8 bread, plus 3 random extras from (golden
+#     pickaxe, golden sword, 8 gold ingots, 16 torches).
+#  3. Confirm you can build a complete portal frame from the 10 obsidian
+#     alone (no mining/cobblestone-generator detour needed) and ignite it
+#     immediately with the provided flint and steel -- the fastest,
+#     most generous path out of the Nether this preset offers.
+netherStart:
+  spawnY: 32
+  chestTier: easy
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true
