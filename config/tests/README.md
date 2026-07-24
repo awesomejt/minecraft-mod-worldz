@@ -27,8 +27,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
    against an old save just re-tests the old config.
 
 3. Launch (`./gradlew :fabric:runClient` for the dev client) and create a
-   new world. Since Phase 16, the World Type dropdown has **twelve** Worldz
-   entries -- pick the one the table below tells you to: "Worldz" (files
+   new world. Since Phase 17, the World Type dropdown has **thirteen**
+   Worldz entries -- pick the one the table below tells you to: "Worldz" (files
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
    `singleBiome:` section; "Worldz: Chaos Biomes" (files `16`-`19`) reads
@@ -103,8 +103,18 @@ Every field not mentioned in a file falls back to Worldz's documented default
    below the cap); `deepFlat.surfaceY` the cap height, `deepFlat.capLayers`
    the land-cap stack, `deepFlat.riversEnabled`/`riverExclusionRadiusBlocks`
    whether river/ocean columns show as water at the surface and how close
-   to spawn that's suppressed. Each preset ignores every other type's
-   dedicated section.
+   to spawn that's suppressed. "Worldz: Stacked" (files `72`-`74`, GOAL 35,
+   Phase 17) reads only its own `stacked:` section -- the underground is
+   replaced entirely by horizontal biome layers, bottom to top, stacked
+   starting at the dimension's own min Y; `stacked.layers` is the editable
+   layer list, each entry `biome;blocks;air gap` shorthand (`blocks` reuses
+   `flat.layers`' own `block:height` convention, comma-separated) --
+   `biome` is the layer's reported biome (feature-list source, decoration/
+   ore placement), `blocks` its own bottom-to-top material stack, and
+   `air gap` the open headroom above it for that biome's own vegetation to
+   grow into; `stacked.seedRandomizedOrder` shuffles the configured order
+   deterministically from the real world seed instead of keeping it as
+   written. Each preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -184,6 +194,9 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `69-deep-flat-default.yaml` | GOAL 16 (Phase 16.2b): deep-flat's core mechanic — a flat surface over real, seed-driven terrain (caves, cave biomes, rivers as water). **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
 | `70-deep-flat-no-rivers.yaml` | GOAL 16 (Phase 16.2b): `riversEnabled: false` — river/ocean columns get the ordinary land cap instead of water. **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
 | `71-deep-flat-structures.yaml` | GOAL 22 (Phase 16.2b): an underground structure set buried at its natural real depth by construction — contrast with `68`'s classic-flat clipped result. **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
+| `72-stacked-default.yaml` | GOAL 35 (Phase 17): the stacked-biome-layers challenge's core mechanic — taiga/desert/plains bands, trees on every layer, ores anchored to the real deep-Y range. **Select "Worldz: Stacked"**. Requires 0.2.74+. |
+| `73-stacked-short-stack-beatability.yaml` | GOAL 35 (Phase 17.2c, DESIGN §34.5): the flagged, deliberately unresolved vertical-fit risk — a short total stack vs. a stronghold/End portal's real 3D extent. **Select "Worldz: Stacked"**. Requires 0.2.74+. |
+| `74-stacked-seed-randomized-order.yaml` | GOAL 35 (Phase 17): `seedRandomizedOrder: true` — the configured layer order is shuffled, deterministically from the real world seed. **Select "Worldz: Stacked"**. Requires 0.2.74+. |
 
 ### Why `01` showed ocean labeled as river
 

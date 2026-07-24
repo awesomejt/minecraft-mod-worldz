@@ -1,0 +1,23 @@
+# GOAL 35 (Phase 17.2c, DESIGN §34.1): the seed-randomized layer-order
+# option. **Select "Worldz: Stacked"**. Same three layers as config 72,
+# but shuffled deterministically from the real world seed instead of
+# kept in the configured order.
+#
+# Steps once in-game:
+#  1. Dig down from spawn and note the actual bottom-to-top layer order
+#     (which biome is deepest, which is in the middle, which is on top).
+#     Confirm it is *not necessarily* taiga/desert/plains (config 72's
+#     own fixed order) -- any of the six possible orderings is valid.
+#  2. Restart the server (or reopen the world) and dig down again in a
+#     freshly loaded chunk. Confirm the layer order is identical to step
+#     1 -- shuffling is seeded off the real world seed, so it must be
+#     reproducible across restarts/new chunks, not re-randomized per load.
+stacked:
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40,minecraft:podzol:2;6"
+    - "minecraft:desert;minecraft:sandstone:20,minecraft:sand:3;6"
+    - "minecraft:plains;minecraft:stone:20,minecraft:dirt:3,minecraft:grass_block:1;0"
+  seedRandomizedOrder: true
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

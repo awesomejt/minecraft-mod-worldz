@@ -44,6 +44,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on hand-mining the platform's own end stone to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
 | **Worldz: Flat** | Classic flat challenge: my version of vanilla superflat, with more options — an editable bottom-to-top block layer stack, a single fixed biome, an optional bedrock floor (just whether the layer list's bottom entry is bedrock), an eligible-structure-set list, and an optional decoration toggle. Zero noise or caves of any kind, matching vanilla's own real superflat behavior — and genuinely as fast to generate, since the real noise pipeline never runs at all. See [Flat challenge](#flat-challenge) below. | Small screen: layers (text), biome, decoration, structure list (text), borders, exteriors. |
 | **Worldz: Deep Flat** | Deep-flat challenge: a flat surface capped over real, unmodified vanilla terrain — caves, cave biomes, aquifers, ores, and structures all come from the seed's own real generation below the cap, completely untouched. Rivers/oceans show as water at the flat surface (optional, with a spawn-adjacent exclusion radius). See [Deep flat challenge](#deep-flat-challenge) below. | Small screen: surface Y, cap layers (text), rivers toggle, exclusion radius, borders, exteriors. |
+| **Worldz: Stacked** | Stacked-biome-layers challenge: the underground is replaced entirely by horizontal biome bands, bottom to top, starting at the dimension's own min Y — plains above desert above taiga, or any editable ordering — each with its own block stack and an air gap for that biome's own trees/vegetation to grow into. Ore veins naturally land in whichever layer sits at their real vanilla depth. Optional seed-randomized layer order. See [Stacked challenge](#stacked-challenge) below. | Small screen: layers (text), seed-randomized order toggle, borders, exteriors. |
 
 ## Supported loaders
 
@@ -951,6 +952,61 @@ column's water sits directly on whatever real terrain is immediately
 below the cap band — if a natural cave opening happens to sit right at
 that boundary, the placed water could source down into it. Report back if
 you actually see this during testing.
+
+**New worlds only**, same restriction as every other typed preset here: no
+save-compat obligations for worlds created by an older mod version.
+
+## Stacked challenge
+
+Select **Worldz: Stacked** under **World Type** for a world whose
+underground is replaced entirely by stacked horizontal biome layers
+instead of normal caves — plains above desert above taiga, or any
+ordering you configure. Each layer is its own flat/low-relief slab
+reporting its own biome, stacked bottom to top starting at the
+dimension's own min Y, with an air gap above its own block stack sized
+for that biome's own trees and vegetation to grow into.
+
+Ore veins that normally need deep levels (lapis, gold, diamond) need no
+special handling — because the stack starts at the dimension's own real
+min Y, whichever layer ends up deepest naturally gets the same real ore
+range vanilla's own deep Overworld would. A short total stack genuinely
+has less deep-Y room for rare ores to occur, the same honest tradeoff a
+real shallow world would have; there's no synthetic "ore budget"
+redistribution, just real vanilla placement against real Y coordinates.
+
+Configure the layer stack and order with a `stacked:` section in
+`config/jlt_worldz.yaml`:
+
+```yaml
+stacked:
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40,minecraft:podzol:2;6"
+    - "minecraft:desert;minecraft:sandstone:20,minecraft:sand:3;6"
+    - "minecraft:plains;minecraft:stone:20,minecraft:dirt:3,minecraft:grass_block:1;0"
+  seedRandomizedOrder: false
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `layers` | taiga/desert/plains, 93 blocks total | Ordered bottom-to-top layer list, each entry `"<biome>;<blocks>;<air gap>"` — `<blocks>` reuses `flat.layers`' own comma-separated `block`/`block:height` shorthand for that layer's own material stack. `<biome>` is the layer's reported biome (drives decoration/ore feature selection, not block choice); `<air gap>` is the open headroom above the block stack. |
+| `seedRandomizedOrder` | `false` | Shuffles the configured layer order, deterministically from the real world seed, instead of using it as written. |
+
+**Trees and vegetation generate in every layer**, not just the surface —
+real vanilla decoration already places ore veins and other fixed-depth
+features correctly once biome varies by Y, but heightmap-based features
+(trees, grass) can only ever see the topmost layer through the ordinary
+mechanism, since a chunk's heightmap is fundamentally single-valued per
+column. Every layer below the top gets its own small decoration pass
+instead, scattering that layer's own biome's trees directly into its air
+gap — a deliberate simplification (fixed scatter density, not an attempt
+at full vanilla placement-modifier fidelity), not a gap found after the
+fact.
+
+**Known open question, not yet resolved:** a short total stack (thin
+layers, little solid material) hasn't been confirmed against a
+stronghold/End portal's own real 3D size — the structure could plausibly
+end up clipped by the stack's own air gaps. Not fixed speculatively;
+report back what you actually see if you test a short stack.
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.

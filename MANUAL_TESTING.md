@@ -893,6 +893,48 @@ fixture defaults for `flat`/`deep_flat` are first-pass numbers, same
 project — report if `surfaceY: 64`/the default layer stack feel wrong,
 not just whether they work.
 
+## Phase 17 acceptance (Stacked biome layers, GOAL 35, TODO 17.2a-17.2c)
+
+Uses configs `72`-`74` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Stacked"** for all three.
+
+1. **Stacked default**, `72-stacked-default.yaml` (GOAL 35 core, 0.2.74+).
+   Confirm spawn lands on the plains surface (top of the stack). Dig
+   straight down and confirm you pass through plains topsoil, an air gap,
+   desert (sandstone/sand), another air gap, taiga (stone/podzol), then
+   bedrock — F3's biome readout should match each band, not just the
+   surface. **Confirm trees/vegetation generate in every layer's own air
+   gap**, not only the surface — this is GOAL 35's own explicit "trees on
+   every layer" ask, and the part of this phase most likely to look wrong
+   if the buried-layer decoration bypass (DESIGN §34.4) needs tuning:
+   report the scatter density (`BURIED_LAYER_DECORATION_ATTEMPTS = 4`,
+   fixed not configurable yet) if it looks too sparse or too dense.
+   Confirm ore veins (coal/iron/copper/redstone/gold/diamond/lapis) show
+   up in the bottom (taiga) layer's stone. Locate a stronghold/End portal
+   and confirm it's reachable.
+2. **Short stack beatability**, `73-stacked-short-stack-beatability.yaml`
+   (DESIGN §34.5's flagged, deliberately unresolved risk, 0.2.74+). This
+   is a genuine open question, not a known-good check — **report exactly
+   what you find**, whichever way it goes: does the stronghold/End portal
+   generate intact and reachable despite the short (29-block) solid stack,
+   or does its geometry get clipped/interrupted by the air gaps or the
+   dimension's own real min-Y anchoring? If natural search fails within
+   the border, confirm whether `WorldLimitManager`'s fallback
+   guaranteed-vault safety net still kicks in.
+3. **Seed-randomized layer order**, `74-stacked-seed-randomized-order.yaml`
+   (0.2.74+). Confirm the bottom-to-top order differs from config 72's own
+   fixed taiga/desert/plains order (any of the six permutations is valid).
+   Restart the server/reopen the world and dig down again in a freshly
+   loaded chunk — confirm the same order reappears, proving the shuffle is
+   deterministic from the real world seed rather than re-randomized per load.
+
+**Not covered by this phase's acceptance:** exact per-layer default block
+choices/thicknesses are first-pass numbers, same "tune after playtest"
+posture as every other numeric default in this project. The buried-layer
+decoration bypass's scatter density and the short-stack beatability
+question (item 2 above) are the two most likely candidates for follow-up
+work after this pass.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

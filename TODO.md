@@ -2669,9 +2669,26 @@ composes with.
       (source-string assertions, matching this project's established
       pattern for `EnvelopedChunkGenerator` features that need live
       Minecraft classes and so aren't directly JUnit-runnable).
-- [ ] 17.2c Test configs (a short total-stack config and a tall one, per
+- [x] 17.2c Test configs (a short total-stack config and a tall one, per
       §34.5's flagged vertical-fit risk) + docs (README, MANUAL_TESTING.md,
       config/tests/README.md) + phase wrap-up. **[Jason]** acceptance.
+      **Configs and docs done (0.2.75):** `config/tests/72`-`74` (default
+      three-layer taiga/desert/plains; a deliberately short two-layer
+      stack exercising DESIGN §34.5's own flagged, unresolved stronghold/
+      portal vertical-fit risk; `seedRandomizedOrder` determinism). New
+      "Phase 17 acceptance" section in MANUAL_TESTING.md (3 configs,
+      explicitly flagging the buried-layer decoration scatter density and
+      the short-stack beatability question as the two most likely
+      follow-up candidates). `config/tests/README.md`'s intro updated for
+      the thirteenth World Type entry plus a new `stacked:` paragraph and
+      three table rows. README.md gained a full "Stacked challenge"
+      section (challenge-types table row + prose + settings table +
+      config example), including the deep-ore-by-construction rationale
+      and the same open vertical-fit question flagged for testers.
+      **This completes every non-[Jason] item in Phase 17** (17.1 design,
+      17.2a core mechanism, 17.2b decoration, 17.2c test configs/docs
+      acceptance) — **do not start Phase 18 without Jason's explicit
+      go-ahead.**
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 

@@ -1,0 +1,34 @@
+# GOAL 35 (Phase 17.2c, DESIGN §34.5): the flagged, deliberately
+# unresolved beatability risk -- a short total stack (few thin layers)
+# versus a stronghold/End portal's real 3D extent. **Select "Worldz:
+# Stacked"**. Not fixed speculatively (DESIGN §34.5's own posture); this
+# config exists specifically to observe what actually happens.
+#
+# Only two thin layers, 29 blocks of solid material total (desert 12 +
+# plains 13), starting at the dimension's own min Y -64 -- meaning the
+# stack's real top sits at Y -35, with a very large volume of open sky
+# above it up to the build limit. A bordered world forces
+# WorldLimitManager's fallback End-portal guarantee to actually run.
+#
+# Steps once in-game:
+#  1. Confirm the stack is short: surface (top of plains) at Y -35, desert
+#     band below it, bedrock floor at Y -64. Confirm there is a lot of
+#     open sky above Y -35 up to the build limit (nothing generates there).
+#  2. Locate the stronghold/End portal (eye of ender, or explore). Confirm
+#     whether it generated successfully and is actually reachable/intact,
+#     or whether its geometry got clipped/interrupted by the stack's own
+#     air gaps or the shortness of the solid material -- report exactly
+#     what you find (this is the open question DESIGN §34.5 flags).
+#  3. If natural search failed to find one within the border, confirm
+#     WorldLimitManager's fallback guarantee still placed a reachable
+#     portal/vault (the generic beatability safety net every bordered
+#     world gets, GOALS 17 § ensureObjective).
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 512
+  finalRadiusBlocks: 512
+  ensureEndPortal: true
+stacked:
+  layers:
+    - "minecraft:desert;minecraft:sandstone:10,minecraft:sand:2;4"
+    - "minecraft:plains;minecraft:stone:10,minecraft:dirt:2,minecraft:grass_block:1;0"
