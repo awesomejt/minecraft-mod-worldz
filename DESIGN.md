@@ -4883,3 +4883,236 @@ both the layer editor's text box and the YAML config's own `layers`/
   no Nether/End flat variant is in scope here, matching Cave's own
   Overworld-only precedent (DESIGN §30.6).
 
+## §34. Phase 17: Stacked biome layers (GOAL 35) — design pass (TODO 17.1)
+
+### 34.1 Shape: an Overworld-only typed preset built on `FlatLayerSpec`, not a new mechanism
+
+Per Jason's 2026-07-16 interpretation (carried in `worldz-plan` memory and
+TODO 17.1's own header): stacked horizontal slabs, each layer flat/low-relief
+using a flatter variant of its own biome, so this reuses Phase 16's flat
+layer machinery rather than full noise terrain per layer. Architecturally
+this is `jlt_worldz:stacked`, a ninth Overworld-only generator-owned plan
+persisted directly on `EnvelopedChunkGenerator`'s own codec — mirroring
+`flat`/`deep_flat`/`cave`'s exact precedent (§33.1/§30.1), not
+`LimitedBiomeSource`'s (whose codec is genuinely full at 14/14 fields,
+confirmed again by inspection; any new top-level field there would need to
+nest into an existing group, and nothing here needs per-column biome-source
+*storage* — see §34.3 for why it still needs *live* biome-source
+involvement, which is a different thing).
+
+`StackedLayerSpec` (new record, reusing `FlatLayerSpec` for each layer's own
+block stack rather than reinventing layer syntax): `biome` (the layer's
+reported biome id, feature-list source only — see §34.2, not a block-choice
+input), `blocks` (ordered bottom-to-top `List<FlatLayerSpec>`, exactly
+`FlatPlan.layers`'s own shape, reused directly), `airGapBlocks` (open space
+above this layer's block stack, sized by the player for headroom — GOALS
+35's own "tall trees need real headroom" wording). `StackedPlan`: `enabled`,
+`layers` (ordered `List<StackedLayerSpec>`, bottom to top, stacked starting
+at the dimension's own min Y exactly like `FlatPlan.layers` — §33.2's
+precedent), `seedRandomizedOrder` (GOAL 35's own option: shuffle the
+configured layer list's order, seeded off the real world seed, resolved
+once at generator construction — mirrors `netherSkyIslandSeed`'s "resolved
+once, at construction, from the real seed" timing, no runtime re-shuffling).
+
+Total stack height = sum of every layer's `(blocks thickness + airGapBlocks)`,
+capped the same way `FlatPlan.totalHeightBlocks()` already is
+(`FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS`, 384). No separate "spawn Y" field,
+mirroring §33.3's own finding: spawn simply lands on the topmost layer's own
+surface, i.e. `totalHeightBlocks()` (needs the same `getSpawnHeight`
+override `deep_flat` already added, returning a plan-aware constant).
+
+### 34.2 Terrain fill: identical shape to `flat`'s skip-delegate branch, just N bands instead of one
+
+`fillFromNoise`/`buildSurface`/`applyCarvers` skip the delegate's real
+terrain methods entirely when `stacked.enabled()` — same reasoning as
+`flat` (§33.1's correction: the delegate stays a real
+`NoiseBasedChunkGenerator` + `LimitedBiomeSource` only to satisfy
+`WorldLimitManager`'s hard `LimitedBiomeSource` gate, GOAL 35 needs zero of
+its actual noise generation). Per column, walk `stacked.layers()` bottom to
+top, painting each layer's `blocks` stack immediately above the previous
+layer's top (including its air gap), mirroring `applyDeepFlatCap`'s
+per-column loop shape (§33.4) but iterating every layer instead of one cap
+band. No delegate carving of any kind runs, matching `flat`'s own
+`applyCarvers` no-op branch.
+
+### 34.3 Biome-per-layer: `LimitedBiomeSource.getNoiseBiome` already takes a Y argument — verified as real, already-vanilla-precedented 3D biome storage
+
+The load-bearing fact this whole phase's feasibility rests on, verified
+directly against the real 26.2 sources rather than assumed: `BiomeSource.
+getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler)`
+(`LimitedBiomeSource.java:1182`, `ChunkGenerator.java`/`BiomeSource.java`)
+already takes a **Y** coordinate, and vanilla's own chunk biome storage
+(`LevelChunkSection.getBiomes()`) is genuinely 3D — this is not new
+infrastructure Worldz has to build; it is the exact same mechanism vanilla
+itself uses for e.g. `dripstone_caves`/`lush_caves`/`deep_dark` reporting a
+different biome than the surface at the same X/Z. `LimitedBiomeSource`'s
+existing modes (`single_biome`, `chaos_biomes`, etc.) simply never *use*
+the Y argument, since none of them needed to vary vertically — nothing
+about the class prevents it.
+
+Since `stacked` is persisted on `EnvelopedChunkGenerator`, not
+`LimitedBiomeSource` (§34.1), and the latter's codec has no free slot,
+`StackedPlan` reaches `LimitedBiomeSource` the same way `EnvelopedChunkGenerator`
+already pushes other *non-codec, runtime* state onto it (mirrors
+`applyResolvedOrigin`/`setLayoutSeed`'s exact precedent, DESIGN §24.2's
+"not part of the codec" pattern) — a new `LimitedBiomeSource.
+setStackedLayers(List<StackedLayerBand>)` setter, called once from
+`EnvelopedChunkGenerator`'s constructor (the plan is fully known at
+construction time, no real-seed dependency the way `netherSkyIslandSeed`
+has, since layer order is either fixed or already seed-resolved once by
+§34.1's `seedRandomizedOrder`). `getNoiseBiome` gains an early branch,
+checked before every existing mode (mirrors sky island's own early
+short-circuit, §27.2) — `stacked` does not compose with `single_biome`/
+`chaos_biomes`/pass-through/island shapes, matching every other
+Overworld-only generator-owned plan's precedent (`flat` doesn't compose
+with `cave` either): converts `quartY` to block Y, finds which layer band
+contains it (including its air gap, so the whole vertical span between a
+layer's floor and the next layer's floor reports that layer's biome), and
+returns that layer's configured biome holder.
+
+This one addition is what makes vanilla's own `createBiomes`/decoration
+pipeline correctly treat a stacked-layer chunk as genuinely multi-biome —
+no reimplementation of biome storage or lookup needed, only sourcing the
+per-Y answer correctly.
+
+### 34.4 Decoration: real vanilla decoration mostly works unmodified once biome-per-Y is wired in — except heightmap-based features, which need one small, bounded, verified-safe bypass for buried layers
+
+Verified directly against `ChunkGenerator.applyBiomeDecoration`
+(`ChunkGenerator.java:317-410`), the method every typed preset in this
+project already inherits or overrides: for each `GenerationStep.Decoration`
+step, it collects every biome actually present anywhere in the chunk's 3x3
+neighborhood (`section.getBiomes().getAll(...)`, confirming §34.3's "this is
+already how vanilla works" claim), unions that step's placed-feature list
+across *all* of them, and calls `feature.placeWithBiomeCheck(level, this,
+random, origin)` for each — which runs the feature's own placement-modifier
+chain, then re-checks the biome at wherever that chain lands before
+actually placing anything. Two placement-modifier families behave
+differently against a stacked-layer world:
+
+- **Fixed-Y-range modifiers** (`HeightRangePlacement`, used by ore veins —
+  diamond/redstone/gold/iron/lapis/copper all place this way, verified via
+  their real `PlacedFeature` json shapes referenced from DESIGN's existing
+  Reference Log) need nothing extra: since layer 0 stacks starting at the
+  dimension's own min Y (§34.1, same as vanilla's real deep Overworld), a
+  bottom layer's stone naturally sits at the same real Y range vanilla's
+  own deep ores already target, and the biome check at that Y now
+  correctly reads whichever layer's biome is configured there. **This is
+  GOAL 35's "must account for ores that normally require deep levels"
+  requirement, satisfied by construction** (real min-Y anchoring, not a
+  synthetic redistribution system) rather than a new ore-budget engine —
+  the honest trade-off, flagged rather than silently assumed: a short
+  total stack (few thin layers) genuinely has less deep-Y room for
+  diamond/redstone/lapis to naturally occur, exactly like a real shallow
+  world would. Documented as guidance (a minimum-total-height
+  recommendation in the layer editor's UI hint text and README), not
+  enforced — the same "player's own configuration choice" posture §33.2
+  already established for classic flat's buried-structure depth, and the
+  "expose config" half of GOALS 35's own "distribute an ore budget across
+  the layers, **or** expose config" phrasing. No separate ore-budget field.
+- **Heightmap-based modifiers** (`HeightmapPlacement`, used by nearly every
+  vegetal/surface feature — trees, grass, flowers) do **not** work
+  unmodified for a buried layer: a chunk's persisted `Heightmap.
+  WORLD_SURFACE_WG`/`OCEAN_FLOOR_WG` is fundamentally single-valued per
+  column (the topmost qualifying block), and by the time
+  `applyBiomeDecoration` runs (a separate, later `ChunkStatus` than
+  `fillFromNoise`/`buildSurface`/`applyCarvers`, which have already fully
+  painted every layer chunk-wide), it can only ever report the *topmost*
+  layer's surface — real vanilla feature placement calling into a heightmap
+  lookup has no way to "see" a lower layer's own local surface as its own
+  heightmap. Confirmed this is a hard mechanical limit, not a config
+  question. The topmost layer needs nothing extra (its own heightmap-based
+  decoration is correct, ordinary vanilla behavior); every layer below it
+  needs a bypass.
+
+**The bypass, verified as a real, legitimate, bounded vanilla API rather
+than assumed:** `PlacedFeature.place`/`placeWithBiomeCheck`
+(`PlacedFeature.java:38-58`) run the placement-modifier chain (where the
+heightmap snap happens) before calling `feature.place(level, generator,
+random, pos)` — but `ConfiguredFeature.place(WorldGenLevel, ChunkGenerator,
+RandomSource, BlockPos)` (`ConfiguredFeature.java:20-22`) is itself a plain,
+public, un-wrapped method that places the raw `Feature` at *exactly* the
+given `BlockPos`, with **no** placement modifiers, no heightmap snap, no
+biome re-check — confirmed by reading both classes directly, not inferred.
+`EnvelopedChunkGenerator`'s existing `applyBiomeDecoration` override (it
+already overrides this method for `flat`'s own `decoration` toggle) gains a
+`stacked`-specific addition: after calling `super.applyBiomeDecoration(...)`
+unmodified first (which, thanks to §34.3's biome-per-Y wiring, already
+correctly places every fixed-Y-range feature — ores, dungeons-via-structure,
+underground decoration — plus the real, ordinary heightmap-based decoration
+for the topmost layer only), a second small pass runs for every layer
+*except* the top one: resolve that layer's own configured biome's
+`GenerationStep.Decoration.VEGETAL_DECORATION` placed-feature list (the
+same `BiomeGenerationSettings.features()` accessor `ChunkGenerator.
+applyBiomeDecoration` itself already uses), and for each, call
+`placedFeature.feature().value().place(level, this, random, pos)` directly
+at a small number of deterministically-scattered `(x, layerSurfaceY, z)`
+points within the chunk (own `WorldgenRandom`, seeded the same
+`setFeatureSeed`-style way vanilla's own loop does, so results are
+reproducible for a given seed/layer/chunk). Scatter density mirrors the
+step's own typical `CountPlacement`/`RarityFilter` order of magnitude
+loosely (a config-exposed points-per-chunk knob, not an attempt to
+replicate each feature's exact vanilla decorator chain) rather than an
+attempt to reproduce every feature's exact original placement-modifier
+semantics — an intentional, documented simplification (mirrors §33.1's
+choice of "small reimplemented branch over deep engine surgery"), not a
+gap discovered after the fact.
+
+This is a genuinely new, bounded piece of custom code (not a `ChunkPyramid`/
+internal-orchestration-type risk the way Phase 5c.1's rejected soft-void
+approach was, §21.2) — the two vanilla APIs it depends on
+(`ConfiguredFeature.place`, `BiomeGenerationSettings.features()`) are both
+already used elsewhere in vanilla's own `ChunkGenerator.
+applyBiomeDecoration`, just recombined without the placement-modifier
+wrapper for the one case (buried-layer heightmap features) that
+mechanically cannot work otherwise.
+
+### 34.5 Stronghold/End-portal placement (GOAL 35's own beatability requirement)
+
+Verified against `WorldLimitManager.onServerStarted`
+(`WorldLimitManager.java:39-142`): the fallback End-portal/blaze-spawner
+beatability gate already correctly detects any Overworld typed preset whose
+boundedness is expressed through `ExteriorPlan`/a real border — `cave`
+(persisted directly on the generator, exactly like `stacked` will be) needs
+**no** special gate arm for this reason (unlike the island-shaped presets,
+§34.1's citation of the recurring `xxx.enabled()`-arm bug class from Phases
+8/10/12 — that bug only ever hit presets whose exterior bypasses
+`ExteriorPlan` entirely). `stacked` gets the same standard border/exterior
+Customize-screen controls every typed preset already exposes (Phase 5.3's
+"every world type" precedent), so this project's normal `ExteriorPlan`-based
+gate detection already covers it with zero new code — confirmed by reading
+the gate's real conditions, not assumed by analogy alone.
+
+The genuinely new risk GOAL 35 itself calls out is **vertical**, not
+horizontal: vanilla's stronghold structure (and any other multi-piece
+jigsaw structure) has real 3D extent that was designed against a real,
+mostly-continuous Overworld column, not a stack of thin flat slabs
+separated by air gaps — a short total stack (§34.4's own "few thin layers"
+case) could leave a placed structure's piece geometry spanning several
+unrelated biome bands, or partially inside an air gap, or clipped by the
+dimension's own build-height ceiling if the stack is unusually tall.
+**Not engineered around speculatively** — same posture as §33.4's
+water-into-caves gap and Phase 5.5/5.6's border-radius-floor precedent
+(real bugs get fixed once observed, not guessed at in advance). Flagged
+explicitly for Jason's in-game acceptance pass (a config exercising a
+short total stack alongside one exercising a tall one, specifically
+watching the stronghold/portal-room result in both), and documented as a
+known open risk in README/MANUAL_TESTING rather than silently assumed
+fine.
+
+### 34.6 Deferred, not in this phase's scope
+
+- **Non-Overworld stacked variants** — GOALS 35 reads as Overworld-scoped
+  (an underground-replacement challenge is inherently about the Overworld's
+  own cave system); no Nether/End variant, matching `cave`/`flat`/
+  `deep_flat`'s own identical Overworld-only precedent.
+- **Exact per-feature placement-modifier fidelity for buried-layer
+  decoration** (§34.4's documented scatter-density simplification) —
+  revisit only if Jason's acceptance testing finds the simplified buried
+  decoration visually unconvincing; the topmost layer already gets full
+  vanilla fidelity for free.
+- **Automatic ore-budget redistribution across layers** (§34.4) — the
+  "or expose config" half of GOALS 35's own wording is what's built;
+  automatic redistribution is a materially larger, unrequested feature,
+  revisit only if Jason asks after seeing a short stack's real ore
+  scarcity in-game.
+

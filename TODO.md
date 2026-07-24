@@ -2543,7 +2543,7 @@ The biggest new generation concept — deliberately after flat (16), whose
 layer-editor concepts it likely reuses, and after limits (5), which it
 composes with.
 
-- [ ] 17.1 Design spike (interpretation confirmed by Jason 2026-07-16:
+- [x] 17.1 Design spike (interpretation confirmed by Jason 2026-07-16:
       stacked horizontal slabs — plains above desert above taiga — each
       layer flat or low-relief, using the flatter variants of its biome, so
       this builds on Phase 16's flat layer machinery rather than full noise
@@ -2556,8 +2556,57 @@ composes with.
       deep-ore budget
       (lapis/gold/diamond redistributed across layers or exposed as config),
       and stronghold/End-portal placement within the stack.
-- [ ] 17.2 Implement the `stacked` world type per design; test configs;
-      docs; **[Jason]** acceptance.
+      **Done, no code (design only).** Full design in DESIGN §34. New
+      Overworld-only typed preset `jlt_worldz:stacked`, generator-owned
+      (persisted on `EnvelopedChunkGenerator`'s own codec like `flat`/
+      `deep_flat`/`cave`, not `LimitedBiomeSource`'s — already full 14/14).
+      `StackedLayerSpec` reuses `FlatLayerSpec` for each layer's own block
+      stack plus a `biome` id and `airGapBlocks`. Terrain fill mirrors
+      `flat`'s skip-delegate branch, N bands instead of one. Verified
+      against real 26.2 sources that `LimitedBiomeSource.getNoiseBiome`
+      already takes a Y argument and chunk biome storage is genuinely 3D
+      (the same mechanism vanilla itself uses for cave biomes) — a new
+      non-codec `setStackedLayers` setter (mirrors `setLayoutSeed`'s "not
+      part of the codec" precedent) lets `EnvelopedChunkGenerator` push the
+      plan onto `LimitedBiomeSource` at construction, making real vanilla
+      decoration mostly work unmodified once biome varies correctly by Y:
+      fixed-Y-range ore veins need nothing extra (real min-Y anchoring
+      satisfies GOALS 35's deep-ore requirement by construction; short
+      stacks honestly have less deep-ore room, documented not enforced).
+      Heightmap-based features (trees, GOALS 35's own explicit ask) only
+      work unmodified for the topmost layer — verified `ConfiguredFeature.
+      place(level, generator, random, pos)` is a real, legitimate,
+      placement-modifier-free vanilla API, used for a small bounded
+      buried-layer decoration pass (scatter-density simplification,
+      documented, not full per-feature fidelity). Stronghold/portal
+      beatability: verified `WorldLimitManager`'s existing `ExteriorPlan`-
+      based fallback gate already covers `stacked` with zero new code
+      (same shape as `cave`'s own precedent, not the island-shaped bug
+      class from Phases 8/10/12); the real new risk is *vertical* fit
+      (short stacks vs. a stronghold's real 3D extent) — flagged for
+      Jason's acceptance pass, not engineered around speculatively. No
+      genuine scope question found needing Jason's decision — engineering
+      calls within the executor's remit, per 16.1's own precedent. TODO
+      17.2 split into 17.2a (core: plan/codec/terrain fill/biome-per-Y)/
+      17.2b (decoration bypass + acceptance-relevant beatability check)/
+      17.2c (test configs, docs, phase wrap-up), mirroring Phase 16's own
+      precedent for multi-part phases.
+- [ ] 17.2a Implement `jlt_worldz:stacked` core mechanism (DESIGN §34.1-
+      §34.3): `StackedLayerSpec`/`StackedPlan` records + codec, layer
+      editor UI (reusing the flat layer editor's text import/export
+      convention, §33.5) with per-layer biome + air gap, seed-randomized
+      layer order option, `EnvelopedChunkGenerator` terrain fill (skip
+      delegate, paint N bands), `getSpawnHeight`/total-height plumbing,
+      `LimitedBiomeSource.setStackedLayers` + `getNoiseBiome` early branch,
+      typed preset + registration, fieldless-preset defaulting hint.
+- [ ] 17.2b Implement decoration (DESIGN §34.4): `applyBiomeDecoration`
+      override calling `super` first, then the buried-layer
+      `ConfiguredFeature.place` bypass pass for every non-top layer's
+      `VEGETAL_DECORATION` features. Confirm (not fix speculatively) the
+      stronghold/portal beatability gate needs no new arm (DESIGN §34.5).
+- [ ] 17.2c Test configs (a short total-stack config and a tall one, per
+      §34.5's flagged vertical-fit risk) + docs (README, MANUAL_TESTING.md,
+      config/tests/README.md) + phase wrap-up. **[Jason]** acceptance.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 
