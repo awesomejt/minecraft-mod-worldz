@@ -2629,3 +2629,71 @@ Durable decisions, verified API notes, and rationale that should survive across 
   decisions here as they're made. If a future session finds another
   phase missing from this file, backfill it the same way rather than
   leaving the gap.
+- 2026-07-24 — **Phase 18 (World-hazard rules, GOALS 29-30) pre-work API
+  spike, verified against the real 26.2 sources jar
+  (`common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`), plus
+  three decisions from Jason before implementation began.**
+  **Major finding: 26.2 replaced the old single `Level.dayTime` long with
+  a data-driven `ServerClockManager`/`WorldClock` system** (no
+  `setDayTime`/`getDayTime` exist anymore). Time lives in a `SavedData`
+  keyed `"world_clocks"`, set via `ServerClockManager.setTotalTicks`/
+  `addTicks`, reached through `MinecraftServer.clockManager()`. The
+  gamerule that gates automatic day advance is **`advance_time`**
+  (`GameRules.ADVANCE_TIME`, a `GameRule<Boolean>`), not the old
+  `doDaylightCycle` name. Confirmed via `data/minecraft/timeline/day.json`:
+  one day is 24000 ticks (unchanged), `minecraft:night` marker = tick
+  13000, `minecraft:day` marker = tick 1000.
+  **`ServerLevel.tick()`'s own sleep-skip logic already gates on
+  `ADVANCE_TIME`** before calling `ServerClockManager.moveToTimeMarker`
+  to jump to morning -- `wakeUpAllPlayers()` still runs regardless (so
+  players can still physically use a bed), but the time-skip itself
+  simply doesn't fire when `ADVANCE_TIME` is false. This means "sleeping
+  cannot skip the night" (GOAL 30) is a **free consequence** of turning
+  the gamerule off, not a mixin `jlt_worldz` needs to write.
+  **Real interaction found and flagged before implementation, not after:**
+  `WorldLimitManager`'s own elapsed-time math (`getDefaultClockTime()`,
+  see this file's earlier 2026-07-17 entry on why it switched off
+  `getGameTime()`) reads the *same* per-dimension default clock that
+  day/night uses. Locking night via `ADVANCE_TIME=false` therefore also
+  pauses any active border-resize schedule in that dimension for as long
+  as night stays locked.
+  **Phantom/insomnia**: the stat is `Stats.TIME_SINCE_REST`
+  (`ServerPlayer.startSleeping()` resets it on any actual bed use,
+  independent of whether time skip happens), spawn-gated in
+  `PhantomSpawner` at `random.nextInt(value) >= 72000`. Vanilla's own
+  bed-availability gate (whether sleeping is even allowed) is a new-in-26.2
+  per-dimension `EnvironmentAttributes.BED_RULE` attribute
+  (`BedRule.CAN_SLEEP_WHEN_DARK` default), not a boolean gamerule.
+  **Chunk-load hooks** (needed for rising lava's "catch up a freshly
+  loaded chunk" requirement): Fabric `ServerChunkEvents.CHUNK_LOAD`
+  (module `fabric-lifecycle-events-v1`, same module `ServerLifecycleEvents`/
+  `ServerTickEvents` already come from); NeoForge `ChunkEvent.Load` on
+  `NeoForge.EVENT_BUS`. Neither is wired into this project yet. For
+  enumerating already-loaded chunks, vanilla's own `ChunkMap.
+  forEachBlockTickingChunk` is not accessible from mod code (package-
+  private) -- plan is to track loaded-chunk positions in the mod's own
+  in-memory set via the same CHUNK_LOAD/CHUNK_UNLOAD events, not to reach
+  into `ChunkMap` internals. For writing blocks into already-loaded
+  chunks (a runtime pass, not worldgen), the right API is `Level.
+  setBlock(BlockPos, BlockState, int flags)` (this repo's existing
+  `Block.UPDATE_ALL` convention from `ProgressionGuarantees.java`), not
+  `ChunkAccess.setBlockState` (the worldgen-time primitive
+  `EnvelopedChunkGenerator` already uses, which skips neighbor/light/
+  client updates -- wrong for a live already-loaded chunk).
+  **Jason's three decisions (all before any code was written):**
+  (1) **Insomnia default** -- vanilla phantom rules apply unmodified by
+  default (bed use still resets the timer even though it won't skip
+  time); a `relaxInsomnia`-style toggle (default off) suppresses phantoms
+  entirely for players who don't want to deal with them. Matches GOAL
+  30's own "option to keep or relax vanilla rules" wording directly.
+  (2) **Clock/border interaction** -- ship the pause-while-locked
+  interaction as a documented known limitation (README/MANUAL_TESTING),
+  not worth a bigger change to how `WorldLimitManager` tracks elapsed
+  time. Same "log it, don't engineer around it speculatively" posture
+  this project already uses for other cross-feature edge cases (coastline
+  defects, `deep_flat`'s water-into-caves gap).
+  (3) **Test-file naming** -- keep the existing flat sequential
+  `config/tests/NN-...yaml` numbering (continuing from 77), not a new
+  per-phase subfolder; despite this session's own prompt using
+  "config/tests/phase-<n>" phrasing, that reads as shorthand for "this
+  phase's test files," not a literal new naming convention.

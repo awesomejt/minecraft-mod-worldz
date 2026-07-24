@@ -2736,16 +2736,27 @@ A shared runtime module (server-tick + saved-data, like delayed borders),
 composable with any world type — **independent of Phases 5–17 and can be
 pulled earlier if Jason wants a fun quick win.**
 
+- [x] 18.0 Design pass (added — mirrors Phase 17.1's own precedent, and
+      18.2 already asked for a design-first task): verified real 26.2
+      time/sleep/phantom/chunk-load APIs against the sources jar (26.2
+      replaced `Level.dayTime` with a `ServerClockManager`/`WorldClock`
+      system, gamerule renamed `advance_time`); three decisions from
+      Jason before implementation (insomnia default, clock/border
+      schedule interaction, test-file naming) — see MEMORY.md and DESIGN
+      §35 for the full write-up.
 - [ ] 18.1 Forever night (30): start-at-night option and night-permanent-
       after-N-days trigger; once active, time is held at night and sleeping
       cannot skip it; insomnia/phantom option (keep vanilla or relax).
-      Reuses the day/delay schedule idiom from borders (§12/§15).
+      Reuses the day/delay schedule idiom from borders (§12/§15). See
+      DESIGN §35.1 for the finalized mechanism (`advance_time` gamerule +
+      `ServerClockManager`, not the old `doDaylightCycle`/`setDayTime`
+      APIs the original TODO wording assumed).
 - [ ] 18.2 Rising lava floor (29): persisted world-wide lava level with
       delay/rate/max (border-schedule config idiom); design the block-
       conversion rules (air/water below the level) and the application
       strategy for loaded vs. newly loaded chunks with acceptable
       performance — design task first, verified against 26.2 chunk/tick
-      APIs.
+      APIs. See DESIGN §35.2.
 - [ ] 18.3 Test configs (night-from-day-0, night-after-N, rising lava on a
       vanilla-limited world and on an ocean island); docs; **[Jason]**
       acceptance.
@@ -2905,6 +2916,11 @@ pulled earlier if Jason wants a fun quick win.**
   vanilla-vs-Worldz comparison at the exact coordinates, not re-opening the
   RandomState/threading investigation (that hypothesis is already
   conclusively disproven — see MEMORY.md).
+- 2026-07-24 — Phase 18 pre-work: three questions asked and answered
+  before any code was written (insomnia default polarity, whether the
+  day/night-clock/border-schedule interaction is an acceptable known
+  limitation, test-file naming convention). Full detail in MEMORY.md's
+  2026-07-24 Phase 18 entry; resolved, not blocking.
 
 ## Deviation log
 

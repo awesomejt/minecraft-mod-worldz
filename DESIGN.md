@@ -5283,3 +5283,242 @@ call the same one implementation — the gap opened specifically because
 the logic was inlined once instead of centralized; centralizing it is
 the actual fix, not just patching the two missed call sites.
 
+## §35. Phase 18: World-hazard rules module (GOALS 29–30) — design pass (TODO 18.0)
+
+### 35.0 Verified 26.2 APIs — the original TODO wording's assumed mechanism no longer exists
+
+Before any code: this project's `AGENTS.md` requires every vanilla API claim
+verified against the real 26.2 sources
+(`common/build/moddev/artifacts/vanilla-26.2-1-sources.jar`), not assumed.
+That check found a real, load-bearing surprise — **26.2 replaced the old
+single `Level.dayTime` long entirely with a data-driven clock system.**
+`Level.setDayTime`/`getDayTime` do not exist in this snapshot (confirmed
+absent by grep); the old `doDaylightCycle` gamerule name is also gone.
+
+- Time lives in `ServerClockManager` (a `SavedData` keyed `"world_clocks"`,
+  `world/clock/ServerClockManager.java`), one `ClockInstance{totalTicks,
+  partialTick, rate, paused}` per registered `WorldClock` (`WorldClocks
+  .OVERWORLD`/`WorldClocks.THE_END` — the Nether has none, confirming
+  forever night is naturally Overworld-only, matching every other
+  Overworld-scoped typed preset in this project). Reached via
+  `MinecraftServer.clockManager()`.
+- The gamerule gating automatic advance is **`GameRules.ADVANCE_TIME`**
+  (`world/level/gamerules/GameRules.java:24`, a `GameRule<Boolean>`), read/
+  set through a *separate* value-holder class also confusingly named
+  `GameRules` (`ServerLevel.getGameRules()`/`MinecraftServer.getGameRules()`
+  both return `this.server.getGameRules()` — one canonical server-wide
+  instance, not per-dimension despite the per-level-looking accessor name).
+  Real setter, verified at its own real call site
+  (`MinecraftServer.java:540`): `server.getGameRules().set(GameRules
+  .ADVANCE_TIME, false, server)`.
+- `ServerClockManager.tick()` (`ServerClockManager.java:63-69`) only
+  advances every clock when `server.getGlobalGameRules().get(GameRules
+  .ADVANCE_TIME)` is true — confirming the gamerule is genuinely global,
+  not per-dimension, so disabling it stops every dimension's clock at
+  once (relevant to §35.1's own documented interaction below).
+- **`ServerLevel.tick()`'s own sleep-skip logic already gates on this same
+  gamerule** (`ServerLevel.java:366-377`):
+  ```java
+  if (this.sleepStatus.areEnoughSleeping(percentage) && ...) {
+      if (this.getGameRules().get(GameRules.ADVANCE_TIME) && defaultClock.isPresent()) {
+          this.server.clockManager().moveToTimeMarker(defaultClock.get(), ClockTimeMarkers.WAKE_UP_FROM_SLEEP);
+      }
+      this.wakeUpAllPlayers();
+      ...
+  }
+  ```
+  `wakeUpAllPlayers()` always runs (players can still physically use a
+  bed); the time-skip itself simply doesn't fire when `ADVANCE_TIME` is
+  false. **GOAL 30's "sleeping cannot skip the night" is therefore a free
+  consequence of disabling the gamerule, not a mixin this project needs to
+  write** — a materially smaller implementation than TODO 18.1's original
+  "reuse the day/delay schedule idiom" wording assumed before this spike.
+- Setting the clock directly: `ServerClockManager.setTotalTicks(Holder
+  <WorldClock>, long)` (raw, immediate) and `.moveToTimeMarker(Holder
+  <WorldClock>, ResourceKey<ClockTimeMarker>)` (resolves to the *next*
+  future occurrence of that marker, at most one day-cycle away — verified
+  via `ClockTimeMarker.resolveTimeToMoveTo`, `world/clock/ClockTimeMarker
+  .java`) are both public and independent of the gamerule. `ClockTimeMarkers
+  .NIGHT` (`world/clock/ClockTimeMarkers.java`) resolves against
+  data-driven values in `data/minecraft/timeline/day.json` (`"period_ticks":
+  24000`, `minecraft:night` marker at tick 13000) rather than a hardcoded
+  magic number — deliberately used instead of hand-writing `13000L`, so a
+  future balance change to that data file is picked up automatically. Real
+  vanilla precedent for the exact call shape, confirmed at
+  `MinecraftServer.java:541`: `this.clockManager.moveToTimeMarker(this
+  .registryAccess().getOrThrow(WorldClocks.OVERWORLD), ClockTimeMarkers.NOON);`.
+- **Phantom/insomnia** (`world/level/levelgen/PhantomSpawner.java`): the
+  stat is `Stats.TIME_SINCE_REST` (`stats/Stats.java:25`), spawn-gated at
+  `random.nextInt(value) >= 72000`. It resets only on actual bed use —
+  `ServerPlayer.startSleeping()` calls `this.resetStat(Stats.CUSTOM.get
+  (Stats.TIME_SINCE_REST))` (`ServerPlayer.java:1246`) — independent of
+  whether `wakeUpAllPlayers`'s time-skip fires, confirming players can
+  keep resetting insomnia by sleeping even once night is locked. `resetStat`
+  is `public` (`ServerPlayer.java:1511`), directly reusable.
+- **Chunk-load hooks** (needed for §35.2's newly-loaded-chunk catch-up):
+  Fabric `ServerChunkEvents.CHUNK_LOAD`/`CHUNK_UNLOAD` (module
+  `fabric-lifecycle-events-v1`, the same module `ServerLifecycleEvents`/
+  `ServerTickEvents` already come from in `WorldzFabric.java`) — `Load
+  .onChunkLoad(ServerLevel, LevelChunk, boolean generated)`. NeoForge
+  `ChunkEvent.Load`/`Unload` on `NeoForge.EVENT_BUS` — `Load.isNewChunk()`.
+  **NeoForge's own doc comment is a real constraint, not boilerplate:**
+  "this event is fired before the underlying `LevelChunk` is promoted to
+  `ChunkStatus.FULL`... interactions with the level must be delayed until
+  the next game tick to prevent deadlocking the game" — so both loaders'
+  handlers only *record* the newly loaded chunk position into a queue;
+  actual block conversion happens in the next `onServerTick`, never
+  synchronously inside the load callback, uniformly on both loaders (no
+  loader-specific special-casing needed since the queued design is safe
+  either way, not just required on NeoForge).
+- **Enumerating already-loaded chunks / writing blocks at runtime**: vanilla's
+  own `ChunkMap.forEachBlockTickingChunk` is not reachable from mod code
+  (package-private). Rather than reflect into `ChunkMap` internals, §35.2
+  maintains its own in-memory loaded-chunk-position set per level, built
+  from the same `CHUNK_LOAD`/`CHUNK_UNLOAD` events already needed for
+  catch-up — one mechanism serves both needs. For actually writing blocks
+  into an already-loaded chunk (a runtime pass, not worldgen), the correct
+  API is `Level.setBlock(BlockPos, BlockState, int flags)`
+  (`Level.java:217-219`) — this repo's own `Block.UPDATE_ALL` convention
+  (already used throughout `ProgressionGuarantees.java`) — **not**
+  `ChunkAccess.setBlockState`, the worldgen-time primitive
+  `EnvelopedChunkGenerator` already uses elsewhere in this project (skips
+  neighbor/light/client update propagation entirely, correct for
+  freshly-generated terrain no player has ever seen, wrong for a live
+  chunk players may already be standing in).
+
+### 35.1 Forever night (GOAL 30)
+
+New top-level `WorldzConfig` section, `foreverNight:` (not a typed preset —
+DESIGN §20.9 already settled "composable with any world type"; config-only
+for this phase, no Customize-screen widget, mirroring how border/exterior/
+starter-land all shipped config-only before Phase 5.3 added in-screen
+exposure as a separate, later phase): `enabled` (default `false`),
+`lockAfterDays` (default `0`, meaning "start at permanent night
+immediately" — GOAL 30's own first-listed option; any positive value is
+TODO 18.1's second option, a delayed lock), `relaxInsomnia` (default
+`false` — Jason's decision, 2026-07-24: vanilla phantom rules apply
+unmodified by default, matching GOAL 30's own "option to keep or relax
+vanilla rules" wording; when `true`, phantoms are actively suppressed).
+
+`ForeverNightPlan` (pure logic record, mirrors every other `*Plan`'s shape):
+`enabled`, `lockAfterDays`, `relaxInsomnia`. A new `WorldHazardState`
+`SavedData` (mirrors `WorldLimitState`'s exact shape/idiom) persists
+`nightLocked` (bool) and `pendingLockTick` (long, `-1` = none, same
+sentinel convention as `WorldLimitState.NO_PENDING_START`) so the delayed
+trigger survives restarts and never double-applies.
+
+`WorldHazardManager` (new class, `worldgen` package, mirrors
+`WorldLimitManager`'s exact `onServerStarted`/`onServerTick` shape,
+registered at the identical two lifecycle hooks already used for it in
+both `WorldzFabric.java`/`WorldzNeoForge.java`): on first server start for
+a world with `foreverNight.enabled()` and not yet locked, either applies
+the lock immediately (`lockAfterDays == 0`) or computes and persists
+`pendingLockTick = currentClockTick + lockAfterDays * BorderSchedule
+.TICKS_PER_DAY` (reusing the existing public constant rather than
+duplicating `24_000L`). `onServerTick` checks whether a pending lock is
+due, applies it once, clears the pending marker. **Applying the lock**:
+`server.getGameRules().set(GameRules.ADVANCE_TIME, false, server)` then
+`server.clockManager().moveToTimeMarker(server.registryAccess()
+.getOrThrow(WorldClocks.OVERWORLD), ClockTimeMarkers.NIGHT)`, then persist
+`nightLocked = true`. Overworld only (the Nether has no `WorldClock` at
+all, confirmed §35.0).
+
+**`relaxInsomnia`**: once locked, `onServerTick` periodically (every 20
+ticks — cheap, just a stat write, no need for every-tick precision) calls
+`player.resetStat(Stats.CUSTOM.get(Stats.TIME_SINCE_REST))` for every
+online player in that Overworld, keeping every player permanently below
+`PhantomSpawner`'s threshold. No mixin, no spawn-condition override — pure
+reuse of the same stat vanilla's own bed-sleeping already resets.
+
+**Known, documented interaction (Jason's decision, 2026-07-24 — ship as a
+known limitation, not worth a bigger fix):** `WorldLimitManager`'s own
+elapsed-time math (`getDefaultClockTime()`) reads the *same* per-dimension
+default clock day/night uses (§35.0's "genuinely global" finding + this
+project's own earlier `getDefaultClockTime()` migration note, MEMORY.md
+2026-07-17). Locking night therefore also pauses any active border-resize
+schedule in that dimension for as long as night stays locked. Documented
+in README/MANUAL_TESTING, not engineered around — same posture as this
+project's other cross-feature edge cases (coastline defects, `deep_flat`'s
+water-into-caves gap).
+
+### 35.2 Rising lava floor (GOAL 29)
+
+New top-level `WorldzConfig` section, `risingLava:` (config-only, same
+reasoning as §35.1): `enabled` (default `false`), `delayDays` (default
+`3`), `startY` (default `FlatConfig.OVERWORLD_MIN_Y`, `-64` — reuses this
+project's own "start at the dimension's real min Y" idiom, same as
+`stacked`'s bottom-layer anchoring), `maxY` (default `64`, sea level — the
+"sensible default" GOAL 29 itself asks for), `rateBlocks`/`rateDays`
+(default `1`/`1`, one block per in-game day — a deliberately slow,
+first-pass number, same "tune after playtest" posture as every other
+numeric default in this project). Overworld only for this phase (unlike
+lava ocean/28's own explicit fluid parameterization, GOAL 29 never
+mentions the Nether; a `applyToNether` toggle is easy to add later if
+Jason wants it — not scope creep to defer).
+
+`RisingLavaSchedule` (pure logic record, mirrors `BorderSchedule`'s exact
+shape almost line for line — reuses `BorderSchedule.TICKS_PER_DAY`
+directly): `levelAtTick(elapsedTicks)` returns the current world-wide lava
+Y, clamped to `[startY, maxY]`, holding at `startY` during `delayDays` then
+rising linearly at `rateBlocks` per `rateDays`. No stepped variant (GOAL 29
+never asks for one, unlike the border's own GOAL 19/20 history) —
+continuous only, kept intentionally simpler than `BorderSchedule`.
+
+**Which blocks convert (GOAL 29's own open design question, settled here):**
+a column position converts to lava when its current block is air (any air
+variant) or the `minecraft:water` block (source or flowing — vanilla
+represents both as the same block with a different `LEVEL` property, not
+separate block types) — a literal reading of GOAL 29's "air/water below
+the level" wording. Waterlogged non-water blocks (a waterlogged fence, a
+kelp plant) are left alone — only the two named block *kinds* convert, not
+"anything touching water." No special-casing for void columns beneath
+floating/void-based world types (sky island, sky chunk, chunk island) —
+uniform behavior everywhere, Jason's own call on scope: simpler, matches
+GOAL 29's literal wording, and consistent with GOAL 38's own already-
+documented "expansion overwrites anything built in the void ring" posture
+that world hazards are allowed to be destructive by design.
+
+**Application strategy (GOAL 29's own "without performance problems"
+requirement) — verified against §35.0's real APIs, not assumed:**
+
+- `WorldHazardManager.onServerTick` recomputes `RisingLavaSchedule
+  .levelAtTick(elapsed)` every tick (cheap — pure arithmetic, no world
+  access) but only does the expensive part when the *integer* level has
+  actually increased since `WorldHazardState`'s persisted `lastAppliedY`.
+  Given the default rate (1 block/day = 24,000 ticks/block), the expensive
+  path runs on the order of once per real-world day at default settings,
+  not every tick.
+- When it does run: iterates this module's own tracked set of currently
+  loaded chunk positions (built from `CHUNK_LOAD`/`CHUNK_UNLOAD`, §35.0),
+  and for each, converts every air/water column position in the *band*
+  `(lastAppliedY, currentY]` only — never a full re-scan of the whole
+  loaded world, since everything below `lastAppliedY` was already
+  converted on a previous pass (or already solid, converted or not).
+- `CHUNK_LOAD` queues the new chunk position; the next `onServerTick`
+  converts that one chunk's *entire* range `[startY, lastAppliedY]` (already
+  known, no schedule recomputation needed) once, so a chunk loaded after
+  the level has already risen partway still catches up correctly, exactly
+  matching GOAL 29's "newly loaded chunks" requirement.
+- All actual block writes use `Level.setBlock(pos, Blocks.LAVA
+  .defaultBlockState(), Block.UPDATE_ALL)` (§35.0), never the worldgen-time
+  `ChunkAccess` primitive.
+
+### 35.3 Deferred, not in this phase's scope
+
+- **Customize-screen exposure for either hazard** — config-only for this
+  phase (§35.1/§35.2), matching this project's own established
+  config-first-UI-later precedent (border/exterior/starter-land all did
+  this before Phase 5.3). Revisit only if Jason asks after using the
+  config-driven path.
+- **`risingLava.applyToNether`** — GOAL 29 never asks for it; easy to add
+  later (mirrors `skyIsland.applyToNether`/`strip.applyToNether`'s own
+  precedent exactly) if Jason wants a Nether lava floor.
+- **Protecting player-built structures from the rising lava** — GOAL 29
+  doesn't ask for it, and GOAL 38's own "expansion overwrites anything
+  built in the void ring" is direct precedent that a world hazard in this
+  project is allowed to be destructive by design.
+- **Decoupling `WorldLimitManager`'s elapsed-time tracking from the
+  day/night clock** so forever night and border schedules can run
+  simultaneously without interaction — Jason's explicit call (2026-07-24):
+  document the interaction, don't build around it speculatively.
+
