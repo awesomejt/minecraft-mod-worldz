@@ -52,4 +52,39 @@ class StackedLayerSpecTest {
             () -> new StackedLayerSpec("minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", 1)), -1)
         );
     }
+
+    @Test
+    void bareBiomeIdUsesStandardCompositionAndDefaultAirGap() {
+        StackedLayerSpec spec = StackedLayerSpec.parse("minecraft:desert");
+        assertEquals("minecraft:desert", spec.biome());
+        assertEquals(List.of(new FlatLayerSpec("minecraft:sandstone", 7), new FlatLayerSpec("minecraft:sand", 3)), spec.blocks());
+        assertEquals(30, spec.airGapBlocks());
+    }
+
+    @Test
+    void bareBiomeIdAcceptsAMissingNamespace() {
+        StackedLayerSpec withNamespace = StackedLayerSpec.parse("minecraft:taiga");
+        StackedLayerSpec withoutNamespace = StackedLayerSpec.parse("taiga");
+        assertEquals(withNamespace.blocks(), withoutNamespace.blocks());
+        assertEquals(withNamespace.airGapBlocks(), withoutNamespace.airGapBlocks());
+        assertEquals("taiga", withoutNamespace.biome());
+    }
+
+    @Test
+    void unknownBareBiomeIdFallsBackToAGenericComposition() {
+        StackedLayerSpec spec = StackedLayerSpec.parse("minecraft:some_unmapped_biome");
+        assertEquals(
+            List.of(
+                new FlatLayerSpec("minecraft:stone", 6), new FlatLayerSpec("minecraft:dirt", 3),
+                new FlatLayerSpec("minecraft:grass_block", 1)
+            ),
+            spec.blocks()
+        );
+        assertEquals(30, spec.airGapBlocks());
+    }
+
+    @Test
+    void blankBareBiomeIdIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> StackedLayerSpec.parse("   "));
+    }
 }

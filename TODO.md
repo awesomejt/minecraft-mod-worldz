@@ -2689,6 +2689,46 @@ composes with.
       17.2a core mechanism, 17.2b decoration, 17.2c test configs/docs
       acceptance) — **do not start Phase 18 without Jason's explicit
       go-ahead.**
+- [x] 17.3 Default overhaul, requested by Jason 2026-07-24 (DESIGN §34.7):
+      bounded world by default (`stacked.worldSizeChunks`, default 4
+      chunks/64 blocks, 0 = original unbounded), 30-block minimum default
+      air gap, 8-layer default stack, per-layer surface relief
+      (`stacked.reliefBlocks`, default 4, a within-layer-budget bump — no
+      new noise machinery, `StackedPlan.layerAt` untouched), and a
+      deterministic default fallback End portal in a thickened bottom
+      layer (no new placement code — falls out of item 1 plus
+      `NATURAL_STRUCTURE_MARGIN` exceeding the new default radius).
+      Y64-exact stack-center tradeoff resolved to Y98 (documented, not
+      silently chosen — see DESIGN §34.7). New `config/tests/75`-`76`
+      (unbounded escape hatch, relief-off isolation); `72`-`74` updated
+      for the new defaults/opt-outs. `StackedCustomizationTest` added;
+      `StackedPlanTest`/`WorldzConfigTest`/`ProjectMetadataTest` updated.
+      **Configs/docs/tests done (0.2.76), [Jason] in-game acceptance
+      outstanding** — same "tune after playtest" posture as every other
+      numeric default in this project, flagged explicitly in
+      MANUAL_TESTING.md's Phase 17 footer.
+- [x] 17.4 Two follow-ups Jason found testing 17.3, same session
+      (DESIGN §34.8): **(a)** bugfix — 17.3's `worldSizeChunks` default
+      only applied via the Customize-screen path (`StackedCustomization
+      .fromConfig`); a never-customized stacked world (preset picked
+      directly, or a config-driven server world) fell through two other
+      resolution paths (`LimitedBiomeSource.resolve`,
+      `EnvelopedChunkGenerator.resolve`) that never consulted it,
+      silently staying unbounded. Fixed by centralizing the derivation on
+      `StackedConfig` itself (`effectiveOverworldBorder`/
+      `effectiveOverworldExterior`) and widening two `private` codec-plan
+      factories just enough for all three call sites to share one
+      implementation. **(b)** new feature — `stacked.layers` accepts a
+      bare biome id (no `;blocks;air gap`) via new `StackedBiomeDefaults`
+      (~35 biomes hand-tuned, generic stone/dirt/grass fallback for the
+      rest), each expanding to that biome's own standard 10-block
+      composition plus the 30-block default air gap; not stack-position-
+      aware by design (see DESIGN §34.8). The shipped default now
+      dogfoods this for its six middle layers. New `config/tests/77`;
+      `StackedLayerSpecTest`/`StackedPlanTest`/`StackedConfigTest`/
+      `WorldzConfigTest`/`ProjectMetadataTest` updated or added.
+      **Configs/docs/tests done (0.2.77), [Jason] in-game acceptance
+      outstanding** for both the bugfix and the new shorthand.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 

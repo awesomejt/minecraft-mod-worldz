@@ -160,7 +160,10 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
             return new DimensionLimit(false, 512, 512, 0, 0, 0, 0, false, ResizeStyle.CONTINUOUS);
         }
 
-        private static DimensionLimit fromConfig(BorderConfig config) {
+        // Package-private (not private): DESIGN §34.7's stacked worldSizeChunks default
+        // needs to build a DimensionLimit from a derived BorderConfig, not config.overworldBorder
+        // directly -- see LimitedBiomeSource.resolve's stackedDefaults branch.
+        static DimensionLimit fromConfig(BorderConfig config) {
             return new DimensionLimit(
                 config.enabled,
                 config.initialRadiusBlocks,
@@ -239,7 +242,8 @@ public record WorldLimitPlan(DimensionLimit overworld, DimensionLimit nether, En
             return new EndLimit(false, 256);
         }
 
-        private static EndLimit fromConfig(EndBorderConfig config) {
+        // Package-private (not private): see DimensionLimit.fromConfig's identical note above.
+        static EndLimit fromConfig(EndBorderConfig config) {
             return new EndLimit(config.carryFromOverworld, config.minimumRadiusBlocks);
         }
 

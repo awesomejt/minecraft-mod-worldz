@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.75", properties.getProperty("version"));
+        assertEquals("0.2.77", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -419,6 +419,21 @@ class ProjectMetadataTest {
         ));
         assertTrue(source.contains("? () -> resolveStackedAllowed(config, biomeGetter)"));
         assertTrue(source.contains("public void setStackedLayers(StackedPlan plan) {"));
+        // DESIGN §34.7, fixed after Jason found it in-game: a never-customized stacked world
+        // (selected straight from the preset list, or created purely from a config file with no
+        // GUI interaction at all) must apply worldSizeChunks's own bounded-world default too --
+        // this is a *separate* resolution path from StackedCustomization.fromConfig (the
+        // Customize-screen one), and was silently missed on the first pass, leaving such a world
+        // unbounded despite worldSizeChunks defaulting to 4.
+        assertTrue(source.contains(
+            "WorldLimitPlan.DimensionLimit.fromConfig(config.stacked.effectiveOverworldBorder(config.overworldBorder))"
+        ));
+        assertTrue(source.contains(
+            "ExteriorPlan.DimensionEnvelope.fromConfig(\n"
+                + "                        config.stacked.effectiveOverworldExterior(config.overworldExterior),\n"
+                + "                        config.stacked.effectiveOverworldBorder(config.overworldBorder)\n"
+                + "                    )"
+        ));
 
         String generator = Files.readString(ROOT.resolve(
             "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
@@ -426,6 +441,14 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("dimension == Dimension.OVERWORLD && worldType.filter(\"stacked\"::equals).isPresent()"));
         assertTrue(generator.contains("StackedPlan.fromConfig(WorldzCommon.config().stacked)"));
         assertTrue(generator.contains("this.originSource.ifPresent(source -> source.setStackedLayers(this.stacked));"));
+        // Same DESIGN §34.7 fix, second half: EnvelopedChunkGenerator's own exterior envelope
+        // (VOID/OCEAN terrain masking, independent of the actual WorldBorder object) needed the
+        // identical override, or terrain would keep generating normally past a border the player
+        // still couldn't cross.
+        assertTrue(generator.contains(
+            "sharedConfig.stacked.effectiveOverworldExterior(sharedConfig.overworldExterior),\n"
+                + "                    sharedConfig.stacked.effectiveOverworldBorder(sharedConfig.overworldBorder)"
+        ));
     }
 
     @Test
@@ -519,7 +542,9 @@ class ProjectMetadataTest {
         assertTrue(generator.contains("int stepIndex = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();"));
         assertTrue(generator.contains("for (int layerIndex = 0; layerIndex < layers.size() - 1; layerIndex++) {"));
         assertTrue(generator.contains("ConfiguredFeature<?, ?> feature = placedFeature.value().feature().value();"));
-        assertTrue(generator.contains("feature.place(level, this, random, new BlockPos(x, layerSurfaceY, z));"));
+        // DESIGN §34.7: layerSurfaceY is bumped by that column's own relief offset, so buried
+        // decoration still lands on the real painted surface once terrain is no longer flat.
+        assertTrue(generator.contains("feature.place(level, this, random, new BlockPos(x, layerSurfaceY + bump, z));"));
     }
 
     @Test

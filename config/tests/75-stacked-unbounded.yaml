@@ -1,0 +1,26 @@
+# GOAL 35 (Phase 17.2c, DESIGN §34.7): the worldSizeChunks=0 escape hatch.
+# **Select "Worldz: Stacked"**. Same eight-layer stack as config 72, but
+# with the bounded-world default explicitly opted out of -- confirms the
+# pre-§34.7 "infinite stacked world" pathway still works once it's no
+# longer the default.
+#
+# Steps once in-game:
+#  1. Confirm no world border appears (or open the pause menu -- no
+#     "Approaching the world border" indicator regardless of how far you
+#     travel).
+#  2. Confirm the same eight-band layer stack as config 72 still
+#     generates identically (biome order, gaps, relief) -- worldSizeChunks
+#     only affects the border/exterior, never the layer stack itself.
+stacked:
+  worldSizeChunks: 0
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
+    - "minecraft:desert;minecraft:sandstone:7,minecraft:sand:3;30"
+    - "minecraft:badlands;minecraft:stone:4,minecraft:terracotta:5,minecraft:red_sand:1;30"
+    - "minecraft:swamp;minecraft:stone:5,minecraft:mud:4,minecraft:grass_block:1;30"
+    - "minecraft:jungle;minecraft:stone:5,minecraft:dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:savanna;minecraft:stone:5,minecraft:coarse_dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:snowy_taiga;minecraft:stone:5,minecraft:dirt:3,minecraft:podzol:1,minecraft:snow_block:1;30"
+    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"
+overworldBorder:
+  enabled: false

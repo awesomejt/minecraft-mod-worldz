@@ -21,8 +21,12 @@ import java.util.Random;
  * @param layers ordered bottom-to-top layer stack, stacked starting at the dimension's own min Y
  * @param seedRandomizedOrder whether {@link #resolvedLayers} shuffles {@link #layers}, seeded off
  *     the real world seed, instead of using the configured order as-is
+ * @param reliefBlocks maximum per-column height bump applied to each layer's own surface (DESIGN
+ *     §34.7), traded out of that layer's own air gap so a layer's cumulative-height zone boundary
+ *     -- and therefore {@link #layerAt}'s Y-only biome lookup -- never moves; zero restores the
+ *     original perfectly flat layers
  */
-public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolean seedRandomizedOrder) {
+public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolean seedRandomizedOrder, int reliefBlocks) {
     /** Validates persisted values even while the stacked shape is disabled. */
     public StackedPlan {
         if (layers == null || layers.isEmpty()) {
@@ -36,6 +40,9 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
                 "Stacked layer heights sum to " + totalHeight + ", more than " + FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS + "."
             );
         }
+        if (reliefBlocks < 0) {
+            throw new IllegalArgumentException("Stacked relief must not be negative.");
+        }
         layers = List.copyOf(layers);
     }
 
@@ -48,7 +55,8 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
         return new StackedPlan(
             false,
             List.of(new StackedLayerSpec("minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", 1)), 0)),
-            false
+            false,
+            0
         );
     }
 
@@ -63,7 +71,7 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
         for (String raw : config.layers) {
             layers.add(StackedLayerSpec.parse(raw));
         }
-        return new StackedPlan(true, layers, config.seedRandomizedOrder);
+        return new StackedPlan(true, layers, config.seedRandomizedOrder, config.reliefBlocks);
     }
 
     /**
@@ -122,5 +130,51 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
             cursor += height;
         }
         return resolvedLayers.get(resolvedLayers.size() - 1);
+    }
+
+    /**
+     * Returns a deterministic per-column height bump for one layer's own surface (DESIGN §34.7,
+     * GOAL 35's "terrain should not just be flat"), in {@code [0, maxReliefBlocks]}. Bumps only
+     * (never dips), sampled at quart-granularity cells (this codebase's existing biome-quart
+     * resolution) so neighboring columns share the same bump and the surface reads as gentle
+     * undulation rather than per-block noise. Deliberately its own small seeded hash rather than
+     * vanilla's {@code RandomState}-based noise (mirrors {@link ChunkIslandPlan}'s own
+     * {@code hash01}/{@code splitmix64} precedent): both {@link
+     * media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator}'s block-painting side and
+     * {@link media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource}'s biome-per-Y lookup
+     * need to compute the identical value from just the world seed, but only the former has a
+     * {@code RandomState} available.
+     *
+     * @param seed the real Minecraft world seed
+     * @param layerIndex the layer's own index in {@code resolvedLayers} (salts the hash so every
+     *     layer's bump pattern differs, even at the same X/Z)
+     * @param blockX absolute block X
+     * @param blockZ absolute block Z
+     * @param maxReliefBlocks the configured {@link #reliefBlocks} ceiling
+     * @return the column's own height bump for this layer, zero when {@code maxReliefBlocks <= 0}
+     */
+    public static int reliefBlocksAt(long seed, int layerIndex, int blockX, int blockZ, int maxReliefBlocks) {
+        if (maxReliefBlocks <= 0) {
+            return 0;
+        }
+        int cellX = Math.floorDiv(blockX, 4);
+        int cellZ = Math.floorDiv(blockZ, 4);
+        double h = hash01(seed, "stacked_relief", (((long) layerIndex) << 32) | (cellX & 0xFFFFFFFFL), cellZ);
+        return (int) Math.round(h * maxReliefBlocks);
+    }
+
+    private static double hash01(long seed, String salt, long a, long b) {
+        long h = splitmix64(seed);
+        h = splitmix64(h ^ salt.hashCode());
+        h = splitmix64(h ^ a);
+        h = splitmix64(h ^ b);
+        return (h >>> 11) * 0x1.0p-53;
+    }
+
+    private static long splitmix64(long x) {
+        x += 0x9E3779B97F4A7C15L;
+        x = (x ^ (x >>> 30)) * 0xBF58476D1CE4E5B9L;
+        x = (x ^ (x >>> 27)) * 0x94D049BB133111EBL;
+        return x ^ (x >>> 31);
     }
 }

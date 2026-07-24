@@ -14,6 +14,7 @@ import java.util.List;
  *
  * @param layers ordered bottom-to-top layer stack
  * @param seedRandomizedOrder whether the configured order is shuffled, seeded off the real world seed
+ * @param reliefBlocks maximum per-column height bump applied to each layer's own surface (DESIGN §34.7)
  * @param overworldBorder Overworld border selection
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
@@ -23,6 +24,7 @@ import java.util.List;
 public record StackedCustomization(
     List<StackedLayerSpec> layers,
     boolean seedRandomizedOrder,
+    int reliefBlocks,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
@@ -38,13 +40,20 @@ public record StackedCustomization(
             || overworldExterior == null || netherExterior == null) {
             throw new IllegalArgumentException("Border and exterior settings are required.");
         }
+        if (reliefBlocks < 0) {
+            throw new IllegalArgumentException("Relief blocks must not be negative.");
+        }
         layers = List.copyOf(layers);
         WorldzCustomization.validateAutomaticBoundary(overworldExterior, overworldBorder, "Overworld");
         WorldzCustomization.validateAutomaticBoundary(netherExterior, netherBorder, "Nether");
     }
 
     /**
-     * Creates values from the sanitized YAML configuration.
+     * Creates values from the sanitized YAML configuration. When {@code config.stacked.
+     * worldSizeChunks} is nonzero, it supplies the Overworld border/exterior default (a bounded,
+     * {@code VOID}-walled world) instead of the shared global {@code overworldBorder}/
+     * {@code overworldExterior} config, which otherwise defaults to an unlimited world (DESIGN
+     * §34.7) -- zero preserves the original pass-through behavior exactly.
      *
      * @param config sanitized startup configuration
      * @return an immutable customization snapshot
@@ -54,13 +63,20 @@ public record StackedCustomization(
         for (String raw : config.stacked.layers) {
             layers.add(StackedLayerSpec.parse(raw));
         }
+        WorldzCustomization.BorderSettings overworldBorder = WorldzCustomization.BorderSettings.fromConfig(
+            config.stacked.effectiveOverworldBorder(config.overworldBorder)
+        );
+        WorldzCustomization.ExteriorSettings overworldExterior = WorldzCustomization.ExteriorSettings.fromConfig(
+            config.stacked.effectiveOverworldExterior(config.overworldExterior)
+        );
         return new StackedCustomization(
             layers,
             config.stacked.seedRandomizedOrder,
-            WorldzCustomization.BorderSettings.fromConfig(config.overworldBorder),
+            config.stacked.reliefBlocks,
+            overworldBorder,
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
-            WorldzCustomization.ExteriorSettings.fromConfig(config.overworldExterior),
+            overworldExterior,
             WorldzCustomization.ExteriorSettings.fromConfig(config.netherExterior)
         );
     }
@@ -70,6 +86,7 @@ public record StackedCustomization(
      *
      * @param layersText comma/newline-separated {@code biome;blocks;air gap} shorthand
      * @param seedRandomizedOrder whether the configured order is shuffled, seeded off the real world seed
+     * @param reliefBlocksText decimal maximum per-column height bump applied to each layer's own surface
      * @param overworldBorder validated Overworld border values
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
@@ -80,6 +97,7 @@ public record StackedCustomization(
     public static StackedCustomization fromText(
         String layersText,
         boolean seedRandomizedOrder,
+        String reliefBlocksText,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
@@ -93,8 +111,9 @@ public record StackedCustomization(
         if (layers.isEmpty()) {
             throw new IllegalArgumentException("At least one layer is required.");
         }
+        int reliefBlocks = WorldzCustomization.parseInteger(reliefBlocksText, "Relief blocks");
         return new StackedCustomization(
-            layers, seedRandomizedOrder, overworldBorder, netherBorder, endBorder, overworldExterior, netherExterior
+            layers, seedRandomizedOrder, reliefBlocks, overworldBorder, netherBorder, endBorder, overworldExterior, netherExterior
         );
     }
 
@@ -121,7 +140,7 @@ public record StackedCustomization(
      * @return resolved, enabled plan
      */
     public StackedPlan stackedPlan() {
-        return new StackedPlan(true, layers, seedRandomizedOrder);
+        return new StackedPlan(true, layers, seedRandomizedOrder, reliefBlocks);
     }
 
     /**

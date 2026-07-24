@@ -893,47 +893,77 @@ fixture defaults for `flat`/`deep_flat` are first-pass numbers, same
 project — report if `surfaceY: 64`/the default layer stack feel wrong,
 not just whether they work.
 
-## Phase 17 acceptance (Stacked biome layers, GOAL 35, TODO 17.2a-17.2c)
+## Phase 17 acceptance (Stacked biome layers, GOAL 35, TODO 17.2a-17.2c, updated DESIGN §34.7-§34.8)
 
-Uses configs `72`-`74` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: Stacked"** for all three.
+Uses configs `72`-`77` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Stacked"** for all six.
 
-1. **Stacked default**, `72-stacked-default.yaml` (GOAL 35 core, 0.2.74+).
-   Confirm spawn lands on the plains surface (top of the stack). Dig
-   straight down and confirm you pass through plains topsoil, an air gap,
-   desert (sandstone/sand), another air gap, taiga (stone/podzol), then
-   bedrock — F3's biome readout should match each band, not just the
-   surface. **Confirm trees/vegetation generate in every layer's own air
-   gap**, not only the surface — this is GOAL 35's own explicit "trees on
-   every layer" ask, and the part of this phase most likely to look wrong
-   if the buried-layer decoration bypass (DESIGN §34.4) needs tuning:
-   report the scatter density (`BURIED_LAYER_DECORATION_ATTEMPTS = 4`,
-   fixed not configurable yet) if it looks too sparse or too dense.
-   Confirm ore veins (coal/iron/copper/redstone/gold/diamond/lapis) show
-   up in the bottom (taiga) layer's stone. Locate a stronghold/End portal
-   and confirm it's reachable.
+1. **Stacked default**, `72-stacked-default.yaml` (GOAL 35 core, updated for
+   DESIGN §34.7's defaults, 0.2.77+). Confirm a world border exists at a
+   64-block radius (`stacked.worldSizeChunks`'s own default of 4) — this
+   config sets no explicit `overworldBorder`. Confirm spawn lands on the
+   plains surface (top of the stack). Dig straight down and confirm you
+   pass through all eight bands in order (taiga/desert/badlands/swamp/
+   jungle/savanna/snowy_taiga/plains, bottom to top) separated by ~30-block
+   air gaps, then bedrock — F3's biome readout should match each band, not
+   just the surface. **Confirm each layer's own surface is gently uneven**
+   from column to column (small bumps, not a perfectly flat plane) — this
+   is the new relief default (up to 4 blocks); confirm trees/vegetation in
+   the bumped terrain aren't floating or buried. **Confirm trees/vegetation
+   generate in every layer's own air gap**, not only the surface — GOAL
+   35's own explicit "trees on every layer" ask, and the part of this
+   phase most likely to look wrong if the buried-layer decoration bypass
+   (DESIGN §34.4) needs tuning: report the scatter density
+   (`BURIED_LAYER_DECORATION_ATTEMPTS = 4`, fixed not configurable yet) if
+   it looks too sparse or too dense. Confirm ore veins
+   (coal/iron/copper/redstone/gold/diamond/lapis) show up in the bottom
+   (taiga) layer's thick stone. Locate the End portal — DESIGN §34.7
+   predicts the fallback vault, not a natural stronghold (the 64-block
+   radius is smaller than `ProgressionGuarantees.NATURAL_STRUCTURE_MARGIN`
+   = 128, so a natural stronghold is always rejected); confirm this is
+   what you find, near the bottom layer's Y -32, and that it's reachable.
 2. **Short stack beatability**, `73-stacked-short-stack-beatability.yaml`
-   (DESIGN §34.5's flagged, deliberately unresolved risk, 0.2.74+). This
-   is a genuine open question, not a known-good check — **report exactly
-   what you find**, whichever way it goes: does the stronghold/End portal
-   generate intact and reachable despite the short (29-block) solid stack,
-   or does its geometry get clipped/interrupted by the air gaps or the
-   dimension's own real min-Y anchoring? If natural search fails within
-   the border, confirm whether `WorldLimitManager`'s fallback
-   guaranteed-vault safety net still kicks in.
+   (DESIGN §34.5's flagged, deliberately unresolved risk, 0.2.77+; opts
+   out of the new bounded-world default via `worldSizeChunks: 0` to keep
+   its own explicit 512-block border). This is a genuine open question,
+   not a known-good check — **report exactly what you find**, whichever
+   way it goes: does the stronghold/End portal generate intact and
+   reachable despite the short (29-block) solid stack, or does its
+   geometry get clipped/interrupted by the air gaps or the dimension's own
+   real min-Y anchoring? If natural search fails within the border,
+   confirm whether `WorldLimitManager`'s fallback guaranteed-vault safety
+   net still kicks in.
 3. **Seed-randomized layer order**, `74-stacked-seed-randomized-order.yaml`
-   (0.2.74+). Confirm the bottom-to-top order differs from config 72's own
-   fixed taiga/desert/plains order (any of the six permutations is valid).
-   Restart the server/reopen the world and dig down again in a freshly
-   loaded chunk — confirm the same order reappears, proving the shuffle is
+   (0.2.77+; opts out of the new bounded-world default to keep testing an
+   explicitly unbounded world). Confirm the bottom-to-top order differs
+   from config 72's own fixed order (any permutation is valid). Restart
+   the server/reopen the world and dig down again in a freshly loaded
+   chunk — confirm the same order reappears, proving the shuffle is
    deterministic from the real world seed rather than re-randomized per load.
+4. **Unbounded world**, `75-stacked-unbounded.yaml` (DESIGN §34.7's
+   `worldSizeChunks: 0` escape hatch, 0.2.77+). Confirm no world border
+   appears at all, and that the same eight-band stack as config 72 still
+   generates identically otherwise.
+5. **Relief off**, `76-stacked-relief-off.yaml` (DESIGN §34.7's
+   `reliefBlocks: 0`, 0.2.77+). Confirm every layer's surface is perfectly
+   flat again (the pre-§34.7 look), with everything else matching config 72.
+6. **Simplified layers**, `77-stacked-simplified-layers.yaml` (DESIGN
+   §34.8, 0.2.77+). Every layer is written as a bare biome id, no
+   `;blocks;air gap` at all. Confirm the world still generates five
+   distinct, reasonable-looking bands (taiga/jungle/savanna/
+   mushroom_fields/plains) despite no material stack ever being written in
+   the config — including `mushroom_fields`, which has no hand-tuned
+   `StackedBiomeDefaults` entry and should fall back to a plain
+   stone/dirt/grass composition rather than erroring or failing to
+   generate. Confirm every non-top layer's air gap is the simplified
+   shorthand's own 30-block default.
 
 **Not covered by this phase's acceptance:** exact per-layer default block
-choices/thicknesses are first-pass numbers, same "tune after playtest"
-posture as every other numeric default in this project. The buried-layer
-decoration bypass's scatter density and the short-stack beatability
-question (item 2 above) are the two most likely candidates for follow-up
-work after this pass.
+choices/thicknesses, the 64-block default world-size radius, and the
+Y64→Y98 stack-center tradeoff (DESIGN §34.7) are all first-pass numbers,
+same "tune after playtest" posture as every other numeric default in this
+project. The buried-layer decoration bypass's scatter density and the
+short-stack beatability question (item 2 above) remain open too.
 
 ## Scenario table: seed-informed spawn (Phase 16)
 

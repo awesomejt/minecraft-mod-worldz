@@ -13,7 +13,10 @@ final class StackedCodecs {
     static final Codec<StackedPlan> PLAN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
         Codec.BOOL.fieldOf("enabled").forGetter(StackedPlan::enabled),
         LAYER_CODEC.listOf().fieldOf("layers").forGetter(StackedPlan::layers),
-        Codec.BOOL.fieldOf("seed_randomized_order").forGetter(StackedPlan::seedRandomizedOrder)
+        Codec.BOOL.fieldOf("seed_randomized_order").forGetter(StackedPlan::seedRandomizedOrder),
+        // Optional with a zero default (DESIGN §34.7) for save-compat with worlds generated
+        // before relief existed -- they resume as perfectly flat, exactly as before.
+        Codec.INT.optionalFieldOf("relief_blocks", 0).forGetter(StackedPlan::reliefBlocks)
     ).apply(instance, StackedPlan::new));
 
     private StackedCodecs() {

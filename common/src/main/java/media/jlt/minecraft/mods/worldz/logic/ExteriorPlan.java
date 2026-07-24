@@ -93,7 +93,19 @@ public record ExteriorPlan(DimensionEnvelope overworld, DimensionEnvelope nether
             return distance > naturalRadius ? mode : ExteriorMode.NORMAL;
         }
 
-        private static DimensionEnvelope fromConfig(ExteriorConfig exterior, BorderConfig border) {
+        /**
+         * Resolves one dimension's envelope from its own exterior/border config, independent of
+         * the other dimension -- public (not private) so DESIGN §34.7's stacked
+         * {@code worldSizeChunks} default can build an Overworld-only envelope from a derived
+         * {@link BorderConfig}/{@link ExteriorConfig} pair, without needing a full
+         * {@link WorldzConfig} (whose {@code stacked}-derived values would otherwise have nowhere
+         * to live).
+         *
+         * @param exterior sanitized exterior configuration
+         * @param border paired border configuration, consulted only when the boundary is automatic
+         * @return immutable resolved envelope
+         */
+        public static DimensionEnvelope fromConfig(ExteriorConfig exterior, BorderConfig border) {
             if (exterior.mode == ExteriorMode.NORMAL) {
                 return normal();
             }

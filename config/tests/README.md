@@ -103,18 +103,29 @@ Every field not mentioned in a file falls back to Worldz's documented default
    below the cap); `deepFlat.surfaceY` the cap height, `deepFlat.capLayers`
    the land-cap stack, `deepFlat.riversEnabled`/`riverExclusionRadiusBlocks`
    whether river/ocean columns show as water at the surface and how close
-   to spawn that's suppressed. "Worldz: Stacked" (files `72`-`74`, GOAL 35,
-   Phase 17) reads only its own `stacked:` section -- the underground is
-   replaced entirely by horizontal biome layers, bottom to top, stacked
-   starting at the dimension's own min Y; `stacked.layers` is the editable
-   layer list, each entry `biome;blocks;air gap` shorthand (`blocks` reuses
-   `flat.layers`' own `block:height` convention, comma-separated) --
-   `biome` is the layer's reported biome (feature-list source, decoration/
-   ore placement), `blocks` its own bottom-to-top material stack, and
-   `air gap` the open headroom above it for that biome's own vegetation to
-   grow into; `stacked.seedRandomizedOrder` shuffles the configured order
-   deterministically from the real world seed instead of keeping it as
-   written. Each preset ignores every other type's dedicated section.
+   to spawn that's suppressed. "Worldz: Stacked" (files `72`-`77`, GOAL 35,
+   Phase 17, DESIGN §34) reads only its own `stacked:` section -- the
+   underground is replaced entirely by horizontal biome layers, bottom to
+   top, stacked starting at the dimension's own min Y; `stacked.layers` is
+   the editable layer list, each entry either the full `biome;blocks;air
+   gap` shorthand (`blocks` reuses `flat.layers`' own `block:height`
+   convention, comma-separated -- `biome` is the layer's reported biome,
+   feature-list source/decoration/ore placement, `blocks` its own
+   bottom-to-top material stack, `air gap` the open headroom above it for
+   that biome's own vegetation to grow into) or, since DESIGN §34.8, a
+   bare biome id on its own (e.g. `minecraft:jungle`) that expands to that
+   biome's own standard composition and a 30-block air gap -- any biome id
+   works, falling back to a generic stone/dirt/grass composition when not
+   specifically tuned; `stacked.seedRandomizedOrder` shuffles the
+   configured order deterministically from the real world seed instead of
+   keeping it as written. Since DESIGN §34.7: `stacked.worldSizeChunks`
+   (default 4) derives a bounded Overworld border + `VOID` exterior on its
+   own, independent of the shared `overworldBorder`/`overworldExterior`
+   sections -- zero restores the original unbounded-world behavior;
+   `stacked.reliefBlocks` (default 4) is the maximum per-column height
+   bump on each layer's own surface, traded out of that layer's own air
+   gap so biome-band boundaries never move -- zero restores perfectly flat
+   layers. Each preset ignores every other type's dedicated section.
 
 4. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
@@ -194,9 +205,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `69-deep-flat-default.yaml` | GOAL 16 (Phase 16.2b): deep-flat's core mechanic — a flat surface over real, seed-driven terrain (caves, cave biomes, rivers as water). **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
 | `70-deep-flat-no-rivers.yaml` | GOAL 16 (Phase 16.2b): `riversEnabled: false` — river/ocean columns get the ordinary land cap instead of water. **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
 | `71-deep-flat-structures.yaml` | GOAL 22 (Phase 16.2b): an underground structure set buried at its natural real depth by construction — contrast with `68`'s classic-flat clipped result. **Select "Worldz: Deep Flat"**. Requires 0.2.71+. |
-| `72-stacked-default.yaml` | GOAL 35 (Phase 17): the stacked-biome-layers challenge's core mechanic — taiga/desert/plains bands, trees on every layer, ores anchored to the real deep-Y range. **Select "Worldz: Stacked"**. Requires 0.2.74+. |
-| `73-stacked-short-stack-beatability.yaml` | GOAL 35 (Phase 17.2c, DESIGN §34.5): the flagged, deliberately unresolved vertical-fit risk — a short total stack vs. a stronghold/End portal's real 3D extent. **Select "Worldz: Stacked"**. Requires 0.2.74+. |
-| `74-stacked-seed-randomized-order.yaml` | GOAL 35 (Phase 17): `seedRandomizedOrder: true` — the configured layer order is shuffled, deterministically from the real world seed. **Select "Worldz: Stacked"**. Requires 0.2.74+. |
+| `72-stacked-default.yaml` | GOAL 35 (Phase 17, updated DESIGN §34.7): the stacked-biome-layers challenge's post-§34.7 defaults — eight bands (taiga through plains), a bounded 64-block-radius world (`worldSizeChunks` default), 30-block gaps, gentle per-layer relief, trees on every layer, ores anchored to the real deep-Y range, and a deterministic fallback End portal in the thick bottom layer. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
+| `73-stacked-short-stack-beatability.yaml` | GOAL 35 (Phase 17.2c, DESIGN §34.5): the flagged, deliberately unresolved vertical-fit risk — a short total stack vs. a stronghold/End portal's real 3D extent. Opts out of the §34.7 bounded-world default (`worldSizeChunks: 0`) to keep its own explicit 512-block border. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
+| `74-stacked-seed-randomized-order.yaml` | GOAL 35 (Phase 17): `seedRandomizedOrder: true` — the configured layer order is shuffled, deterministically from the real world seed. Opts out of the §34.7 bounded-world default to keep testing an explicitly unbounded world. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
+| `75-stacked-unbounded.yaml` | GOAL 35 (DESIGN §34.7): `worldSizeChunks: 0` — the pre-§34.7 unbounded-world pathway, confirmed still reachable now that it's no longer the default. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
+| `76-stacked-relief-off.yaml` | GOAL 35 (DESIGN §34.7): `reliefBlocks: 0` — restores perfectly flat per-layer surfaces, isolating relief-specific issues from layer-list issues during manual testing. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
+| `77-stacked-simplified-layers.yaml` | GOAL 35 (DESIGN §34.8): every layer written as a bare biome id (no `;blocks;air gap`), including one (`mushroom_fields`) with no hand-tuned `StackedBiomeDefaults` entry to exercise the generic fallback composition. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
 
 ### Why `01` showed ocean labeled as river
 

@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.ScrollableLayout;
@@ -27,8 +28,10 @@ final class StackedCustomizeScreen extends Screen implements
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
     private final CreateWorldScreen parent;
     private final String layersText;
+    private final String reliefBlocksText;
     private MultiLineEditBox layers;
     private boolean seedRandomizedOrder;
+    private EditBox reliefBlocks;
     private MultiLineTextWidget errorMessage;
     private ScrollableLayout scrollArea;
     private WorldzCustomization.BorderSettings overworldBorder;
@@ -42,6 +45,7 @@ final class StackedCustomizeScreen extends Screen implements
         this.parent = parent;
         this.layersText = initial.layersText();
         this.seedRandomizedOrder = initial.seedRandomizedOrder();
+        this.reliefBlocksText = Integer.toString(initial.reliefBlocks());
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
         this.endBorder = initial.endBorder();
@@ -68,6 +72,11 @@ final class StackedCustomizeScreen extends Screen implements
             .onValueChange((checkbox, selected) -> this.seedRandomizedOrder = selected)
             .maxWidth(FORM_WIDTH)
             .build());
+
+        this.reliefBlocks = textField(Component.translatable("jlt_worldz.stacked.relief_blocks"), this.reliefBlocksText);
+        form.addChild(CommonLayouts.labeledElement(
+            this.font, this.reliefBlocks, Component.translatable("jlt_worldz.stacked.relief_blocks")
+        ));
 
         Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
@@ -113,11 +122,19 @@ final class StackedCustomizeScreen extends Screen implements
         this.repositionElements();
     }
 
+    private EditBox textField(Component narration, String value) {
+        EditBox field = new EditBox(this.font, FORM_WIDTH, 20, narration);
+        field.setMaxLength(10);
+        field.setValue(value);
+        return field;
+    }
+
     private void apply() {
         try {
             StackedCustomization customization = StackedCustomization.fromText(
                 this.layers.getValue(),
                 this.seedRandomizedOrder,
+                this.reliefBlocks.getValue(),
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,

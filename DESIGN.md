@@ -5123,3 +5123,163 @@ fine.
   revisit only if Jason asks after seeing a short stack's real ore
   scarcity in-game.
 
+### 34.7 Default overhaul: bounded world, 8 layers, 30-block gaps, relief, and a deterministic End portal (2026-07-24 follow-up)
+
+Six default-behavior changes to `stacked`, requested after Phase 17's
+initial acceptance: a bounded world by default (`stacked.worldSizeChunks`,
+default 4 chunks/64 blocks, 0 = the original unbounded behavior), a
+30-block minimum default air gap, an 8-layer default stack, per-layer
+surface relief instead of dead-flat bands, and a reliable default End
+portal. Two of these are in real numeric tension and were resolved rather
+than left open: an exact Y64 stack center (half of item 5's ask) requires
+a 256-block total height, which is incompatible with 8 layers at a
+30-block gap plus a thick bottom layer (needed for item 6) under the
+existing `MAX_TOTAL_HEIGHT_BLOCKS` cap — the shipped default instead lands
+the center at Y98 (total height 324, 60 blocks of margin under the cap
+and the build ceiling), with real ~10-block mineable bands per layer and a
+44-block bottom layer, documented as a first-pass number like every other
+default in this project. Items 2/3 are default-value changes only, no new
+validation floor — `StackedPlan`/`StackedLayerSpec`'s compact constructors
+are untouched specifically so config 73's deliberately short/thin test
+stack (§34.5's own flagged beatability risk) still reproduces.
+
+`stacked.worldSizeChunks` derivation now lives on `StackedConfig` itself
+(`effectiveOverworldBorder`/`effectiveOverworldExterior`, taking the
+shared `overworldBorder`/`overworldExterior` config and returning either
+that unchanged or a derived override) rather than being inlined into any
+one caller: when nonzero it derives an Overworld `BorderConfig(enabled=
+true, radius, radius, ensureObjective=true)` and an `ExteriorConfig(VOID)`
+(auto-deriving its boundary from the border radius via the now-public
+`ExteriorPlan.DimensionEnvelope.fromConfig`) in place of the shared global
+`overworldBorder`/`overworldExterior`, which otherwise default to
+unbounded/`NORMAL` for every typed preset including `stacked`.
+`worldSizeChunks: 0` is the full opt-out, forwarding the shared config
+exactly as before. This needed no changes to `WorldLimitManager`/
+`ProgressionGuarantees`: setting `overworldExterior.mode = VOID` alone
+makes the existing generic `exteriorObjective` gate true, exactly as
+§34.5 already predicted for any typed preset built on `ExteriorPlan`
+(unlike cave/island/chunkIsland, which needed their own explicit gate
+arms because they never express their extent through `ExteriorPlan` at
+all).
+
+**Correction, found by Jason in-game after the first pass:** the
+derivation was originally wired into `StackedCustomization.fromConfig`
+only (the Customize-screen world-creation path) — a "select preset,
+Create World" or config-driven server world that never touches the
+Customize screen at all resolves through two *separate* codec-decode
+fallback paths instead (`LimitedBiomeSource.resolve`'s `stackedDefaults`
+branch, which builds the real `WorldLimitPlan`/`ExteriorPlan` the
+`WorldBorder` object and `WorldLimitManager` actually read; and
+`EnvelopedChunkGenerator.resolve`'s own `envelope` field, which drives
+this generator's own VOID/OCEAN terrain masking independently of the
+`WorldBorder`) — both previously called `WorldLimitPlan.fromConfig(config)`/
+`ExteriorPlan.fromConfig(config)` directly, with no awareness of
+`worldSizeChunks` at all, so a never-customized stacked world stayed
+silently unbounded despite the new default. Fixed by widening
+`WorldLimitPlan.DimensionLimit`/`EndLimit.fromConfig` and `ExteriorPlan.
+DimensionEnvelope.fromConfig` from `private` to (package-private /
+public, respectively) so both fallback paths can call `StackedConfig`'s
+same two derivation methods `StackedCustomization.fromConfig` already
+used — one shared implementation, three call sites, rather than
+re-deriving the same logic a second and third time (which is exactly how
+the gap opened in the first place).
+
+Relief (`stacked.reliefBlocks`, default 4, max 16) is deliberately a
+within-layer-budget reallocation, not new terrain shaping: each layer's
+own topmost block state can bump a few blocks into that same layer's own
+air gap, sized by a small seeded hash (`StackedPlan.reliefBlocksAt`,
+copied from `ChunkIslandPlan`'s own `hash01`/`splitmix64` precedent rather
+than vanilla's `RandomState`-based noise) instead of vanilla noise. This
+was a deliberate choice, not an oversight: `LimitedBiomeSource.
+getNoiseBiome`'s stacked branch has no `RandomState` available (only a
+`Climate.Sampler`), so a within-budget bump means a layer's
+cumulative-height zone boundary — and therefore `StackedPlan.layerAt`'s
+Y-only biome lookup — never has to move or know about relief at all;
+`StackedPlan.layerAt` itself is unchanged. `EnvelopedChunkGenerator`
+gained one shared `stackedColumnStates` helper (seed + reliefBlocks +
+absolute block X/Z in, one `BlockState` list per Y out) used by both the
+paint path (`fillStackedColumns`) and the height/heightmap query paths
+(`stackedBaseHeight`/`stackedBaseColumn`, and by extension `getBaseHeight`/
+`getBaseColumn`), so painted terrain and reported height can never
+disagree; `applyStackedBuriedDecoration` applies the same per-column
+offset (clamped the same way) to `layerSurfaceY` before placing buried
+vegetal decoration, or it would place at the old flat Y once the real
+surface has moved.
+
+Item 6 (bottom layer reliably contains the End portal) needed no new
+placement code at all. `StackedConfig` has no `structureOverrides`
+(unlike `FlatConfig`), so ordinary vanilla structures — including real
+strongholds — were already unrestricted in `stacked` worlds. Once item 1's
+default makes `exteriorObjective` true, `ProgressionGuarantees.
+ensureEndPortal` actually runs; a new finding worth recording:
+`NATURAL_STRUCTURE_MARGIN = 128` is larger than the new default 64-block
+radius, so `ObjectiveSite.fitsInside` rejects every candidate — including
+a natural stronghold — unconditionally at this default size, meaning
+`ensureEndPortal` **always** takes the fallback-vault path at
+`FALLBACK_PORTAL_TARGET_Y = -32`, which sits inside the new bottom layer's
+43-block stone span (`-63..-21`) with margin either direction. This makes
+the default End portal deterministic, not merely likely, without any
+bespoke guaranteed-structure placement.
+
+### 34.8 Simplified bare-biome layer shorthand (2026-07-24 follow-up, same request as §34.7)
+
+Jason's second ask alongside §34.7's default overhaul: `stacked.layers`
+should accept a plain list of biome ids, with a standard block
+composition and depth supplied per biome, instead of requiring the full
+`"<biome>;<blocks>;<air gap>"` shorthand for every entry.
+
+`StackedLayerSpec.parse` now branches on whether the raw entry contains a
+`;` at all: no `;` means a bare biome id, resolved via a new package-
+private `StackedBiomeDefaults` (logic package, alongside `StackedLayerSpec`
+itself) — `blocksFor(String biomeId)` returns that biome's own hand-tuned
+10-block composition from a static table (~35 common Overworld land
+biomes), or a generic `stone:6,dirt:3,grass_block:1` fallback for any
+biome not specifically tuned, so no biome id ever fails to parse.
+`DEFAULT_AIR_GAP_BLOCKS = 30` supplies the air gap, matching §34.7's own
+default minimum. Namespace-optional (`"taiga"` resolves the same as
+`"minecraft:taiga"`), mirroring vanilla's own implicit-`minecraft:`
+convention — `Identifier.parse` already treats a bare id this way
+downstream, so `StackedLayerSpec` itself doesn't need to normalize what it
+stores, only the table lookup does.
+
+Deliberately **not** stack-position-aware: no table entry bakes in
+bedrock or unusual thickness for "being the bottom layer" — that remains
+an explicit, full-shorthand choice for whichever entry the player places
+there (a biome's *standard* composition and "being currently at the
+bottom of this particular stack" are orthogonal; conflating them would
+make the same biome behave differently depending on list position, which
+is surprising). The shipped default (`StackedConfig.defaultLayers`) now
+dogfoods this: the six middle layers are bare biome ids, while the bottom
+(taiga, needs real bedrock + 43-block deep stone) and top (plains, needs
+`air gap: 0`, not the simplified shorthand's 30-block default) stay full
+shorthand for exactly that reason. The middle six's table entries were
+chosen to reproduce §34.7's original hand-written compositions exactly
+(each still totals 10 blocks), so the documented 324-block/Y98-center
+arithmetic is unchanged — guarded by a new regression test
+(`StackedPlanTest.defaultStackedConfigResolvesToTheDocumentedTotalHeight`).
+
+**Correction, found by Jason in-game alongside §34.7's own correction
+(same testing pass):** the first pass of §34.7's `worldSizeChunks`
+default only wired the derivation into `StackedCustomization.fromConfig`
+(the Customize-screen world-creation path). A "select preset, Create
+World" world, or a config-driven server world that never touches the
+Customize screen at all, resolves through two *separate* codec-decode
+fallback branches instead — `LimitedBiomeSource.resolve`'s own
+`stackedDefaults` branch (builds the real `WorldLimitPlan`/`ExteriorPlan`
+the `WorldBorder` object and `WorldLimitManager` actually read) and
+`EnvelopedChunkGenerator.resolve`'s own `envelope` field (drives this
+generator's own VOID/OCEAN terrain masking, independent of the actual
+`WorldBorder`) — both previously read `config.overworldBorder`/
+`overworldExterior` directly, with zero awareness of `worldSizeChunks`,
+so a never-customized stacked world stayed silently unbounded despite the
+new nonzero default. Fixed by moving the derivation onto `StackedConfig`
+itself (`effectiveOverworldBorder`/`effectiveOverworldExterior`, taking
+the shared config and returning either it unchanged or a derived
+override) and widening `WorldLimitPlan.DimensionLimit`/`EndLimit
+.fromConfig` and `ExteriorPlan.DimensionEnvelope.fromConfig` from
+`private` just enough (package-private and public respectively, matching
+which package each caller lives in) for all three resolution paths to
+call the same one implementation — the gap opened specifically because
+the logic was inlined once instead of centralized; centralizing it is
+the actual fix, not just patching the two missed call sites.
+

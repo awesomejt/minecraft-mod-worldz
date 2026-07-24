@@ -293,12 +293,32 @@ public final class LimitedBiomeSource extends BiomeSource {
         StarterLandPlan starterLand = encodedStarterRadius.isPresent()
             ? encodedStarterLand.orElseGet(StarterLandPlan::disabled)
             : encodedStarterLand.orElseGet(() -> StarterLandPlan.fromConfig(config));
+        // DESIGN §34.7: stacked's own worldSizeChunks default must override the shared
+        // overworldBorder/overworldExterior here too -- this fieldless-preset fallback is a
+        // *separate* resolution path from StackedCustomization.fromConfig (the Customize-screen
+        // one), reached directly by a "select preset, Create World" or config-driven world with
+        // no Customize interaction at all; missing this branch left such a world silently
+        // unbounded despite worldSizeChunks's own nonzero default.
         WorldLimitPlan limits = encodedStarterRadius.isPresent()
             ? encodedWorldLimits.orElseGet(WorldLimitPlan::disabled)
-            : encodedWorldLimits.orElseGet(() -> WorldLimitPlan.fromConfig(config));
+            : encodedWorldLimits.orElseGet(() -> stackedDefaults
+                ? new WorldLimitPlan(
+                    WorldLimitPlan.DimensionLimit.fromConfig(config.stacked.effectiveOverworldBorder(config.overworldBorder)),
+                    WorldLimitPlan.DimensionLimit.fromConfig(config.netherBorder),
+                    WorldLimitPlan.EndLimit.fromConfig(config.endBorder)
+                )
+                : WorldLimitPlan.fromConfig(config));
         ExteriorPlan exterior = encodedStarterRadius.isPresent()
             ? encodedExteriorPlan.orElseGet(ExteriorPlan::normal)
-            : encodedExteriorPlan.orElseGet(() -> ExteriorPlan.fromConfig(config));
+            : encodedExteriorPlan.orElseGet(() -> stackedDefaults
+                ? new ExteriorPlan(
+                    ExteriorPlan.DimensionEnvelope.fromConfig(
+                        config.stacked.effectiveOverworldExterior(config.overworldExterior),
+                        config.stacked.effectiveOverworldBorder(config.overworldBorder)
+                    ),
+                    ExteriorPlan.DimensionEnvelope.fromConfig(config.netherExterior, config.netherBorder)
+                )
+                : ExteriorPlan.fromConfig(config));
         // A fresh random sampling seed is picked once per newly created fieldless-preset
         // world and then re-seeded to the real Minecraft world seed at generation time
         // (DESIGN §20.4) -- this placeholder never reaches actual sampling. ocean_island

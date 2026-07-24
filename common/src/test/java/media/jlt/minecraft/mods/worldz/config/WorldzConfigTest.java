@@ -599,10 +599,11 @@ class WorldzConfigTest {
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
                 + ", deepFlat=surfaceY=64, capLayers=[minecraft:dirt:3, minecraft:grass_block:1],"
                 + " riversEnabled=true, riverExclusionRadiusBlocks=512"
-                + ", stacked=layers=[minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40,minecraft:podzol:2;6,"
-                + " minecraft:desert;minecraft:sandstone:20,minecraft:sand:3;6,"
-                + " minecraft:plains;minecraft:stone:20,minecraft:dirt:3,minecraft:grass_block:1;0],"
-                + " seedRandomizedOrder=false"
+                + ", stacked=layers=[minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30,"
+                + " minecraft:desert, minecraft:badlands, minecraft:swamp, minecraft:jungle,"
+                + " minecraft:savanna, minecraft:snowy_taiga,"
+                + " minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0],"
+                + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1272,6 +1273,8 @@ class WorldzConfigTest {
             stacked:
               layers: ["minecraft:taiga;minecraft:stone:40;6", "minecraft:plains;minecraft:stone:20,minecraft:grass_block:1;0"]
               seedRandomizedOrder: true
+              worldSizeChunks: 8
+              reliefBlocks: 2
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(
@@ -1279,6 +1282,8 @@ class WorldzConfigTest {
             config.stacked.layers
         );
         assertTrue(config.stacked.seedRandomizedOrder);
+        assertEquals(8, config.stacked.worldSizeChunks);
+        assertEquals(2, config.stacked.reliefBlocks);
     }
 
     @Test
@@ -1286,7 +1291,10 @@ class WorldzConfigTest {
         WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
 
         assertFalse(config.stacked.layers.isEmpty());
+        assertTrue(config.stacked.layers.size() >= 8);
         assertFalse(config.stacked.seedRandomizedOrder);
+        assertEquals(4, config.stacked.worldSizeChunks);
+        assertEquals(4, config.stacked.reliefBlocks);
     }
 
     @Test
@@ -1297,6 +1305,26 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertFalse(config.stacked.layers.isEmpty());
+    }
+
+    @Test
+    void stackedWorldSizeChunksClampsToNonNegative() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stacked:
+              worldSizeChunks: -1
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.stacked.worldSizeChunks);
+    }
+
+    @Test
+    void stackedReliefBlocksClampsToConfiguredMaximum() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stacked:
+              reliefBlocks: 9999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(WorldzConfig.MAX_STACKED_RELIEF_BLOCKS, config.stacked.reliefBlocks);
     }
 
     @Test

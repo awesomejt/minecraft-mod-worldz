@@ -48,20 +48,30 @@ public record StackedLayerSpec(String biome, List<FlatLayerSpec> blocks, int air
     }
 
     /**
-     * Parses the config-file/text-editor shorthand: {@code "<biome>;<blocks>;<air gap>"}, where
-     * {@code <blocks>} is a comma-separated list of {@link FlatLayerSpec} shorthand entries --
-     * mirrors DESIGN §33.5's established "reuse the project's own shorthand convention" choice
-     * rather than inventing an unrelated syntax.
+     * Parses the config-file/text-editor shorthand: either the full {@code
+     * "<biome>;<blocks>;<air gap>"} form ({@code <blocks>} a comma-separated list of {@link
+     * FlatLayerSpec} shorthand entries -- mirrors DESIGN §33.5's established "reuse the project's
+     * own shorthand convention" choice rather than inventing an unrelated syntax), or, since
+     * DESIGN §34.8, a simplified bare biome id with no {@code ;} at all (e.g. {@code
+     * "minecraft:taiga"}) -- {@link StackedBiomeDefaults} supplies that biome's own standard block
+     * composition and this preset's own default air gap, so a whole layer list can be written as
+     * just an ordered biome list when hand-tuning each band's own material stack isn't wanted.
      *
      * @param raw shorthand text
      * @return parsed layer entry
      */
     public static StackedLayerSpec parse(String raw) {
         String trimmed = raw == null ? "" : raw.trim();
+        if (!trimmed.contains(";")) {
+            if (trimmed.isEmpty()) {
+                throw new IllegalArgumentException("Stacked layer entry must not be blank.");
+            }
+            return new StackedLayerSpec(trimmed, StackedBiomeDefaults.blocksFor(trimmed), StackedBiomeDefaults.DEFAULT_AIR_GAP_BLOCKS);
+        }
         String[] parts = trimmed.split(";", 3);
         if (parts.length != 3) {
             throw new IllegalArgumentException(
-                "Stacked layer entry must be \"<biome>;<blocks>;<air gap>\": " + raw
+                "Stacked layer entry must be \"<biome>;<blocks>;<air gap>\" or a bare biome id: " + raw
             );
         }
         List<FlatLayerSpec> blocks = new ArrayList<>();

@@ -38,17 +38,32 @@ class StackedPlanTest {
             "minecraft:plains;minecraft:stone:20,minecraft:grass_block:1;0"
         );
         config.seedRandomizedOrder = true;
+        config.reliefBlocks = 4;
 
         StackedPlan plan = StackedPlan.fromConfig(config);
 
         assertTrue(plan.enabled());
         assertEquals(2, plan.layers().size());
         assertTrue(plan.seedRandomizedOrder());
+        assertEquals(4, plan.reliefBlocks());
+    }
+
+    @Test
+    void defaultStackedConfigResolvesToTheDocumentedTotalHeight() {
+        // Regression guard for DESIGN §34.7/§34.8's own documented arithmetic (8 layers, 324
+        // blocks total, Y98 center) -- the shipped default mixes full-shorthand (bottom/top) and
+        // simplified bare-biome (the six middle layers) entries; this confirms the simplified
+        // entries still expand to exactly the same composition/height the full shorthand had
+        // before §34.8, not silently drifting if StackedBiomeDefaults is ever retuned.
+        StackedPlan plan = StackedPlan.fromConfig(new StackedConfig());
+
+        assertEquals(8, plan.layers().size());
+        assertEquals(324, StackedPlan.totalHeightBlocks(plan.layers()));
     }
 
     @Test
     void emptyLayerListIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(), false));
+        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(), false, 0));
     }
 
     @Test
@@ -56,18 +71,23 @@ class StackedPlanTest {
         StackedLayerSpec tooTall = new StackedLayerSpec(
             "minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS + 1)), 0
         );
-        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(tooTall), false));
+        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(tooTall), false, 0));
+    }
+
+    @Test
+    void negativeReliefIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false, -1));
     }
 
     @Test
     void resolvedLayersKeepsConfiguredOrderWhenNotRandomized() {
-        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false);
+        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false, 0);
         assertSame(plan.layers(), plan.resolvedLayers(12345L));
     }
 
     @Test
     void resolvedLayersIsDeterministicForTheSameSeedWhenRandomized() {
-        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), true);
+        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), true, 0);
         List<StackedLayerSpec> first = plan.resolvedLayers(42L);
         List<StackedLayerSpec> second = plan.resolvedLayers(42L);
         assertEquals(first, second);
@@ -100,5 +120,46 @@ class StackedPlanTest {
         List<StackedLayerSpec> layers = List.of(TAIGA, DESERT, PLAINS);
         assertEquals(TAIGA, StackedPlan.layerAt(layers, FlatConfig.OVERWORLD_MIN_Y - 10));
         assertEquals(PLAINS, StackedPlan.layerAt(layers, FlatConfig.OVERWORLD_MIN_Y + 1000));
+    }
+
+    @Test
+    void reliefBlocksAtIsZeroWhenDisabled() {
+        assertEquals(0, StackedPlan.reliefBlocksAt(42L, 0, 100, 200, 0));
+        assertEquals(0, StackedPlan.reliefBlocksAt(42L, 0, 100, 200, -1));
+    }
+
+    @Test
+    void reliefBlocksAtIsBounded() {
+        for (int blockX = 0; blockX < 64; blockX += 4) {
+            for (int blockZ = 0; blockZ < 64; blockZ += 4) {
+                int bump = StackedPlan.reliefBlocksAt(42L, 3, blockX, blockZ, 6);
+                assertTrue(bump >= 0 && bump <= 6, "bump " + bump + " out of [0,6] at " + blockX + "," + blockZ);
+            }
+        }
+    }
+
+    @Test
+    void reliefBlocksAtIsDeterministicForTheSameInputs() {
+        assertEquals(
+            StackedPlan.reliefBlocksAt(42L, 2, 17, -33, 8),
+            StackedPlan.reliefBlocksAt(42L, 2, 17, -33, 8)
+        );
+    }
+
+    @Test
+    void reliefBlocksAtVariesAcrossColumnsAndLayers() {
+        int base = StackedPlan.reliefBlocksAt(42L, 0, 0, 0, 16);
+        boolean differsByColumn = false;
+        boolean differsByLayer = false;
+        for (int cell = 4; cell < 200; cell += 4) {
+            if (StackedPlan.reliefBlocksAt(42L, 0, cell, 0, 16) != base) {
+                differsByColumn = true;
+            }
+            if (StackedPlan.reliefBlocksAt(42L, cell, 0, 0, 16) != base) {
+                differsByLayer = true;
+            }
+        }
+        assertTrue(differsByColumn, "expected relief to vary across columns");
+        assertTrue(differsByLayer, "expected relief to vary across layer indices at the same column");
     }
 }

@@ -13,6 +13,10 @@
 #     1 -- shuffling is seeded off the real world seed, so it must be
 #     reproducible across restarts/new chunks, not re-randomized per load.
 stacked:
+  # DESIGN §34.7: opt out of the new worldSizeChunks=4 default (see config
+  # 73's own comment) so this config keeps exercising an explicitly
+  # unbounded world, matching overworldBorder.enabled: false below.
+  worldSizeChunks: 0
   layers:
     - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40,minecraft:podzol:2;6"
     - "minecraft:desert;minecraft:sandstone:20,minecraft:sand:3;6"

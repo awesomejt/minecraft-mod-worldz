@@ -71,6 +71,9 @@ public final class WorldzConfig {
     public static final int MIN_ISLAND_RADIUS_BLOCKS = 8;
     /** Largest supported ocean-island radius -- a generous "huge" ceiling, not a tuned limit. */
     public static final int MAX_ISLAND_RADIUS_BLOCKS = 65536;
+    /** Largest supported per-column relief bump for a {@code stacked} layer's own surface
+     * (DESIGN §34.7) -- a small fraction of the 30-block minimum default air gap. */
+    public static final int MAX_STACKED_RELIEF_BLOCKS = 16;
 
     private static final String YAML_EXTENSION = ".yaml";
 
@@ -566,6 +569,12 @@ public final class WorldzConfig {
             logger.warn("stacked.layers was empty; using the default layer stack.");
             sanitized.layers = new StackedConfig().layers;
         }
+        sanitized.worldSizeChunks = clampWithWarning(
+            sanitized.worldSizeChunks, 0, MAX_BORDER_RADIUS_BLOCKS / 16, "stacked.worldSizeChunks", logger
+        );
+        sanitized.reliefBlocks = clampWithWarning(
+            sanitized.reliefBlocks, 0, MAX_STACKED_RELIEF_BLOCKS, "stacked.reliefBlocks", logger
+        );
         return sanitized;
     }
 
@@ -1258,6 +1267,12 @@ public final class WorldzConfig {
         if (map.containsKey("seedRandomizedOrder")) {
             config.seedRandomizedOrder = readBoolean(map.get("seedRandomizedOrder"), name + ".seedRandomizedOrder");
         }
+        if (map.containsKey("worldSizeChunks")) {
+            config.worldSizeChunks = readInt(map.get("worldSizeChunks"), name + ".worldSizeChunks");
+        }
+        if (map.containsKey("reliefBlocks")) {
+            config.reliefBlocks = readInt(map.get("reliefBlocks"), name + ".reliefBlocks");
+        }
         return config;
     }
 
@@ -1799,6 +1814,8 @@ public final class WorldzConfig {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("layers", config.layers);
         values.put("seedRandomizedOrder", config.seedRandomizedOrder);
+        values.put("worldSizeChunks", config.worldSizeChunks);
+        values.put("reliefBlocks", config.reliefBlocks);
         return values;
     }
 
@@ -1993,7 +2010,8 @@ public final class WorldzConfig {
     }
 
     private static String stackedSummary(StackedConfig config) {
-        return "layers=" + config.layers + ", seedRandomizedOrder=" + config.seedRandomizedOrder;
+        return "layers=" + config.layers + ", seedRandomizedOrder=" + config.seedRandomizedOrder
+            + ", worldSizeChunks=" + config.worldSizeChunks + ", reliefBlocks=" + config.reliefBlocks;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

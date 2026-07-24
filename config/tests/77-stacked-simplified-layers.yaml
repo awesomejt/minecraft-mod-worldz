@@ -1,0 +1,28 @@
+# GOAL 35 (DESIGN §34.8, requested by Jason 2026-07-24): the simplified
+# bare-biome layer shorthand. **Select "Worldz: Stacked"**. Every layer
+# below is written as just a biome id (no `;blocks;air gap` at all) --
+# StackedBiomeDefaults supplies each biome's own standard block
+# composition and this preset's own 30-block default air gap. Deliberately
+# includes one biome (`minecraft:mushroom_fields`) with no hand-tuned
+# entry in StackedBiomeDefaults, to exercise the generic stone/dirt/grass
+# fallback composition.
+#
+# Steps once in-game:
+#  1. Confirm the world generates with five distinct bands, bottom to top:
+#     taiga, jungle, savanna, mushroom_fields, plains.
+#  2. Confirm each layer's material stack looks like a real, reasonable
+#     version of that biome (sandy/stony/podzol-y as appropriate) even
+#     though no `blocks` list was ever written in this file.
+#  3. Confirm the mushroom_fields layer got the generic fallback
+#     composition (stone/dirt/grass_block) rather than failing to
+#     generate or erroring at startup -- check the log for any warnings.
+#  4. Confirm every layer's air gap is 30 blocks (the simplified
+#     shorthand's own default), except the topmost (plains), which has no
+#     gap above it (open sky).
+stacked:
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
+    - "minecraft:jungle"
+    - "minecraft:savanna"
+    - "minecraft:mushroom_fields"
+    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"

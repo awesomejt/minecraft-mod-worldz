@@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
+import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.DeepFlatPlan;
@@ -955,9 +956,22 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Optional<StackedPlan> encodedStacked,
         Optional<String> worldType
     ) {
-        ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
+        WorldzConfig sharedConfig = WorldzCommon.config();
+        ExteriorPlan defaults = ExteriorPlan.fromConfig(sharedConfig);
+        // DESIGN §34.7: this generator's own exterior envelope (drives VOID/OCEAN terrain
+        // masking beyond the boundary, independent of the actual WorldBorder object -- see
+        // LimitedBiomeSource.resolve's identical stackedDefaults fix for that half) needs the
+        // same worldSizeChunks-derived override for a never-customized "select preset, Create
+        // World" stacked world, or terrain would keep generating normally past the border even
+        // though players can't walk there.
+        boolean stackedDefaults = dimension == Dimension.OVERWORLD && worldType.filter("stacked"::equals).isPresent();
         ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(() -> switch (dimension) {
-            case OVERWORLD -> defaults.overworld();
+            case OVERWORLD -> stackedDefaults
+                ? ExteriorPlan.DimensionEnvelope.fromConfig(
+                    sharedConfig.stacked.effectiveOverworldExterior(sharedConfig.overworldExterior),
+                    sharedConfig.stacked.effectiveOverworldBorder(sharedConfig.overworldBorder)
+                )
+                : defaults.overworld();
             case NETHER -> defaults.nether();
             // The End has no config-default exterior of its own (ExteriorPlan is an Overworld/
             // Nether pair only, DESIGN §29.5) -- masking there is fully handled by the chunk-
@@ -1240,7 +1254,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 for (int attempt = 0; attempt < BURIED_LAYER_DECORATION_ATTEMPTS; attempt++) {
                     int x = chunkPos.getMinBlockX() + random.nextInt(16);
                     int z = chunkPos.getMinBlockZ() + random.nextInt(16);
-                    feature.place(level, this, random, new BlockPos(x, layerSurfaceY, z));
+                    // DESIGN §34.7: the painted surface at this column may sit a few blocks above
+                    // layerSurfaceY (relief bump) -- placing at the un-bumped Y would bury or
+                    // float this feature relative to what's actually there. Clamped to this
+                    // (non-top) layer's own air gap, mirroring stackedColumnStates's own clamp,
+                    // so this always matches what was actually painted.
+                    int bump = Math.min(
+                        StackedPlan.reliefBlocksAt(stackedSeed(), layerIndex, x, z, this.stacked.reliefBlocks()),
+                        layer.airGapBlocks()
+                    );
+                    feature.place(level, this, random, new BlockPos(x, layerSurfaceY + bump, z));
                 }
             }
         }
@@ -1460,7 +1483,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             // Same reasoning as flat above (GOAL 35, DESIGN §34.2): the delegate's real terrain
             // is never used for stacked either, just its NoiseBasedChunkGenerator+
             // LimitedBiomeSource shape (WorldLimitManager/border integration).
-            fillStackedColumns(centerChunk, resolvedStackedLayers());
+            fillStackedColumns(centerChunk, resolvedStackedLayers(), stackedSeed(), this.stacked.reliefBlocks());
             applyEnvelope(centerChunk, randomState);
             return CompletableFuture.completedFuture(centerChunk);
         }
@@ -1523,7 +1546,17 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * {@link #skyIslandSeed()}'s exact same-precedent seed lookup.
      */
     private List<StackedLayerSpec> resolvedStackedLayers() {
-        return this.stacked.resolvedLayers(this.originSource.orElseThrow().effectiveLayoutPlan().seed());
+        return this.stacked.resolvedLayers(stackedSeed());
+    }
+
+    /**
+     * Returns the real Minecraft world seed backing {@code stacked}'s layer order (GOAL 35,
+     * DESIGN §34.1) and, since DESIGN §34.7, its per-column relief -- shared by {@link
+     * #resolvedStackedLayers()} and every {@link StackedPlan#reliefBlocksAt} call site so all of
+     * them agree on the same seed.
+     */
+    private long stackedSeed() {
+        return this.originSource.orElseThrow().effectiveLayoutPlan().seed();
     }
 
     /**
@@ -1531,53 +1564,75 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * §34.2) -- mirrors {@link #fillFlatColumns} almost exactly, except each layer's own block
      * stack is followed by an explicit skip across its air gap rather than an unbroken solid
      * column: a freshly generated {@link ChunkAccess} is already all-air by default, so the gap
-     * needs no block writes of its own, only advancing {@code y} past it.
+     * needs no block writes of its own, only advancing {@code y} past it. Since DESIGN §34.7,
+     * each layer's own topmost block state can also bump a few blocks into that gap, deterministic
+     * per column via {@link StackedPlan#reliefBlocksAt} -- {@link #stackedColumnStates} is the
+     * single source of truth for exactly what a column's own bump looks like, shared with the
+     * heightmap/base-column query paths below so painted terrain and reported height never disagree.
      */
-    private static void fillStackedColumns(ChunkAccess chunk, List<StackedLayerSpec> layers) {
+    private static void fillStackedColumns(ChunkAccess chunk, List<StackedLayerSpec> layers, long seed, int reliefBlocks) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
         Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
-        int y = chunk.getMinY();
-        for (StackedLayerSpec layer : layers) {
-            for (BlockState state : flatLayerStates(layer.blocks())) {
-                if (y > chunk.getMaxY()) {
-                    return;
-                }
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        chunk.setBlockState(pos.set(x, y, z), state);
-                        oceanFloor.update(x, y, z, state);
-                        worldSurface.update(x, y, z, state);
+        int minBlockX = chunk.getPos().getMinBlockX();
+        int minBlockZ = chunk.getPos().getMinBlockZ();
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                List<BlockState> states = stackedColumnStates(layers, seed, reliefBlocks, minBlockX + x, minBlockZ + z);
+                for (int index = 0; index < Math.min(chunk.getHeight(), states.size()); index++) {
+                    BlockState state = states.get(index);
+                    if (state.isAir()) {
+                        continue;
                     }
+                    int y = chunk.getMinY() + index;
+                    chunk.setBlockState(pos.set(x, y, z), state);
+                    oceanFloor.update(x, y, z, state);
+                    worldSurface.update(x, y, z, state);
                 }
-                y++;
             }
-            y += layer.airGapBlocks();
         }
     }
 
     /**
-     * Expands a resolved stacked layer order into one {@link BlockState} per Y, mirroring {@link
-     * #flatLayerStates} but with an explicit air entry for each layer's own gap so indices stay
-     * aligned with absolute Y offsets -- shared by {@link #stackedBaseHeight}/{@link
-     * #stackedBaseColumn}, the same split {@link #flatLayerStates} already has from {@link
-     * #fillFlatColumns}.
+     * Expands a resolved stacked layer order into one {@link BlockState} per Y for a single
+     * column, mirroring {@link #flatLayerStates}'s per-layer expansion but with each layer's own
+     * air-gap entries partly replaced by its own topmost block (DESIGN §34.7's relief bump, {@link
+     * StackedPlan#reliefBlocksAt}) -- deliberately a within-budget reallocation (the bump is
+     * clamped to a non-top layer's own {@code airGapBlocks}) so a layer's cumulative-height zone
+     * boundary never moves, keeping {@link StackedPlan#layerAt}'s Y-only biome lookup correct
+     * without needing to know about relief at all. Shared by {@link #fillStackedColumns} and
+     * {@link #stackedBaseHeight}/{@link #stackedBaseColumn} so painted terrain and reported
+     * height/heightmap can never disagree.
      */
-    private static List<BlockState> stackedLayerStates(List<StackedLayerSpec> layers) {
+    private static List<BlockState> stackedColumnStates(
+        List<StackedLayerSpec> layers, long seed, int reliefBlocks, int blockX, int blockZ
+    ) {
         List<BlockState> states = new ArrayList<>();
         BlockState air = Blocks.AIR.defaultBlockState();
-        for (StackedLayerSpec layer : layers) {
-            states.addAll(flatLayerStates(layer.blocks()));
-            for (int i = 0; i < layer.airGapBlocks(); i++) {
+        for (int layerIndex = 0; layerIndex < layers.size(); layerIndex++) {
+            StackedLayerSpec layer = layers.get(layerIndex);
+            List<BlockState> layerStates = flatLayerStates(layer.blocks());
+            states.addAll(layerStates);
+            boolean isTopLayer = layerIndex == layers.size() - 1;
+            int bump = StackedPlan.reliefBlocksAt(seed, layerIndex, blockX, blockZ, reliefBlocks);
+            int clampedBump = isTopLayer ? bump : Math.min(bump, layer.airGapBlocks());
+            BlockState topState = layerStates.get(layerStates.size() - 1);
+            for (int i = 0; i < clampedBump; i++) {
+                states.add(topState);
+            }
+            for (int i = 0; i < layer.airGapBlocks() - clampedBump; i++) {
                 states.add(air);
             }
         }
         return states;
     }
 
-    /** Mirrors {@link #flatBaseHeight} exactly, fed a resolved stacked layer order instead. */
-    private static int stackedBaseHeight(List<StackedLayerSpec> layers, Heightmap.Types type, LevelHeightAccessor heightAccessor) {
-        List<BlockState> states = stackedLayerStates(layers);
+    /** Mirrors {@link #flatBaseHeight} exactly, fed one column's own resolved stacked states. */
+    private static int stackedBaseHeight(
+        List<StackedLayerSpec> layers, Heightmap.Types type, LevelHeightAccessor heightAccessor,
+        long seed, int reliefBlocks, int blockX, int blockZ
+    ) {
+        List<BlockState> states = stackedColumnStates(layers, seed, reliefBlocks, blockX, blockZ);
         for (int layerIndex = Math.min(states.size() - 1, heightAccessor.getMaxY()); layerIndex >= 0; layerIndex--) {
             BlockState state = states.get(layerIndex);
             if (type.isOpaque().test(state)) {
@@ -1587,9 +1642,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         return heightAccessor.getMinY();
     }
 
-    /** Mirrors {@link #flatBaseColumn} exactly, fed a resolved stacked layer order instead. */
-    private static NoiseColumn stackedBaseColumn(List<StackedLayerSpec> layers, LevelHeightAccessor heightAccessor) {
-        List<BlockState> layerStates = stackedLayerStates(layers);
+    /** Mirrors {@link #flatBaseColumn} exactly, fed one column's own resolved stacked states. */
+    private static NoiseColumn stackedBaseColumn(
+        List<StackedLayerSpec> layers, LevelHeightAccessor heightAccessor, long seed, int reliefBlocks, int blockX, int blockZ
+    ) {
+        List<BlockState> layerStates = stackedColumnStates(layers, seed, reliefBlocks, blockX, blockZ);
         BlockState[] states = new BlockState[heightAccessor.getHeight()];
         for (int index = 0; index < states.length; index++) {
             states[index] = index < layerStates.size() ? layerStates.get(index) : Blocks.AIR.defaultBlockState();
@@ -1681,7 +1738,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 return flatBaseHeight(this.flat, type, heightAccessor);
             }
             if (this.stacked.enabled()) {
-                return stackedBaseHeight(resolvedStackedLayers(), type, heightAccessor);
+                return stackedBaseHeight(resolvedStackedLayers(), type, heightAccessor, stackedSeed(), this.stacked.reliefBlocks(), x, z);
             }
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
@@ -1784,7 +1841,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 return flatBaseColumn(this.flat, heightAccessor);
             }
             if (this.stacked.enabled()) {
-                return stackedBaseColumn(resolvedStackedLayers(), heightAccessor);
+                return stackedBaseColumn(resolvedStackedLayers(), heightAccessor, stackedSeed(), this.stacked.reliefBlocks(), x, z);
             }
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);

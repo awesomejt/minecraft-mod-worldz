@@ -44,7 +44,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on hand-mining the platform's own end stone to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
 | **Worldz: Flat** | Classic flat challenge: my version of vanilla superflat, with more options — an editable bottom-to-top block layer stack, a single fixed biome, an optional bedrock floor (just whether the layer list's bottom entry is bedrock), an eligible-structure-set list, and an optional decoration toggle. Zero noise or caves of any kind, matching vanilla's own real superflat behavior — and genuinely as fast to generate, since the real noise pipeline never runs at all. See [Flat challenge](#flat-challenge) below. | Small screen: layers (text), biome, decoration, structure list (text), borders, exteriors. |
 | **Worldz: Deep Flat** | Deep-flat challenge: a flat surface capped over real, unmodified vanilla terrain — caves, cave biomes, aquifers, ores, and structures all come from the seed's own real generation below the cap, completely untouched. Rivers/oceans show as water at the flat surface (optional, with a spawn-adjacent exclusion radius). See [Deep flat challenge](#deep-flat-challenge) below. | Small screen: surface Y, cap layers (text), rivers toggle, exclusion radius, borders, exteriors. |
-| **Worldz: Stacked** | Stacked-biome-layers challenge: the underground is replaced entirely by horizontal biome bands, bottom to top, starting at the dimension's own min Y — plains above desert above taiga, or any editable ordering — each with its own block stack and an air gap for that biome's own trees/vegetation to grow into. Ore veins naturally land in whichever layer sits at their real vanilla depth. Optional seed-randomized layer order. See [Stacked challenge](#stacked-challenge) below. | Small screen: layers (text), seed-randomized order toggle, borders, exteriors. |
+| **Worldz: Stacked** | Stacked-biome-layers challenge: the underground is replaced entirely by horizontal biome bands, bottom to top, starting at the dimension's own min Y — eight bands by default, or any editable ordering/count — each with its own block stack, a gently uneven surface, and an air gap for that biome's own trees/vegetation to grow into. Ore veins naturally land in whichever layer sits at their real vanilla depth; the default bottom layer is deep enough to reliably anchor the End portal too. Bounded to a small border by default. Optional seed-randomized layer order. See [Stacked challenge](#stacked-challenge) below. | Small screen: layers (text), seed-randomized order toggle, relief blocks, borders, exteriors. |
 
 ## Supported loaders
 
@@ -960,11 +960,14 @@ save-compat obligations for worlds created by an older mod version.
 
 Select **Worldz: Stacked** under **World Type** for a world whose
 underground is replaced entirely by stacked horizontal biome layers
-instead of normal caves — plains above desert above taiga, or any
-ordering you configure. Each layer is its own flat/low-relief slab
-reporting its own biome, stacked bottom to top starting at the
+instead of normal caves — eight bands by default (taiga through plains),
+or any ordering/count you configure. Each layer is its own low-relief
+slab reporting its own biome, stacked bottom to top starting at the
 dimension's own min Y, with an air gap above its own block stack sized
-for that biome's own trees and vegetation to grow into.
+for that biome's own trees and vegetation to grow into. By default the
+world is bounded to a small 64-block-radius border (a good fit for the
+default 8-layer stack) and each layer's surface has a small, gentle bump
+so bands don't read as perfectly flat slabs.
 
 Ore veins that normally need deep levels (lapis, gold, diamond) need no
 special handling — because the stack starts at the dimension's own real
@@ -973,6 +976,8 @@ range vanilla's own deep Overworld would. A short total stack genuinely
 has less deep-Y room for rare ores to occur, the same honest tradeoff a
 real shallow world would have; there's no synthetic "ore budget"
 redistribution, just real vanilla placement against real Y coordinates.
+The default bottom layer's stone is deliberately thick (44 blocks) so the
+End portal has real room to generate there — see below.
 
 Configure the layer stack and order with a `stacked:` section in
 `config/jlt_worldz.yaml`:
@@ -980,16 +985,32 @@ Configure the layer stack and order with a `stacked:` section in
 ```yaml
 stacked:
   layers:
-    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40,minecraft:podzol:2;6"
-    - "minecraft:desert;minecraft:sandstone:20,minecraft:sand:3;6"
-    - "minecraft:plains;minecraft:stone:20,minecraft:dirt:3,minecraft:grass_block:1;0"
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
+    - "minecraft:desert"
+    - "minecraft:badlands"
+    - "minecraft:swamp"
+    - "minecraft:jungle"
+    - "minecraft:savanna"
+    - "minecraft:snowy_taiga"
+    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"
   seedRandomizedOrder: false
+  worldSizeChunks: 4
+  reliefBlocks: 4
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `layers` | taiga/desert/plains, 93 blocks total | Ordered bottom-to-top layer list, each entry `"<biome>;<blocks>;<air gap>"` — `<blocks>` reuses `flat.layers`' own comma-separated `block`/`block:height` shorthand for that layer's own material stack. `<biome>` is the layer's reported biome (drives decoration/ore feature selection, not block choice); `<air gap>` is the open headroom above the block stack. |
+| `layers` | 8 bands, 324 blocks total | Ordered bottom-to-top layer list. Each entry is either the full `"<biome>;<blocks>;<air gap>"` shorthand (`<blocks>` reuses `flat.layers`' own comma-separated `block`/`block:height` shorthand for that layer's own material stack; `<biome>` is the layer's reported biome, drives decoration/ore feature selection, not block choice; `<air gap>` is the open headroom above the block stack) — or just a bare biome id (e.g. `"minecraft:jungle"`), which expands to that biome's own standard block composition and a 30-block air gap. A biome not specifically tuned falls back to a generic stone/dirt/grass composition rather than failing — any biome id works. The simplified form never bakes in stack-position choices like bedrock or extra depth; the shipped default's bottom/top layers use the full form for exactly that reason. |
 | `seedRandomizedOrder` | `false` | Shuffles the configured layer order, deterministically from the real world seed, instead of using it as written. |
+| `worldSizeChunks` | `4` | Overworld border half-width in chunks (a 64-block radius by default) plus a matching `VOID` exterior beyond it, applied automatically — independent of the shared `overworldBorder`/`overworldExterior` sections. `0` restores an unlimited world (the original behavior). |
+| `reliefBlocks` | `4` | Maximum per-column height bump on each layer's own surface, traded out of that layer's own air gap so biome-band boundaries never move. `0` restores perfectly flat layers. |
+
+The stack's vertical center lands around Y98 with the default layer list
+(not exactly Y64) — an 8-layer stack with 30-block gaps and a genuinely
+thick bottom layer doesn't fit under the build-height cap at an exact
+Y64 center without shrinking every band down to a few blocks each; Y98
+was chosen to keep real, mineable ~10-block bands instead. Tune the
+layer list directly if you want a different balance.
 
 **Trees and vegetation generate in every layer**, not just the surface —
 real vanilla decoration already places ore veins and other fixed-depth
@@ -1001,6 +1022,15 @@ instead, scattering that layer's own biome's trees directly into its air
 gap — a deliberate simplification (fixed scatter density, not an attempt
 at full vanilla placement-modifier fidelity), not a gap found after the
 fact.
+
+**The End portal at default settings is reliable, not just likely:** the
+default 64-block world radius is smaller than the fallback beatability
+search's own natural-structure margin, so a natural stronghold is always
+rejected and the compact fallback vault always fires instead, landing
+inside the thick bottom layer's stone near Y -32. This is a byproduct of
+the default world size, not bespoke placement code for `stacked` — a much
+larger `worldSizeChunks` reopens the door to a natural stronghold, with
+the same open question below.
 
 **Known open question, not yet resolved:** a short total stack (thin
 layers, little solid material) hasn't been confirmed against a

@@ -149,7 +149,7 @@ public final class StackedPresetEditor implements PresetEditor {
         WorldLimitPlan plan = source.worldLimits();
         var exterior = source.exteriorPlan();
         return new StackedCustomization(
-            stacked.layers(), stacked.seedRandomizedOrder(),
+            stacked.layers(), stacked.seedRandomizedOrder(), stacked.reliefBlocks(),
             fromPlan(plan.overworld()), fromPlan(plan.nether()), fromPlan(plan.end()),
             fromPlan(exterior.overworld()), fromPlan(exterior.nether())
         );
