@@ -174,3 +174,20 @@ foreverNight:
   enabled: false
   lockAfterDays: 0
   relaxInsomnia: false
+
+# World-hazard "rising lava floor" module (GOAL 29, DESIGN §35.2) -- a
+# shared runtime rule, not a typed preset, composable with any world type.
+# Overworld only. Holds at startY for delayDays, then rises rateBlocks
+# every rateDays until it reaches maxY. Every air or water block at or
+# below the current level converts to lava; solid terrain is untouched.
+# Already-loaded chunks convert incrementally as the level rises; a chunk
+# that loads later (or reloads after a restart) catches up to the current
+# level immediately. No special-casing for floating/void-based world
+# types -- the rule is uniform everywhere air or water exists.
+risingLava:
+  enabled: false
+  delayDays: 3
+  startY: -64
+  maxY: 64
+  rateBlocks: 1
+  rateDays: 1

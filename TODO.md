@@ -2758,12 +2758,23 @@ pulled earlier if Jason wants a fun quick win.**
       gained a new "World hazards" section (config-only, no Customize
       screen yet, matching this project's own config-first precedent).
       **[Jason] in-game acceptance outstanding** (part of 18.3).
-- [ ] 18.2 Rising lava floor (29): persisted world-wide lava level with
-      delay/rate/max (border-schedule config idiom); design the block-
-      conversion rules (air/water below the level) and the application
-      strategy for loaded vs. newly loaded chunks with acceptable
-      performance — design task first, verified against 26.2 chunk/tick
-      APIs. See DESIGN §35.2.
+- [x] 18.2 Rising lava floor (29), 0.2.79: `risingLava` config section
+      (`enabled`, `delayDays`, `startY`/`maxY`, `rateBlocks`/`rateDays`,
+      defaults -64/64/1/1 — sea level, one block per in-game day);
+      `RisingLavaSchedule` pure logic mirroring `BorderSchedule` (no
+      stepped variant, GOAL 29 never asks for one). `WorldHazardState`
+      extended with `lavaOriginTick`/`lastAppliedLavaY`; `WorldHazardManager`
+      extended with the periodic-rescan-only-on-integer-level-change
+      pattern from DESIGN §35.2, plus a self-maintained loaded-chunk-
+      position set (`onChunkLoad`/`onChunkUnload`, both loaders — vanilla's
+      own chunk enumeration isn't reachable from mod code, confirmed
+      §35.0) so newly loaded chunks catch up to the current level via the
+      same queued-not-synchronous pattern NeoForge's own `ChunkEvent.Load`
+      doc comment requires. Air/water-only conversion, uniform across
+      every world type including void beneath floating islands (Jason's
+      own scope call, §35.2). New `RisingLavaScheduleTest`; `WorldzConfigTest`
+      extended. README's "World hazards" section gained a rising-lava
+      subsection. **[Jason] in-game acceptance outstanding** (part of 18.3).
 - [ ] 18.3 Test configs (night-from-day-0, night-after-N, rising lava on a
       vanilla-limited world and on an ocean island); docs; **[Jason]**
       acceptance.

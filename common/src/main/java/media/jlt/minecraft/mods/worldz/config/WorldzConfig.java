@@ -142,6 +142,8 @@ public final class WorldzConfig {
     public StackedConfig stacked = new StackedConfig();
     /** World-hazard "forever night" module (GOAL 30; DESIGN §35.1) -- composes with any world type. */
     public ForeverNightConfig foreverNight = new ForeverNightConfig();
+    /** World-hazard "rising lava floor" module (GOAL 29; DESIGN §35.2) -- composes with any world type. */
+    public RisingLavaConfig risingLava = new RisingLavaConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -274,6 +276,9 @@ public final class WorldzConfig {
         if (object.containsKey("foreverNight")) {
             config.foreverNight = readForeverNightConfig(object.get("foreverNight"), "foreverNight", logger);
         }
+        if (object.containsKey("risingLava")) {
+            config.risingLava = readRisingLavaConfig(object.get("risingLava"), "risingLava", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -339,6 +344,7 @@ public final class WorldzConfig {
         deepFlat = sanitizeDeepFlat(deepFlat, logger);
         stacked = sanitizeStacked(stacked, logger);
         foreverNight = sanitizeForeverNight(foreverNight, logger);
+        risingLava = sanitizeRisingLava(risingLava, logger);
         return this;
     }
 
@@ -592,6 +598,22 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static RisingLavaConfig sanitizeRisingLava(RisingLavaConfig config, Logger logger) {
+        RisingLavaConfig sanitized = config == null ? new RisingLavaConfig() : config;
+        int minY = FlatConfig.OVERWORLD_MIN_Y;
+        int maxBuildY = FlatConfig.OVERWORLD_MIN_Y + FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS - 1;
+        sanitized.delayDays = clampWithWarning(sanitized.delayDays, 0, MAX_BORDER_RESIZE_DAYS, "risingLava.delayDays", logger);
+        sanitized.startY = clampWithWarning(sanitized.startY, minY, maxBuildY, "risingLava.startY", logger);
+        sanitized.maxY = clampWithWarning(sanitized.maxY, minY, maxBuildY, "risingLava.maxY", logger);
+        if (sanitized.maxY < sanitized.startY) {
+            logger.warn("risingLava.maxY ({}) was below startY ({}); raised to match.", sanitized.maxY, sanitized.startY);
+            sanitized.maxY = sanitized.startY;
+        }
+        sanitized.rateBlocks = clampWithWarning(sanitized.rateBlocks, 1, MAX_BORDER_RATE_BLOCKS, "risingLava.rateBlocks", logger);
+        sanitized.rateDays = clampWithWarning(sanitized.rateDays, 1, MAX_BORDER_RESIZE_DAYS, "risingLava.rateDays", logger);
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -746,6 +768,7 @@ public final class WorldzConfig {
             + ", deepFlat=" + deepFlatSummary(deepFlat)
             + ", stacked=" + stackedSummary(stacked)
             + ", foreverNight=" + foreverNightSummary(foreverNight)
+            + ", risingLava=" + risingLavaSummary(risingLava)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -779,6 +802,7 @@ public final class WorldzConfig {
         values.put("deepFlat", deepFlatMap(deepFlat));
         values.put("stacked", stackedMap(stacked));
         values.put("foreverNight", foreverNightMap(foreverNight));
+        values.put("risingLava", risingLavaMap(risingLava));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1305,6 +1329,32 @@ public final class WorldzConfig {
         }
         if (map.containsKey("relaxInsomnia")) {
             config.relaxInsomnia = readBoolean(map.get("relaxInsomnia"), name + ".relaxInsomnia");
+        }
+        return config;
+    }
+
+    private static RisingLavaConfig readRisingLavaConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        RisingLavaConfig config = new RisingLavaConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("delayDays")) {
+            config.delayDays = readInt(map.get("delayDays"), name + ".delayDays");
+        }
+        if (map.containsKey("startY")) {
+            config.startY = readInt(map.get("startY"), name + ".startY");
+        }
+        if (map.containsKey("maxY")) {
+            config.maxY = readInt(map.get("maxY"), name + ".maxY");
+        }
+        if (map.containsKey("rateBlocks")) {
+            config.rateBlocks = readInt(map.get("rateBlocks"), name + ".rateBlocks");
+        }
+        if (map.containsKey("rateDays")) {
+            config.rateDays = readInt(map.get("rateDays"), name + ".rateDays");
         }
         return config;
     }
@@ -1860,6 +1910,17 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> risingLavaMap(RisingLavaConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("delayDays", config.delayDays);
+        values.put("startY", config.startY);
+        values.put("maxY", config.maxY);
+        values.put("rateBlocks", config.rateBlocks);
+        values.put("rateDays", config.rateDays);
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -2060,6 +2121,14 @@ public final class WorldzConfig {
             return "<disabled>";
         }
         return "lockAfterDays=" + config.lockAfterDays + ", relaxInsomnia=" + config.relaxInsomnia;
+    }
+
+    private static String risingLavaSummary(RisingLavaConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "delayDays=" + config.delayDays + ", startY=" + config.startY + ", maxY=" + config.maxY
+            + ", rateBlocks=" + config.rateBlocks + ", rateDays=" + config.rateDays;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

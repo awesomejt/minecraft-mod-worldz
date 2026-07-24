@@ -6,6 +6,7 @@ import media.jlt.minecraft.mods.worldz.worldgen.SpawnOriginManager;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldHazardManager;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitManager;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -38,6 +39,8 @@ public final class WorldzFabric implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(WorldLimitManager::onServerTick);
         ServerLifecycleEvents.SERVER_STARTED.register(WorldHazardManager::onServerStarted);
         ServerTickEvents.END_SERVER_TICK.register(WorldHazardManager::onServerTick);
+        ServerChunkEvents.CHUNK_LOAD.register((level, chunk, generated) -> WorldHazardManager.onChunkLoad(level, chunk));
+        ServerChunkEvents.CHUNK_UNLOAD.register(WorldHazardManager::onChunkUnload);
         ServerLevelEvents.LOAD.register((server, level) -> {
             if (level.dimension() == Level.OVERWORLD) {
                 SpawnOriginManager.reapplyPersistedOrigin(level);

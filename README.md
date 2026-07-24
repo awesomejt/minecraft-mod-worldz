@@ -1080,6 +1080,41 @@ Not engineered around; if you want a growing/shrinking border, don't
 combine it with forever night (or expect the border to hold still while
 night is locked).
 
+### Rising lava floor (GOAL 29)
+
+Set `risingLava.enabled: true` for a world-wide lava level that rises over
+time in the Overworld. It holds at `startY` for `delayDays`, then rises
+`rateBlocks` every `rateDays` until it reaches `maxY`. Every air or water
+block (source or flowing — vanilla represents both as the same block) at
+or below the current level converts to lava; solid terrain is untouched.
+Already-loaded chunks convert incrementally as the level rises; a chunk
+that loads later (or reloads after a restart) catches up to the current
+level immediately.
+
+```yaml
+risingLava:
+  enabled: false
+  delayDays: 3
+  startY: -64
+  maxY: 64
+  rateBlocks: 1
+  rateDays: 1
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Whether the lava level rises over time. |
+| `delayDays` | `3` | In-game days before the level starts rising. |
+| `startY` | `-64` | Y the lava level starts at (the dimension's own real min Y) — everything at or below this converts as soon as the hazard activates. |
+| `maxY` | `64` | Y the lava level stops rising at (sea level by default). |
+| `rateBlocks` / `rateDays` | `1` / `1` | The level rises `rateBlocks` every `rateDays` — one block per in-game day by default, a deliberately slow first-pass number. |
+
+No special handling for floating/void-based world types (sky island, sky
+chunk, chunk island) — the rule is uniform everywhere air or water exists,
+including flooding void space beneath a floating island as the level
+rises past it. World hazards in this project are allowed to be
+destructive by design (see GOAL 38's own expanding-border behavior).
+
 ## Configuration
 
 The mod reads `config/jlt_worldz.yaml` at startup if present; it is entirely

@@ -20,6 +20,7 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -50,6 +51,8 @@ public final class WorldzNeoForge {
         NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onServerTick);
         NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onLevelLoad);
         NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onCreateSpawnPosition);
+        NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onChunkLoad);
+        NeoForge.EVENT_BUS.addListener(WorldzNeoForge::onChunkUnload);
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
@@ -60,6 +63,18 @@ public final class WorldzNeoForge {
     private static void onServerTick(ServerTickEvent.Post event) {
         WorldLimitManager.onServerTick(event.getServer());
         WorldHazardManager.onServerTick(event.getServer());
+    }
+
+    private static void onChunkLoad(ChunkEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            WorldHazardManager.onChunkLoad(level, event.getChunk());
+        }
+    }
+
+    private static void onChunkUnload(ChunkEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            WorldHazardManager.onChunkUnload(level, event.getChunk());
+        }
     }
 
     private static void onLevelLoad(LevelEvent.Load event) {

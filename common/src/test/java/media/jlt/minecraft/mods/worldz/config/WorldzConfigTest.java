@@ -605,6 +605,7 @@ class WorldzConfigTest {
                 + " minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0],"
                 + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4"
                 + ", foreverNight=<disabled>"
+                + ", risingLava=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1359,6 +1360,62 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0, config.foreverNight.lockAfterDays);
+    }
+
+    @Test
+    void risingLavaSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            risingLava:
+              enabled: true
+              delayDays: 5
+              startY: -32
+              maxY: 32
+              rateBlocks: 2
+              rateDays: 3
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.risingLava.enabled);
+        assertEquals(5, config.risingLava.delayDays);
+        assertEquals(-32, config.risingLava.startY);
+        assertEquals(32, config.risingLava.maxY);
+        assertEquals(2, config.risingLava.rateBlocks);
+        assertEquals(3, config.risingLava.rateDays);
+    }
+
+    @Test
+    void risingLavaDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.risingLava.enabled);
+        assertEquals(3, config.risingLava.delayDays);
+        assertEquals(-64, config.risingLava.startY);
+        assertEquals(64, config.risingLava.maxY);
+        assertEquals(1, config.risingLava.rateBlocks);
+        assertEquals(1, config.risingLava.rateDays);
+    }
+
+    @Test
+    void risingLavaMaxYIsRaisedToMatchAnAboveStartY() {
+        WorldzConfig config = WorldzConfig.parse("""
+            risingLava:
+              startY: 32
+              maxY: -32
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(32, config.risingLava.startY);
+        assertEquals(32, config.risingLava.maxY);
+    }
+
+    @Test
+    void risingLavaRateValuesClampToAtLeastOne() {
+        WorldzConfig config = WorldzConfig.parse("""
+            risingLava:
+              rateBlocks: 0
+              rateDays: -5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(1, config.risingLava.rateBlocks);
+        assertEquals(1, config.risingLava.rateDays);
     }
 
     @Test
