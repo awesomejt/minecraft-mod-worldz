@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.73", properties.getProperty("version"));
+        assertEquals("0.2.74", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -497,6 +497,29 @@ class ProjectMetadataTest {
         ));
         assertTrue(generator.contains("if (this.cave.enabled() && this.cave.sealedSurface()) {"));
         assertTrue(generator.contains("private void applyCaveSealedSurface("));
+    }
+
+    @Test
+    void stackedBuriedLayerDecorationBypassesHeightmapPlacementModifiers() throws IOException {
+        // GOAL 35, DESIGN §34.4: the delegate's own applyBiomeDecoration call already handles
+        // every fixed-Y-range feature correctly once biome varies by Y (ore veins etc.), but
+        // heightmap-based features (trees) only work for the topmost layer -- a chunk's real
+        // heightmap can only ever report one surface. The bypass calls ConfiguredFeature.place
+        // directly (verified real, public, placement-modifier-free) rather than PlacedFeature's
+        // own placeWithBiomeCheck, which would otherwise snap back to the real (topmost) surface.
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains(
+            "if (this.stacked.enabled() && (!isEntirelyExterior(chunkPos) || decorateExteriorOcean)) {\n"
+                + "            applyStackedBuriedDecoration(level, chunk, resolvedStackedLayers());"
+        ));
+        assertTrue(generator.contains("private void applyStackedBuriedDecoration("));
+        assertTrue(generator.contains("int stepIndex = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();"));
+        assertTrue(generator.contains("for (int layerIndex = 0; layerIndex < layers.size() - 1; layerIndex++) {"));
+        assertTrue(generator.contains("ConfiguredFeature<?, ?> feature = placedFeature.value().feature().value();"));
+        assertTrue(generator.contains("feature.place(level, this, random, new BlockPos(x, layerSurfaceY, z));"));
     }
 
     @Test

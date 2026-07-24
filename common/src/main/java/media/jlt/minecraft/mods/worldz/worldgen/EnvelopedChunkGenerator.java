@@ -65,11 +65,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
@@ -96,6 +98,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static final int DEFAULT_VOID_ISLAND_RADIUS_BLOCKS = 256;
     /** Cave sealed-surface roof thickness (GOALS 25, DESIGN §30.4) -- just enough to be a real barrier. */
     private static final int CAVE_SEALED_SURFACE_THICKNESS_BLOCKS = 5;
+    /**
+     * Buried stacked-layer decoration scatter density (GOALS 35, DESIGN §34.4): a fixed per-
+     * chunk-per-feature attempt count rather than a config knob -- a simplification found while
+     * implementing (the design pass's own "points-per-chunk knob" idea turned out to be more
+     * ceremony than a first pass needs); revisit only if Jason's acceptance testing finds the
+     * density visibly wrong.
+     */
+    private static final int BURIED_LAYER_DECORATION_ATTEMPTS = 4;
     /** Codec registered as {@code jlt_worldz:enveloped}. */
     public static final MapCodec<EnvelopedChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         ChunkGenerator.CODEC.fieldOf("delegate").forGetter(generator -> generator.delegate),
@@ -1168,6 +1178,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if ((!isEntirelyExterior(chunkPos) || decorateExteriorOcean) && (!this.flat.enabled() || this.flat.decoration())) {
             this.delegate.applyBiomeDecoration(level, chunk, structureManager);
         }
+        // Stacked (GOAL 35, DESIGN §34.4): the delegate call above already runs real vanilla
+        // decoration correctly for every fixed-Y-range feature (ore veins, etc.) once biome
+        // varies by Y (DESIGN §34.3) -- only heightmap-based features (trees) need this extra
+        // pass, since a chunk's persisted heightmap can only ever report the topmost layer.
+        if (this.stacked.enabled() && (!isEntirelyExterior(chunkPos) || decorateExteriorOcean)) {
+            applyStackedBuriedDecoration(level, chunk, resolvedStackedLayers());
+        }
         // Re-painting the exterior profile here would immediately erase whatever decoration
         // (kelp, seagrass, structure pieces) just placed -- skip it for a chunk we deliberately
         // decorated; the earlier applyCarvers/buildSurface passes already shaped its terrain.
@@ -1179,6 +1196,52 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             }
             if (activeChunkIsland().enabled()) {
                 applyChunkIslandGeode(level, chunk);
+            }
+        }
+    }
+
+    /**
+     * Scatters each buried layer's own biome's {@code VEGETAL_DECORATION} features directly into
+     * its air gap (GOAL 35, DESIGN §34.4) -- the topmost layer needs nothing here, since its real
+     * heightmap-based decoration already ran correctly in the delegate call above. Calls {@link
+     * ConfiguredFeature#place} directly (verified real, public, and placement-modifier-free,
+     * DESIGN §34.4) rather than {@code PlacedFeature.placeWithBiomeCheck}, since a heightmap-based
+     * placement modifier would otherwise snap back to the chunk's real (topmost) surface --
+     * exactly the mechanical limit this bypass exists to work around. Not an attempt at full
+     * per-feature placement-modifier fidelity (scatter density is fixed, {@link
+     * #BURIED_LAYER_DECORATION_ATTEMPTS}), matching {@link #placeOreFeature}'s own precedent for
+     * a direct, exact-position feature placement elsewhere in this class.
+     */
+    private void applyStackedBuriedDecoration(WorldGenLevel level, ChunkAccess chunk, List<StackedLayerSpec> layers) {
+        Registry<Biome> biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
+        ChunkPos chunkPos = chunk.getPos();
+        int cursor = chunk.getMinY();
+        int stepIndex = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
+        for (int layerIndex = 0; layerIndex < layers.size() - 1; layerIndex++) {
+            StackedLayerSpec layer = layers.get(layerIndex);
+            int layerSurfaceY = cursor + layer.blocksHeightBlocks();
+            cursor = layerSurfaceY + layer.airGapBlocks();
+            if (layerSurfaceY > chunk.getMaxY() || layer.airGapBlocks() <= 0) {
+                continue;
+            }
+            Holder<Biome> biome = biomes.get(ResourceKey.create(Registries.BIOME, Identifier.parse(layer.biome()))).orElse(null);
+            if (biome == null) {
+                continue;
+            }
+            List<HolderSet<PlacedFeature>> featuresByStep = biome.value().getGenerationSettings().features();
+            if (stepIndex >= featuresByStep.size()) {
+                continue;
+            }
+            RandomSource random = RandomSource.create(
+                level.getSeed() ^ (((long) chunkPos.getMinBlockX()) << 32 ^ (chunkPos.getMinBlockZ() & 0xFFFFFFFFL)) ^ layerIndex
+            );
+            for (Holder<PlacedFeature> placedFeature : featuresByStep.get(stepIndex)) {
+                ConfiguredFeature<?, ?> feature = placedFeature.value().feature().value();
+                for (int attempt = 0; attempt < BURIED_LAYER_DECORATION_ATTEMPTS; attempt++) {
+                    int x = chunkPos.getMinBlockX() + random.nextInt(16);
+                    int z = chunkPos.getMinBlockZ() + random.nextInt(16);
+                    feature.place(level, this, random, new BlockPos(x, layerSurfaceY, z));
+                }
             }
         }
     }

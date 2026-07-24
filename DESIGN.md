@@ -5044,18 +5044,25 @@ for the topmost layer only), a second small pass runs for every layer
 `GenerationStep.Decoration.VEGETAL_DECORATION` placed-feature list (the
 same `BiomeGenerationSettings.features()` accessor `ChunkGenerator.
 applyBiomeDecoration` itself already uses), and for each, call
-`placedFeature.feature().value().place(level, this, random, pos)` directly
-at a small number of deterministically-scattered `(x, layerSurfaceY, z)`
-points within the chunk (own `WorldgenRandom`, seeded the same
-`setFeatureSeed`-style way vanilla's own loop does, so results are
-reproducible for a given seed/layer/chunk). Scatter density mirrors the
-step's own typical `CountPlacement`/`RarityFilter` order of magnitude
-loosely (a config-exposed points-per-chunk knob, not an attempt to
-replicate each feature's exact vanilla decorator chain) rather than an
-attempt to reproduce every feature's exact original placement-modifier
-semantics — an intentional, documented simplification (mirrors §33.1's
-choice of "small reimplemented branch over deep engine surgery"), not a
-gap discovered after the fact.
+`configuredFeature.place(level, this, random, pos)` directly at a small
+number of deterministically-scattered `(x, layerSurfaceY, z)` points within
+the chunk, using a `RandomSource` seeded from the real world seed plus the
+chunk position plus the layer index (mirrors `placeOreFeature`'s own exact
+precedent elsewhere in `EnvelopedChunkGenerator`, not vanilla's own
+`setFeatureSeed`-style derivation, since this bypass already isn't
+attempting vanilla's exact decoration algorithm).
+
+**Correction, found while implementing 17.2b: scatter density is a fixed
+per-chunk-per-feature attempt count (`BURIED_LAYER_DECORATION_ATTEMPTS =
+4`), not a config-exposed knob** as this section's first draft proposed —
+plumbing a whole new config/codec/UI field through for a density number
+turned out to be more ceremony than a first pass needs, and the fixed
+constant is trivial to change later if Jason's acceptance testing finds the
+density visibly wrong. Not an attempt to replicate each feature's exact
+vanilla decorator chain (`CountPlacement`/`RarityFilter` etc.) or original
+placement-modifier semantics — an intentional, documented simplification
+(mirrors §33.1's choice of "small reimplemented branch over deep engine
+surgery"), not a gap discovered after the fact.
 
 This is a genuinely new, bounded piece of custom code (not a `ChunkPyramid`/
 internal-orchestration-type risk the way Phase 5c.1's rejected soft-void

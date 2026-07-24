@@ -2632,11 +2632,43 @@ composes with.
       indentation in `LimitedBiomeSource`'s `allowed`-biome dispatch chain
       (not a behavior bug, just brittle string-matching tests needing their
       expected literals updated for the new nesting level).
-- [ ] 17.2b Implement decoration (DESIGN §34.4): `applyBiomeDecoration`
+- [x] 17.2b Implement decoration (DESIGN §34.4): `applyBiomeDecoration`
       override calling `super` first, then the buried-layer
       `ConfiguredFeature.place` bypass pass for every non-top layer's
       `VEGETAL_DECORATION` features. Confirm (not fix speculatively) the
       stronghold/portal beatability gate needs no new arm (DESIGN §34.5).
+      **Done (0.2.74), in-game testable now.** The delegate's existing
+      `this.delegate.applyBiomeDecoration(...)` call (already unconditional
+      for `stacked`, no gating needed there unlike `flat`'s own
+      `decoration` toggle) already handles every fixed-Y-range feature
+      correctly once biome varies by Y (17.2a's `getNoiseBiome` branch) --
+      confirmed, not assumed, since `NoiseBasedChunkGenerator` never
+      overrides `applyBiomeDecoration` itself, so this call was always
+      running vanilla's real `ChunkGenerator.applyBiomeDecoration`
+      algorithm against `LimitedBiomeSource` directly. Added
+      `applyStackedBuriedDecoration` for the one real gap (heightmap-based
+      features only see the topmost layer): walks every layer except the
+      top, resolves that layer's biome's own `VEGETAL_DECORATION`
+      `PlacedFeature` list, and calls the underlying `ConfiguredFeature.
+      place` directly at scattered points -- mirrors `placeOreFeature`'s
+      own existing "direct exact-position feature placement" precedent in
+      this same class almost exactly, confirming the approach was already
+      idiomatic here, not a new pattern. **Correction found while
+      implementing** (DESIGN §34.4's own record): scatter density ended up
+      a fixed `BURIED_LAYER_DECORATION_ATTEMPTS = 4` constant, not the
+      config-exposed knob the design pass first proposed -- a whole new
+      config/codec/UI field for one density number was more ceremony than
+      a first pass needs. Beatability: confirmed (not fixed, since nothing
+      needed fixing) `WorldLimitManager`'s existing `ExteriorPlan`-based
+      gate already covers `stacked` -- it gets the same standard border/
+      exterior Customize-screen controls every typed preset does (verified
+      via `StackedCustomizeScreen` implementing the same
+      `LimitEditorHosts` interfaces `flat`/`deep_flat` do), so no new
+      `xxx.enabled()` gate arm is needed, unlike the island-shaped preset
+      bug class from Phases 8/10/12. New `ProjectMetadataTest` coverage
+      (source-string assertions, matching this project's established
+      pattern for `EnvelopedChunkGenerator` features that need live
+      Minecraft classes and so aren't directly JUnit-runnable).
 - [ ] 17.2c Test configs (a short total-stack config and a tall one, per
       §34.5's flagged vertical-fit risk) + docs (README, MANUAL_TESTING.md,
       config/tests/README.md) + phase wrap-up. **[Jason]** acceptance.
