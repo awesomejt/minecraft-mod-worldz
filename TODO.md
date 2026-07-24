@@ -2795,7 +2795,17 @@ pulled earlier if Jason wants a fun quick win.**
 
 ## Phase 19 — Structure options wrap-up (GOALS 21, 23, 24)
 
-- [ ] 19.1 Verify natural placement remains the default everywhere (21).
+- [x] 19.1 Verify natural placement remains the default everywhere (21).
+      **Done (0.2.81), verification only, no code change.** Audited every
+      mechanism that touches structure placement: the exterior gate in
+      `EnvelopedChunkGenerator.createStructures` only ever *suppresses*
+      structures in wholly-exterior (non-explorable) chunks, never
+      relocates them; `FloatingIslandsDeployment`'s guaranteed village
+      (GOALS 07/08) force-places one only when `floatingIslands.enabled`,
+      an opt-in feature; `ProgressionGuarantees`/`ObjectiveSite`'s compact
+      fallback sites only ever fire when a real vanilla structure doesn't
+      fit the configured border, a beatability safety net. Natural
+      placement is the only *default* everywhere else. See DESIGN §36.1.
 - [ ] 19.2 Generalize the exclusion-zone module into per-structure-family
       "minimum distance from spawn" options (default 2000 blocks) usable by
       any world type (24).

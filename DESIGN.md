@@ -5534,3 +5534,31 @@ requirement) — verified against §35.0's real APIs, not assumed:**
   simultaneously without interaction — Jason's explicit call (2026-07-24):
   document the interaction, don't build around it speculatively.
 
+## 36. Structure options wrap-up (GOALS 21, 23, 24) — design pass (TODO 19.1-19.3)
+
+### 36.1 Natural placement stays the default (GOAL 21) — verification, no code change
+
+Audited every existing mechanism that touches where a structure ends up,
+looking for anything that overrides vanilla's normal seed-based placement
+*by default*:
+
+- `EnvelopedChunkGenerator.createStructures`'s existing exterior gate only
+  ever *suppresses* structures in wholly-exterior chunks (masking a
+  boundary that was never meant to be explored); it never relocates or
+  forces one.
+- `FloatingIslandsDeployment.placeGuaranteedVillage` (GOALS 07/08, DESIGN
+  §28.3) force-places a real vanilla village with vanilla's own jigsaw
+  machinery — but only when `floatingIslands.enabled`, an opt-in feature,
+  never the default for any preset.
+- `ProgressionGuarantees`/`ObjectiveSite` (compact End-portal vault,
+  blaze-spawner room, stronghold-adjacent fallbacks) only ever fire when a
+  *real* vanilla structure doesn't fit inside the configured border/exterior
+  — a beatability safety net, not a placement policy. Its own class doc
+  ("Creates compact progression sites when vanilla structures do not fit")
+  already states this.
+
+No other code path touches structure placement at all. **Conclusion: GOAL
+21 already holds everywhere, by construction** — natural placement is the
+only *default* behavior; both exceptions are opt-in or fallback-only. No
+code change for 19.1.
+
