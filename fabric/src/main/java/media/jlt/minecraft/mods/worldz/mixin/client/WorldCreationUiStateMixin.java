@@ -10,6 +10,7 @@ import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SkyChunkPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SkyIslandPresetEditor;
+import media.jlt.minecraft.mods.worldz.client.StackedPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
 import net.minecraft.client.gui.screens.worldselection.PresetEditor;
@@ -55,6 +56,8 @@ abstract class WorldCreationUiStateMixin {
             callback.setReturnValue(FlatPresetEditor.INSTANCE);
         } else if (preset.unwrapKey().filter(DeepFlatPresetEditor.DEEP_FLAT_PRESET::equals).isPresent()) {
             callback.setReturnValue(DeepFlatPresetEditor.INSTANCE);
+        } else if (preset.unwrapKey().filter(StackedPresetEditor.STACKED_PRESET::equals).isPresent()) {
+            callback.setReturnValue(StackedPresetEditor.INSTANCE);
         }
     }
 }

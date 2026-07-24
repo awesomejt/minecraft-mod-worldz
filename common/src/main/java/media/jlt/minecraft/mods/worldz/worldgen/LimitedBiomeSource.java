@@ -23,6 +23,8 @@ import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
+import media.jlt.minecraft.mods.worldz.logic.StackedLayerSpec;
+import media.jlt.minecraft.mods.worldz.logic.StackedPlan;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.Holder;
@@ -108,6 +110,17 @@ public final class LimitedBiomeSource extends BiomeSource {
     private volatile int originBlockX;
     private volatile int originBlockZ;
     private volatile WorldLayoutPlan effectiveLayoutPlan;
+    /**
+     * Pushed post-construction from {@code EnvelopedChunkGenerator}'s own constructor (GOAL 35,
+     * DESIGN §34.3) -- unlike {@link #island}/{@link #skyIsland}/{@link #chunkIsland} (read live
+     * FROM this class by the generator), the stacked plan flows the other direction: it is
+     * persisted on the generator's own codec (its codec has a free slot; this class's is already
+     * full 14/14), but real per-Y biome reporting can only happen here, since vanilla always asks
+     * *this* class for a column's biome, never the generator. Mirrors {@link #setLayoutSeed}'s
+     * "not part of the codec" precedent -- fully known at construction, no real-seed dependency
+     * of its own (layer order resolution reuses {@link #effectiveLayoutPlan}'s own seed).
+     */
+    private volatile StackedPlan stackedPlan = StackedPlan.disabled();
 
     private LimitedBiomeSource(
         Supplier<HolderSet<Biome>> allowedBiomes,
@@ -236,6 +249,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         // DeepFlatPlan itself is read from EnvelopedChunkGenerator's own codec, never from here.
         boolean deepFlatDefaults = encodedStarterRadius.isEmpty()
             && encodedWorldType.map("deep_flat"::equals).orElse(false);
+        // Same fix shape again for stacked (GOAL 35, DESIGN §34.1): unlike every other typed
+        // preset, stacked needs several biomes at once (one per layer), not one biome (flat) or
+        // full vanilla variety (cave/deep_flat/...) -- resolveStackedAllowed returns exactly the
+        // configured layers' own biome set. StackedPlan itself is read from
+        // EnvelopedChunkGenerator's own codec, never from here, same split as flat/deep_flat.
+        boolean stackedDefaults = encodedStarterRadius.isEmpty()
+            && encodedWorldType.map("stacked"::equals).orElse(false);
 
         Supplier<HolderSet<Biome>> allowed = encodedBiomes
             .<Supplier<HolderSet<Biome>>>map(value -> () -> value)
@@ -245,10 +265,12 @@ public final class LimitedBiomeSource extends BiomeSource {
                     ? () -> resolveSingleBiomeAllowed(config, biomeGetter)
                     : flatDefaults
                         ? () -> resolveFlatAllowed(config, biomeGetter)
-                        : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                            || netherStartDefaults || endStartDefaults || deepFlatDefaults
-                            ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
-                            : () -> resolveConfiguredBiomes(config, biomeGetter));
+                        : stackedDefaults
+                            ? () -> resolveStackedAllowed(config, biomeGetter)
+                            : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
+                                || netherStartDefaults || endStartDefaults || deepFlatDefaults
+                                ? () -> resolveFullVanillaOverworldAllowed(biomeGetter)
+                                : () -> resolveConfiguredBiomes(config, biomeGetter));
 
         // Every encoded instance has starter_radius. Its presence distinguishes a
         // persisted "no starter biome" from the fieldless preset that consults config.
@@ -257,7 +279,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         Optional<Holder<Biome>> starter = encodedStarterRadius.isPresent()
             ? encodedStarterBiome
             : stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults
+                || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults || stackedDefaults
                 ? Optional.empty()
                 : encodedStarterBiome.or(() -> chaosBiomesDefaults
                     ? resolveChaosBiomesStarter(config, biomeGetter)
@@ -301,7 +323,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                             WorldLayoutPlan.DEFAULT_REGION_SCALE_BLOCKS, config.flat.biome, new Random().nextLong()
                         )
                     : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                        || netherStartDefaults || endStartDefaults || deepFlatDefaults
+                        || netherStartDefaults || endStartDefaults || deepFlatDefaults || stackedDefaults
                         ? WorldLayoutPlan.legacy()
                         : stripWorldDefaults && config.stripWorld.bands.enabled
                             ? WorldLayoutPlan.resolveBands(
@@ -320,7 +342,7 @@ public final class LimitedBiomeSource extends BiomeSource {
                     : stripWorldDefaults
                         ? config.stripWorld.spawn.strategy
                         : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults
-                            || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults
+                            || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults || stackedDefaults
                             ? SpawnStrategy.STARTER_AT_ORIGIN
                             : config.spawn.strategy);
         // allow_rivers/allow_oceans/allow_beaches come from whichever typed-preset config
@@ -781,6 +803,23 @@ public final class LimitedBiomeSource extends BiomeSource {
         return HolderSet.direct(List.copyOf(resolved));
     }
 
+    /**
+     * Unlike every other typed preset's own allowed-biome resolution, stacked needs one holder
+     * per configured layer (GOAL 35, DESIGN §34.3) rather than a single biome or full vanilla
+     * variety -- this is also what {@link #collectPossibleBiomes()} ends up reporting, which
+     * vanilla's own decoration pipeline unions features from (verified in
+     * {@code ChunkGenerator.applyBiomeDecoration}, DESIGN §34.4).
+     */
+    private static HolderSet<Biome> resolveStackedAllowed(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
+        Set<Holder<Biome>> resolved = new LinkedHashSet<>();
+        for (String raw : config.stacked.layers) {
+            String biomeId = StackedLayerSpec.parse(raw).biome();
+            resolveSingleBiomeHolder(biomeId, biomeGetter)
+                .ifPresentOrElse(resolved::add, () -> WorldzCommon.LOGGER.warn("Unknown stacked layer biome '{}'.", biomeId));
+        }
+        return HolderSet.direct(List.copyOf(resolved));
+    }
+
     private static Optional<Holder<Biome>> resolveSingleBiomeStarter(WorldzConfig config, HolderGetter<Biome> biomeGetter) {
         if (config.singleBiome.starterBiome.isEmpty()) {
             return Optional.empty();
@@ -930,6 +969,17 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public void setLayoutSeed(long seed) {
         this.effectiveLayoutPlan = this.worldLayoutPlan.withSeed(seed);
+    }
+
+    /**
+     * Pushes the resolved stacked-biome-layers plan onto this biome source (GOAL 35, DESIGN
+     * §34.3), called once from {@code EnvelopedChunkGenerator}'s own constructor. Harmless no-op
+     * for every other preset -- {@link #stackedPlan} stays {@link StackedPlan#disabled()}.
+     *
+     * @param plan resolved stacked plan, disabled for every preset except {@code stacked}
+     */
+    public void setStackedLayers(StackedPlan plan) {
+        this.stackedPlan = plan;
     }
 
     /**
@@ -1184,6 +1234,19 @@ public final class LimitedBiomeSource extends BiomeSource {
         int blockZ = QuartPos.toBlock(quartZ);
         int originX = this.originBlockX;
         int originZ = this.originBlockZ;
+        if (this.stackedPlan.enabled()) {
+            // Checked before every other mode (mirrors sky island's own early short-circuit
+            // above) -- stacked does not compose with single_biome/chaos_biomes/pass-through/
+            // island shapes, matching every other Overworld-only generator-owned plan's
+            // precedent. Applies everywhere in the dimension (no X/Z footprint check), unlike
+            // every island-shaped preset -- a stacked world has no island footprint at all.
+            List<StackedLayerSpec> resolved = this.stackedPlan.resolvedLayers(this.effectiveLayoutPlan.seed());
+            String biomeId = StackedPlan.layerAt(resolved, QuartPos.toBlock(quartY)).biome();
+            Optional<Holder<Biome>> stackedBiome = stackedBiomeHolder(biomeId);
+            if (stackedBiome.isPresent()) {
+                return stackedBiome.get();
+            }
+        }
         if (this.island.enabled() && this.island.withinExclusionZone(blockX - originX, blockZ - originZ)) {
             Optional<Holder<Biome>> islandResult = islandBiomeAt(blockX - originX, blockZ - originZ);
             if (islandResult.isPresent()) {
@@ -1253,6 +1316,18 @@ public final class LimitedBiomeSource extends BiomeSource {
             }
         }
         return this.resolution.get().delegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
+    }
+
+    /**
+     * Resolves a stacked layer's biome id against {@link #allowedBiomes()} (GOAL 35, DESIGN
+     * §34.3) -- {@link #resolveStackedAllowed}/the Customize-screen editor both guarantee every
+     * configured layer biome is already present there, exactly the set
+     * {@link #collectPossibleBiomes()} reports, so no separate id-to-holder map is needed.
+     */
+    private Optional<Holder<Biome>> stackedBiomeHolder(String biomeId) {
+        return this.resolution.get().allowedBiomes().stream()
+            .filter(holder -> holder.unwrapKey().map(key -> key.identifier().toString()).filter(biomeId::equals).isPresent())
+            .findFirst();
     }
 
     private record Resolution(

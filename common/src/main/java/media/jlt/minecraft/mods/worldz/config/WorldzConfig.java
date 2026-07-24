@@ -135,6 +135,8 @@ public final class WorldzConfig {
     public FlatConfig flat = new FlatConfig();
     /** Defaults for the {@code jlt_worldz:deep_flat} typed preset (GOAL 16; DESIGN §33.4). */
     public DeepFlatConfig deepFlat = new DeepFlatConfig();
+    /** Defaults for the {@code jlt_worldz:stacked} typed preset (GOAL 35; DESIGN §34.1). */
+    public StackedConfig stacked = new StackedConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -261,6 +263,9 @@ public final class WorldzConfig {
         if (object.containsKey("deepFlat")) {
             config.deepFlat = readDeepFlatConfig(object.get("deepFlat"), "deepFlat", logger);
         }
+        if (object.containsKey("stacked")) {
+            config.stacked = readStackedConfig(object.get("stacked"), "stacked", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -324,6 +329,7 @@ public final class WorldzConfig {
         endStart = sanitizeEndStart(endStart, logger);
         flat = sanitizeFlat(flat, logger);
         deepFlat = sanitizeDeepFlat(deepFlat, logger);
+        stacked = sanitizeStacked(stacked, logger);
         return this;
     }
 
@@ -554,6 +560,15 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static StackedConfig sanitizeStacked(StackedConfig config, Logger logger) {
+        StackedConfig sanitized = config == null ? new StackedConfig() : config;
+        if (sanitized.layers == null || sanitized.layers.isEmpty()) {
+            logger.warn("stacked.layers was empty; using the default layer stack.");
+            sanitized.layers = new StackedConfig().layers;
+        }
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -706,6 +721,7 @@ public final class WorldzConfig {
             + ", endStart=" + endStartSummary(endStart)
             + ", flat=" + flatSummary(flat)
             + ", deepFlat=" + deepFlatSummary(deepFlat)
+            + ", stacked=" + stackedSummary(stacked)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -737,6 +753,7 @@ public final class WorldzConfig {
         values.put("endStart", endStartMap(endStart));
         values.put("flat", flatMap(flat));
         values.put("deepFlat", deepFlatMap(deepFlat));
+        values.put("stacked", stackedMap(stacked));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1226,6 +1243,20 @@ public final class WorldzConfig {
         }
         if (map.containsKey("riverExclusionRadiusBlocks")) {
             config.riverExclusionRadiusBlocks = readInt(map.get("riverExclusionRadiusBlocks"), name + ".riverExclusionRadiusBlocks");
+        }
+        return config;
+    }
+
+    private static StackedConfig readStackedConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StackedConfig config = new StackedConfig();
+        if (map.containsKey("layers")) {
+            config.layers = readStringList(map.get("layers"), name + ".layers", logger);
+        }
+        if (map.containsKey("seedRandomizedOrder")) {
+            config.seedRandomizedOrder = readBoolean(map.get("seedRandomizedOrder"), name + ".seedRandomizedOrder");
         }
         return config;
     }
@@ -1764,6 +1795,13 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> stackedMap(StackedConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("layers", config.layers);
+        values.put("seedRandomizedOrder", config.seedRandomizedOrder);
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -1952,6 +1990,10 @@ public final class WorldzConfig {
             + ", capLayers=" + config.capLayers
             + ", riversEnabled=" + config.riversEnabled
             + ", riverExclusionRadiusBlocks=" + config.riverExclusionRadiusBlocks;
+    }
+
+    private static String stackedSummary(StackedConfig config) {
+        return "layers=" + config.layers + ", seedRandomizedOrder=" + config.seedRandomizedOrder;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

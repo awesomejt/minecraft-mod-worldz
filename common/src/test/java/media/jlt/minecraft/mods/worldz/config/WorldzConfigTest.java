@@ -599,6 +599,10 @@ class WorldzConfigTest {
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
                 + ", deepFlat=surfaceY=64, capLayers=[minecraft:dirt:3, minecraft:grass_block:1],"
                 + " riversEnabled=true, riverExclusionRadiusBlocks=512"
+                + ", stacked=layers=[minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40,minecraft:podzol:2;6,"
+                + " minecraft:desert;minecraft:sandstone:20,minecraft:sand:3;6,"
+                + " minecraft:plains;minecraft:stone:20,minecraft:dirt:3,minecraft:grass_block:1;0],"
+                + " seedRandomizedOrder=false"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1260,6 +1264,39 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertFalse(config.deepFlat.capLayers.isEmpty());
+    }
+
+    @Test
+    void stackedSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stacked:
+              layers: ["minecraft:taiga;minecraft:stone:40;6", "minecraft:plains;minecraft:stone:20,minecraft:grass_block:1;0"]
+              seedRandomizedOrder: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(
+            List.of("minecraft:taiga;minecraft:stone:40;6", "minecraft:plains;minecraft:stone:20,minecraft:grass_block:1;0"),
+            config.stacked.layers
+        );
+        assertTrue(config.stacked.seedRandomizedOrder);
+    }
+
+    @Test
+    void stackedDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.stacked.layers.isEmpty());
+        assertFalse(config.stacked.seedRandomizedOrder);
+    }
+
+    @Test
+    void stackedEmptyLayersFallBackToDefaults() {
+        WorldzConfig config = WorldzConfig.parse("""
+            stacked:
+              layers: []
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.stacked.layers.isEmpty());
     }
 
     @Test

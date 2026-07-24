@@ -10,6 +10,7 @@ import media.jlt.minecraft.mods.worldz.client.OceanIslandPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SingleBiomePresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SkyChunkPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.SkyIslandPresetEditor;
+import media.jlt.minecraft.mods.worldz.client.StackedPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.StripWorldPresetEditor;
 import media.jlt.minecraft.mods.worldz.client.WorldzPresetEditor;
 import net.neoforged.bus.api.IEventBus;
@@ -37,5 +38,6 @@ final class WorldzNeoForgeClient {
         event.register(EndStartPresetEditor.END_START_PRESET, EndStartPresetEditor.INSTANCE);
         event.register(FlatPresetEditor.FLAT_PRESET, FlatPresetEditor.INSTANCE);
         event.register(DeepFlatPresetEditor.DEEP_FLAT_PRESET, DeepFlatPresetEditor.INSTANCE);
+        event.register(StackedPresetEditor.STACKED_PRESET, StackedPresetEditor.INSTANCE);
     }
 }

@@ -2591,7 +2591,7 @@ composes with.
       17.2b (decoration bypass + acceptance-relevant beatability check)/
       17.2c (test configs, docs, phase wrap-up), mirroring Phase 16's own
       precedent for multi-part phases.
-- [ ] 17.2a Implement `jlt_worldz:stacked` core mechanism (DESIGN §34.1-
+- [x] 17.2a Implement `jlt_worldz:stacked` core mechanism (DESIGN §34.1-
       §34.3): `StackedLayerSpec`/`StackedPlan` records + codec, layer
       editor UI (reusing the flat layer editor's text import/export
       convention, §33.5) with per-layer biome + air gap, seed-randomized
@@ -2599,6 +2599,39 @@ composes with.
       delegate, paint N bands), `getSpawnHeight`/total-height plumbing,
       `LimitedBiomeSource.setStackedLayers` + `getNoiseBiome` early branch,
       typed preset + registration, fieldless-preset defaulting hint.
+      **Done (0.2.73), in-game testable now (no buried-layer decoration
+      yet -- that's 17.2b).** `stacked` shows up as the thirteenth "Worldz"
+      World Type entry. `StackedLayerSpec` reuses `FlatLayerSpec` for each
+      layer's own block stack (`biome;blocks;air gap` shorthand, e.g.
+      `minecraft:taiga;minecraft:bedrock:1,minecraft:stone:40;6`), newline-
+      only entry splitting (unlike flat's comma-or-newline split -- a
+      layer's own blocks sub-list already uses commas internally).
+      `resolveStackedAllowed` gives `LimitedBiomeSource` one allowed-biome
+      holder per configured layer (needed for both the fieldless-preset
+      hint and `collectPossibleBiomes()`, which vanilla's own decoration
+      pipeline unions features from). `LimitedBiomeSource.
+      setStackedLayers` is a non-codec runtime setter, called once from
+      `EnvelopedChunkGenerator`'s own constructor (mirrors `setLayoutSeed`'s
+      exact "not part of the codec" precedent) -- `getNoiseBiome` gets an
+      early branch, checked before every other mode exactly like sky
+      island's own early short-circuit, converting `quartY` to the covering
+      layer's biome via `StackedPlan.layerAt` (walks bottom-to-top starting
+      at the dimension's own min Y, covering each layer's air gap too so
+      decoration anywhere in the headroom still reports the right biome).
+      Layer order resolution (`seedRandomizedOrder`) reuses `originSource`'s
+      own already-live seed (`effectiveLayoutPlan().seed()`) rather than a
+      new seed field, mirroring `islandSeed()`/`skyIslandSeed()`'s exact
+      precedent -- no `ChunkMapMixin` changes needed. Terrain fill/height
+      queries (`fillStackedColumns`, `stackedBaseHeight`/`stackedBaseColumn`)
+      mirror `flat`'s own `fillFlatColumns`/`flatBaseHeight`/
+      `flatBaseColumn` shape exactly, just N bands with explicit air-gap
+      skips instead of one solid stack. New JUnit (`StackedLayerSpecTest`,
+      `StackedPlanTest`, `WorldzConfigTest`/`WorldPresetResourcesTest`/
+      `ProjectMetadataTest` coverage). Fixed two pre-existing exact-string
+      tests broken by the new `stackedDefaults` ternary branch shifting
+      indentation in `LimitedBiomeSource`'s `allowed`-biome dispatch chain
+      (not a behavior bug, just brittle string-matching tests needing their
+      expected literals updated for the new nesting level).
 - [ ] 17.2b Implement decoration (DESIGN §34.4): `applyBiomeDecoration`
       override calling `super` first, then the buried-layer
       `ConfiguredFeature.place` bypass pass for every non-top layer's

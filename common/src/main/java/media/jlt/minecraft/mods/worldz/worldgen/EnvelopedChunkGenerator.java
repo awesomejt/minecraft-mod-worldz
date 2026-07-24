@@ -24,6 +24,8 @@ import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
+import media.jlt.minecraft.mods.worldz.logic.StackedLayerSpec;
+import media.jlt.minecraft.mods.worldz.logic.StackedPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
@@ -110,6 +112,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         EndStartCodecs.PLAN_CODEC.optionalFieldOf("end_start").forGetter(generator -> Optional.of(generator.endStart)),
         FlatCodecs.PLAN_CODEC.optionalFieldOf("flat").forGetter(generator -> Optional.of(generator.flat)),
         DeepFlatCodecs.PLAN_CODEC.optionalFieldOf("deep_flat").forGetter(generator -> Optional.of(generator.deepFlat)),
+        StackedCodecs.PLAN_CODEC.optionalFieldOf("stacked").forGetter(generator -> Optional.of(generator.stacked)),
         // Fieldless-preset hint only (DESIGN §30.1), mirroring LimitedBiomeSource's own
         // write-never "world_type" field exactly: lets a never-customized `jlt_worldz:cave`/
         // `jlt_worldz:nether_start` world default its plan from live config (below) without
@@ -253,6 +256,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * generated terrain to a flat surface instead of replacing it outright.
      */
     private final DeepFlatPlan deepFlat;
+    /**
+     * The Overworld's stacked-biome-layers plan (GOAL 35, DESIGN §34.1), persisted directly on
+     * this generator's own codec -- mirrors {@link #flat}'s exact precedent. Unlike every other
+     * generator-owned plan, this one is also pushed onto {@link #originSource} (a live,
+     * non-codec setter, {@link LimitedBiomeSource#setStackedLayers}) right after {@link
+     * #originSource} itself is resolved below -- real per-Y biome reporting can only happen on
+     * {@code LimitedBiomeSource}, since vanilla always asks it for a column's biome, never this
+     * generator directly (DESIGN §34.3).
+     */
+    private final StackedPlan stacked;
 
     private EnvelopedChunkGenerator(
         ChunkGenerator delegate,
@@ -265,7 +278,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         NetherStartPlan netherStart,
         EndStartPlan endStart,
         FlatPlan flat,
-        DeepFlatPlan deepFlat
+        DeepFlatPlan deepFlat,
+        StackedPlan stacked
     ) {
         super(delegate.getBiomeSource());
         this.delegate = delegate;
@@ -287,6 +301,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.endStart = dimension == Dimension.END ? endStart : EndStartPlan.disabled();
         this.flat = dimension == Dimension.OVERWORLD ? flat : FlatPlan.disabled();
         this.deepFlat = dimension == Dimension.OVERWORLD ? deepFlat : DeepFlatPlan.disabled();
+        this.stacked = dimension == Dimension.OVERWORLD ? stacked : StackedPlan.disabled();
+        this.originSource.ifPresent(source -> source.setStackedLayers(this.stacked));
     }
 
     /**
@@ -376,6 +392,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      */
     public DeepFlatPlan deepFlat() {
         return this.deepFlat;
+    }
+
+    /**
+     * Returns the stacked-biome-layers plan active for this dimension (GOAL 35, DESIGN §34.1),
+     * disabled for every other preset and for every non-Overworld instance.
+     *
+     * @return resolved stacked plan
+     */
+    public StackedPlan stacked() {
+        return this.stacked;
     }
 
     /**
@@ -666,8 +692,56 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         FlatPlan flat,
         DeepFlatPlan deepFlat
     ) {
+        return customized(
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat, deepFlat,
+            StackedPlan.disabled()
+        );
+    }
+
+    /**
+     * Wraps a generator with an explicit envelope, strip-world plan, Nether sky island plan,
+     * chunk-island plan, cave plan, Nether-start plan, End-start plan, flat plan, deep-flat plan,
+     * and stacked plan selected during world creation (GOAL 35, DESIGN §34.1).
+     *
+     * @param delegate vanilla or modded generator to delegate to
+     * @param dimension which dimension this instance wraps
+     * @param envelope resolved terrain envelope
+     * @param strip resolved strip-world corridor plan
+     * @param netherSkyIsland resolved Nether sky island plan, disabled for every other preset
+     *     and ignored entirely for non-Nether instances
+     * @param nonOverworldChunkIsland resolved Nether/End chunk-island plan, disabled for every
+     *     other preset and ignored entirely for the Overworld instance
+     * @param cave resolved cave plan, disabled for every other preset and ignored entirely for
+     *     non-Overworld instances
+     * @param netherStart resolved Nether-start plan, disabled for every other preset and ignored
+     *     entirely for non-Nether instances
+     * @param endStart resolved End-start plan, disabled for every other preset and ignored
+     *     entirely for non-End instances
+     * @param flat resolved flat plan, disabled for every other preset and ignored entirely for
+     *     non-Overworld instances
+     * @param deepFlat resolved deep-flat plan, disabled for every other preset and ignored
+     *     entirely for non-Overworld instances
+     * @param stacked resolved stacked plan, disabled for every other preset and ignored entirely
+     *     for non-Overworld instances
+     * @return delegating generator
+     */
+    public static EnvelopedChunkGenerator customized(
+        ChunkGenerator delegate,
+        Dimension dimension,
+        ExteriorPlan.DimensionEnvelope envelope,
+        StripPlan strip,
+        SkyIslandPlan netherSkyIsland,
+        ChunkIslandPlan nonOverworldChunkIsland,
+        CavePlan cave,
+        NetherStartPlan netherStart,
+        EndStartPlan endStart,
+        FlatPlan flat,
+        DeepFlatPlan deepFlat,
+        StackedPlan stacked
+    ) {
         return new EnvelopedChunkGenerator(
-            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat, deepFlat
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat, deepFlat,
+            stacked
         );
     }
 
@@ -868,6 +942,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Optional<EndStartPlan> encodedEndStart,
         Optional<FlatPlan> encodedFlat,
         Optional<DeepFlatPlan> encodedDeepFlat,
+        Optional<StackedPlan> encodedStacked,
         Optional<String> worldType
     ) {
         ExteriorPlan defaults = ExteriorPlan.fromConfig(WorldzCommon.config());
@@ -921,8 +996,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 ? DeepFlatPlan.fromConfig(WorldzCommon.config().deepFlat)
                 : DeepFlatPlan.disabled()
         );
+        StackedPlan stacked = encodedStacked.orElseGet(
+            () -> dimension == Dimension.OVERWORLD && worldType.filter("stacked"::equals).isPresent()
+                ? StackedPlan.fromConfig(WorldzCommon.config().stacked)
+                : StackedPlan.disabled()
+        );
         return new EnvelopedChunkGenerator(
-            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat, deepFlat
+            delegate, dimension, envelope, strip, netherSkyIsland, nonOverworldChunkIsland, cave, netherStart, endStart, flat, deepFlat,
+            stacked
         );
     }
 
@@ -984,7 +1065,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // GOAL 15, DESIGN §33.1's correction) -- skipping the delegate's real cave carvers here
         // is what keeps a flat-fill chunk (built in fillFromNoise) from having real vanilla caves
         // carved into it after the fact.
-        if (!this.flat.enabled()) {
+        if (!this.flat.enabled() && !this.stacked.enabled()) {
             this.delegate.applyCarvers(region, seed, randomState, biomeManager, structureManager, chunk);
             applyTerrainAdjustments(chunk, randomState, true);
         }
@@ -1001,7 +1082,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // Same reasoning as applyCarvers: skip the delegate's real biome-specific surface rules
         // (sand/grass placement etc.) for flat -- fillFromNoise's own flat-fill is already the
         // final surface, mirroring FlatLevelSource.buildSurface's own no-op.
-        if (!this.flat.enabled()) {
+        if (!this.flat.enabled() && !this.stacked.enabled()) {
             this.delegate.buildSurface(level, structureManager, randomState, protoChunk);
         }
         if (this.deepFlat.enabled()) {
@@ -1312,6 +1393,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             applyEnvelope(centerChunk, randomState);
             return CompletableFuture.completedFuture(centerChunk);
         }
+        if (this.stacked.enabled()) {
+            // Same reasoning as flat above (GOAL 35, DESIGN §34.2): the delegate's real terrain
+            // is never used for stacked either, just its NoiseBasedChunkGenerator+
+            // LimitedBiomeSource shape (WorldLimitManager/border integration).
+            fillStackedColumns(centerChunk, resolvedStackedLayers());
+            applyEnvelope(centerChunk, randomState);
+            return CompletableFuture.completedFuture(centerChunk);
+        }
         return this.delegate.fillFromNoise(blender, randomState, structureManager, centerChunk)
             .thenApply(chunk -> {
                 applyTerrainAdjustments(chunk, randomState, false);
@@ -1364,6 +1453,88 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
+     * Returns {@link #stacked}'s configured layer order, resolved once per call from the real
+     * Minecraft world seed (GOAL 35, DESIGN §34.1) -- {@link StackedPlan#resolvedLayers} is a
+     * no-op unless {@code seedRandomizedOrder} is set. {@code stacked} is Overworld-only, so this
+     * is only ever called when {@link #originSource} is present, mirroring {@link #islandSeed()}/
+     * {@link #skyIslandSeed()}'s exact same-precedent seed lookup.
+     */
+    private List<StackedLayerSpec> resolvedStackedLayers() {
+        return this.stacked.resolvedLayers(this.originSource.orElseThrow().effectiveLayoutPlan().seed());
+    }
+
+    /**
+     * Paints every column with the same fixed stack of layers, bottom to top (GOAL 35, DESIGN
+     * §34.2) -- mirrors {@link #fillFlatColumns} almost exactly, except each layer's own block
+     * stack is followed by an explicit skip across its air gap rather than an unbroken solid
+     * column: a freshly generated {@link ChunkAccess} is already all-air by default, so the gap
+     * needs no block writes of its own, only advancing {@code y} past it.
+     */
+    private static void fillStackedColumns(ChunkAccess chunk, List<StackedLayerSpec> layers) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        Heightmap oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
+        Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
+        int y = chunk.getMinY();
+        for (StackedLayerSpec layer : layers) {
+            for (BlockState state : flatLayerStates(layer.blocks())) {
+                if (y > chunk.getMaxY()) {
+                    return;
+                }
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        chunk.setBlockState(pos.set(x, y, z), state);
+                        oceanFloor.update(x, y, z, state);
+                        worldSurface.update(x, y, z, state);
+                    }
+                }
+                y++;
+            }
+            y += layer.airGapBlocks();
+        }
+    }
+
+    /**
+     * Expands a resolved stacked layer order into one {@link BlockState} per Y, mirroring {@link
+     * #flatLayerStates} but with an explicit air entry for each layer's own gap so indices stay
+     * aligned with absolute Y offsets -- shared by {@link #stackedBaseHeight}/{@link
+     * #stackedBaseColumn}, the same split {@link #flatLayerStates} already has from {@link
+     * #fillFlatColumns}.
+     */
+    private static List<BlockState> stackedLayerStates(List<StackedLayerSpec> layers) {
+        List<BlockState> states = new ArrayList<>();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (StackedLayerSpec layer : layers) {
+            states.addAll(flatLayerStates(layer.blocks()));
+            for (int i = 0; i < layer.airGapBlocks(); i++) {
+                states.add(air);
+            }
+        }
+        return states;
+    }
+
+    /** Mirrors {@link #flatBaseHeight} exactly, fed a resolved stacked layer order instead. */
+    private static int stackedBaseHeight(List<StackedLayerSpec> layers, Heightmap.Types type, LevelHeightAccessor heightAccessor) {
+        List<BlockState> states = stackedLayerStates(layers);
+        for (int layerIndex = Math.min(states.size() - 1, heightAccessor.getMaxY()); layerIndex >= 0; layerIndex--) {
+            BlockState state = states.get(layerIndex);
+            if (type.isOpaque().test(state)) {
+                return heightAccessor.getMinY() + layerIndex + 1;
+            }
+        }
+        return heightAccessor.getMinY();
+    }
+
+    /** Mirrors {@link #flatBaseColumn} exactly, fed a resolved stacked layer order instead. */
+    private static NoiseColumn stackedBaseColumn(List<StackedLayerSpec> layers, LevelHeightAccessor heightAccessor) {
+        List<BlockState> layerStates = stackedLayerStates(layers);
+        BlockState[] states = new BlockState[heightAccessor.getHeight()];
+        for (int index = 0; index < states.length; index++) {
+            states[index] = index < layerStates.size() ? layerStates.get(index) : Blocks.AIR.defaultBlockState();
+        }
+        return new NoiseColumn(heightAccessor.getMinY(), states);
+    }
+
+    /**
      * Scans the layer stack from the top down for the first block opaque under {@code type},
      * mirroring {@code FlatLevelSource.getBaseHeight}'s own exact logic -- almost always just the
      * very top layer, but a configured non-opaque top layer (e.g. a deliberate glass ceiling)
@@ -1413,6 +1584,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (this.flat.enabled()) {
             return heightAccessor.getMinY() + Math.min(heightAccessor.getHeight(), this.flat.totalHeightBlocks());
         }
+        // Stacked (GOAL 35, DESIGN §34.1): spawn lands on the topmost layer's own surface, not
+        // including its own trailing air gap (that's just open sky above, not headroom to stand
+        // in mid-air over) -- mirrors flat's "top of the layer stack" spawn semantic exactly.
+        if (this.stacked.enabled()) {
+            List<StackedLayerSpec> resolved = resolvedStackedLayers();
+            int surfaceHeight = StackedPlan.totalHeightBlocks(resolved) - resolved.get(resolved.size() - 1).airGapBlocks();
+            return heightAccessor.getMinY() + Math.min(heightAccessor.getHeight(), surfaceHeight);
+        }
         // Deep-flat (GOAL 16, DESIGN §33.4): getSpawnHeight has no x/z of its own (it's a
         // dimension-wide constant, not per-column, verified from the real ChunkGenerator/
         // NoiseBasedChunkGenerator signature) -- SpawnOriginManager.safeSpawnNear reads it
@@ -1437,6 +1616,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             if (this.flat.enabled()) {
                 return flatBaseHeight(this.flat, type, heightAccessor);
+            }
+            if (this.stacked.enabled()) {
+                return stackedBaseHeight(resolvedStackedLayers(), type, heightAccessor);
             }
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
@@ -1537,6 +1719,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         if (mode == ExteriorMode.NORMAL) {
             if (this.flat.enabled()) {
                 return flatBaseColumn(this.flat, heightAccessor);
+            }
+            if (this.stacked.enabled()) {
+                return stackedBaseColumn(resolvedStackedLayers(), heightAccessor);
             }
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);

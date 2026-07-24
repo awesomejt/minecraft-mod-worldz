@@ -76,7 +76,7 @@ class WorldPresetResourcesTest {
         JsonObject tag = resource("/data/minecraft/tags/worldgen/world_preset/normal.json");
 
         assertFalse(tag.get("replace").getAsBoolean());
-        assertEquals(12, tag.getAsJsonArray("values").size());
+        assertEquals(13, tag.getAsJsonArray("values").size());
         assertEquals("jlt_worldz:worldz", tag.getAsJsonArray("values").get(0).getAsString());
         assertEquals("jlt_worldz:single_biome", tag.getAsJsonArray("values").get(1).getAsString());
         assertEquals("jlt_worldz:chaos_biomes", tag.getAsJsonArray("values").get(2).getAsString());
@@ -89,6 +89,7 @@ class WorldPresetResourcesTest {
         assertEquals("jlt_worldz:end_start", tag.getAsJsonArray("values").get(9).getAsString());
         assertEquals("jlt_worldz:flat", tag.getAsJsonArray("values").get(10).getAsString());
         assertEquals("jlt_worldz:deep_flat", tag.getAsJsonArray("values").get(11).getAsString());
+        assertEquals("jlt_worldz:stacked", tag.getAsJsonArray("values").get(12).getAsString());
     }
 
     @Test
@@ -301,6 +302,28 @@ class WorldPresetResourcesTest {
         // Like cave/flat (and unlike nether_start/end_start), DeepFlatPlan attaches to the
         // *Overworld's* own enveloped generator (DESIGN §33.4).
         assertEquals("deep_flat", overworldGenerator.get("world_type").getAsString());
+
+        JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
+        assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        assertFalse(netherGenerator.has("world_type"));
+        JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
+        assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
+    }
+
+    @Test
+    void stackedPresetFlagsWorldTypeOnTheOverworldGeneratorAndBiomeSource() throws IOException {
+        JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/stacked.json")
+            .getAsJsonObject("dimensions");
+        assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
+        JsonObject overworldGenerator = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator");
+        JsonObject biomeSource = overworldGenerator.getAsJsonObject("delegate").getAsJsonObject("biome_source");
+
+        assertEquals(2, biomeSource.size());
+        assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
+        assertEquals("stacked", biomeSource.get("world_type").getAsString());
+        // Like cave/flat/deep_flat (and unlike nether_start/end_start), StackedPlan attaches to
+        // the *Overworld's* own enveloped generator (DESIGN §34.1).
+        assertEquals("stacked", overworldGenerator.get("world_type").getAsString());
 
         JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
         assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());

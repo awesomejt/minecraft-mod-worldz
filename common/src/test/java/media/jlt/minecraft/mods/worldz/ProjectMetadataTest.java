@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.2.72", properties.getProperty("version"));
+        assertEquals("0.2.73", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -383,6 +383,52 @@ class ProjectMetadataTest {
     }
 
     @Test
+    void stackedTypedPresetIsWiredIntoBothLoaders() throws IOException {
+        String fabricMixin = Files.readString(
+            ROOT.resolve("fabric/src/main/java/media/jlt/minecraft/mods/worldz/mixin/client/WorldCreationUiStateMixin.java")
+        );
+        assertTrue(fabricMixin.contains("StackedPresetEditor.STACKED_PRESET"));
+        assertTrue(fabricMixin.contains("StackedPresetEditor.INSTANCE"));
+
+        String neoForgeClient = Files.readString(
+            ROOT.resolve("neoforge/src/main/java/media/jlt/minecraft/mods/worldz/WorldzNeoForgeClient.java")
+        );
+        assertTrue(neoForgeClient.contains("event.register(StackedPresetEditor.STACKED_PRESET, StackedPresetEditor.INSTANCE);"));
+
+        JsonObject lang = JsonParser.parseString(Files.readString(
+            ROOT.resolve("common/src/main/resources/assets/jlt_worldz/lang/en_us.json")
+        )).getAsJsonObject();
+        assertEquals("Worldz: Stacked", lang.get("generator.jlt_worldz.stacked").getAsString());
+    }
+
+    @Test
+    void limitedBiomeSourceAppliesStackedDefaultsWithoutCustomize() throws IOException {
+        // Same fix shape as every prior typed preset (closed from day one): a never-customized
+        // stacked world still gets its own configured layer biomes via the "world_type":
+        // "stacked" hint (DESIGN §34.1) -- unlike every other typed preset, stacked needs several
+        // biomes at once (one per layer), not one biome (flat) or full vanilla variety. StackedPlan
+        // itself is resolved separately, on EnvelopedChunkGenerator's own codec, keyed to the
+        // Overworld generator instance (like cave/flat/deep_flat).
+        String source = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/LimitedBiomeSource.java"
+        ));
+
+        assertTrue(source.contains(
+            "boolean stackedDefaults = encodedStarterRadius.isEmpty()\n"
+                + "            && encodedWorldType.map(\"stacked\"::equals).orElse(false);"
+        ));
+        assertTrue(source.contains("? () -> resolveStackedAllowed(config, biomeGetter)"));
+        assertTrue(source.contains("public void setStackedLayers(StackedPlan plan) {"));
+
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+        assertTrue(generator.contains("dimension == Dimension.OVERWORLD && worldType.filter(\"stacked\"::equals).isPresent()"));
+        assertTrue(generator.contains("StackedPlan.fromConfig(WorldzCommon.config().stacked)"));
+        assertTrue(generator.contains("this.originSource.ifPresent(source -> source.setStackedLayers(this.stacked));"));
+    }
+
+    @Test
     void limitedBiomeSourceAppliesNetherStartDefaultsWithoutCustomize() throws IOException {
         // Same fix shape as cave's own (closed from day one): a never-customized nether_start
         // world still gets full vanilla biome variety via the "world_type": "nether_start" hint
@@ -399,7 +445,7 @@ class ProjectMetadataTest {
         ));
         assertTrue(source.contains(
             "stripWorldDefaults || oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults\n"
-                + "                            || netherStartDefaults || endStartDefaults"
+                + "                                || netherStartDefaults || endStartDefaults"
         ));
 
         String generator = Files.readString(ROOT.resolve(
@@ -798,7 +844,8 @@ class ProjectMetadataTest {
                 + "                    : stripWorldDefaults\n"
                 + "                        ? config.stripWorld.spawn.strategy\n"
                 + "                        : oceanIslandDefaults || skyIslandDefaults || skyChunkDefaults || caveDefaults\n"
-                + "                            || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults\n"
+                + "                            || netherStartDefaults || endStartDefaults || flatDefaults || deepFlatDefaults"
+                + " || stackedDefaults\n"
                 + "                            ? SpawnStrategy.STARTER_AT_ORIGIN\n"
                 + "                            : config.spawn.strategy);"
         ));
