@@ -1,0 +1,33 @@
+# GOAL 24 (Phase 19.2, DESIGN §36.2-§36.3): proves structureDistance composes
+# with a typed preset, not just the plain "Worldz" preset (it lives in the
+# one createStructures override every preset shares, so no per-preset wiring
+# was needed), and exercises exemptStructureSets. Select the "Worldz: Single
+# Biome" world type (NOT plain "Worldz") on the creation screen.
+#
+# minDistanceBlocks shrunk to 500 for testability -- the shipped default is
+# 2000; see config/jlt_worldz.example.yaml for that. Strongholds are
+# exempted, so they should still generate at their normal vanilla distance
+# even inside the 500-block radius that suppresses everything else.
+#
+# Steps once in-game:
+#  1. `/locate structure minecraft:village_desert` and confirm the same
+#     "reported coordinate may be inside the radius, but nothing actually
+#     generates there" behavior as config 83 -- travel to any result within
+#     500 blocks and confirm plain desert terrain, no village.
+#  2. `/locate structure minecraft:stronghold` and travel to the reported
+#     coordinate regardless of distance from spawn -- confirm a real
+#     stronghold exists there, proving the exemption works even if vanilla's
+#     own ring placement happens to land one inside 500 blocks.
+#  3. Fly out past 500 blocks and confirm ordinary structures (desert
+#     pyramids, ruined portals, etc.) generate normally again.
+singleBiome:
+  landBiome: 'minecraft:desert'
+  starterBiome: ''
+  starterRadiusBlocks: 256
+  spawn:
+    strategy: starter_at_origin
+structureDistance:
+  enabled: true
+  minDistanceBlocks: 500
+  exemptStructureSets:
+    - minecraft:strongholds

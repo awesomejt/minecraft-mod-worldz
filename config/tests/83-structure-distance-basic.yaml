@@ -1,0 +1,38 @@
+# GOAL 24 (Phase 19.2, DESIGN §36.2-§36.3): every vanilla structure set held
+# back from spawn by a shared minimum distance, on the plain "Worldz" preset.
+# Shrunk to 400 blocks for testability -- the shipped default is 2000; see
+# config/jlt_worldz.example.yaml for that.
+#
+# Important nuance: vanilla's `/locate structure` command predicts a
+# candidate position from the structure's own placement math -- it does NOT
+# know this mod suppressed generation there, so it will still report a
+# coordinate inside the excluded radius. That is expected, not a bug: the
+# test is whether a real structure actually exists once you travel there,
+# not whether /locate's reported coordinate changes.
+#
+# Steps once in-game:
+#  1. `/locate structure minecraft:village_plains` (repeat for
+#     `village_desert`/`village_savanna`/`village_snowy`/`village_taiga` if
+#     the first result is far away) and note the reported coordinate.
+#  2. If the reported coordinate is within 400 blocks of spawn (Chebyshev,
+#     i.e. both |x| and |z| under 400): travel there and confirm there is
+#     NO village -- ordinary unmodified terrain instead.
+#  3. Fly/travel out past 400 blocks in a few directions and confirm a real
+#     village (or another structure -- pillager outpost, ruined portal,
+#     desert pyramid, etc.) does generate normally once you're clear of the
+#     excluded radius.
+#  4. `/locate structure minecraft:stronghold` and confirm it, too, is
+#     excluded if its reported position falls inside 400 blocks (unlikely
+#     at this radius given vanilla's own stronghold ring distance, but
+#     worth a quick check) -- config 84 exercises the exemption list
+#     instead, which is the more interesting stronghold case.
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 3000
+  finalRadiusBlocks: 3000
+  ensureEndPortal: true
+structureDistance:
+  enabled: true
+  minDistanceBlocks: 400
+spawn:
+  strategy: starter_at_origin

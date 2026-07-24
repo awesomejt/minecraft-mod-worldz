@@ -1029,6 +1029,41 @@ hasn't been observed in-game), and whether `/time add` bypasses the
 `advance_time` gamerule on this snapshot (config 80's own steps flag this
 as unconfirmed — use `/tick step` instead until it's checked).
 
+## Phase 19 acceptance (Structure options wrap-up, GOALS 21/23/24, TODO 19.1-19.3, DESIGN §36)
+
+Uses configs `83`-`84` (see [`config/tests/README.md`](config/tests/README.md)).
+No acceptance steps for 19.1 (verification-only, no behavior change) or
+19.3 (spiked and parked, no implementation — see DESIGN §36.4).
+
+1. **Structure distance, basic**, `83-structure-distance-basic.yaml`
+   (0.2.82+, 400-block radius — shrunk for testability, shipped default is
+   2000). `/locate structure minecraft:village_plains` (or another village
+   variant if that one's far away) and note the result. **Important:**
+   `/locate` predicts from vanilla's own placement math and has no idea
+   this mod suppressed generation — if the reported coordinate is inside
+   400 blocks, travel there and confirm there is genuinely no village
+   (plain terrain), not that `/locate` itself reports nothing. Then fly
+   out past 400 blocks and confirm a real structure generates normally
+   once you're clear of the radius.
+2. **Structure distance + exemption, typed preset**,
+   `84-structure-distance-single-biome-exempt-stronghold.yaml` (0.2.82+,
+   500-block radius, **select "Worldz: Single Biome"**). Confirms the
+   module composes with a typed preset (not just plain "Worldz") with no
+   extra setup — proof that it lives in the one shared
+   `EnvelopedChunkGenerator.createStructures` override every preset uses.
+   `/locate structure minecraft:stronghold` and travel to the result
+   regardless of distance — confirm a real stronghold exists there even if
+   it falls inside 500 blocks, since `minecraft:strongholds` is exempted.
+   Separately confirm an ordinary (non-exempt) structure inside 500 blocks
+   is suppressed exactly like config 83.
+
+**Not covered by this phase's acceptance:** Customize-screen exposure
+(config-only for this phase, same posture as the Phase 18 world-hazard
+modules), and a true per-structure-family *distinct* minimum distance
+(the shipped shape is one shared distance plus an opt-out exemption list —
+see the Backlog entry in TODO.md if a real per-family number is ever
+needed).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

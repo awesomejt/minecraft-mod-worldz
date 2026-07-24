@@ -1118,6 +1118,40 @@ including flooding void space beneath a floating island as the level
 rises past it. World hazards in this project are allowed to be
 destructive by design (see GOAL 38's own expanding-border behavior).
 
+## Structure options
+
+Like world hazards above, this is a shared runtime rule composing with
+**any** World Type — config-only for now, no dedicated Customize screen.
+
+### Structures far from spawn (GOAL 24)
+
+Set `structureDistance.enabled: true` to hold every vanilla structure set
+(villages, pillager outposts, strongholds, trail ruins, and so on) back
+from spawn until it's at least `minDistanceBlocks` away (Chebyshev — the
+same "square" distance border/exterior/exclusion-zone settings use
+throughout this mod), turning them into a genuine trip rather than a
+next-door neighbor. List any structure set ids that should stay at their
+normal, un-restricted vanilla distance in `exemptStructureSets`.
+
+```yaml
+structureDistance:
+  enabled: false
+  minDistanceBlocks: 2000
+  exemptStructureSets: []
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Whether structures are held back from spawn at all. |
+| `minDistanceBlocks` | `2000` | Minimum distance from spawn before a restricted structure set may generate. |
+| `exemptStructureSets` | `[]` | Structure set ids (e.g. `minecraft:strongholds`) always allowed at their normal vanilla distance, regardless of `minDistanceBlocks`. |
+
+Vanilla's `/locate structure` predicts a candidate position from the
+structure's own placement math and has no idea this mod suppressed
+generation there — it can still report a coordinate inside the restricted
+radius. That's expected: the actual chunk simply generates without the
+structure, exactly like any other suppressed structure set.
+
 ## Configuration
 
 The mod reads `config/jlt_worldz.yaml` at startup if present; it is entirely
