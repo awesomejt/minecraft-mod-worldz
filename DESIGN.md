@@ -5642,3 +5642,27 @@ default (every optional module in this project defaults off). No
 Customize-screen exposure yet, matching the world-hazard precedent
 exactly — config-only until Jason asks for more.
 
+### 36.4 Floating "Pandora" structure islands (GOAL 23) — spike, parked
+
+TODO 19.3 marks this stretch-only, "park if cost is out of proportion."
+Sketch: villages/other structures generating on their own floating
+islands, high above the surface, GOALS' own "Avatar Pandora" framing.
+Unlike GOALS 07/08's guaranteed village (a single deterministic force-
+placement onto an already-built floating slab this project owns), GOAL 23
+implies *choosing which structures get this treatment* and *building a
+floating island under an otherwise-normal, seed-placed structure* —
+inverting FloatingIslandsPlan's own model (island first, then force a
+structure onto it) into "structure decides to generate here, then build
+an island under it," which needs the structure's bounding box **before**
+deciding terrain, not after. That ordering doesn't fit this project's
+existing terrain-then-structure pipeline (`fillFromNoise`/`applyCarvers`
+run well before `createStructures`) without a real redesign — likely a
+second, deferred terrain pass keyed off already-placed structure starts,
+similar in spirit to GOAL 38's parked "mask, don't discard" idea (§21.2)
+but for structures instead of terrain. **Recommendation: park, matching
+TODO 19.3's own escape hatch** — no implementation this phase. Revisit
+only if Jason wants to spend a dedicated spike on it later; starting point
+for that spike would be confirming whether `Structure.generate`'s
+returned `StructureStart`/bounding box is available early enough, relative
+to `fillFromNoise`, to still redirect terrain shaping for the same chunk.
+

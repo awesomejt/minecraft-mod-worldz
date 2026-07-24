@@ -2836,9 +2836,17 @@ pulled earlier if Jason wants a fun quick win.**
       `originZ()`, matching border/exclusion-zone convention. New
       `StructureDistancePlanTest` (7 cases) + `WorldzConfigTest` read/
       sanitize/defaults coverage; full suite green.
-- [ ] 19.3 Stretch, only if Jason still wants it after 1–18: floating
+- [x] 19.3 Stretch, only if Jason still wants it after 1–18: floating
       "Pandora" structure islands (23). Design spike first; park if cost is
-      out of proportion.
+      out of proportion. **Spiked and parked (0.2.83), no implementation
+      — see DESIGN §36.4.** GOAL 23 needs a vanilla structure's bounding
+      box known *before* terrain shaping decides whether to build a
+      floating island under it, inverting this project's existing
+      terrain-then-structure pipeline order and FloatingIslandsPlan's own
+      "island first, force a structure onto it" model (GOALS 07/08). Real
+      cost is out of proportion for a stretch item per TODO's own escape
+      hatch — parked, not abandoned; revisit only if Jason wants a
+      dedicated spike later.
 - [ ] 19.4 Test configs; docs; **[Jason]** acceptance.
 
 ## Phase 20 — Wrap-up and release
@@ -2854,6 +2862,17 @@ pulled earlier if Jason wants a fun quick win.**
 
 ## Backlog (approved, not yet scheduled to a phase)
 
+- **2026-07-24, Phase 19.3 spike:** floating "Pandora" structure islands
+  (GOAL 23) — parked, not implemented, full findings in DESIGN §36.4. Needs
+  a structure's bounding box known before terrain shaping runs, inverting
+  this project's terrain-then-structure pipeline order; real design work,
+  not a quick follow-up. Revisit only if Jason wants a dedicated spike.
+- **2026-07-24, Phase 19.2:** `structureDistance`'s `exemptStructureSets`
+  ships as the only per-family knob (an opt-out list against one shared
+  `minDistanceBlocks`, DESIGN §36.3) rather than a true per-family distance
+  map. If a specific family ever needs its own *different* (non-zero,
+  non-default) minimum distance, that's a real config-shape change, not
+  covered by the exemption list — revisit if Jason asks for it.
 - **2026-07-24, found while updating `config/jlt_worldz.example.yaml` for
   Phase 18:** the example file only documents sections through Phase 4
   (`allowedBiomes` through `chaosBiomes`) — every typed preset added since
