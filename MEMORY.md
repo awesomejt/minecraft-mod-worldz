@@ -2709,3 +2709,47 @@ Durable decisions, verified API notes, and rationale that should survive across 
   per-phase subfolder; despite this session's own prompt using
   "config/tests/phase-<n>" phrasing, that reads as shorthand for "this
   phase's test files," not a literal new naming convention.
+
+- 2026-07-24 -- **Phase 19 (Structure options wrap-up, GOALS 21/23/24)
+  executed autonomously (no upfront questions needed) and fully committed,
+  0.2.81-0.2.84.** Full design in DESIGN §36.
+  **19.1 (GOAL 21):** verification only, no code -- audited every
+  mechanism touching structure placement and confirmed natural placement
+  is already the only *default* everywhere (the two exceptions, the
+  guaranteed-village force-placement and the `ProgressionGuarantees`
+  beatability fallback, are opt-in/fallback-only, not defaults).
+  **19.2 (GOAL 24):** new `structureDistance` module -- every vanilla
+  structure set held back from spawn by a shared minimum distance
+  (default 2000 blocks, Chebyshev) with an `exemptStructureSets` opt-out
+  list, rather than a true per-family distance map (GOALS 24 only ever
+  asks for one number; a real per-family map is logged in TODO's Backlog
+  if it's ever actually needed). **Key architecture finding:** vanilla's
+  per-chunk "is this structure set allowed here" decision lives entirely
+  inside `ChunkGenerator.createStructures`'s own `forEach`, calling a
+  *private* `tryGenerateStructure` -- `EnvelopedChunkGenerator` previously
+  delegated this wholesale to `super.createStructures(...)` (all-or-
+  nothing per chunk). Reimplemented the loop faithfully instead of trying
+  to hook the private method, replacing generation with the exact
+  `structure.generate` + `structureManager.setStartForStructure` call
+  shape `FloatingIslandsDeployment.placeGuaranteedVillage` (GOALS 07)
+  already ships and Jason already tested -- proven technique, not a new
+  risk. **Config placement:** deliberately NOT added to
+  `LimitedBiomeSource`'s codec (already full at 14/14 fields, per §27.9's
+  own "any future field must nest" note) or `EnvelopedChunkGenerator`'s
+  `customized()` constructor chain -- read live from `WorldzCommon
+  .config()` instead, since a config-only module (no Customize screen, no
+  per-world persistence, "new worlds only" already means nothing needs to
+  round-trip) needs neither. This is a new pattern worth remembering: a
+  cross-cutting module doesn't have to fight for a codec slot if it's
+  genuinely global/config-only rather than per-world-customizable.
+  **19.3 (GOAL 23):** spiked, parked, not implemented -- floating
+  "Pandora" structure islands need a structure's bounding box known
+  *before* terrain shaping runs (the inverse of this project's existing
+  terrain-then-structure pipeline order and `FloatingIslandsPlan`'s own
+  "island first, force a structure onto it" model), real design cost out
+  of proportion for a stretch item per TODO 19.3's own escape hatch.
+  **19.4:** configs `83`-`84`, README's new "Structure options" section,
+  MANUAL_TESTING's "Phase 19 acceptance," fresh jar deployed to
+  Worldz-Test. **[Jason] acceptance of configs 83-84 outstanding** --
+  Phase 20 (final wrap-up/release) not started, per the standing phase-gate
+  rule.
