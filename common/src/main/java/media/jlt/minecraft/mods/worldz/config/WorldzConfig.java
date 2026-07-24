@@ -144,6 +144,8 @@ public final class WorldzConfig {
     public ForeverNightConfig foreverNight = new ForeverNightConfig();
     /** World-hazard "rising lava floor" module (GOAL 29; DESIGN §35.2) -- composes with any world type. */
     public RisingLavaConfig risingLava = new RisingLavaConfig();
+    /** "Structures far from spawn" module (GOAL 24; DESIGN §36) -- composes with any world type. */
+    public StructureDistanceConfig structureDistance = new StructureDistanceConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -279,6 +281,9 @@ public final class WorldzConfig {
         if (object.containsKey("risingLava")) {
             config.risingLava = readRisingLavaConfig(object.get("risingLava"), "risingLava", logger);
         }
+        if (object.containsKey("structureDistance")) {
+            config.structureDistance = readStructureDistanceConfig(object.get("structureDistance"), "structureDistance", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -345,6 +350,7 @@ public final class WorldzConfig {
         stacked = sanitizeStacked(stacked, logger);
         foreverNight = sanitizeForeverNight(foreverNight, logger);
         risingLava = sanitizeRisingLava(risingLava, logger);
+        structureDistance = sanitizeStructureDistance(structureDistance, logger);
         return this;
     }
 
@@ -614,6 +620,17 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static StructureDistanceConfig sanitizeStructureDistance(StructureDistanceConfig config, Logger logger) {
+        StructureDistanceConfig sanitized = config == null ? new StructureDistanceConfig() : config;
+        sanitized.minDistanceBlocks = clampWithWarning(
+            sanitized.minDistanceBlocks, 0, MAX_BORDER_RADIUS_BLOCKS, "structureDistance.minDistanceBlocks", logger
+        );
+        if (sanitized.exemptStructureSets == null) {
+            sanitized.exemptStructureSets = new StructureDistanceConfig().exemptStructureSets;
+        }
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -769,6 +786,7 @@ public final class WorldzConfig {
             + ", stacked=" + stackedSummary(stacked)
             + ", foreverNight=" + foreverNightSummary(foreverNight)
             + ", risingLava=" + risingLavaSummary(risingLava)
+            + ", structureDistance=" + structureDistanceSummary(structureDistance)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -803,6 +821,7 @@ public final class WorldzConfig {
         values.put("stacked", stackedMap(stacked));
         values.put("foreverNight", foreverNightMap(foreverNight));
         values.put("risingLava", risingLavaMap(risingLava));
+        values.put("structureDistance", structureDistanceMap(structureDistance));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1355,6 +1374,23 @@ public final class WorldzConfig {
         }
         if (map.containsKey("rateDays")) {
             config.rateDays = readInt(map.get("rateDays"), name + ".rateDays");
+        }
+        return config;
+    }
+
+    private static StructureDistanceConfig readStructureDistanceConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StructureDistanceConfig config = new StructureDistanceConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("minDistanceBlocks")) {
+            config.minDistanceBlocks = readInt(map.get("minDistanceBlocks"), name + ".minDistanceBlocks");
+        }
+        if (map.containsKey("exemptStructureSets")) {
+            config.exemptStructureSets = readStringList(map.get("exemptStructureSets"), name + ".exemptStructureSets", logger);
         }
         return config;
     }
@@ -1921,6 +1957,14 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> structureDistanceMap(StructureDistanceConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("minDistanceBlocks", config.minDistanceBlocks);
+        values.put("exemptStructureSets", config.exemptStructureSets);
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -2129,6 +2173,13 @@ public final class WorldzConfig {
         }
         return "delayDays=" + config.delayDays + ", startY=" + config.startY + ", maxY=" + config.maxY
             + ", rateBlocks=" + config.rateBlocks + ", rateDays=" + config.rateDays;
+    }
+
+    private static String structureDistanceSummary(StructureDistanceConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "minDistanceBlocks=" + config.minDistanceBlocks + ", exemptStructureSets=" + config.exemptStructureSets;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

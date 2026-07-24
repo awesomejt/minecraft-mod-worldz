@@ -2806,9 +2806,36 @@ pulled earlier if Jason wants a fun quick win.**
       fallback sites only ever fire when a real vanilla structure doesn't
       fit the configured border, a beatability safety net. Natural
       placement is the only *default* everywhere else. See DESIGN §36.1.
-- [ ] 19.2 Generalize the exclusion-zone module into per-structure-family
+- [x] 19.2 Generalize the exclusion-zone module into per-structure-family
       "minimum distance from spawn" options (default 2000 blocks) usable by
-      any world type (24).
+      any world type (24). **Done (0.2.82), full design in DESIGN §36.2-
+      §36.3.** Not built on the existing `IslandPlan.ExclusionZone` (that
+      module holds/releases *terrain*, not vanilla structure placement) --
+      new `logic.StructureDistancePlan` (enabled, minDistanceBlocks default
+      2000, exemptStructureSets) + `config.StructureDistanceConfig`, a
+      shared top-level `structureDistance:` config section (config-only,
+      no Customize screen yet, matching the world-hazard modules'
+      precedent) read live from `WorldzCommon.config()` inside
+      `EnvelopedChunkGenerator.createStructures` -- deliberately not
+      threaded through `LimitedBiomeSource`'s codec (already full at its
+      14-field DFU ceiling) or `EnvelopedChunkGenerator`'s own `customized`
+      constructor chain, since a config-only module needs neither
+      per-world persistence nor Customize-screen round-tripping.
+      `createStructures` now reimplements vanilla's own per-structure-set
+      `forEach` (verified against the real `ChunkGenerator.createStructures`
+      source) instead of delegating wholesale, inserting one distance
+      check per structure set; generation itself reuses
+      `FloatingIslandsDeployment`'s already-shipped `structure.generate`+
+      `structureManager.setStartForStructure` technique in place of
+      vanilla's private `tryGenerateStructure`. Disabled by default (the
+      default path is byte-for-byte the original `super.createStructures`
+      call -- zero risk to any shipped preset); applies uniformly to every
+      world type since it lives in the one `createStructures` override
+      every preset already shares, with no per-preset wiring needed.
+      Chebyshev distance from the (possibly recentered) `originX()`/
+      `originZ()`, matching border/exclusion-zone convention. New
+      `StructureDistancePlanTest` (7 cases) + `WorldzConfigTest` read/
+      sanitize/defaults coverage; full suite green.
 - [ ] 19.3 Stretch, only if Jason still wants it after 1–18: floating
       "Pandora" structure islands (23). Design spike first; park if cost is
       out of proportion.

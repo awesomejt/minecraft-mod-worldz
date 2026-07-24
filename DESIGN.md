@@ -5562,3 +5562,83 @@ No other code path touches structure placement at all. **Conclusion: GOAL
 only *default* behavior; both exceptions are opt-in or fallback-only. No
 code change for 19.1.
 
+### 36.2 Structures far from spawn (GOAL 24)
+
+**The problem vanilla doesn't solve.** Vanilla structure placement
+(`RandomSpreadStructurePlacement` — villages, outposts, ruined portals,
+trail ruins, etc.) has no "stay at least N blocks from a point" concept;
+only `ConcentricRingsStructurePlacement` (strongholds) starts a ring
+distance out, and that distance isn't independently configurable per
+world without replacing the structure set's placement type entirely (a
+static datapack change, not something this mod's runtime config can drive
+per world). GOALS 24's "villages, outposts, strongholds, trail chambers,
+etc., far enough away — 2000 blocks is a good distance" needs a mechanism
+this project has to build.
+
+**Where the per-chunk decision actually lives.** Verified against the real
+26.2 sources (`ChunkGenerator.createStructures`, `StructureCheck`,
+`StructurePlacement`): the per-structure-set "is this chunk allowed to
+start this structure" decision is made once, per chunk, inside
+`ChunkGenerator.createStructures`'s own `forEach` over
+`state.possibleStructureSets()`, calling `StructurePlacement
+.isStructureChunk(state, chunkX, chunkZ)` and then a *private*
+`tryGenerateStructure`. `EnvelopedChunkGenerator` already overrides
+`createStructures` (for the exterior gate above) but previously delegated
+the entire body to `super.createStructures(...)` — an all-or-nothing call
+with no per-structure-set hook. `state.possibleStructureSets()` itself is
+resolved once per world at `createState` time (already used for
+`flat.structureOverrides()`, DESIGN §33.2) — fine for "is this whole
+family enabled anywhere," useless for "how close to spawn," which needs a
+per-chunk position.
+
+**Chosen approach: reimplement the loop, not the private method.**
+`ChunkGenerator.tryGenerateStructure`'s actual body (verified by reading
+it directly) is just `structure.generate(...)` +
+`structureManager.setStartForStructure(...)` — both public API, and
+exactly the technique `FloatingIslandsDeployment.placeGuaranteedVillage`
+(GOALS 07, already shipped and Jason-tested) already uses successfully.
+So `EnvelopedChunkGenerator.createStructures` now:
+
+1. Keeps the existing exterior gate unchanged (early return).
+2. Reads `StructureDistancePlan` fresh from `WorldzCommon.config()`
+   (config-only module, §36.3) — **when disabled (the default), calls
+   `super.createStructures(...)` exactly as before: zero behavior change,
+   zero risk to any shipped preset.**
+3. When enabled, reimplements vanilla's own per-set `forEach` faithfully
+   (existing-start check, `isStructureChunk`, single vs. weighted-multiple
+   structure selection using the same `WorldgenRandom`/salt idiom), with
+   one inserted condition: skip a structure set entirely for this chunk if
+   `StructureDistancePlan.isRestricted(structureSetId, chebyshevDistance)`
+   is true. Every other structure set in the same chunk is unaffected —
+   this is real per-family granularity, not an all-or-nothing chunk gate.
+   Distance uses Chebyshev (`max(abs(dx), abs(dz))`), matching the
+   established border/exclusion-zone "square" convention throughout this
+   project (§20.7, `ExteriorPlan`), and the same recentered `originX()`/
+   `originZ()` every other origin-relative calculation in this class
+   already uses.
+
+This is placement-type-agnostic (works identically for
+`random_spread` and `concentric_rings` sets) since it only touches the
+generic per-set loop, never `isPlacementChunk`'s own algorithm. Applying
+it to `minecraft:strongholds` composes safely with the existing
+`ProgressionGuarantees` fallback (§28's "creates compact progression sites
+when vanilla structures do not fit") if a small border pushes the natural
+stronghold ring outside a tight `minDistanceBlocks` — beatability was
+never dependent on the *natural* stronghold generating in the first
+place.
+
+### 36.3 Config shape: shared, config-only, single distance + exemptions
+
+Simplification, in the same spirit as End border's "not full schedule
+parity" call (§5.2) and the world-hazard modules' "config-only for this
+phase" precedent (§35.3): one shared `minDistanceBlocks` (default 2000)
+applying to every structure set, plus an `exemptStructureSets` opt-out
+list (structure-set ids, e.g. `minecraft:strongholds`), rather than a
+per-family distance map. GOALS 24 only ever asks for one distance
+("2000 blocks is a good distance"); a family that genuinely needs a
+different number can be exempted and handled later if it comes up — logged
+in the Backlog rather than built speculatively. `enabled: false` by
+default (every optional module in this project defaults off). No
+Customize-screen exposure yet, matching the world-hazard precedent
+exactly — config-only until Jason asks for more.
+

@@ -606,6 +606,7 @@ class WorldzConfigTest {
                 + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4"
                 + ", foreverNight=<disabled>"
                 + ", risingLava=<disabled>"
+                + ", structureDistance=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1416,6 +1417,40 @@ class WorldzConfigTest {
 
         assertEquals(1, config.risingLava.rateBlocks);
         assertEquals(1, config.risingLava.rateDays);
+    }
+
+    @Test
+    void structureDistanceSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            structureDistance:
+              enabled: true
+              minDistanceBlocks: 3000
+              exemptStructureSets:
+                - minecraft:strongholds
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.structureDistance.enabled);
+        assertEquals(3000, config.structureDistance.minDistanceBlocks);
+        assertEquals(List.of("minecraft:strongholds"), config.structureDistance.exemptStructureSets);
+    }
+
+    @Test
+    void structureDistanceDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.structureDistance.enabled);
+        assertEquals(2000, config.structureDistance.minDistanceBlocks);
+        assertTrue(config.structureDistance.exemptStructureSets.isEmpty());
+    }
+
+    @Test
+    void structureDistanceMinDistanceClampsToNonNegative() {
+        WorldzConfig config = WorldzConfig.parse("""
+            structureDistance:
+              minDistanceBlocks: -5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.structureDistance.minDistanceBlocks);
     }
 
     @Test

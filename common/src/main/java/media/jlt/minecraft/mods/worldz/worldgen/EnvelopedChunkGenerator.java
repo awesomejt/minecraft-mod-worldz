@@ -31,6 +31,7 @@ import media.jlt.minecraft.mods.worldz.logic.StarterKitPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterLandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
+import media.jlt.minecraft.mods.worldz.logic.StructureDistancePlan;
 import media.jlt.minecraft.mods.worldz.logic.WorldLayoutPlan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -39,6 +40,7 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -68,13 +70,17 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jspecify.annotations.Nullable;
 
@@ -1437,9 +1443,129 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ResourceKey<Level> level
     ) {
         ChunkPos centerPos = centerChunk.getPos();
-        if (!isEntirelyExterior(centerPos) || decoratesExteriorOcean(centerPos)) {
-            super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
+        if (isEntirelyExterior(centerPos) && !decoratesExteriorOcean(centerPos)) {
+            return;
         }
+        StructureDistancePlan distancePlan = StructureDistancePlan.fromConfig(WorldzCommon.config().structureDistance);
+        if (!distancePlan.enabled()) {
+            super.createStructures(registryAccess, state, structureManager, centerChunk, structureTemplateManager, level);
+            return;
+        }
+        createStructuresRespectingDistance(
+            registryAccess, state, structureManager, centerChunk, structureTemplateManager, level, distancePlan
+        );
+    }
+
+    /**
+     * Reimplements {@code ChunkGenerator.createStructures}'s own per-set loop (GOAL 24, DESIGN
+     * §36) with one inserted condition -- a restricted structure set is skipped entirely for a
+     * chunk too close to spawn -- rather than the all-or-nothing gate above (which can only ever
+     * suppress every structure in a chunk, not one family at a time). Only entered when {@link
+     * StructureDistancePlan#enabled()}, so the default (disabled) path is byte-for-byte the
+     * original {@code super.createStructures} call, zero risk to every existing preset.
+     *
+     * <p>Generation itself ({@code structure.generate} + {@code structureManager.
+     * setStartForStructure}) reuses the exact technique already proven by {@code
+     * FloatingIslandsDeployment.placeGuaranteedVillage} (verified against {@code
+     * PlaceCommand.placeStructure}) instead of vanilla's own {@code private
+     * ChunkGenerator.tryGenerateStructure}, which this class cannot call.
+     */
+    private void createStructuresRespectingDistance(
+        RegistryAccess registryAccess,
+        ChunkGeneratorStructureState state,
+        StructureManager structureManager,
+        ChunkAccess centerChunk,
+        StructureTemplateManager structureTemplateManager,
+        ResourceKey<Level> level,
+        StructureDistancePlan distancePlan
+    ) {
+        ChunkPos sourceChunkPos = centerChunk.getPos();
+        SectionPos sectionPos = SectionPos.bottomOf(centerChunk);
+        RandomState randomState = state.randomState();
+        int distanceFromOrigin = Math.max(
+            Math.abs(sourceChunkPos.getMinBlockX() - originX()), Math.abs(sourceChunkPos.getMinBlockZ() - originZ())
+        );
+        state.possibleStructureSets().forEach(set -> {
+            StructurePlacement placement = set.value().placement();
+            List<StructureSet.StructureSelectionEntry> structures = set.value().structures();
+            for (StructureSet.StructureSelectionEntry structure : structures) {
+                StructureStart existingStart = structureManager.getStartForStructure(sectionPos, structure.structure().value(), centerChunk);
+                if (existingStart != null && existingStart.isValid()) {
+                    return;
+                }
+            }
+            if (distancePlan.isRestricted(structureSetId(set), distanceFromOrigin)) {
+                return;
+            }
+            if (!placement.isStructureChunk(state, sourceChunkPos.x(), sourceChunkPos.z())) {
+                return;
+            }
+            if (structures.size() == 1) {
+                tryGenerateRestrictedStructure(
+                    structures.get(0), registryAccess, structureManager, randomState, structureTemplateManager,
+                    state.getLevelSeed(), centerChunk, sourceChunkPos, sectionPos, level
+                );
+                return;
+            }
+            List<StructureSet.StructureSelectionEntry> options = new ArrayList<>(structures);
+            WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(0L));
+            random.setLargeFeatureSeed(state.getLevelSeed(), sourceChunkPos.x(), sourceChunkPos.z());
+            int total = options.stream().mapToInt(StructureSet.StructureSelectionEntry::weight).sum();
+            while (!options.isEmpty()) {
+                int choice = random.nextInt(total);
+                int index = 0;
+                for (StructureSet.StructureSelectionEntry option : options) {
+                    choice -= option.weight();
+                    if (choice < 0) {
+                        break;
+                    }
+                    index++;
+                }
+                StructureSet.StructureSelectionEntry selected = options.get(index);
+                if (tryGenerateRestrictedStructure(
+                    selected, registryAccess, structureManager, randomState, structureTemplateManager,
+                    state.getLevelSeed(), centerChunk, sourceChunkPos, sectionPos, level
+                )) {
+                    return;
+                }
+                options.remove(index);
+                total -= selected.weight();
+            }
+        });
+    }
+
+    /**
+     * Faithful reimplementation of vanilla's private {@code ChunkGenerator.tryGenerateStructure}
+     * using only public API (DESIGN §36) -- same shape as {@code FloatingIslandsDeployment}'s
+     * already-shipped, Jason-tested call to {@code structure.generate}, but with the real
+     * biome-matching predicate instead of an always-true one, since this is an ordinary
+     * "try, may fail" attempt, not a forced placement.
+     */
+    private boolean tryGenerateRestrictedStructure(
+        StructureSet.StructureSelectionEntry selected,
+        RegistryAccess registryAccess,
+        StructureManager structureManager,
+        RandomState randomState,
+        StructureTemplateManager structureTemplateManager,
+        long seed,
+        ChunkAccess centerChunk,
+        ChunkPos sourceChunkPos,
+        SectionPos sectionPos,
+        ResourceKey<Level> level
+    ) {
+        Structure structure = selected.structure().value();
+        StructureStart previous = structureManager.getStartForStructure(sectionPos, structure, centerChunk);
+        int references = previous != null ? previous.getReferences() : 0;
+        Predicate<Holder<Biome>> biomePredicate = structure.biomes()::contains;
+        StructureStart start = structure.generate(
+            selected.structure(), level, registryAccess, this, this.getBiomeSource(), randomState,
+            structureTemplateManager, seed, sourceChunkPos, references, centerChunk, biomePredicate
+        );
+        if (!start.isValid()) {
+            return false;
+        }
+        structureManager.setStartForStructure(sectionPos, structure, start, centerChunk);
+        return true;
     }
 
     /**
