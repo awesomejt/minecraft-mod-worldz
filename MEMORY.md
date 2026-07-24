@@ -2591,3 +2591,41 @@ Durable decisions, verified API notes, and rationale that should survive across 
   not fixed speculatively: `deep_flat`'s water-capped river/ocean columns
   could source water into a real cave that happens to open right at the
   cap boundary -- watch for it in configs `69`/`71`.
+- 2026-07-24 — **Phase 17 (Stacked biome layers, GOAL 35) wrap-up
+  backfill.** All four tasks done (17.1 design, 17.2a core mechanism,
+  17.2b buried-layer decoration, 17.2c test configs/docs; full detail in
+  DESIGN §34.1-§34.6) plus two same-day follow-ups after Jason's own
+  acceptance pass, 0.2.73-0.2.75. **17.3 (DESIGN §34.7):** default
+  overhaul Jason requested directly (not from GOALS wording) -- bounded
+  world by default (`stacked.worldSizeChunks`, 4 chunks/64 blocks, 0 =
+  unlimited), 30-block minimum air gaps, 8-layer default stack, per-layer
+  relief instead of dead-flat bands (a within-layer-budget bump, not new
+  noise machinery, so `StackedPlan.layerAt`'s Y-only biome lookup needed
+  no changes), and a thickened bottom layer making the fallback End
+  portal deterministic. Y64-exact stack-center request is mathematically
+  incompatible with 8-layers/30-gap/thick-bottom-layer at once under the
+  existing 384-block height cap -- resolved to Y98 (real ~10-block bands,
+  documented tradeoff, not silently chosen), 0.2.76. **17.4 (DESIGN
+  §34.8), found testing 17.3 same session:** (a) bugfix -- the
+  `worldSizeChunks` default only applied via the Customize-screen path;
+  a never-customized stacked world (preset picked directly, or a
+  config-driven server world) fell through two other codec-decode
+  fallback branches that never consulted it, staying silently unbounded
+  -- fixed by centralizing the derivation on `StackedConfig` itself
+  rather than inlining it once, and widening two `private` codec-plan
+  factories just enough for all three resolution paths to share one
+  implementation (the actual lesson: the gap opened because the logic
+  was written once instead of centralized, not because two call sites
+  were simply forgotten); (b) new feature -- `stacked.layers` accepts a
+  bare biome id via new `StackedBiomeDefaults` (~35 tuned biomes, generic
+  fallback for the rest), not stack-position-aware by design (a biome's
+  standard composition and "being the bottom layer" are orthogonal
+  concerns), 0.2.77. New `config/tests/75`-`77`; `72`-`74` updated for
+  the bounded-world default's opt-outs. **Housekeeping note: this whole
+  entry was written retroactively** -- Phase 17's actual work (including
+  17.1-17.2c) was never recorded in MEMORY.md when it happened, only in
+  DESIGN.md/TODO.md; the gap was noticed and backfilled here before
+  starting Phase 18, per AGENTS.md's explicit requirement to append
+  decisions here as they're made. If a future session finds another
+  phase missing from this file, backfill it the same way rather than
+  leaving the gap.
