@@ -2650,13 +2650,22 @@ Durable decisions, verified API notes, and rationale that should survive across 
   simply doesn't fire when `ADVANCE_TIME` is false. This means "sleeping
   cannot skip the night" (GOAL 30) is a **free consequence** of turning
   the gamerule off, not a mixin `jlt_worldz` needs to write.
-  **Real interaction found and flagged before implementation, not after:**
-  `WorldLimitManager`'s own elapsed-time math (`getDefaultClockTime()`,
+  **Interaction found and flagged before implementation, then corrected
+  after implementing 18.2 by reading vanilla's own `WorldBorder` source
+  directly instead of trusting the earlier inference:**
+  `WorldLimitManager`'s own *scheduling* math (`getDefaultClockTime()`,
   see this file's earlier 2026-07-17 entry on why it switched off
   `getGameTime()`) reads the *same* per-dimension default clock that
-  day/night uses. Locking night via `ADVANCE_TIME=false` therefore also
-  pauses any active border-resize schedule in that dimension for as long
-  as night stays locked.
+  day/night uses -- but vanilla's actual `WorldBorder`/`MovingBorderExtent`
+  animation, once started, is entirely self-contained (`update()` just
+  does `this.lerpProgress--` every `WorldBorder.tick()` call, no reference
+  to `getDefaultClockTime()`/any gamerule at all). **A continuous resize
+  already in progress keeps animating normally while night is locked** --
+  only a resize still waiting on its own `resizeDelayDays` countdown, or
+  an active *stepped*-style resize's own per-tick step recalculation, ever
+  freezes (both are computed via `WorldLimitManager`'s own
+  `dimensionTicks()`-based bookkeeping, unlike the continuous case). See
+  DESIGN §35.1 for the corrected write-up.
   **Phantom/insomnia**: the stat is `Stats.TIME_SINCE_REST`
   (`ServerPlayer.startSleeping()` resets it on any actual bed use,
   independent of whether time skip happens), spawn-gated in
@@ -2687,11 +2696,14 @@ Durable decisions, verified API notes, and rationale that should survive across 
   entirely for players who don't want to deal with them. Matches GOAL
   30's own "option to keep or relax vanilla rules" wording directly.
   (2) **Clock/border interaction** -- ship the pause-while-locked
-  interaction as a documented known limitation (README/MANUAL_TESTING),
-  not worth a bigger change to how `WorldLimitManager` tracks elapsed
-  time. Same "log it, don't engineer around it speculatively" posture
-  this project already uses for other cross-feature edge cases (coastline
-  defects, `deep_flat`'s water-into-caves gap).
+  interaction (narrowed after implementation to only delayed-not-yet-
+  started and active-stepped resizes, see the correction above -- a
+  continuous resize already in progress is unaffected) as a documented
+  known limitation (README/MANUAL_TESTING), not worth a bigger change to
+  how `WorldLimitManager` tracks elapsed time. Same "log it, don't
+  engineer around it speculatively" posture this project already uses for
+  other cross-feature edge cases (coastline defects, `deep_flat`'s
+  water-into-caves gap).
   (3) **Test-file naming** -- keep the existing flat sequential
   `config/tests/NN-...yaml` numbering (continuing from 77), not a new
   per-phase subfolder; despite this session's own prompt using

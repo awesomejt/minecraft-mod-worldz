@@ -1072,13 +1072,16 @@ foreverNight:
 | `lockAfterDays` | `0` | In-game days before locking; `0` locks immediately at world creation. |
 | `relaxInsomnia` | `false` | `false` keeps vanilla phantom rules (sleeping still resets a player's own insomnia timer even though it won't skip time). `true` actively suppresses phantoms for players who don't want that pressure in a night that never ends. |
 
-**Known limitation:** locking night also pauses any active
-`overworldBorder` resize schedule in the Overworld for as long as it stays
-locked — Minecraft 26.2 ties both the day/night clock and this mod's own
-border-schedule elapsed-time tracking to the same per-dimension clock.
-Not engineered around; if you want a growing/shrinking border, don't
-combine it with forever night (or expect the border to hold still while
-night is locked).
+**Known limitation:** locking night can freeze part of an `overworldBorder`
+resize schedule in the Overworld — Minecraft 26.2 ties this mod's own
+border-scheduling math to the same per-dimension clock day/night uses. A
+resize that's already smoothly animating is **not** affected (vanilla's
+own border animation runs independently once started); only a resize
+still waiting on its own `resizeDelayDays` countdown, or an active
+*stepped*-style resize's own periodic jumps, stalls while night stays
+locked. Not engineered around; if you're combining forever night with a
+delayed or stepped border schedule, expect it to hold still until night
+unlocks.
 
 ### Rising lava floor (GOAL 29)
 

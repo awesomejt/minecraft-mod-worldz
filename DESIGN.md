@@ -5431,15 +5431,27 @@ online player in that Overworld, keeping every player permanently below
 reuse of the same stat vanilla's own bed-sleeping already resets.
 
 **Known, documented interaction (Jason's decision, 2026-07-24 — ship as a
-known limitation, not worth a bigger fix):** `WorldLimitManager`'s own
-elapsed-time math (`getDefaultClockTime()`) reads the *same* per-dimension
+known limitation, not worth a bigger fix) — narrower than first assumed,
+corrected after verifying vanilla's own `WorldBorder` source directly
+rather than trusting the earlier inference:** `WorldLimitManager`'s own
+*scheduling* math (`getDefaultClockTime()`) reads the same per-dimension
 default clock day/night uses (§35.0's "genuinely global" finding + this
 project's own earlier `getDefaultClockTime()` migration note, MEMORY.md
-2026-07-17). Locking night therefore also pauses any active border-resize
-schedule in that dimension for as long as night stays locked. Documented
-in README/MANUAL_TESTING, not engineered around — same posture as this
-project's other cross-feature edge cases (coastline defects, `deep_flat`'s
-water-into-caves gap).
+2026-07-17) — but vanilla's actual `WorldBorder`/`MovingBorderExtent`
+animation, once started, is entirely self-contained: `MovingBorderExtent
+.update()` (`WorldBorder.java`) just does `this.lerpProgress--` on every
+`WorldBorder.tick()` call, with no reference to `getDefaultClockTime()` or
+any gamerule at all. **A continuous resize already in progress keeps
+animating normally while night is locked** — only two narrower cases
+freeze: (1) a resize still waiting on its own `resizeDelayDays` countdown
+(`WorldLimitManager.startIfDue` compares against `dimensionTicks`, so a
+frozen clock means it never starts), and (2) an active *stepped*-style
+resize's own per-tick step recalculation (`driveStepIfActive` computes
+`elapsed = dimensionTicks(level) - origin`, so a frozen clock freezes it
+mid-step, no further jumps). Documented in README/MANUAL_TESTING with
+this corrected, narrower scope, not engineered around — same posture as
+this project's other cross-feature edge cases (coastline defects,
+`deep_flat`'s water-into-caves gap).
 
 ### 35.2 Rising lava floor (GOAL 29)
 
