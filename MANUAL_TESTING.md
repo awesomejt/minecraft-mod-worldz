@@ -965,6 +965,70 @@ same "tune after playtest" posture as every other numeric default in this
 project. The buried-layer decoration bypass's scatter density and the
 short-stack beatability question (item 2 above) remain open too.
 
+## Phase 18 acceptance (World-hazard rules, GOALS 29-30, TODO 18.0-18.2, DESIGN §35)
+
+Uses configs `78`-`82` (see [`config/tests/README.md`](config/tests/README.md)).
+Unlike every earlier phase, these are shared runtime rules layered on top
+of whatever World Type you pick — configs `78`-`81` use plain "Worldz";
+`82` specifically uses **"Worldz: Ocean Island"** to confirm the rule
+still applies under a typed preset.
+
+1. **Forever night, immediate lock**, `78-forever-night-immediate.yaml`
+   (0.2.79+). Confirm the world is already permanent night at spawn — no
+   ordinary daylight ever. Confirm `/gamerule advance_time` reports
+   `false`. Confirm sleeping in a bed doesn't skip time (the sky stays
+   dark either way) — this should be a *free* consequence of the gamerule
+   being off, not anything Worldz built separately; report if it doesn't
+   hold. Confirm ordinary night-time hostile mobs spawn normally — this
+   should be real permanent night, not a cosmetic dark filter.
+2. **Forever night, delayed lock + relaxed insomnia**,
+   `79-forever-night-delayed-relaxed.yaml` (0.2.79+). Confirm the world
+   starts with an ordinary day/night cycle, then locks permanently around
+   the 1-day mark (`/tick step 24000` to fast-forward). Confirm phantoms
+   do **not** spawn even after a long stretch with no sleeping — the
+   `relaxInsomnia` toggle should be actively suppressing them via a
+   periodic stat reset, not merely relying on vanilla's own bed-reset
+   (contrast with config 78's default vanilla-rules behavior).
+3. **Forever night + border interaction**,
+   `80-forever-night-border-interaction.yaml` (0.2.79+). This is the
+   first real in-game confirmation of a **corrected** design claim (DESIGN
+   §35.1) — the original assumption (locking night pauses *any* active
+   border resize) turned out to be too broad once vanilla's own
+   `WorldBorder` source was checked directly; only a still-delayed or
+   actively-stepping resize should freeze, not a continuous one. Confirm
+   the stepped border here (mirrors config 24's own shape) stays frozen
+   at radius 8 for as long as night stays locked, even across many
+   `/tick step` calls that would normally have produced several visible
+   jumps. **Report exactly what you observe**, including anything that
+   contradicts this — it's a corrected claim being tested for the first
+   time, not a known-good check.
+4. **Rising lava, plain bordered world**,
+   `81-rising-lava-vanilla-limited.yaml` (0.2.79+, accelerated demo rate,
+   not the shipped slow default). Confirm no lava exists until `delayDays`
+   elapses, then confirm the level rises at the configured rate,
+   converting air and water to lava while leaving solid terrain (stone,
+   ore, structures) untouched. Confirm a chunk you visit for the first
+   time after the level has already risen shows lava caught up throughout
+   its whole risen range, not just newly forming at the surface. Confirm
+   the level stops exactly at `maxY` and holds there.
+5. **Rising lava, ocean island**, `82-rising-lava-ocean-island.yaml`
+   (0.2.79+). Confirm the real ocean water (both near-shore and the
+   deeper gradient) converts to lava from the bottom up as the level
+   rises, exactly like config 81's underground demonstration — confirms
+   DESIGN §35.2's own "uniform across every world type, no special-casing"
+   scope call holds for a real typed preset, not just the plain preset.
+
+**Not covered by this phase's acceptance:** the exact default rates
+(1 block/day for lava, README's own documented first-pass numbers),
+Customize-screen exposure for either hazard (config-only for this phase,
+same "config-first, UI-later" posture flat/deep_flat/stacked all used
+before their own defaults stabilized), rising lava's behavior under a
+void-based floating preset (sky island/chunk island — no test config
+exists yet; DESIGN §35.2 documents the intended uniform behavior but it
+hasn't been observed in-game), and whether `/time add` bypasses the
+`advance_time` gamerule on this snapshot (config 80's own steps flag this
+as unconfirmed — use `/tick step` instead until it's checked).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

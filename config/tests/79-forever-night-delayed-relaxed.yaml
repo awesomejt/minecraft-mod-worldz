@@ -1,0 +1,22 @@
+# GOAL 30 (Phase 18.1, DESIGN §35.1): the delayed-lock option
+# (lockAfterDays: 1, short on purpose for testability -- real worlds would
+# use a larger number) combined with relaxInsomnia: true.
+#
+# Steps once in-game:
+#  1. Confirm the world starts with an ordinary day/night cycle -- this is
+#     NOT locked yet.
+#  2. `/tick step 24000` (one full in-game day) -- confirm night locks
+#     permanently right around this point (check both before and after to
+#     narrow down exactly when). Once locked, `/gamerule advance_time`
+#     should report `false`.
+#  3. Don't sleep in a bed at all for a long stretch (several thousand
+#     ticks). Confirm phantoms do NOT spawn, even though you're well past
+#     vanilla's own `TIME_SINCE_REST` threshold -- relaxInsomnia is
+#     actively suppressing them (a periodic stat reset, not a spawn-rule
+#     change), unlike config 78's default (vanilla rules) behavior.
+foreverNight:
+  enabled: true
+  lockAfterDays: 1
+  relaxInsomnia: true
+spawn:
+  strategy: starter_at_origin

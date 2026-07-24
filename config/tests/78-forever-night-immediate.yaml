@@ -1,0 +1,26 @@
+# GOAL 30 (Phase 18.1, DESIGN §35.1): forever night's simplest case --
+# night locks permanently at world creation (lockAfterDays: 0). Plain
+# "Worldz" preset, ordinary legacy terrain otherwise untouched.
+#
+# Steps once in-game:
+#  1. Confirm the world is already dark/nighttime the moment you spawn --
+#     no ordinary daylight at all.
+#  2. Wait (or `/tick step` a few thousand ticks) and confirm the sky
+#     never brightens -- time never advances toward day.
+#  3. Sleep in a bed. Confirm you can lie down (vanilla still allows it),
+#     but confirm time does NOT skip to morning -- you either wake up
+#     immediately once it's "safe" (no monsters nearby) or the attempt
+#     behaves like an ordinary failed sleep, and the sky stays dark either
+#     way.
+#  4. Run `/gamerule advance_time` (no value, just queries it) -- confirm
+#     it reports `false`.
+#  5. Confirm ordinary night-time mobs (zombies, skeletons, etc.) spawn
+#     normally -- this is real permanent night, not a cosmetic dark
+#     filter.
+layout:
+  mode: legacy
+foreverNight:
+  enabled: true
+  lockAfterDays: 0
+spawn:
+  strategy: starter_at_origin

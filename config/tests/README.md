@@ -127,7 +127,30 @@ Every field not mentioned in a file falls back to Worldz's documented default
    gap so biome-band boundaries never move -- zero restores perfectly flat
    layers. Each preset ignores every other type's dedicated section.
 
-4. Worldz rewrites the file back with every field canonicalized and filled in
+4. `foreverNight:`/`risingLava:` (GOALS 30/29, Phase 18, DESIGN §35) are
+   shared runtime *rules*, not worldgen or typed presets -- they apply on
+   top of **whichever World Type you select** (files `78`-`80` use plain
+   "Worldz"; `81` uses plain "Worldz" too; `82` uses "Worldz: Ocean
+   Island" specifically to confirm this). `foreverNight.lockAfterDays`
+   (`0` locks immediately, matching GOAL 30's own "either... or" wording)
+   disables the `advance_time` gamerule and jumps the Overworld's clock to
+   night; sleeping no longer skips time as a free consequence of that
+   gamerule, not a separate mechanism. `foreverNight.relaxInsomnia`
+   actively suppresses phantoms once locked (default off, keeping vanilla
+   phantom rules). `risingLava.enabled` starts a world-wide lava level at
+   `startY` after `delayDays`, rising `rateBlocks` per `rateDays` until
+   `maxY` -- converts air/water to lava, uniform across every world type
+   including void beneath a floating preset (not tested here, no sky
+   island/chunk island rising-lava config exists yet). **Known
+   limitation** (narrower than first assumed, corrected after reading
+   vanilla's own `WorldBorder` source directly -- config `80` exercises
+   it): locking night freezes a border resize still waiting on its own
+   `resizeDelayDays`, or an active *stepped*-style resize's own periodic
+   jumps, but **not** a *continuous* resize already animating (vanilla's
+   own border animation is self-contained once started, unrelated to the
+   day/night clock).
+
+5. Worldz rewrites the file back with every field canonicalized and filled in
    after first load — that's expected, not a sign the test config was wrong.
 
 ## Files
@@ -211,6 +234,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `75-stacked-unbounded.yaml` | GOAL 35 (DESIGN §34.7): `worldSizeChunks: 0` — the pre-§34.7 unbounded-world pathway, confirmed still reachable now that it's no longer the default. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
 | `76-stacked-relief-off.yaml` | GOAL 35 (DESIGN §34.7): `reliefBlocks: 0` — restores perfectly flat per-layer surfaces, isolating relief-specific issues from layer-list issues during manual testing. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
 | `77-stacked-simplified-layers.yaml` | GOAL 35 (DESIGN §34.8): every layer written as a bare biome id (no `;blocks;air gap`), including one (`mushroom_fields`) with no hand-tuned `StackedBiomeDefaults` entry to exercise the generic fallback composition. **Select "Worldz: Stacked"**. Requires 0.2.77+. |
+| `78-forever-night-immediate.yaml` | GOAL 30 (Phase 18.1, DESIGN §35.1): `lockAfterDays: 0` — night locks permanently at world creation; confirms sleeping can't skip it (a free consequence of the `advance_time` gamerule, not a separate mechanism) and default (vanilla) phantom rules still apply. Plain "Worldz". Requires 0.2.78+. |
+| `79-forever-night-delayed-relaxed.yaml` | GOAL 30 (Phase 18.1): `lockAfterDays: 1` (delayed lock) plus `relaxInsomnia: true` (phantoms actively suppressed once locked, not just vanilla's own bed-reset). Plain "Worldz". Requires 0.2.78+. |
+| `80-forever-night-border-interaction.yaml` | GOAL 30 (Phase 18.1, DESIGN §35.1's corrected known limitation): immediate night lock combined with a stepped border resize (mirrors config `24`) — confirms the resize's own periodic jumps freeze while night is locked, unlike a continuous resize (not exercised here). Plain "Worldz". Requires 0.2.78+. |
+| `81-rising-lava-vanilla-limited.yaml` | GOAL 29 (Phase 18.2, DESIGN §35.2): rising lava on a plain bordered "vanilla-limited" world (mirrors config `13`), accelerated rate for testability — confirms the delay/rise/max schedule, air/water-only conversion, and that a chunk visited later still catches up to the current level. Plain "Worldz". Requires 0.2.79+. |
+| `82-rising-lava-ocean-island.yaml` | GOAL 29 (Phase 18.2): rising lava composed with a typed preset instead of the plain preset — confirms the hazard applies uniformly, flooding the real ocean/underground from the bottom up. **Select "Worldz: Ocean Island"**. Requires 0.2.79+. |
 
 ### Why `01` showed ocean labeled as river
 

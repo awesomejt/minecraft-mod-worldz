@@ -2775,9 +2775,23 @@ pulled earlier if Jason wants a fun quick win.**
       own scope call, §35.2). New `RisingLavaScheduleTest`; `WorldzConfigTest`
       extended. README's "World hazards" section gained a rising-lava
       subsection. **[Jason] in-game acceptance outstanding** (part of 18.3).
-- [ ] 18.3 Test configs (night-from-day-0, night-after-N, rising lava on a
-      vanilla-limited world and on an ocean island); docs; **[Jason]**
-      acceptance.
+- [x] 18.3 Test configs, docs done (0.2.80); **[Jason] acceptance
+      outstanding.** New `config/tests/78`-`82`: night-immediate (78),
+      night-delayed + relaxed insomnia (79), night + stepped-border
+      interaction (80, exercises DESIGN §35.1's corrected known
+      limitation directly), rising lava on a plain bordered world (81),
+      rising lava composed with "Worldz: Ocean Island" (82). New "Phase
+      18 acceptance" section in MANUAL_TESTING.md; `config/tests/README.md`
+      gained a shared-runtime-rules paragraph (item 4) and five table
+      rows. **Found and fixed a documentation error while writing these
+      configs, not after** (own commit, "Correction: forever night's
+      border-schedule interaction is narrower than documented"): verifying
+      vanilla's own `WorldBorder` source directly (not just inferring from
+      `WorldLimitManager`'s `dimensionTicks()` usage) showed a continuous
+      border resize already in progress is unaffected by locking night —
+      only a still-delayed or actively-stepped resize freezes. Corrected
+      DESIGN §35.1/MEMORY.md/README.md to the narrower, accurate scope
+      before shipping config 80 to test it.
 
 ## Phase 19 — Structure options wrap-up (GOALS 21, 23, 24)
 

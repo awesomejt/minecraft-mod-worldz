@@ -1,0 +1,43 @@
+# GOAL 30 (Phase 18.1, DESIGN §35.1's own documented known limitation):
+# forever night locked immediately, combined with a stepped border resize
+# (mirrors config 24's own stepped setup, short numbers for testability).
+# Confirms the corrected, narrower interaction directly in-game: locking
+# night should freeze the border's own periodic step recalculation (it
+# reads the same per-dimension clock forever night stops), even though a
+# *continuous* resize (not tested here -- see config 24/21 for that shape)
+# would keep animating normally, since vanilla's own border animation
+# doesn't depend on this clock at all once started.
+#
+# Steps once in-game:
+#  1. Confirm the world is already permanent night at spawn (lockAfterDays
+#     is 0 here) and the border starts at radius 8.
+#  2. `/tick step 48000` (2 in-game days -- the border's own
+#     resizeDelayDays). Use `/tick step`, not `/time add` -- if `/time
+#     add` turns out to bypass the `advance_time` gamerule on this
+#     snapshot (unconfirmed either way, flag what you find), it would
+#     defeat the point of this test by moving the clock directly.
+#  3. Confirm the border radius is STILL exactly 8 -- normally (see config
+#     24) it would start stepping outward once the 2-day delay elapses,
+#     but here it shouldn't move at all, since the clock driving that
+#     delay/step math is frozen.
+#  4. `/tick step 240000` (10 more in-game days' worth of ticks). Confirm
+#     the border radius is STILL exactly 8 -- this is the actual
+#     regression check: without forever night, this many ticks would have
+#     produced several visible 1-block jumps (config 24's own step 5).
+#  5. Report exactly what you observe, including anything that doesn't
+#     match this prediction -- this is a first real in-game confirmation
+#     of a corrected design claim (DESIGN §35.1), not a known-good check.
+foreverNight:
+  enabled: true
+  lockAfterDays: 0
+overworldBorder:
+  enabled: true
+  initialRadiusBlocks: 8
+  finalRadiusBlocks: 1024
+  resizeDelayDays: 2
+  resizeRateBlocks: 1
+  resizeRateDays: 1
+  resizeStyle: stepped
+  ensureEndPortal: true
+spawn:
+  strategy: starter_at_origin
