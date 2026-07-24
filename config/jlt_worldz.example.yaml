@@ -156,3 +156,21 @@ chaosBiomes:
     strategy: starter_at_origin
   allowRivers: false
   allowOceans: false
+
+# World-hazard "forever night" module (GOAL 30, DESIGN §35.1) -- a shared
+# runtime rule, not a typed preset, composable with any world type.
+# lockAfterDays: 0 locks night immediately at world creation; a positive
+# value keeps normal day/night until that many in-game days have passed,
+# then locks. Once locked, vanilla's own sleep-skip logic already refuses
+# to advance time (verified against the real 26.2 source), so sleeping
+# cannot un-lock it. relaxInsomnia: false keeps vanilla phantom rules
+# (sleeping still resets a player's own insomnia timer even though it
+# won't skip time); true actively suppresses phantoms for players who
+# don't want to deal with them in a night that never ends. Known
+# limitation: locking night also pauses any active overworldBorder resize
+# schedule for as long as it stays locked (26.2 ties both to the same
+# per-dimension clock) -- see README.
+foreverNight:
+  enabled: false
+  lockAfterDays: 0
+  relaxInsomnia: false

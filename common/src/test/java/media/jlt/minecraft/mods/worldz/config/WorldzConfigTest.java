@@ -604,6 +604,7 @@ class WorldzConfigTest {
                 + " minecraft:savanna, minecraft:snowy_taiga,"
                 + " minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0],"
                 + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4"
+                + ", foreverNight=<disabled>"
                 + ", allowRivers=false, allowOceans=false",
             config.summary()
         );
@@ -1325,6 +1326,39 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MAX_STACKED_RELIEF_BLOCKS, config.stacked.reliefBlocks);
+    }
+
+    @Test
+    void foreverNightSettingsLoadAndSanitizeIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            foreverNight:
+              enabled: true
+              lockAfterDays: 5
+              relaxInsomnia: true
+            """, LOGGER).sanitize(LOGGER);
+
+        assertTrue(config.foreverNight.enabled);
+        assertEquals(5, config.foreverNight.lockAfterDays);
+        assertTrue(config.foreverNight.relaxInsomnia);
+    }
+
+    @Test
+    void foreverNightDefaultsAreSaneOutOfTheBox() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertFalse(config.foreverNight.enabled);
+        assertEquals(0, config.foreverNight.lockAfterDays);
+        assertFalse(config.foreverNight.relaxInsomnia);
+    }
+
+    @Test
+    void foreverNightLockAfterDaysClampsToNonNegative() {
+        WorldzConfig config = WorldzConfig.parse("""
+            foreverNight:
+              lockAfterDays: -1
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.foreverNight.lockAfterDays);
     }
 
     @Test

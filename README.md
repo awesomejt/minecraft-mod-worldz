@@ -1041,6 +1041,45 @@ report back what you actually see if you test a short stack.
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
 
+## World hazards
+
+Unlike every preset above, these are shared runtime rules, not world
+generation — they compose with **any** World Type, configured via their
+own top-level `config/jlt_worldz.yaml` sections (no dedicated Customize
+screen yet; edit the config file, same as border/exterior settings before
+Phase 5.3 exposed those in-screen).
+
+### Forever night (GOAL 30)
+
+Set `foreverNight.enabled: true` for a world where night eventually
+becomes permanent — either immediately (`lockAfterDays: 0`, the default)
+or after a configured number of in-game days. Once locked, Minecraft's own
+day/night clock stops advancing and sits at night; sleeping in a bed no
+longer skips time (this falls out of disabling the same `advance_time`
+gamerule vanilla's own sleep logic already checks — no separate mechanism
+needed), though players can still physically sleep.
+
+```yaml
+foreverNight:
+  enabled: false
+  lockAfterDays: 0
+  relaxInsomnia: false
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Whether night eventually locks permanently. |
+| `lockAfterDays` | `0` | In-game days before locking; `0` locks immediately at world creation. |
+| `relaxInsomnia` | `false` | `false` keeps vanilla phantom rules (sleeping still resets a player's own insomnia timer even though it won't skip time). `true` actively suppresses phantoms for players who don't want that pressure in a night that never ends. |
+
+**Known limitation:** locking night also pauses any active
+`overworldBorder` resize schedule in the Overworld for as long as it stays
+locked — Minecraft 26.2 ties both the day/night clock and this mod's own
+border-schedule elapsed-time tracking to the same per-dimension clock.
+Not engineered around; if you want a growing/shrinking border, don't
+combine it with forever night (or expect the border to hold still while
+night is locked).
+
 ## Configuration
 
 The mod reads `config/jlt_worldz.yaml` at startup if present; it is entirely

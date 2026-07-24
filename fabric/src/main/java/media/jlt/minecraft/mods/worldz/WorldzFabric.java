@@ -3,6 +3,7 @@ package media.jlt.minecraft.mods.worldz;
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.SpawnOriginManager;
+import media.jlt.minecraft.mods.worldz.worldgen.WorldHazardManager;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
@@ -35,6 +36,8 @@ public final class WorldzFabric implements ModInitializer {
         );
         ServerLifecycleEvents.SERVER_STARTED.register(WorldLimitManager::onServerStarted);
         ServerTickEvents.END_SERVER_TICK.register(WorldLimitManager::onServerTick);
+        ServerLifecycleEvents.SERVER_STARTED.register(WorldHazardManager::onServerStarted);
+        ServerTickEvents.END_SERVER_TICK.register(WorldHazardManager::onServerTick);
         ServerLevelEvents.LOAD.register((server, level) -> {
             if (level.dimension() == Level.OVERWORLD) {
                 SpawnOriginManager.reapplyPersistedOrigin(level);

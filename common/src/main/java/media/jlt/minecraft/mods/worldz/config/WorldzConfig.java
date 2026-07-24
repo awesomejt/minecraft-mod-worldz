@@ -140,6 +140,8 @@ public final class WorldzConfig {
     public DeepFlatConfig deepFlat = new DeepFlatConfig();
     /** Defaults for the {@code jlt_worldz:stacked} typed preset (GOAL 35; DESIGN §34.1). */
     public StackedConfig stacked = new StackedConfig();
+    /** World-hazard "forever night" module (GOAL 30; DESIGN §35.1) -- composes with any world type. */
+    public ForeverNightConfig foreverNight = new ForeverNightConfig();
     /** Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13). */
     public boolean allowRivers = false;
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
@@ -269,6 +271,9 @@ public final class WorldzConfig {
         if (object.containsKey("stacked")) {
             config.stacked = readStackedConfig(object.get("stacked"), "stacked", logger);
         }
+        if (object.containsKey("foreverNight")) {
+            config.foreverNight = readForeverNightConfig(object.get("foreverNight"), "foreverNight", logger);
+        }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
         }
@@ -333,6 +338,7 @@ public final class WorldzConfig {
         flat = sanitizeFlat(flat, logger);
         deepFlat = sanitizeDeepFlat(deepFlat, logger);
         stacked = sanitizeStacked(stacked, logger);
+        foreverNight = sanitizeForeverNight(foreverNight, logger);
         return this;
     }
 
@@ -578,6 +584,14 @@ public final class WorldzConfig {
         return sanitized;
     }
 
+    private static ForeverNightConfig sanitizeForeverNight(ForeverNightConfig config, Logger logger) {
+        ForeverNightConfig sanitized = config == null ? new ForeverNightConfig() : config;
+        sanitized.lockAfterDays = clampWithWarning(
+            sanitized.lockAfterDays, 0, MAX_BORDER_RESIZE_DAYS, "foreverNight.lockAfterDays", logger
+        );
+        return sanitized;
+    }
+
     private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
@@ -731,6 +745,7 @@ public final class WorldzConfig {
             + ", flat=" + flatSummary(flat)
             + ", deepFlat=" + deepFlatSummary(deepFlat)
             + ", stacked=" + stackedSummary(stacked)
+            + ", foreverNight=" + foreverNightSummary(foreverNight)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -763,6 +778,7 @@ public final class WorldzConfig {
         values.put("flat", flatMap(flat));
         values.put("deepFlat", deepFlatMap(deepFlat));
         values.put("stacked", stackedMap(stacked));
+        values.put("foreverNight", foreverNightMap(foreverNight));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -1272,6 +1288,23 @@ public final class WorldzConfig {
         }
         if (map.containsKey("reliefBlocks")) {
             config.reliefBlocks = readInt(map.get("reliefBlocks"), name + ".reliefBlocks");
+        }
+        return config;
+    }
+
+    private static ForeverNightConfig readForeverNightConfig(Object value, String name, Logger logger) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        ForeverNightConfig config = new ForeverNightConfig();
+        if (map.containsKey("enabled")) {
+            config.enabled = readBoolean(map.get("enabled"), name + ".enabled");
+        }
+        if (map.containsKey("lockAfterDays")) {
+            config.lockAfterDays = readInt(map.get("lockAfterDays"), name + ".lockAfterDays");
+        }
+        if (map.containsKey("relaxInsomnia")) {
+            config.relaxInsomnia = readBoolean(map.get("relaxInsomnia"), name + ".relaxInsomnia");
         }
         return config;
     }
@@ -1819,6 +1852,14 @@ public final class WorldzConfig {
         return values;
     }
 
+    private static Map<String, Object> foreverNightMap(ForeverNightConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("enabled", config.enabled);
+        values.put("lockAfterDays", config.lockAfterDays);
+        values.put("relaxInsomnia", config.relaxInsomnia);
+        return values;
+    }
+
     private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
@@ -2012,6 +2053,13 @@ public final class WorldzConfig {
     private static String stackedSummary(StackedConfig config) {
         return "layers=" + config.layers + ", seedRandomizedOrder=" + config.seedRandomizedOrder
             + ", worldSizeChunks=" + config.worldSizeChunks + ", reliefBlocks=" + config.reliefBlocks;
+    }
+
+    private static String foreverNightSummary(ForeverNightConfig config) {
+        if (!config.enabled) {
+            return "<disabled>";
+        }
+        return "lockAfterDays=" + config.lockAfterDays + ", relaxInsomnia=" + config.relaxInsomnia;
     }
 
     private static String floatingIslandsSummary(FloatingIslandsConfig config) {

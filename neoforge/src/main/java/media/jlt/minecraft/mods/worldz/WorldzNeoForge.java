@@ -4,6 +4,7 @@ import com.mojang.serialization.MapCodec;
 import media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource;
 import media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator;
 import media.jlt.minecraft.mods.worldz.worldgen.SpawnOriginManager;
+import media.jlt.minecraft.mods.worldz.worldgen.WorldHazardManager;
 import media.jlt.minecraft.mods.worldz.worldgen.WorldLimitManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -53,10 +54,12 @@ public final class WorldzNeoForge {
 
     private static void onServerStarted(ServerStartedEvent event) {
         WorldLimitManager.onServerStarted(event.getServer());
+        WorldHazardManager.onServerStarted(event.getServer());
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
         WorldLimitManager.onServerTick(event.getServer());
+        WorldHazardManager.onServerTick(event.getServer());
     }
 
     private static void onLevelLoad(LevelEvent.Load event) {

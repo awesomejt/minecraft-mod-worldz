@@ -2744,13 +2744,20 @@ pulled earlier if Jason wants a fun quick win.**
       Jason before implementation (insomnia default, clock/border
       schedule interaction, test-file naming) — see MEMORY.md and DESIGN
       §35 for the full write-up.
-- [ ] 18.1 Forever night (30): start-at-night option and night-permanent-
-      after-N-days trigger; once active, time is held at night and sleeping
-      cannot skip it; insomnia/phantom option (keep vanilla or relax).
-      Reuses the day/delay schedule idiom from borders (§12/§15). See
-      DESIGN §35.1 for the finalized mechanism (`advance_time` gamerule +
-      `ServerClockManager`, not the old `doDaylightCycle`/`setDayTime`
-      APIs the original TODO wording assumed).
+- [x] 18.1 Forever night (30), 0.2.78: `foreverNight` config section
+      (`enabled`, `lockAfterDays`, `relaxInsomnia`); `ForeverNightPlan`
+      pure logic; `WorldHazardState` (mirrors `WorldLimitState`) +
+      `WorldHazardManager` (mirrors `WorldLimitManager`'s
+      `onServerStarted`/`onServerTick` shape) registered on both loaders.
+      Locks by disabling `GameRules.ADVANCE_TIME` + jumping the Overworld
+      clock to `ClockTimeMarkers.NIGHT` (DESIGN §35.0/§35.1) — "sleeping
+      cannot skip it" needed no separate mechanism, confirmed a free
+      consequence of the gamerule. `relaxInsomnia` periodically resets
+      `Stats.TIME_SINCE_REST` for online players once locked, no mixin.
+      New `ForeverNightPlanTest`; `WorldzConfigTest` extended. README
+      gained a new "World hazards" section (config-only, no Customize
+      screen yet, matching this project's own config-first precedent).
+      **[Jason] in-game acceptance outstanding** (part of 18.3).
 - [ ] 18.2 Rising lava floor (29): persisted world-wide lava level with
       delay/rate/max (border-schedule config idiom); design the block-
       conversion rules (air/water below the level) and the application
@@ -2785,6 +2792,20 @@ pulled earlier if Jason wants a fun quick win.**
 
 ## Backlog (approved, not yet scheduled to a phase)
 
+- **2026-07-24, found while updating `config/jlt_worldz.example.yaml` for
+  Phase 18:** the example file only documents sections through Phase 4
+  (`allowedBiomes` through `chaosBiomes`) — every typed preset added since
+  (`strip`/`stripWorld`, `oceanIsland`, `skyIsland`, `chunkIsland`, `cave`,
+  `netherStart`, `endStart`, `flat`, `deepFlat`, `stacked`, ten sections
+  total) was never added, even though each phase's own config class has
+  existed and been YAML-round-trip-tested since it shipped. Not a Phase
+  18 blocker (`WorldzConfigTest.documentedExampleParsesToTheSameDefaultsAsCode`
+  only compares fields the example *does* specify, so omitted sections
+  trivially match their own code defaults — the test doesn't catch this
+  gap). Low priority (README's own settings tables already document every
+  field per-section); revisit as a documentation pass, likely folded into
+  Phase 20's planned "full README/config-reference/example rewrite"
+  (TODO 20.1) rather than a standalone task.
 - **2026-07-18, Jason (from Phase 4.2 acceptance, config 16):** chaos_biomes'
   `allowRivers`/`allowOceans` default to `false`, so out of the box a chaos
   world shows real water bodies relabeled with a land biome (e.g. an ocean
