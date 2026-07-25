@@ -62,6 +62,26 @@ class SkyIslandProfileTest {
     }
 
     @Test
+    void familyMatchesWaterFamilyBiomes() {
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:ocean"));
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:deep_cold_ocean"));
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:river"));
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:swamp"));
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:mangrove_swamp"));
+    }
+
+    @Test
+    void frozenOceanAndRiverAreWaterNotSnowy() {
+        // Regression coverage (2026-07-25): "frozen" alone routes to SNOWY below, but
+        // frozen_ocean/frozen_river are real water biomes and must be checked first.
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:frozen_ocean"));
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:deep_frozen_ocean"));
+        assertEquals(SkyIslandProfile.BiomeFamily.WATER, SkyIslandProfile.familyFor("minecraft:frozen_river"));
+        // frozen_peaks has no "ocean"/"river"/"swamp" substring, so it still reaches snowy.
+        assertEquals(SkyIslandProfile.BiomeFamily.SNOWY, SkyIslandProfile.familyFor("minecraft:frozen_peaks"));
+    }
+
+    @Test
     void familyDefaultsForEverythingElse() {
         assertEquals(SkyIslandProfile.BiomeFamily.DEFAULT, SkyIslandProfile.familyFor("minecraft:plains"));
         assertEquals(SkyIslandProfile.BiomeFamily.DEFAULT, SkyIslandProfile.familyFor("minecraft:jungle"));

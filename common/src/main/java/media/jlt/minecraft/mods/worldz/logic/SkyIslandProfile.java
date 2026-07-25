@@ -6,9 +6,10 @@ package media.jlt.minecraft.mods.worldz.logic;
  * footprint is synthesized directly, exactly like {@code OCEAN}/{@code VOID} exteriors always
  * have been), this class supplies the block choice vanilla's surface pass would otherwise have
  * made. {@link #familyFor} is a deliberately non-exhaustive approximation -- a handful of
- * substring/id checks covering desert-, snowy-, and mushroom-family biomes, not a reimplementation
- * of vanilla's real per-biome {@code SurfaceRules} -- good enough to make a desert sky island read
- * as sand rather than grass without chasing every one of vanilla's overworld biomes.
+ * substring/id checks covering desert-, snowy-, mushroom-, and water-family biomes, not a
+ * reimplementation of vanilla's real per-biome {@code SurfaceRules} -- good enough to make a
+ * desert sky island read as sand rather than grass without chasing every one of vanilla's
+ * overworld biomes.
  */
 public final class SkyIslandProfile {
     /** Depth of the top+subsoil shell, in blocks, measured down from {@code surfaceY}. */
@@ -38,7 +39,11 @@ public final class SkyIslandProfile {
         /** Snow-block-over-dirt. */
         SNOWY,
         /** Mycelium-over-dirt. */
-        MUSHROOM
+        MUSHROOM,
+        /** Packed-ice-over-dirt (Jason, 2026-07-25): a floating island can't literally hold
+         * standing water, so ocean/river/swamp real biomes (naturalBiome, DESIGN §28.4) get a
+         * frozen-over top instead of silently reading as indistinguishable grass. */
+        WATER
     }
 
     /**
@@ -72,6 +77,12 @@ public final class SkyIslandProfile {
         String id = biomeId == null ? "" : biomeId;
         if (id.contains("mushroom")) {
             return BiomeFamily.MUSHROOM;
+        }
+        // Checked before the snowy family's own "frozen" substring below, so frozen_ocean/
+        // frozen_river (real water biomes) land here instead -- only frozen_peaks (a mountain
+        // biome, no "ocean"/"river"/"swamp" substring) falls through to snowy.
+        if (id.contains("ocean") || id.contains("river") || id.contains("swamp")) {
+            return BiomeFamily.WATER;
         }
         if (id.contains("desert") || id.contains("badlands") || id.contains("beach")) {
             return BiomeFamily.DESERT;

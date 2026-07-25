@@ -3099,6 +3099,27 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-25 (Phase 11 acceptance retest, revised 0.3.0) — **Real ocean/
+  river/swamp biomes sampled by `naturalBiome` rendered as plain grass**,
+  found via Jason's third config-58 retest: with the Y/column-consistency
+  fixes above in place, several floating islands now stably reported real
+  water biomes (e.g. "Deep Cold Ocean") on F3, but a floating island can't
+  hold standing water, and `SkyIslandProfile.familyFor` only special-cased
+  desert/snowy/mushroom families -- everything else, including every
+  ocean/river/swamp biome, fell through to the plains-like default
+  (grass), reading as a mismatch again despite the underlying sampling
+  now being correct and stable. Jason's direction: give water biomes their
+  own visual family rather than leaving it as grass or excluding water
+  biomes from natural sampling entirely. **Fix:** new `BiomeFamily.WATER`
+  (packed-ice-over-dirt), matched by an `ocean`/`river`/`swamp` substring
+  check placed *before* the existing snowy family's own `frozen` check --
+  otherwise `frozen_ocean`/`frozen_river` would keep matching snowy
+  instead (regression-tested); `frozen_peaks`, which has no water
+  substring, still correctly reaches snowy. New
+  `SkyIslandProfileTest` coverage for the water family and the
+  frozen-ocean-vs-frozen-peaks ordering. Built (0.3.0, Jason's own version
+  choice), full multiloader build green, redeployed to Worldz-Test.
+  **[Jason] retest outstanding.**
 - 2026-07-25 (Phase 11 acceptance retest, fixed 0.2.89) — **Floating
   islands' `naturalBiome` (GOALS 08, DESIGN §28.6) silently never
   activated**, found via Jason's config 58 in-game test: islands' surface

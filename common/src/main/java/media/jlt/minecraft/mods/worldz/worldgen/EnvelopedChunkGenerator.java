@@ -2743,6 +2743,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             case DESERT -> Blocks.SAND.defaultBlockState();
             case SNOWY -> Blocks.SNOW_BLOCK.defaultBlockState();
             case MUSHROOM -> Blocks.MYCELIUM.defaultBlockState();
+            case WATER -> Blocks.PACKED_ICE.defaultBlockState();
             case DEFAULT -> Blocks.GRASS_BLOCK.defaultBlockState();
         };
     }
