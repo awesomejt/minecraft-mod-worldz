@@ -3075,10 +3075,64 @@ pulled earlier if Jason wants a fun quick win.**
   scope requiring its own design pass (exact YAML/codec pattern, which
   sections to retrofit), not a quick addition to `chunkIsland` alone. Not
   scheduled to a phase.
+- 2026-07-25 — **Config-56 follow-up: broader config structure review
+  requested, not yet designed.** Jason widened the 2026-07-24 per-
+  dimension-override item into a general review: reduce property-name
+  duplication via nesting (his own concrete example: `cave`'s new
+  `sealedSurfaceBlock`/`sealedSurfaceThicknessBlocks` fields, added this
+  same session, repeat the `sealedSurface` prefix on every sibling —
+  exactly the pattern he's flagging), and check whether settings
+  duplicated across typed-preset sections (border/exterior shapes,
+  `easyKit`/`mediumKit`/`hardKit` starter-kit shapes, etc.) should
+  consolidate into a shared section. Also wants the example config
+  properly maintained with real spacing and commented docs afterward —
+  overlaps the already-known Backlog gap (example only documents through
+  Phase 4, deferred to Phase 20's planned config-reference rewrite). Full
+  detail in GOALS.md's "Configuration" subsection. Recommended: combine
+  with the per-dimension-override item above into one coordinated
+  config-schema design pass, since both touch the same YAML/codec
+  surface. Not designed, not scheduled — this is a real schema change
+  across most config sections and every `config/tests/*.yaml` file, not a
+  quick edit.
 
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-25 (Phase 13 acceptance retest, revised 0.2.88) — **Cave sealed
+  surface gained a configurable block and thickness**, per Jason's
+  config-56 review: the roof was previously a fixed 5-thick stone layer,
+  easily mined through by a determined player, defeating the "no way
+  out" intent of `sealedSurface`. `CavePlan`/`CaveConfig`/`CaveCodecs`
+  gained `sealedSurfaceBlock` (new `logic.SealedSurfaceBlock` enum: stone/
+  deepslate/bedrock, mirroring `StarterKitTier`'s pure-logic pattern) and
+  `sealedSurfaceThicknessBlocks` (1-64, default 5, matching the old fixed
+  value). `EnvelopedChunkGenerator.applyCaveSealedSurface` maps the enum to
+  its real `BlockState` and uses the configured thickness instead of a
+  hardcoded constant. Config-only for now (matching this project's
+  precedent for new, not-yet-screen-exposed options): `CaveCustomization`
+  and the in-game Customize screen still get the original stone/5-thick
+  defaults, unchanged. New `config/tests/85-cave-sealed-surface-bedrock.yaml`
+  (bedrock, 3 thick). Built (0.2.88), full suite green, redeployed to
+  Worldz-Test. **[Jason] review outstanding.**
+- 2026-07-25 (Phase 13, requirements captured — not implemented) —
+  **Jason wants an option to prevent surfacing entirely from a sealed cave
+  world**, beyond just a thicker roof: a permeable Y-level damage
+  boundary (climb up, but it hurts and pushes you back down), reusing the
+  same design already spec'd for GOAL 39's border damage enforcement
+  (DESIGN §22.3) but keyed on Y instead of horizontal border distance.
+  **Correction surfaced during this discussion: GOAL 39's border-damage
+  mechanism is not actually built yet** (TODO Phase 5d is still
+  unchecked) — DESIGN §22.3 is a complete, feasibility-verified spec, not
+  shipped code, so a cave version would be the first real implementation
+  of this pattern, not a reuse of proven code. Jason's explicit direction
+  (2026-07-25): record the desire in DESIGN/TODO/GOALS as recommended,
+  but defer implementation until it can be built **once, in a common
+  place shared by every "safe area" boundary case** (the future GOAL 39
+  border damage, this cave Y-boundary, and potentially others) rather
+  than as cave-specific duplicate logic. See GOALS.md's Cave Challenge
+  section and DESIGN §22.3 for the existing spec this would extend/share.
+  Not scheduled to a phase.
 
 - 2026-07-24 (Phase 13 acceptance retest, revised 0.2.87) — **Cave starter
   kit contents rewritten per Jason's config-56 review**, `CaveConfig`'s

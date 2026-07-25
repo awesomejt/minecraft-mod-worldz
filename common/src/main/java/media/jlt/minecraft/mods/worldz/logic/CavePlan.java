@@ -15,6 +15,9 @@ import media.jlt.minecraft.mods.worldz.config.CaveConfig;
  *     "configurable depth")
  * @param sealedSurface whether a solid roof seals off sky access everywhere
  * @param sealedSurfaceY the roof's Y; terrain above it is capped solid
+ * @param sealedSurfaceBlock the block the roof is built from (Jason, 2026-07-25: stone,
+ *     deepslate, or bedrock)
+ * @param sealedSurfaceThicknessBlocks the roof's thickness in blocks
  * @param cavernEnabled whether the mega-cavern (GOALS 26) is carved around spawn
  * @param cavernRadiusBlocks the mega-cavern's horizontal half-width
  * @param cavernHeightBlocks the mega-cavern's vertical half-height
@@ -27,6 +30,8 @@ public record CavePlan(
     int spawnDepthY,
     boolean sealedSurface,
     int sealedSurfaceY,
+    SealedSurfaceBlock sealedSurfaceBlock,
+    int sealedSurfaceThicknessBlocks,
     boolean cavernEnabled,
     int cavernRadiusBlocks,
     int cavernHeightBlocks,
@@ -37,6 +42,14 @@ public record CavePlan(
     public static final int DEFAULT_SPAWN_DEPTH_Y = -32;
     /** Comfortably above ordinary hills; true mountains above it are deliberately clipped flat. */
     public static final int DEFAULT_SEALED_SURFACE_Y = 128;
+    /** The original fixed roof material, kept as the default (Jason, 2026-07-25). */
+    public static final SealedSurfaceBlock DEFAULT_SEALED_SURFACE_BLOCK = SealedSurfaceBlock.STONE;
+    /** The original fixed roof thickness, kept as the default. */
+    public static final int DEFAULT_SEALED_SURFACE_THICKNESS_BLOCKS = 5;
+    /** Smallest supported roof thickness -- must still block sky access. */
+    public static final int MIN_SEALED_SURFACE_THICKNESS_BLOCKS = 1;
+    /** Largest supported roof thickness -- a generous ceiling, not a tuned limit. */
+    public static final int MAX_SEALED_SURFACE_THICKNESS_BLOCKS = 64;
     /** Fixture-verified default -- a believable "world in a cave" without being excessive. */
     public static final int DEFAULT_CAVERN_RADIUS_BLOCKS = 48;
     /** Fixture-verified default vertical half-height. */
@@ -51,6 +64,16 @@ public record CavePlan(
         if (sealedSurface && sealedSurfaceY < CaveConfig.MIN_SEALED_SURFACE_Y) {
             throw new IllegalArgumentException(
                 "Sealed surface Y must be at least " + CaveConfig.MIN_SEALED_SURFACE_Y + "."
+            );
+        }
+        if (sealedSurfaceBlock == null) {
+            throw new IllegalArgumentException("Sealed surface block is required.");
+        }
+        if (sealedSurfaceThicknessBlocks < MIN_SEALED_SURFACE_THICKNESS_BLOCKS
+            || sealedSurfaceThicknessBlocks > MAX_SEALED_SURFACE_THICKNESS_BLOCKS) {
+            throw new IllegalArgumentException(
+                "Sealed surface thickness must be between " + MIN_SEALED_SURFACE_THICKNESS_BLOCKS
+                    + " and " + MAX_SEALED_SURFACE_THICKNESS_BLOCKS + "."
             );
         }
         if (cavernRadiusBlocks < MIN_CAVERN_BLOCKS || cavernRadiusBlocks > MAX_CAVERN_BLOCKS) {
@@ -76,6 +99,7 @@ public record CavePlan(
     public static CavePlan disabled() {
         return new CavePlan(
             false, DEFAULT_SPAWN_DEPTH_Y, false, DEFAULT_SEALED_SURFACE_Y,
+            DEFAULT_SEALED_SURFACE_BLOCK, DEFAULT_SEALED_SURFACE_THICKNESS_BLOCKS,
             false, DEFAULT_CAVERN_RADIUS_BLOCKS, DEFAULT_CAVERN_HEIGHT_BLOCKS, false, StarterKitTier.MEDIUM
         );
     }
@@ -89,6 +113,7 @@ public record CavePlan(
     public static CavePlan fromConfig(CaveConfig config) {
         return new CavePlan(
             true, config.spawnDepthY, config.sealedSurface, config.sealedSurfaceY,
+            config.sealedSurfaceBlock, config.sealedSurfaceThicknessBlocks,
             config.cavernEnabled, config.cavernRadiusBlocks, config.cavernHeightBlocks,
             config.chestEnabled, config.chestTier
         );

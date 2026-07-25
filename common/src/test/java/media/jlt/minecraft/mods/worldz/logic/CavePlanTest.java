@@ -53,31 +53,57 @@ class CavePlanTest {
     @Test
     void invalidCavernRadiusIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new CavePlan(
-            true, -32, false, 128, true, CavePlan.MIN_CAVERN_BLOCKS - 1, 24, false, StarterKitTier.MEDIUM
+            true, -32, false, 128, SealedSurfaceBlock.STONE, 5, true, CavePlan.MIN_CAVERN_BLOCKS - 1, 24, false,
+            StarterKitTier.MEDIUM
         ));
         assertThrows(IllegalArgumentException.class, () -> new CavePlan(
-            true, -32, false, 128, true, CavePlan.MAX_CAVERN_BLOCKS + 1, 24, false, StarterKitTier.MEDIUM
+            true, -32, false, 128, SealedSurfaceBlock.STONE, 5, true, CavePlan.MAX_CAVERN_BLOCKS + 1, 24, false,
+            StarterKitTier.MEDIUM
         ));
     }
 
     @Test
     void invalidCavernHeightIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new CavePlan(
-            true, -32, false, 128, true, 48, CavePlan.MIN_CAVERN_BLOCKS - 1, false, StarterKitTier.MEDIUM
+            true, -32, false, 128, SealedSurfaceBlock.STONE, 5, true, 48, CavePlan.MIN_CAVERN_BLOCKS - 1, false,
+            StarterKitTier.MEDIUM
         ));
         assertThrows(IllegalArgumentException.class, () -> new CavePlan(
-            true, -32, false, 128, true, 48, CavePlan.MAX_CAVERN_BLOCKS + 1, false, StarterKitTier.MEDIUM
+            true, -32, false, 128, SealedSurfaceBlock.STONE, 5, true, 48, CavePlan.MAX_CAVERN_BLOCKS + 1, false,
+            StarterKitTier.MEDIUM
         ));
     }
 
     @Test
     void invalidChestTierIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new CavePlan(
-            true, -32, false, 128, false, 48, 24, false, null
+            true, -32, false, 128, SealedSurfaceBlock.STONE, 5, false, 48, 24, false, null
+        ));
+    }
+
+    @Test
+    void invalidSealedSurfaceThicknessIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new CavePlan(
+            true, -32, false, 128, SealedSurfaceBlock.STONE, CavePlan.MIN_SEALED_SURFACE_THICKNESS_BLOCKS - 1,
+            false, 48, 24, false, StarterKitTier.MEDIUM
+        ));
+        assertThrows(IllegalArgumentException.class, () -> new CavePlan(
+            true, -32, false, 128, SealedSurfaceBlock.STONE, CavePlan.MAX_SEALED_SURFACE_THICKNESS_BLOCKS + 1,
+            false, 48, 24, false, StarterKitTier.MEDIUM
+        ));
+    }
+
+    @Test
+    void invalidSealedSurfaceBlockIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new CavePlan(
+            true, -32, false, 128, null, 5, false, 48, 24, false, StarterKitTier.MEDIUM
         ));
     }
 
     private static CavePlan plan(boolean sealedSurface, int sealedSurfaceY) {
-        return new CavePlan(true, -32, sealedSurface, sealedSurfaceY, false, 48, 24, false, StarterKitTier.MEDIUM);
+        return new CavePlan(
+            true, -32, sealedSurface, sealedSurfaceY, SealedSurfaceBlock.STONE, 5, false, 48, 24, false,
+            StarterKitTier.MEDIUM
+        );
     }
 }

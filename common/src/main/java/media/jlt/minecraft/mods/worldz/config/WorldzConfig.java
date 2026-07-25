@@ -12,6 +12,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
+import media.jlt.minecraft.mods.worldz.logic.SealedSurfaceBlock;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
@@ -516,6 +517,12 @@ public final class WorldzConfig {
             );
             sanitized.sealedSurfaceY = CaveConfig.MIN_SEALED_SURFACE_Y;
         }
+        sanitized.sealedSurfaceBlock = sanitized.sealedSurfaceBlock == null
+            ? CavePlan.DEFAULT_SEALED_SURFACE_BLOCK : sanitized.sealedSurfaceBlock;
+        sanitized.sealedSurfaceThicknessBlocks = clampWithWarning(
+            sanitized.sealedSurfaceThicknessBlocks, CavePlan.MIN_SEALED_SURFACE_THICKNESS_BLOCKS,
+            CavePlan.MAX_SEALED_SURFACE_THICKNESS_BLOCKS, "cave.sealedSurfaceThicknessBlocks", logger
+        );
         sanitized.cavernRadiusBlocks = clampWithWarning(
             sanitized.cavernRadiusBlocks, CavePlan.MIN_CAVERN_BLOCKS, CavePlan.MAX_CAVERN_BLOCKS,
             "cave.cavernRadiusBlocks", logger
@@ -1214,6 +1221,14 @@ public final class WorldzConfig {
         if (map.containsKey("sealedSurfaceY")) {
             config.sealedSurfaceY = readInt(map.get("sealedSurfaceY"), name + ".sealedSurfaceY");
         }
+        if (map.containsKey("sealedSurfaceBlock")) {
+            config.sealedSurfaceBlock =
+                SealedSurfaceBlock.parse(readString(map.get("sealedSurfaceBlock"), name + ".sealedSurfaceBlock"));
+        }
+        if (map.containsKey("sealedSurfaceThicknessBlocks")) {
+            config.sealedSurfaceThicknessBlocks =
+                readInt(map.get("sealedSurfaceThicknessBlocks"), name + ".sealedSurfaceThicknessBlocks");
+        }
         if (map.containsKey("cavernEnabled")) {
             config.cavernEnabled = readBoolean(map.get("cavernEnabled"), name + ".cavernEnabled");
         }
@@ -1884,6 +1899,8 @@ public final class WorldzConfig {
         values.put("spawnDepthY", config.spawnDepthY);
         values.put("sealedSurface", config.sealedSurface);
         values.put("sealedSurfaceY", config.sealedSurfaceY);
+        values.put("sealedSurfaceBlock", config.sealedSurfaceBlock.serializedName());
+        values.put("sealedSurfaceThicknessBlocks", config.sealedSurfaceThicknessBlocks);
         values.put("cavernEnabled", config.cavernEnabled);
         values.put("cavernRadiusBlocks", config.cavernRadiusBlocks);
         values.put("cavernHeightBlocks", config.cavernHeightBlocks);
@@ -2120,6 +2137,8 @@ public final class WorldzConfig {
         return "spawnDepthY=" + config.spawnDepthY
             + ", sealedSurface=" + config.sealedSurface
             + ", sealedSurfaceY=" + config.sealedSurfaceY
+            + ", sealedSurfaceBlock=" + config.sealedSurfaceBlock.serializedName()
+            + ", sealedSurfaceThicknessBlocks=" + config.sealedSurfaceThicknessBlocks
             + ", cavernEnabled=" + config.cavernEnabled
             + ", cavernRadiusBlocks=" + config.cavernRadiusBlocks
             + ", cavernHeightBlocks=" + config.cavernHeightBlocks

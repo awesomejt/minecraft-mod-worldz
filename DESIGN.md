@@ -1821,6 +1821,25 @@ Clean split: Protection = discoverable damage relief; the custom enchant =
 the specialized grace tool you hunt for. Both bounded per the no-immunity
 rule.
 
+### 22.4 Generalization target: cave "no surfacing" (GOALS 25-26, added 2026-07-25)
+
+Recorded per Jason's direction while reviewing config 56, not yet designed
+in detail: the cave preset's sealed surface (§30.4) wants the same
+permeable, grace-then-damage boundary described in §22.3, but keyed on a Y
+threshold (`cave.sealedSurfaceY`, or a separate configurable Y) instead of
+horizontal distance from a `WorldBorder`. Both this project's own "no
+GOALS use case needs region-composed worlds" instinct and Jason's explicit
+call point the same direction: **build the grace/damage state machine
+once, as a shared module both the border (§22.3, still unimplemented —
+TODO Phase 5d) and cave consume**, rather than a second, cave-specific
+copy of the timer/warning/damage-type logic. A real design pass for the
+shared shape (what varies per consumer: the crossing test itself —
+horizontal border distance vs. a Y comparison — plus which messages/tint
+apply; what's shared: grace timer, instant reset on return, damage
+cadence, the no-immunity damage-type tags) is still needed before either
+consumer is implemented — this section only records the target, it does
+not commit to a class shape yet.
+
 ## 23. Strip world / 1D Minecraft (GOALS 32, 36) — design spike (TODO 6.1)
 
 A narrow corridor along one axis; everything happens in that strip. Design

@@ -23,6 +23,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
 import media.jlt.minecraft.mods.worldz.logic.LayoutTerrainProfile;
+import media.jlt.minecraft.mods.worldz.logic.SealedSurfaceBlock;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandProfile;
 import media.jlt.minecraft.mods.worldz.logic.StackedLayerSpec;
@@ -103,8 +104,6 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static final int DEFAULT_LAYOUT_FOUNDATION_DEPTH_BLOCKS = 8;
     /** Fallback sky-void island radius when {@code VOID} mode has no configured starter biome. */
     private static final int DEFAULT_VOID_ISLAND_RADIUS_BLOCKS = 256;
-    /** Cave sealed-surface roof thickness (GOALS 25, DESIGN §30.4) -- just enough to be a real barrier. */
-    private static final int CAVE_SEALED_SURFACE_THICKNESS_BLOCKS = 5;
     /**
      * Buried stacked-layer decoration scatter density (GOALS 35, DESIGN §34.4): a fixed per-
      * chunk-per-feature attempt count rather than a config knob -- a simplification found while
@@ -2165,7 +2164,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     }
 
     /**
-     * Seals off sky access everywhere (GOALS 25, DESIGN §30.4): a thin solid roof at {@code
+     * Seals off sky access everywhere (GOALS 25, DESIGN §30.4): a solid roof at {@code
      * cave.sealedSurfaceY()}, applied uniformly to every column regardless of X/Z or any
      * border/exterior/island state -- unlike every shaped exterior mode, this has no footprint
      * concept at all. Layered additively after {@link #applyEnvelope}'s ordinary masking loop,
@@ -2173,25 +2172,39 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * No custom lighting/heightmap code needed: ordinary {@code setBlockState} calls already
      * recompute both automatically during chunk generation (DESIGN §21.2's void-border spike
      * finding), and skylight naturally stops propagating below a solid roof.
+     *
+     * <p>Block and thickness are both configurable (Jason, 2026-07-25) -- originally a fixed
+     * 5-thick stone layer, easily breached by a determined player; {@code cave.sealedSurfaceBlock()}
+     * can now be raised to deepslate or bedrock, and {@code cave.sealedSurfaceThicknessBlocks()}
+     * widened, without changing this method's shape.
      */
     private void applyCaveSealedSurface(ChunkAccess chunk, ChunkPos chunkPos, BlockPos.MutableBlockPos pos, int maxY) {
         int roofY = Math.min(this.cave.sealedSurfaceY(), maxY);
-        int roofTop = Math.min(maxY, roofY + CAVE_SEALED_SURFACE_THICKNESS_BLOCKS - 1);
-        BlockState stone = Blocks.STONE.defaultBlockState();
+        int roofTop = Math.min(maxY, roofY + this.cave.sealedSurfaceThicknessBlocks() - 1);
+        BlockState roofState = sealedSurfaceBlockState(this.cave.sealedSurfaceBlock());
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
                 for (int y = roofY; y <= roofTop; y++) {
                     pos.set(x, y, z);
                     BlockState oldState = chunk.getBlockState(pos);
-                    if (oldState != stone) {
+                    if (oldState != roofState) {
                         if (oldState.hasBlockEntity()) {
                             chunk.removeBlockEntity(pos);
                         }
-                        chunk.setBlockState(pos, stone, 0);
+                        chunk.setBlockState(pos, roofState, 0);
                     }
                 }
             }
         }
+    }
+
+    /** Maps the cave preset's configured roof material (Jason, 2026-07-25) to its real block. */
+    private static BlockState sealedSurfaceBlockState(SealedSurfaceBlock block) {
+        return switch (block) {
+            case STONE -> Blocks.STONE.defaultBlockState();
+            case DEEPSLATE -> Blocks.DEEPSLATE.defaultBlockState();
+            case BEDROCK -> Blocks.BEDROCK.defaultBlockState();
+        };
     }
 
     /**

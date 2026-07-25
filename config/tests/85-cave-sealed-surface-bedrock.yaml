@@ -1,0 +1,24 @@
+# GOALS 25 (Phase 13.2b follow-up): configurable sealed-surface block/
+# thickness (Jason, 2026-07-25) -- the original fixed 5-thick stone roof
+# (config 54) is easily mined through by a determined player; this config
+# raises it to bedrock instead.
+# **Select "Worldz: Cave"** on the creation screen.
+#
+# Same sealed-surface roof as config 54, but built from bedrock (mineable
+# with nothing in survival) at 3 blocks thick instead of the default 5-thick
+# stone.
+#
+# Steps once in-game:
+#  1. Confirm you spawn underground exactly as in config 53.
+#  2. Dig straight up from spawn and confirm you hit a solid roof around
+#     Y 128 -- this time bedrock, not stone.
+#  3. Confirm the roof genuinely cannot be broken in survival (try every
+#     tool you have) -- unlike config 54's stone roof.
+cave:
+  spawnDepthY: -32
+  sealedSurface: true
+  sealedSurfaceY: 128
+  sealedSurfaceBlock: bedrock
+  sealedSurfaceThicknessBlocks: 3
+  cavernEnabled: false
+  chestEnabled: false

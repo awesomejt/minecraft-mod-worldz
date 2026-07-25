@@ -61,6 +61,32 @@ follow-up. Needs a design pass (the actual YAML shape, which existing
 sections are worth retrofitting vs. leaving flat, and the codec pattern for
 the fallback) before scheduling.
 
+**Open (added 2026-07-25, Jason) — broader config structure review,
+not yet designed:** widens the item above from "per-dimension overrides"
+to the config schema generally. Two asks: (1) reduce **property-name
+duplication** by adding nesting depth where it helps readability — e.g.
+`cave`'s `sealedSurface`/`sealedSurfaceY`/`sealedSurfaceBlock`/
+`sealedSurfaceThicknessBlocks` (the last two just added, 2026-07-25,
+DESIGN §30.4) repeat the `sealedSurface` prefix on every sibling field
+instead of nesting into one `sealedSurface: {enabled, y, block,
+thicknessBlocks}` object — a concrete, freshly-introduced example of
+exactly the pattern being flagged, not a hypothetical one; (2) review
+whether any settings duplicated *across* typed-preset sections (border/
+exterior shapes, starter-kit tiers, chest mechanics, etc. — several
+sections already share near-identical `easyKit`/`mediumKit`/`hardKit`
+shapes, for instance) should consolidate into a common/shared section
+instead of being redeclared per preset. Also wants the example config
+(`config/jlt_worldz.example.yaml`) properly maintained afterward, with
+real per-section spacing and commented documentation — this was already a
+known gap before today (see TODO Backlog: the example only documents
+sections through Phase 4, deferred to Phase 20's planned full config-
+reference rewrite). **Not designed or scheduled** — this is a real schema
+change touching most config sections, every one of the ~85 `config/tests/
+*.yaml` files, and the example file together, not a quick edit; needs its
+own design pass (which sections nest, which consolidate, exact YAML shape)
+before any implementation, likely combined with the per-dimension-override
+item above as one coordinated config-schema pass.
+
 ### World Generation Screen
 
 - If no changes are made, use default settings if no config file is defined or use setting from configuration file.
@@ -279,6 +305,21 @@ the fallback) before scheduling.
 
 25. Cave-only start — player spawns deep underground in a natural cave (configurable depth), optionally with a starter chest. Option to seal the surface so the entire game is played underground (solid roof / no sky access). Underground structures (mineshafts, dungeons, trial chambers, stronghold) generate normally so the game stays beatable; the Nether is reached via a portal built underground.
 26. Same as 25, but with a mega-cave option: a huge natural-looking cavern (configurable size) around spawn — a buried "world in a cave" with room to build a base, blended into the natural cave systems at its edges.
+
+    **Sealed-surface hardening (2026-07-25, Jason).** The sealed-surface
+    roof (25) is now a configurable block (stone/deepslate/bedrock) and
+    thickness, not a fixed 5-thick stone layer — a determined player could
+    always just mine through stone, defeating the "entire game played
+    underground" intent. **Also requested, deferred:** a genuine
+    "can't surface" option beyond a thicker roof — a permeable Y-level
+    damage boundary (you can climb up, but it hurts and pushes you back
+    down), reusing the same design already spec'd for GOAL 39's border
+    damage enforcement (DESIGN §22.3) but keyed on Y instead of horizontal
+    distance. Jason's explicit call: build this **once, in a shared place
+    usable by every "safe area" boundary case** (GOAL 39's own border
+    damage — not yet implemented, TODO Phase 5d — and this cave case, at
+    minimum) rather than duplicating cave-specific logic; recorded as a
+    recommended future direction in DESIGN/TODO, not implemented yet.
 
 ### Nether-Start Challenge:
 

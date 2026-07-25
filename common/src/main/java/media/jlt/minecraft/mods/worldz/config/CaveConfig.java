@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
+import media.jlt.minecraft.mods.worldz.logic.SealedSurfaceBlock;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 
 import java.util.ArrayList;
@@ -20,6 +21,10 @@ public final class CaveConfig {
     public boolean sealedSurface = false;
     /** The roof's Y, meaningful only when {@link #sealedSurface} is set. */
     public int sealedSurfaceY = CavePlan.DEFAULT_SEALED_SURFACE_Y;
+    /** The roof's block (Jason, 2026-07-25): stone, deepslate, or bedrock. */
+    public SealedSurfaceBlock sealedSurfaceBlock = CavePlan.DEFAULT_SEALED_SURFACE_BLOCK;
+    /** The roof's thickness in blocks. */
+    public int sealedSurfaceThicknessBlocks = CavePlan.DEFAULT_SEALED_SURFACE_THICKNESS_BLOCKS;
     /** Whether the mega-cavern (GOALS 26) is carved around spawn. */
     public boolean cavernEnabled = false;
     /** The mega-cavern's horizontal half-width. */

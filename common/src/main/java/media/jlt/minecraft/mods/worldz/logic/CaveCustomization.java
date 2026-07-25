@@ -123,13 +123,16 @@ public record CaveCustomization(
     }
 
     /**
-     * Resolves this world's cave plan.
+     * Resolves this world's cave plan. The sealed-surface block/thickness (Jason, 2026-07-25)
+     * stay config-only for now, matching this project's precedent for new, not-yet-screen-exposed
+     * options -- the Customize screen always gets the original fixed defaults (stone, 5 thick).
      *
      * @return resolved, enabled plan
      */
     public CavePlan cavePlan() {
         return new CavePlan(
             true, spawnDepthY, sealedSurface, sealedSurfaceY,
+            CavePlan.DEFAULT_SEALED_SURFACE_BLOCK, CavePlan.DEFAULT_SEALED_SURFACE_THICKNESS_BLOCKS,
             cavernEnabled, cavernRadiusBlocks, cavernHeightBlocks, chestEnabled, chestTier
         );
     }
