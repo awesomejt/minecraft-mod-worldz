@@ -3080,6 +3080,23 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-24 (Phase 13 acceptance retest, revised 0.2.87) — **Cave starter
+  kit contents rewritten per Jason's config-56 review**, `CaveConfig`'s
+  `easyDefaults`/`mediumDefaults`/`hardDefaults`. Old kits gave pre-made
+  tools (`wooden_pickaxe`/`iron_pickaxe`/`crafting_table` items) at easy
+  and nothing craftable at hard (no pickaxe at all). New tiers, per
+  Jason's explicit spec: **easy** — raw `oak_log` (not a pre-made table/
+  pickaxe, so the player crafts their own start) plus food, `wheat_seeds`,
+  saplings, torches, and dirt, enough to never need a mineshaft or the
+  surface for the whole game; **medium** — dialed down, still torches and
+  enough log for "a way to make a pickaxe" plus dirt, no guaranteed food
+  or saplings; **hard** — exactly one torch and one `wooden_pickaxe`,
+  nothing else, so finding any wood at all requires reaching a mineshaft
+  or the surface. `WorldzConfigTest`'s config-dump string updated to
+  match; config 56's header comment corrected (previously described the
+  old, wrong hard-tier contents). Built (0.2.87), full suite green,
+  redeployed to Worldz-Test. **[Jason] review of the new tiers
+  outstanding.**
 - 2026-07-24 (Phase 13 acceptance retest, fixed 0.2.86) — **Mega-cavern
   floor opened into the void**, found via Jason's config 55 in-game test.
   Root cause: `applyCaveMegaCavern` carves solid, non-fluid blocks to air

@@ -11,9 +11,9 @@
 # Steps once in-game:
 #  1. Confirm a chest exists in the floor block directly beneath where you
 #     spawned (dig straight down one block if it isn't immediately visible).
-#  2. Open it and confirm it contains the hard-tier kit (a handful of
-#     torches plus a little food and coal -- bare essentials, not a full
-#     loadout).
+#  2. Open it and confirm it contains the hard-tier kit (exactly one torch
+#     and a wooden pickaxe -- nothing else; finding wood at all means
+#     reaching a mineshaft or the surface).
 #  3. Confirm the sealed surface (config 54's check) still holds with the
 #     chest enabled too -- the two options are independent.
 cave:

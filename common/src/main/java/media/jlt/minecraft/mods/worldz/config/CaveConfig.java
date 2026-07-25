@@ -42,28 +42,38 @@ public final class CaveConfig {
     }
 
     private static StarterKitConfig easyDefaults() {
+        // Enough to never need to find a mineshaft or reach the surface (GOALS 25): raw wood --
+        // not a pre-made table/pickaxe -- so the player crafts their own start, food, a crop and
+        // saplings toward self-sufficiency, torches to secure the immediate area, and dirt to
+        // plant into (Jason, 2026-07-24).
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:torch:32", "minecraft:bread:8", "minecraft:crafting_table:1");
-        config.extras = list(
-            "minecraft:wooden_pickaxe:1", "minecraft:iron_pickaxe:1", "minecraft:cobblestone:32", "minecraft:coal:16"
+        config.essentials = list(
+            "minecraft:oak_log:4", "minecraft:bread:6", "minecraft:wheat_seeds:4",
+            "minecraft:oak_sapling:3", "minecraft:torch:16", "minecraft:dirt:8"
         );
-        config.extrasCount = 3;
-        return config;
-    }
-
-    private static StarterKitConfig mediumDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:torch:16", "minecraft:bread:4");
-        config.extras = list("minecraft:wooden_pickaxe:1", "minecraft:cobblestone:16", "minecraft:coal:8");
+        config.extras = list("minecraft:cobblestone:16", "minecraft:coal:8");
         config.extrasCount = 2;
         return config;
     }
 
-    private static StarterKitConfig hardDefaults() {
+    private static StarterKitConfig mediumDefaults() {
+        // Dialed down from easy (Jason, 2026-07-24): still some light and a way to make a
+        // pickaxe, plus dirt to grow something -- no guaranteed food or saplings.
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:torch:8");
-        config.extras = list("minecraft:bread:2", "minecraft:coal:4");
+        config.essentials = list("minecraft:torch:8", "minecraft:oak_log:2", "minecraft:dirt:4");
+        config.extras = list("minecraft:coal:4");
         config.extrasCount = 1;
+        return config;
+    }
+
+    private static StarterKitConfig hardDefaults() {
+        // Bare minimum (Jason, 2026-07-24): a torch to hold and a wood pickaxe -- everything
+        // else, including any wood at all, must come from finding a mineshaft or reaching the
+        // surface.
+        StarterKitConfig config = new StarterKitConfig();
+        config.essentials = list("minecraft:torch:1", "minecraft:wooden_pickaxe:1");
+        config.extras = list();
+        config.extrasCount = 0;
         return config;
     }
 
