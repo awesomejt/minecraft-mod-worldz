@@ -258,6 +258,37 @@ class FloatingIslandsPlanTest {
     }
 
     @Test
+    void villageBiomeIdsMatchesTheKnownVillageVariantsInStructureIdOrder() {
+        // Regression coverage (2026-07-25): callers that pre-resolve a fixed "every id a sky
+        // island can select" map (LimitedBiomeSource.resolveSkyIslandBiomes) must include every
+        // one of these, not just the configured islandBiomes pool -- otherwise a village forced
+        // onto a variant outside that pool (e.g. savanna) silently falls through to an unrelated
+        // real-seed biome instead of the one actually built.
+        assertEquals(
+            List.of(
+                "minecraft:plains", "minecraft:desert", "minecraft:savanna", "minecraft:snowy_plains", "minecraft:taiga"
+            ),
+            FloatingIslandsPlan.villageBiomeIds()
+        );
+    }
+
+    @Test
+    void villageHitBiomeIsAlwaysOneOfTheKnownVillageBiomeIds() {
+        FloatingIslandsPlan plan = plan(true, 0.9, false, 128, new IslandPlan.ExclusionZone(false, 256));
+        for (long seed = 0; seed < 20; seed++) {
+            FloatingIslandsPlan.VillageSite site = plan.guaranteedVillageSite(seed);
+            int x = (int) Math.round(site.centerX());
+            int z = (int) Math.round(site.centerZ());
+            FloatingIslandsPlan.Hit hit = plan.at(x, z, seed, "minecraft:plains");
+            assertTrue(hit.village(), "expected the village's own center to be the village hit, seed " + seed);
+            assertTrue(
+                FloatingIslandsPlan.villageBiomeIds().contains(hit.biome()),
+                "village hit biome '" + hit.biome() + "' is not a known village-compatible biome, seed " + seed
+            );
+        }
+    }
+
+    @Test
     void guaranteedVillageSiteIsDeterministic() {
         FloatingIslandsPlan plan = plan(true, 0.6, false, 256, new IslandPlan.ExclusionZone(true, 256));
         FloatingIslandsPlan.VillageSite first = plan.guaranteedVillageSite(42L);

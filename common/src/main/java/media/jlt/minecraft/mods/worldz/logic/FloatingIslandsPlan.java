@@ -116,6 +116,22 @@ public record FloatingIslandsPlan(
         "minecraft:plains", "minecraft:desert", "minecraft:savanna", "minecraft:snowy_plains", "minecraft:taiga"
     };
 
+    /**
+     * Every biome id the guaranteed village (GOALS 07, DESIGN §28.3) can ever be forced onto --
+     * callers that pre-resolve a fixed "every id a sky island can select" map (so an arbitrary
+     * biome id string can be turned into a real registered biome holder) must include this set
+     * too, not just the configured {@link #islandBiomes} pool: the village's own forced biome is
+     * picked independently of that pool and is always present whenever floating islands are
+     * enabled at all (2026-07-25 fix -- found via a savanna-village island silently falling
+     * through to an unrelated real-seed biome on F3 because "minecraft:savanna" wasn't in that
+     * map).
+     *
+     * @return the five village-compatible biome ids, in {@link #VILLAGE_STRUCTURE_IDS} order
+     */
+    public static List<String> villageBiomeIds() {
+        return List.of(VILLAGE_BIOME_IDS);
+    }
+
     /** Real vanilla village structure ids, one per {@link #VILLAGE_BIOME_IDS} entry (DESIGN §28.3). */
     private static final String[] VILLAGE_STRUCTURE_IDS = {
         "minecraft:village_plains", "minecraft:village_desert", "minecraft:village_savanna",

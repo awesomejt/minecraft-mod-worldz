@@ -694,6 +694,12 @@ public final class LimitedBiomeSource extends BiomeSource {
         ids.add(skyIsland.islandBiome());
         if (skyIsland.floatingIslands().enabled()) {
             ids.addAll(skyIsland.floatingIslands().islandBiomes());
+            // The guaranteed village's own forced biome (GOALS 07, DESIGN §28.3) is picked
+            // independently of the configured pool above and always exists whenever floating
+            // islands are enabled -- omitting it here let a village forced onto savanna/
+            // snowy_plains/taiga (whichever isn't already in the user's own pool) silently miss
+            // this map's lookup and fall through to an unrelated real-seed biome (2026-07-25 fix).
+            ids.addAll(FloatingIslandsPlan.villageBiomeIds());
         }
 
         Map<String, Holder<Biome>> resolved = new LinkedHashMap<>();

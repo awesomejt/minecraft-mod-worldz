@@ -3099,6 +3099,40 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-25 (Phase 11 acceptance retest, fixed 0.3.1) — **The guaranteed
+  village's own island could report an unrelated real-seed biome on F3**,
+  found via Jason's fourth config-58 retest: a clearly savanna-style
+  village (orange terracotta roofs, acacia trees) reported "Deep Frozen
+  Ocean". Verified against ground truth two ways: decoding the actual
+  world's region files confirmed the island's real blocks were
+  `grass_block`/`dirt`/`stone` (not real unmasked terrain -- a second,
+  unrelated worry from the same retest that turned out to be a red
+  herring, since two *other* screenshots showing what looked like an
+  ocean horizon also turned out to be ordinary small `packed_ice`-topped
+  floating islands viewed from the edge, confirmed the same way); and
+  reproducing `FloatingIslandsPlan.at()` directly against the world's own
+  seed (via `jshell` against the built jar) confirmed the pure logic layer
+  already resolved this island correctly (`village=true`,
+  `biome=minecraft:savanna`). Root cause: `LimitedBiomeSource
+  .resolveSkyIslandBiomes` -- the map that turns a biome id string into an
+  actual registered biome holder for F3/decoration -- only ever included
+  the starter island's own biome plus the configured `floatingIslands
+  .islandBiomes` pool, never the guaranteed village's own five possible
+  forced biomes (`plains`/`desert`/`savanna`/`snowy_plains`/`taiga`,
+  independent of that pool). Whenever the village rolled a variant not
+  already in the user's own pool (savanna here), the lookup silently
+  missed and fell all the way through to an unpinned, unrelated real-seed
+  biome sample -- the same failure mode as the Y/column bugs above, just
+  in a fallback path those fixes never touched. Pre-existing bug, not
+  caused by anything in this session -- it needed a village variant
+  outside the user's own configured pool to ever surface, which hadn't
+  happened in any earlier test. **Fix:** new `FloatingIslandsPlan
+  .villageBiomeIds()` public accessor for the five ids;
+  `resolveSkyIslandBiomes` now includes them whenever floating islands are
+  enabled. New `FloatingIslandsPlanTest` coverage: `villageBiomeIds`'s own
+  contents, and every seed's village hit biome is one of them. Built
+  (0.3.1), full multiloader build green, redeployed to Worldz-Test.
+  **[Jason] retest outstanding.**
 - 2026-07-25 (Phase 11 acceptance retest, revised 0.3.0) — **Real ocean/
   river/swamp biomes sampled by `naturalBiome` rendered as plain grass**,
   found via Jason's third config-58 retest: with the Y/column-consistency
