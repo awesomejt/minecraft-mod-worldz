@@ -2202,10 +2202,22 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * one-directional: a column already air or fluid inside the footprint is left exactly as
      * vanilla generated it (this is what "blended into the natural cave systems at its edges"
      * means in practice) -- only solid, non-fluid blocks become air. Never fills.
+     *
+     * <p>One deliberate exception to "never fills": when the configured height reaches (or, once
+     * clamped, would have reached) the world's own floor, the carve leaves the single bottom-most
+     * layer untouched instead of carving it away -- found in-game (Jason, config 55, whose
+     * {@code spawnDepthY=-32}/{@code cavernHeightBlocks=32} lands exactly on the Overworld's
+     * {@code minY=-64}): carving that layer removed vanilla's own guaranteed-solid bottom bedrock
+     * along with everything else, opening the cavern floor straight into the void below the
+     * world. Vanilla always generates a fully solid bedrock block at the literal minimum Y for
+     * every column (only the few layers just above it are randomized), so simply never carving
+     * that one layer is sufficient -- no explicit fill needed to restore a solid floor.
      */
     private void applyCaveMegaCavern(ChunkAccess chunk, ChunkPos chunkPos, BlockPos.MutableBlockPos pos) {
-        int minY = Math.max(chunk.getMinY(), this.cave.spawnDepthY() - this.cave.cavernHeightBlocks());
+        int worldMinY = chunk.getMinY();
+        int minY = Math.max(worldMinY, this.cave.spawnDepthY() - this.cave.cavernHeightBlocks());
         int maxY = Math.min(chunk.getMaxY(), this.cave.spawnDepthY() + this.cave.cavernHeightBlocks());
+        int carveFromY = minY == worldMinY ? worldMinY + 1 : minY;
         long seed = caveSeed();
         BlockState air = Blocks.AIR.defaultBlockState();
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
@@ -2216,7 +2228,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 if (distance > 0) {
                     continue;
                 }
-                for (int y = minY; y <= maxY; y++) {
+                for (int y = carveFromY; y <= maxY; y++) {
                     pos.set(x, y, z);
                     BlockState oldState = chunk.getBlockState(pos);
                     if (!oldState.isAir() && oldState.getFluidState().isEmpty()) {

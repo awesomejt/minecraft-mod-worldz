@@ -3080,6 +3080,30 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-24 (Phase 13 acceptance retest, fixed 0.2.86) — **Mega-cavern
+  floor opened into the void**, found via Jason's config 55 in-game test.
+  Root cause: `applyCaveMegaCavern` carves solid, non-fluid blocks to air
+  from `minY = max(chunk.getMinY(), spawnDepthY - cavernHeightBlocks)` up
+  to `maxY`. Config 55's `spawnDepthY=-32`/`cavernHeightBlocks=32` puts the
+  cavern's unclamped bottom exactly at the Overworld's `minY=-64`, so
+  `minY` clamps to the world floor itself -- the carve then removed
+  vanilla's own guaranteed-solid bottom bedrock layer along with
+  everything else in the footprint, opening the cavern floor straight
+  into the void below the world. This only bites when the configured
+  height reaches the world floor; a shallower cavern already left real,
+  untouched stone below its `minY - 1` as a natural floor, which is why
+  this wasn't caught until a config specifically deep enough to clamp was
+  tested. **Fix:** when the computed `minY` equals the world's actual
+  floor, carving now starts one block higher (`worldMinY + 1`), leaving
+  that single bottom-most layer untouched -- vanilla always generates a
+  fully solid bedrock block at the literal minimum Y for every column
+  (only the few layers just above it are randomized), so simply never
+  carving it is sufficient; no explicit fill needed, and the existing
+  "never fills" carve philosophy is preserved everywhere else. **Built
+  (0.2.86), full multiloader build green, redeployed to Worldz-Test.
+  [Jason] retest on a fresh config-55 world outstanding** — delete the old
+  `Worldz-55` save rather than recreating over it (new-worlds-only
+  policy).
 - 2026-07-24 (Phase 13 acceptance retest, fixed 0.2.85) — **Cave-preset
   spawn silently landed on the surface**, found via Jason's config 53
   in-game test on a genuinely fresh world (`Worldz-53`): first screenshot
