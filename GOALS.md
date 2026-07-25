@@ -38,6 +38,29 @@ Client only mod loaders:
 - Mod-level configuration file provides defaults that override defaults in code
 - Each world gets own configuration file once world is generated and based on the settings chosen during the world creation process
 
+**Open (added 2026-07-24, Jason, reviewing config 51) — per-dimension config
+overrides, general convention, not yet designed:** most config sections are
+currently flat (one level), even where a setting could plausibly want to
+differ by dimension — e.g. `chunkIsland`'s `exclusionZoneRadiusBlocks` is one
+value shared across Overworld/Nether/End even though `applyToNether`/
+`applyToEnd` already let each dimension be toggled independently, and the
+Nether being more dangerous is a real reason to want a different (likely
+smaller) exclusion zone there. Jason wants this as a **general convention** —
+a reusable "shared/default value + optional per-dimension override,
+falling back when absent" shape usable anywhere it's relevant (exclusion
+zones, `structureDistance`, the new island-minimum-distance idea from goal
+09, `structureDistance` generally), not a one-off fix just for `chunkIsland`.
+Verified feasible without hitting this project's known codec ceiling
+(DESIGN §29.7's 14-field `group()` limit applies to `LimitedBiomeSource`'s
+own top-level group, already full; `ChunkIslandCodecs.PLAN_CODEC`'s own
+group is only 7/14, room for a nested override object at the cost of one
+slot there) — **but there is no existing precedent for this shape anywhere
+in the codebase today** (checked `EndBorderConfig`, everything named
+"override"/"perDimension"); this is new general-purpose scope, not a small
+follow-up. Needs a design pass (the actual YAML shape, which existing
+sections are worth retrofitting vs. leaving flat, and the codec pattern for
+the fallback) before scheduling.
+
 ### World Generation Screen
 
 - If no changes are made, use default settings if no config file is defined or use setting from configuration file.
@@ -85,7 +108,50 @@ Client only mod loaders:
 ### Sky Chunk challenge:
 
 09. Similar to 5-8, but based on chunks. Use the natural chunks of the seed. For chunk islands, make sure one generates with a portal room. Have option to include entire chunk or only top (land) until a certain depth - like 5 deep to ensure access to stone. Options for a normal Nether and End, or chunk islands.
+
+    **Feedback (2026-07-24, Jason's Phase 12.7 in-game acceptance of configs
+    49/50) — open, not yet designed:**
+    1. **Islands are too close together.** `spawnChance`/`cellSizeChunks`
+       (DESIGN §29.2) is only a statistical density knob — confirmed in code
+       (`ChunkIslandPlan.at`) there is no neighbor-cell scan or spacing check
+       at all, unlike `FloatingIslandsPlan`'s 3×3 jitter search (which only
+       resolves overlap of one island's own footprint, not spacing between
+       different islands). Even a low `spawnChance` (e.g. 0.1, config 50)
+       still leaves islands close enough that little bridging effort is
+       needed. Wants a real **minimum distance between islands** (a true
+       island-to-island spacing guarantee, not just a probability), that
+       also applies to the new "structure islands" idea below (40) so those
+       stay a genuine destination.
+    2. **`ensureEndPortal` should be conditional on world size.** Verified in
+       code: `WorldLimitManager.needsGuaranteedPortalRoom` fires
+       unconditionally whenever `chunkIsland.enabled` is true, with no check
+       on `overworldBorder.enabled`. Jason's intent: the forced/guaranteed
+       stronghold only matters for a **limited-size** world where a natural
+       stronghold might not fit within the border; for an **infinite**
+       world, forcing one is unnecessary as long as structures spawn
+       naturally (a stronghold is reachable via ordinary generation, or via
+       37's structure-bearing-chunk showcase search) — the guarantee should
+       be skipped/relaxed in that case, not applied unconditionally.
+    3. **Found while verifying #2, worth resolving either way:** the
+       guaranteed portal-room's reserved cell currently *is* subject to the
+       plan's `topOnly` depth cutoff like any ordinary island
+       (`ChunkIslandPlan.at`'s reserved-portal branch reuses the plan-wide
+       `topOnly` field verbatim) — unlike the reserved **geode** cell and
+       the 37 **showcase** cells, both of which are explicitly forced
+       full-column so they can't be truncated. This looks like an
+       inconsistency against the codebase's own established precedent (not
+       yet confirmed in-game whether the forced stronghold placement, which
+       runs later at server start, ends up visibly chopped or just
+       oddly shaped). Needs a decision either way before/alongside #2's fix.
 37. Same as 09, but beyond the starter chunk island, additional chunk islands of *different biomes* generate. Each island can independently be top-only (to a configured depth) or the entire chunk column. Where possible, some islands should showcase underground content: cave biomes (lush caves, dripstone caves, deep dark), amethyst geodes, and structure-bearing chunks — so exploration/bridging yields varied resources. (Clarified 2026-07-16.)
+
+    **Config 50 feedback (2026-07-24):** all islands top-only is already
+    achievable today (plan-wide `topOnly: true`); what's still wanted is
+    "optional structures spawning" on those top-only islands specifically —
+    i.e. some top-only islands should still be allowed to carry a full,
+    unchopped structure (see new goal 40, "structure islands") rather than
+    every structure on a top-only world getting truncated at the depth
+    cutoff along with the terrain.
 
 ### Single-biome challenge:
 
@@ -176,7 +242,38 @@ Client only mod loaders:
 21. Default should be for structure to generate in natural locations and Y levels.
 22. Flat worlds with deep enough layers should have option to have underground structures generate below surface level so they aren't floating and too easy to find.
 23. Having an option for certain land structures to float high above - like Pandora in Avatar. Floating islands containing a village would be pretty cool generation - but only as an option.
+
+    **Status:** spiked and parked (TODO 19.3, DESIGN §36.4) — needs a
+    vanilla structure's bounding box known *before* terrain shaping, which
+    inverts this project's terrain-then-structure pipeline. **Goal 40 below
+    is a different, more tractable idea** — don't conflate the two when
+    revisiting: 40 reuses this project's own existing forced-placement
+    precedent (build/select the island first, force the structure onto or
+    into it after — already shipped for the guaranteed village, §28.3, and
+    the guaranteed stronghold/geode, §29.4/§29.6) rather than needing a
+    *natural*, seed-placed structure's terrain to be known in advance.
 24. Have option for structures like villages, outposts, strongholds, trail chambers, etc to generate far enough way from spawn to require a significant trip. Should be configuratable - but 2000 blocks is a good distance away.
+
+40. **Structure islands (added 2026-07-24, Jason).** Dedicated islands that
+    each exist specifically to hold one vanilla structure — a stronghold, an
+    amethyst geode, a mineshaft, an ancient city, a trial chamber, an ocean
+    monument, a shipwreck, a desert/jungle/other temple, and other
+    structures. The island is "cased" appropriately for the structure it
+    holds: encased in underground blocks for an underground structure (a
+    mineshaft, ancient city, trial chamber, stronghold), water for an ocean
+    structure (ocean monument, shipwreck), or a thin foundation of a few
+    blocks for a surface structure (a temple). Applies broadly — Sky Chunk
+    (09/37), Sky Island/Floating Islands (05-08), and their Nether variants
+    (06, 27) — not just one preset (scope confirmed with Jason 2026-07-24).
+    Structure islands must be treated like any other island for spacing
+    purposes: the same minimum-distance-between-islands rule (see 09's
+    feedback item 1) applies, so reaching one is still a genuine challenge,
+    not a freebie next to the starter island. Generalizes two mechanisms
+    already shipped for Sky Chunk — the guaranteed portal room (a forced
+    stronghold, DESIGN §29.4) and the guaranteed geode (DESIGN §29.6) — into
+    a configurable family covering more structure types, plus a casing
+    concept that's new. See goal 23 for why this is a different, more
+    tractable problem than the parked "Pandora" floating-structure idea.
 
 ### Cave Challenge:
 

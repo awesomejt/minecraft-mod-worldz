@@ -23,7 +23,7 @@
 #     defect to report.
 chunkIsland:
   enabled: true
-  spawnChance: 0.35
+  spawnChance: 0.1
   cellSizeChunks: 1
   topOnly: true
   topOnlyDepthBlocks: 5

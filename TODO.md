@@ -3023,11 +3023,107 @@ pulled earlier if Jason wants a fun quick win.**
   day/night-clock/border-schedule interaction is an acceptable known
   limitation, test-file naming convention). Full detail in MEMORY.md's
   2026-07-24 Phase 18 entry; resolved, not blocking.
+- 2026-07-24 — **Phase 12.7 in-game acceptance (configs 49/50), new scope
+  requested — needs a dedicated design pass before scheduling to a phase.**
+  Jason found chunk islands too close together even at low `spawnChance`
+  (config 50, 0.1) and asked for three related things, captured in full in
+  GOALS.md (item 09's new feedback block, item 37's config-50 note, new
+  item 40):
+  1. A real **minimum distance between islands** — confirmed in code there
+     is none today (`ChunkIslandPlan.at` is a pure per-cell hash pick, no
+     neighbor scan; `FloatingIslandsPlan`'s 3×3 scan only resolves a single
+     island's own jittered footprint, not spacing between islands).
+  2. `ensureEndPortal`/the guaranteed portal room should only force a
+     stronghold for a **limited-size** world; for an infinite world it
+     should rely on natural placement instead. Confirmed in code:
+     `WorldLimitManager.needsGuaranteedPortalRoom` currently fires
+     unconditionally on `chunkIsland.enabled`, with no check on
+     `overworldBorder.enabled`.
+  3. New feature: **structure islands** (goal 40) — dedicated, appropriately
+     "cased" islands each holding one specific structure (stronghold, geode,
+     mineshaft, ancient city, trial chamber, ocean monument, shipwreck,
+     temples, more), generalizing the already-shipped guaranteed-portal-room/
+     geode mechanism (DESIGN §29.4/§29.6). Jason confirmed (2026-07-24) this
+     should apply broadly — Sky Chunk, Sky Island, Floating Islands, and
+     their Nether variants — not just Sky Chunk. Must obey the same
+     minimum-distance rule as #1 above.
+  Also found and logged in GOALS 09 item 3 while verifying #2: the
+  guaranteed portal-room's reserved cell currently *does* get the plan's
+  `topOnly` depth cutoff applied (unlike the geode/showcase reserved cells,
+  which are explicitly exempted, forced full-column) — looks like an
+  inconsistency against this codebase's own precedent, not yet confirmed
+  in-game whether it actually chops the forced stronghold. **Not yet
+  designed or scheduled** — per this project's own workflow (GOALS.md
+  "Workflow" §1), this is a requirements-capture pass only; the actual
+  mechanism (how island spacing is enforced, exact structure-casing rules
+  per structure family, whether `ensureEndPortal` becomes conditional on
+  border state or gets a separate toggle) is Jason's call for a dedicated
+  design pass, not decided here.
+- 2026-07-24 — **Config-51 review: general per-dimension config-override
+  convention requested, not yet designed.** Jason noticed the config schema
+  is flat (one level) and wants a reusable "shared value + optional
+  per-dimension override" shape usable across sections generally, motivated
+  by `chunkIsland`'s `exclusionZoneRadiusBlocks` being one value shared
+  across Overworld/Nether/End even though `applyToNether`/`applyToEnd` are
+  already per-dimension (Nether being more dangerous is a real reason to
+  want a smaller exclusion zone there). Full detail in GOALS.md's
+  "Configuration" subsection. Verified feasible codec-wise (`ChunkIslandCodecs
+  .PLAN_CODEC`'s own `group()` is 7/14 fields, well under this project's
+  documented 14-field ceiling — the outer `LimitedBiomeSource` group is the
+  one that's already full, per DESIGN §29.7) **but no existing precedent for
+  the shape exists anywhere in this codebase** — this is new general
+  scope requiring its own design pass (exact YAML/codec pattern, which
+  sections to retrofit), not a quick addition to `chunkIsland` alone. Not
+  scheduled to a phase.
 
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-24 (Phase 13 acceptance retest, fixed 0.2.85) — **Cave-preset
+  spawn silently landed on the surface**, found via Jason's config 53
+  in-game test on a genuinely fresh world (`Worldz-53`): first screenshot
+  after joining showed him at `[19, 90, 7]` in a Forest treetop, not
+  underground. Diagnosed directly from the actual save files (not just
+  code review): the world's own persisted `Data.spawn` field held
+  `[16, -40, 0]` — correctly underground, right where
+  `SpawnOriginManager.resolveCaveOrigin`'s cavity search should land — and
+  the mod's own `SpawnOriginState` showed a clean, fresh resolution (not a
+  stale-save reuse). So the *spawn-point metadata* was right; the *player*
+  wasn't placed there. Root cause, confirmed against the real 26.2
+  decompiled sources: vanilla's `PlayerSpawnFinder.findSpawn`, which
+  actually places a joining/respawning player, treats the level's stored
+  spawn point as a mere "suggestion" and recomputes Y from the real
+  terrain's ordinary surface heightmap for any dimension where
+  `dimensionType().hasCeiling()` is `false` — true for the cave preset's
+  Overworld, which DESIGN §30.1 deliberately keeps an unmodified vanilla
+  Overworld dimension type. The suggested underground Y is only ever
+  trusted in the `hasCeiling() == true` branch, which the cave preset
+  never took. This is the same "value computed and persisted correctly,
+  but read differently by a separate vanilla consumer with its own rules"
+  bug class as the dummy-`RandomState` precedent (MEMORY.md), just never
+  previously generalized to player placement — no earlier preset ever
+  needed a spawn Y drastically different from the surface, so this exact
+  gap was invisible until cave's ~130-block Y jump made it obvious.
+  **Fix:** new `PlayerSpawnFinderMixin` (both loaders, mirroring
+  `ChunkMapMixin`'s per-loader-duplicate convention), `@Inject`-cancelling
+  `PlayerSpawnFinder.findSpawn` for any cave-preset level and trusting the
+  suggested position outright. Deliberately does **not** flip
+  `hasCeiling` on the shared dimension type itself — checked first and
+  confirmed that also gates `Level.canHaveWeather()` (would silently kill
+  weather on the cave world's own surface, directly contradicting GOALS
+  25's "ordinary vanilla surface terrain... weather" acceptance wording),
+  plus `NaturalSpawner`'s mob-spawn-height search and `MapItem`'s map
+  rendering — real, unwanted side effects for a preset whose Overworld is
+  supposed to generate exactly like vanilla above ground. Known, accepted
+  simplification: this also short-circuits a later bed-based respawn on a
+  cave-preset level (trusts the bed position directly, skipping vanilla's
+  embedded-in-a-wall nudge) — low-risk, since a bed's position is
+  virtually always already safe. **Built (0.2.85), full multiloader build
+  green, redeployed to Worldz-Test. [Jason] retest on a fresh config-53
+  world outstanding** — the old `Worldz-53` save was created under the
+  buggy 0.2.84 jar and should be deleted, not reopened, per this
+  project's own new-worlds-only policy.
 - 2026-07-18 (Phase 5.4 acceptance, fixed 0.2.12) — **Delayed/expanding/
   collapsing borders never actually started**, found via Jason's config
   21 in-game test: border held at its initial size indefinitely, no

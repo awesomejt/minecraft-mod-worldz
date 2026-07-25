@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChunkMapMixin",
-    "MinecraftServerMixin"
+    "MinecraftServerMixin",
+    "PlayerSpawnFinderMixin"
   ],
   "client": [
     "client.WorldCreationUiStateMixin"

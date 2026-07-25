@@ -4,7 +4,8 @@
   "package": "media.jlt.minecraft.mods.worldz.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ChunkMapMixin"
+    "ChunkMapMixin",
+    "PlayerSpawnFinderMixin"
   ],
   "injectors": {
     "defaultRequire": 1
