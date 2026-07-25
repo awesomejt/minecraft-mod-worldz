@@ -682,6 +682,27 @@ public final class WorldzConfig {
             logger.warn("skyIsland.floatingIslands.biomeVariety is set but has no usable biomes; disabling biome variety.");
             sanitized.biomeVariety = false;
         }
+        if (sanitized.naturalBiome && sanitized.biomeVariety) {
+            // Not a hard conflict -- naturalBiome deliberately takes precedence (DESIGN §28.4) --
+            // but honoring the preferred setting silently makes biomeVariety's own pool look
+            // configured yet dead, which is confusing to debug from the outside. Log the
+            // limitation instead of just picking a winner quietly.
+            logger.warn(
+                "skyIsland.floatingIslands.naturalBiome and biomeVariety are both enabled; "
+                    + "naturalBiome takes precedence and the islandBiomes pool will be unused."
+            );
+        }
+        if (sanitized.naturalBiome) {
+            // Always true whenever floating islands are enabled (the guaranteed village, GOALS 07/
+            // DESIGN §28.3, isn't itself optional) -- the village's own island can never honor
+            // naturalBiome, since its real vanilla village structure was force-generated for a
+            // specific structure-compatible biome (see FloatingIslandsPlan.Hit#village()).
+            logger.warn(
+                "skyIsland.floatingIslands.naturalBiome is enabled: the guaranteed village's own "
+                    + "island always keeps its forced, structure-compatible biome instead, since its "
+                    + "real vanilla village structure requires it."
+            );
+        }
 
         if (sanitized.exclusionZoneRadiusBlocks < 1) {
             logger.warn("Clamped skyIsland.floatingIslands.exclusionZoneRadiusBlocks from {} to 1.", sanitized.exclusionZoneRadiusBlocks);
@@ -1457,6 +1478,9 @@ public final class WorldzConfig {
         if (map.containsKey("lootKit")) {
             config.lootKit = readStarterKitConfig(map.get("lootKit"), name + ".lootKit", logger);
         }
+        if (map.containsKey("naturalBiome")) {
+            config.naturalBiome = readBoolean(map.get("naturalBiome"), name + ".naturalBiome");
+        }
         return config;
     }
 
@@ -1998,6 +2022,7 @@ public final class WorldzConfig {
         values.put("oreFeatureIds", config.oreFeatureIds);
         values.put("lootChestEnabled", config.lootChestEnabled);
         values.put("lootKit", starterKitMap(config.lootKit));
+        values.put("naturalBiome", config.naturalBiome);
         return values;
     }
 

@@ -1481,6 +1481,7 @@ class WorldzConfigTest {
                   extras:
                     - 'minecraft:emerald:1'
                   extrasCount: 1
+                naturalBiome: true
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.skyIsland.floatingIslands.enabled);
@@ -1499,6 +1500,11 @@ class WorldzConfigTest {
         assertEquals(List.of("minecraft:bread:1"), config.skyIsland.floatingIslands.lootKit.essentials);
         assertEquals(List.of("minecraft:emerald:1"), config.skyIsland.floatingIslands.lootKit.extras);
         assertEquals(1, config.skyIsland.floatingIslands.lootKit.extrasCount);
+        // Regression coverage (2026-07-25): naturalBiome was defined on FloatingIslandsConfig,
+        // the codec, and the config-dump summary, but readFloatingIslandsConfig never actually
+        // read it from YAML -- config 58's `naturalBiome: true` silently stayed false in every
+        // created world (confirmed directly from a real world's persisted world_gen_settings.dat).
+        assertTrue(config.skyIsland.floatingIslands.naturalBiome);
     }
 
     @Test

@@ -309,10 +309,23 @@ public record FloatingIslandsPlan(
      * @param distanceFromShore signed shore distance (see {@link IslandShapeProfile#distanceFromShore}),
      *     meaningless when {@code present} is {@code false}
      * @param biome the containing island's biome, meaningless when {@code present} is {@code false}
+     * @param village whether this is the guaranteed village's own reserved island (GOALS 07,
+     *     DESIGN §28.3) rather than an ordinary scattered one -- callers that substitute {@link
+     *     #naturalBiome} must skip a village hit and keep its forced, structure-compatible {@code
+     *     biome} instead (2026-07-25: found overriding it let a real vanilla village end up
+     *     force-generated onto a biome its own jigsaw pieces were never chosen for)
+     * @param centerX the containing island's (jittered) center block X, relative to the sky
+     *     island origin -- meaningless when {@code present} is {@code false}. {@link #naturalBiome}
+     *     callers must sample the real seed's biome once at this fixed point rather than at each
+     *     query column: sampling per-column instead let a single island's real biome flicker
+     *     between unrelated values a few blocks apart, since the underlying biome noise varies
+     *     over much shorter distances than one island's own footprint (2026-07-25 fix).
+     * @param centerZ the containing island's (jittered) center block Z, paired with {@link
+     *     #centerX}
      */
-    public record Hit(boolean present, double distanceFromShore, String biome) {
+    public record Hit(boolean present, double distanceFromShore, String biome, boolean village, double centerX, double centerZ) {
         /** The "no island here" result. */
-        public static final Hit NONE = new Hit(false, Double.POSITIVE_INFINITY, "");
+        public static final Hit NONE = new Hit(false, Double.POSITIVE_INFINITY, "", false, 0.0, 0.0);
     }
 
     /**
@@ -351,7 +364,12 @@ public record FloatingIslandsPlan(
                     (int) Math.round(x - island.centerX()), (int) Math.round(z - island.centerZ()),
                     island.radius(), shapeAmplitude, cellSeed
                 );
-                return distance > 0.0 ? Hit.NONE : new Hit(true, distance, island.biome());
+                if (distance > 0.0) {
+                    return Hit.NONE;
+                }
+                VillageCell village = resolveVillageCell(seed);
+                boolean isVillage = cellX == village.cellX() && cellZ == village.cellZ();
+                return new Hit(true, distance, island.biome(), isVillage, island.centerX(), island.centerZ());
             })
             .orElse(Hit.NONE);
     }

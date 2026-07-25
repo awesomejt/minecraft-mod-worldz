@@ -3099,6 +3099,92 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-25 (Phase 11 acceptance retest, fixed 0.2.89) — **Floating
+  islands' `naturalBiome` (GOALS 08, DESIGN §28.6) silently never
+  activated**, found via Jason's config 58 in-game test: islands' surface
+  material followed the `islandBiomes` pool as if `naturalBiome` were off,
+  while F3 showed real vanilla biomes anyway, and a village ended up
+  force-generated onto a mismatched biome. Root cause, confirmed by
+  decoding the actual world's `world_gen_settings.dat` NBT directly (not
+  just re-reading the config): the persisted generator settings showed
+  `natural_biome: 0` despite config 58 explicitly setting `naturalBiome:
+  true` in YAML. `readFloatingIslandsConfig` (`WorldzConfig.java`) read
+  every `floatingIslands` field except `naturalBiome` -- the field was
+  defined on `FloatingIslandsConfig`, wired into the codec
+  (`SkyIslandCodecs`), and included in the config-dump summary, but never
+  actually parsed from YAML, so it silently stayed at its Java default
+  (`false`) in every created world regardless of what the config file
+  said. **What this means the original report's "vanilla biomes painted
+  on top" actually was**: with `naturalBiome` truly off, `biomeVariety`
+  correctly governed the material (matching "islands created based on the
+  islandBiomes list"), while the F3 label mismatch was the pre-existing,
+  unrelated `biomeExclusionZone` (DESIGN §27.10, config 57) reporting the
+  real seed's biome beyond its 128-block default radius -- working
+  exactly as designed, just confusingly overlapping with what config 58
+  intended to exercise. No separate "huge unbounded landmass" bug was
+  found once this was understood -- `effectiveModeAt` is structurally
+  incapable of returning real, unmasked terrain for any sky_island world
+  (verified: always `ExteriorMode.VOID` when `activeSkyIsland().enabled()`,
+  before any per-column check even runs), so what looked like unbounded
+  ground was ordinary small islands. **Fix:** added the missing
+  `map.containsKey("naturalBiome")` read (and the matching missing write
+  in `floatingIslandsMap`, so the mod's own config-rewrite doesn't drop
+  the field either); new regression assertion in
+  `floatingIslandsSettingsLoadAndSanitizeIndependently`.
+  **Second, related bug found and fixed in the same pass** (would have
+  newly surfaced the moment the fix above shipped, previously masked by
+  `naturalBiome` never actually being active): the guaranteed village's
+  own reserved island (forced onto a structure-compatible biome so its
+  real vanilla village can legally place, DESIGN §28.3) had no way to be
+  distinguished from an ordinary scattered island by either
+  `LimitedBiomeSource.getNoiseBiome` or `EnvelopedChunkGenerator
+  .skyIslandHitAtForTerrain` -- both would substitute the real seed's
+  biome there too when `naturalBiome` is on, silently discarding the
+  forced biome the village structure was actually chosen for (matching
+  screenshot evidence: a real village force-generated under a "Deep
+  Frozen Ocean" F3 reading). Fixed by threading a new `Hit.village()`/
+  `SkyIslandHit.village()` marker from `FloatingIslandsPlan.hitFromCell`
+  (set by comparing the resolved cell against `resolveVillageCell`)
+  through both call sites, exempting a village hit from the natural-biome
+  substitution. New `FloatingIslandsPlanTest` coverage:
+  `guaranteedVillageIslandAlwaysAppearsInTheGrid` extended with a
+  `hit.village()` assertion, plus a new
+  `ordinaryScatteredIslandsAreNeverMarkedAsTheVillageHit` regression test.
+  **Third and fourth bugs found across two further retest rounds on a
+  fresh `Worldz-58` world** (screenshots each time): (1) F3/decoration
+  still disagreed with the surface palette even with the village fix in
+  place -- `LimitedBiomeSource.getNoiseBiome`'s naturalBiome branch
+  forwarded whichever `quartY` vanilla's own biome-grid population
+  happened to be filling, but island footprint membership is X/Z-only,
+  so vanilla calls it once per vertical quart layer across the *entire*
+  world height for a given column; the real biome noise's climate
+  parameters are Y-sensitive, so different layers of the same column
+  resolved different "real" biomes (screenshots: a snow-covered island
+  with an igloo reporting "Dark Forest"). **Fix:** pinned that branch to
+  `QuartPos.fromBlock(this.skyIsland.surfaceY())` instead of the caller's
+  `quartY`, matching the terrain-palette path's own existing pin. (2)
+  Even after that, a single island (one village spanning ~80 blocks)
+  still flickered between unrelated biomes (Plains/Beach/River/Forest/
+  Old Growth Birch Forest) as the player walked across it, because both
+  paths still resampled per query column -- the real biome noise varies
+  over shorter distances than one island's footprint. **Fix:** threaded
+  the island's own (jittered) center through `FloatingIslandsPlan.Hit`/
+  `EnvelopedChunkGenerator.SkyIslandHit` (new `centerX`/`centerZ`
+  fields) so both paths sample the real biome once, at the island's
+  fixed center, instead of at whichever column queries it -- matching
+  DESIGN §28.4's own "real seed biome at its location" (singular).
+  **Also added, per Jason's request to protect against mutually
+  exclusive settings:** two new startup warnings in
+  `sanitizeFloatingIslands` (`WorldzConfig.java`) -- `naturalBiome` +
+  `biomeVariety` both enabled logs that `naturalBiome` wins and the
+  `islandBiomes` pool goes unused; `naturalBiome` enabled at all logs
+  that the guaranteed village's own island always keeps its forced
+  biome instead, since honoring the preferred setting there isn't
+  possible without breaking the village structure. Built (0.2.89), full
+  multiloader build green, redeployed to Worldz-Test twice more this
+  session. **[Jason] retest on a fresh config-58 world outstanding**
+  — delete the old `Worldz-58` save rather than recreating over it
+  (new-worlds-only policy).
 - 2026-07-25 (Phase 13 acceptance retest, revised 0.2.88) — **Cave sealed
   surface gained a configurable block and thickness**, per Jason's
   config-56 review: the roof was previously a fixed 5-thick stone layer,

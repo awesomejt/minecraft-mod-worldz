@@ -1906,20 +1906,24 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * always wins when both would apply (it never does, since scattered islands respect their own
      * exclusion zone, but checking the starter first is cheaper and needs no coordination either
      * way). {@code distanceFromShore} and {@code biome} are meaningless when {@link #present} is
-     * {@code false}.
+     * {@code false}. {@code village} mirrors {@link FloatingIslandsPlan.Hit#village()} -- always
+     * {@code false} for the starter footprint, which is never the guaranteed village. {@code
+     * centerX}/{@code centerZ} mirror {@link FloatingIslandsPlan.Hit#centerX()}/{@link
+     * FloatingIslandsPlan.Hit#centerZ()} -- meaningless (0) for the starter footprint, which never
+     * needs them (natural-biome resampling always bails out for it before reading them).
      */
-    private record SkyIslandHit(boolean present, double distanceFromShore, String biome) {
+    private record SkyIslandHit(boolean present, double distanceFromShore, String biome, boolean village, double centerX, double centerZ) {
     }
 
     private SkyIslandHit skyIslandHitAt(int relativeX, int relativeZ, SkyIslandPlan active) {
         double starterDistance = active.distanceFromShore(relativeX, relativeZ, skyIslandSeed());
         if (starterDistance <= 0.0) {
-            return new SkyIslandHit(true, starterDistance, active.islandBiome());
+            return new SkyIslandHit(true, starterDistance, active.islandBiome(), false, 0.0, 0.0);
         }
         FloatingIslandsPlan.Hit scattered = active.floatingIslands().at(relativeX, relativeZ, skyIslandSeed(), active.islandBiome());
         return scattered.present()
-            ? new SkyIslandHit(true, scattered.distanceFromShore(), scattered.biome())
-            : new SkyIslandHit(false, starterDistance, active.islandBiome());
+            ? new SkyIslandHit(true, scattered.distanceFromShore(), scattered.biome(), scattered.village(), scattered.centerX(), scattered.centerZ())
+            : new SkyIslandHit(false, starterDistance, active.islandBiome(), false, 0.0, 0.0);
     }
 
     /**
@@ -1928,10 +1932,16 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * set, instead of {@link FloatingIslandsPlan.Hit#biome()}'s hash-picked placeholder -- needed
      * only by callers that actually consume {@link SkyIslandHit#biome()} for the terrain palette
      * ({@link #skyIslandStateAt}), not by height-only callers like {@link #skyIslandBaseHeight}.
+     * The guaranteed village's own reserved island ({@link SkyIslandHit#village()}) is deliberately
+     * exempt (2026-07-25 fix): it needs a real vanilla village to legally place its jigsaw pieces,
+     * which only works on the specific structure-compatible biome {@link
+     * FloatingIslandsPlan#resolveCell} already forced -- substituting the real seed's biome there
+     * (frequently unrelated, e.g. deep ocean) doesn't change what actually got force-generated but
+     * did make the biome reading/surface palette visibly disagree with it.
      */
     private SkyIslandHit skyIslandHitAtForTerrain(int relativeX, int relativeZ, SkyIslandPlan active, RandomState randomState) {
         SkyIslandHit hit = skyIslandHitAt(relativeX, relativeZ, active);
-        if (!hit.present() || !active.floatingIslands().naturalBiome() || randomState == null) {
+        if (!hit.present() || hit.village() || !active.floatingIslands().naturalBiome() || randomState == null) {
             // A null randomState only happens if this generator's very first chunk call ever
             // lands on applyBiomeDecoration before any of fillFromNoise/applyCarvers/buildSurface
             // populated the cache -- not expected given vanilla's own chunk-status ordering, but
@@ -1945,12 +1955,17 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             // mode only applies to scattered floating islands beyond it.
             return hit;
         }
-        int quartX = QuartPos.fromBlock(relativeX + originX());
-        int quartZ = QuartPos.fromBlock(relativeZ + originZ());
+        // Sampled once at the island's own (fixed) center, not at this query column (2026-07-25
+        // fix #2, mirrors LimitedBiomeSource#getNoiseBiome's matching fix): the real biome noise
+        // varies over much shorter distances than one island's own footprint, so per-column
+        // sampling made a single island's surface palette shift between unrelated biomes a few
+        // blocks apart instead of reading as one coherent region.
+        int quartX = QuartPos.fromBlock((int) Math.round(hit.centerX()) + originX());
+        int quartZ = QuartPos.fromBlock((int) Math.round(hit.centerZ()) + originZ());
         int quartY = QuartPos.fromBlock(active.surfaceY());
         Holder<Biome> natural = this.delegate.getBiomeSource().getNoiseBiome(quartX, quartY, quartZ, randomState.sampler());
         String naturalId = natural.unwrapKey().map(key -> key.identifier().toString()).orElseGet(natural::getRegisteredName);
-        return new SkyIslandHit(true, hit.distanceFromShore(), naturalId);
+        return new SkyIslandHit(true, hit.distanceFromShore(), naturalId, false, hit.centerX(), hit.centerZ());
     }
 
     @Override

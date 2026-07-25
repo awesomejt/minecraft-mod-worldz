@@ -1278,6 +1278,9 @@ public final class LimitedBiomeSource extends BiomeSource {
             double distance = this.skyIsland.distanceFromShore(blockX - originX, blockZ - originZ, skyIslandSeed);
             String biomeId = this.skyIsland.islandBiome();
             boolean scatteredHit = false;
+            boolean villageHit = false;
+            double islandCenterX = 0.0;
+            double islandCenterZ = 0.0;
             if (distance > 0.0) {
                 // Outside the starter island's own footprint: check the scattered floating-island
                 // grid beyond it (GOALS 07-08, DESIGN §28.1) before giving up.
@@ -1288,6 +1291,9 @@ public final class LimitedBiomeSource extends BiomeSource {
                     distance = hit.distanceFromShore();
                     biomeId = hit.biome();
                     scatteredHit = true;
+                    villageHit = hit.village();
+                    islandCenterX = hit.centerX();
+                    islandCenterZ = hit.centerZ();
                 } else if (this.skyIsland.withinBiomeExclusionZone(distance)) {
                     // Beyond every footprint but still inside the starter island's own biome
                     // buffer (DESIGN §27.10): keep reporting islandBiome rather than falling
@@ -1296,10 +1302,28 @@ public final class LimitedBiomeSource extends BiomeSource {
                 }
             }
             if (distance <= 0.0) {
-                if (scatteredHit && this.skyIsland.floatingIslands().naturalBiome()) {
+                if (scatteredHit && !villageHit && this.skyIsland.floatingIslands().naturalBiome()) {
                     // DESIGN §28.4: real seed biome instead of a hash-picked pool, the same
-                    // delegate this method's own final fallback uses below.
-                    return this.resolution.get().delegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
+                    // delegate this method's own final fallback uses below. The guaranteed
+                    // village's own reserved island (2026-07-25 fix) is deliberately exempt --
+                    // it needs to keep reporting the forced, structure-compatible biome its real
+                    // vanilla village was actually force-generated for (see EnvelopedChunkGenerator
+                    // .skyIslandHitAtForTerrain's matching exemption for the full reasoning).
+                    //
+                    // Sampled once at the island's own (fixed) center, not at this query column
+                    // (2026-07-25 fix #2): the real biome noise varies over much shorter distances
+                    // than one island's own footprint, so per-column sampling made a single
+                    // island's F3 reading/decoration flicker between unrelated biomes a few blocks
+                    // apart. Pinned to surfaceY's own quart layer (2026-07-25 fix #1) for the same
+                    // reason vertically: island footprint membership above is X/Z-only, so
+                    // vanilla's createBiomes calls this once per vertical quart layer across the
+                    // *entire* world height for this column -- left unpinned, different Y layers of
+                    // the same column disagreed with each other and with the surface block palette
+                    // (EnvelopedChunkGenerator#skyIslandHitAtForTerrain, which mirrors both pins).
+                    int centerQuartX = QuartPos.fromBlock((int) Math.round(islandCenterX) + originX);
+                    int centerQuartZ = QuartPos.fromBlock((int) Math.round(islandCenterZ) + originZ);
+                    int surfaceQuartY = QuartPos.fromBlock(this.skyIsland.surfaceY());
+                    return this.resolution.get().delegate().getNoiseBiome(centerQuartX, surfaceQuartY, centerQuartZ, sampler);
                 }
                 Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(biomeId);
                 if (biome != null) {

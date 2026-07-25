@@ -285,6 +285,33 @@ class FloatingIslandsPlanTest {
             FloatingIslandsPlan.Hit hit = plan.at(x, z, seed, "minecraft:plains");
             assertTrue(hit.present(), "expected the guaranteed village's own island to appear in the grid, seed " + seed);
             assertTrue(hit.distanceFromShore() < 0.0, "expected the village's own center to be well inside its island");
+            assertTrue(hit.village(), "expected the guaranteed village's own island to be marked as the village hit, seed " + seed);
+        }
+    }
+
+    @Test
+    void ordinaryScatteredIslandsAreNeverMarkedAsTheVillageHit() {
+        // Regression coverage (2026-07-25): Hit.village() must only be true for the guaranteed
+        // village's own reserved cell, never for an ordinary spawnChance-gated scattered island --
+        // otherwise naturalBiome's village exemption would wrongly swallow real scattered islands.
+        FloatingIslandsPlan plan = plan(true, 0.9, false, 128, new IslandPlan.ExclusionZone(false, 256));
+        for (long seed = 0; seed < 20; seed++) {
+            FloatingIslandsPlan.VillageSite site = plan.guaranteedVillageSite(seed);
+            int villageX = (int) Math.round(site.centerX());
+            int villageZ = (int) Math.round(site.centerZ());
+            for (int cellX = -3; cellX <= 3; cellX++) {
+                for (int cellZ = -3; cellZ <= 3; cellZ++) {
+                    int x = cellX * 128 + 64;
+                    int z = cellZ * 128 + 64;
+                    if (Math.abs(x - villageX) < 200 && Math.abs(z - villageZ) < 200) {
+                        continue;
+                    }
+                    FloatingIslandsPlan.Hit hit = plan.at(x, z, seed, "minecraft:plains");
+                    if (hit.present()) {
+                        assertFalse(hit.village(), "expected an ordinary scattered island, not the village, seed " + seed);
+                    }
+                }
+            }
         }
     }
 
