@@ -2752,6 +2752,53 @@ revisit. Full design: DESIGN §31.9.
       explicit go-ahead.** TODO 15.2a-bugfix (the pre-existing
       `nether_start` config-plumbing gap) remains open and unscheduled,
       unrelated to this phase.
+- [x] 16.3 **Real-world feedback (2026-07-26, Jason's first actual in-game
+      test of config 66):** "Structures are not generating." Root-caused
+      by decoding the actual Worldz-66 save's region files by hand (no
+      NBT tool was available, so a throwaway Python script was written to
+      parse `.mca`/chunk NBT directly): a village structure *start* really
+      was resolved near spawn (chunk 13,13), that chunk had reached `full`
+      status, but every section was still pure flat-layer palette (bedrock/
+      stone/dirt/grass only) -- no village block was ever written, despite
+      the start existing. Confirmed against real decompiled vanilla source
+      (`ChunkGenerator.applyBiomeDecoration`): vanilla bundles two
+      unrelated things into that one method -- ordinary per-biome feature
+      decoration (trees, ore veins) *and* the actual block-writing
+      (`structureManager.startsForStructure(...).forEach(start ->
+      start.placeInChunk(...))`) for every structure whose site the
+      earlier STRUCTURE_STARTS pass already resolved. `EnvelopedChunkGenerator
+      .applyBiomeDecoration`'s own `flat.decoration()` gate (GOAL 15,
+      config default `false`) was skipping the *entire* delegate call when
+      off, silently dropping structure placement along with the ordinary
+      biome decoration it was actually meant to control -- vanilla's own
+      `FlatLevelSource` never overrides `applyBiomeDecoration` at all, so
+      an ordinary vanilla flat world always places structures regardless
+      of its own decoration setting. **Fixed (0.3.7):** added
+      `EnvelopedChunkGenerator.placeStructuresOnly` -- a faithful
+      reimplementation of just the structure-placement half of vanilla's
+      `applyBiomeDecoration` using only public API (mirrors this class's
+      own `createStructuresRespectingDistance`/`tryGenerateRestrictedStructure`
+      precedent, DESIGN §36), plus a `writableArea` helper mirroring
+      vanilla's own private `getWritableArea` (unreachable from a
+      subclass) -- called instead of skipping outright whenever
+      `flat.enabled() && !flat.decoration()`. Ordinary biome decoration
+      (the toggle's actual, intended effect) is still skipped in that
+      case; every other path (decoration on, or flat disabled entirely)
+      is untouched, zero risk to every other preset. Confirmed the fix
+      against the real world save's own already-materialized data isn't
+      possible without regenerating chunks, so verification was source-
+      level (decompiled vanilla method comparison) plus a full multiloader
+      build -- **[Jason] retest outstanding** on a fresh config 66/67/68
+      world (delete the old Worldz-66 save first; its already-generated
+      chunks are permanently missing their structures and won't retroactively
+      gain them). Also found, not yet acted on: this same investigation
+      confirmed `minecraft:villages` (config 66's own default
+      `structureOverrides` entry) *is* a real structure-set id in this MC
+      version -- villages were consolidated from five separate structure
+      sets (`village_plains`/`desert`/`savanna`/`snowy`/`taiga`) into one
+      `minecraft:villages` set, unlike older Minecraft versions -- so no
+      second bug there, just worth noting for future reference since the
+      README/config comments predate this discovery.
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

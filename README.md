@@ -940,8 +940,16 @@ flat:
 |---|---|---|
 | `layers` | 128 blocks total (bedrock, 123 stone, 3 dirt, grass) | Ordered bottom-to-top layer list, each entry `"<block id>"` (height 1) or `"<block id>:<height>"`. A bedrock floor is just whether the bottom entry is `minecraft:bedrock` — there is no separate toggle. |
 | `biome` | `minecraft:plains` | The single biome reported everywhere. |
-| `decoration` | `false` | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs, matching vanilla flat's own all-or-nothing `features` flag. |
+| `decoration` | `false` | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs, matching vanilla flat's own all-or-nothing `features` flag. Structures are unaffected either way (0.3.7 fix, see below) — this only ever toggled tree/flower/ore-vein placement. |
 | `structureOverrides` | `["minecraft:villages", "minecraft:strongholds"]` | Structure sets eligible to place; empty means every registered set is eligible, matching vanilla's own default. |
+
+**Bug fixed (0.3.7):** `decoration: false` (the default) used to silently skip real structure
+placement too, not just ordinary biome decoration — a village or stronghold's *site* would still
+be selected, but no block of it was ever actually written into the world. Vanilla's own
+`applyBiomeDecoration` bundles structure-piece placement and biome-feature decoration into one
+method; this project's own decoration toggle used to skip that whole method rather than just the
+feature-decoration half. Fixed by placing structures on their own when decoration is off, matching
+how vanilla's own flat worlds always place structures regardless of their own decoration setting.
 
 **Spawn Y and slimes**: there is no separate spawn-Y setting — spawn is
 always the top of the configured layer stack (this project's Overworld

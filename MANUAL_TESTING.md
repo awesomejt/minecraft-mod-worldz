@@ -945,22 +945,43 @@ today, same deferral as Nether-start's own capsule, GOALS 41.1) — a
 world created via the Customize screen always gets the compiled-in
 defaults (5x5 interior, glowstone).
 
-## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b)
+## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b, 16.3)
 
 Uses configs `66`-`71` (see [`config/tests/README.md`](config/tests/README.md)).
 Two typed presets this phase, not one — **select "Worldz: Flat"** for
 configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`.
 
+**Real bug found and fixed (0.3.7, Jason's first actual in-game test of
+config 66, 2026-07-26):** no structures anywhere. Confirmed directly
+against the actual world save (region files decoded by hand): structure
+*starts* existed (a village's site really was chosen) and its chunk had
+reached `full` generation status, but every section was still pure
+flat-layer palette — no village block was ever written. Root cause:
+vanilla's own `ChunkGenerator.applyBiomeDecoration` bundles two unrelated
+things into one method call — ordinary per-biome feature decoration
+(trees, ore veins) *and* the actual block-writing for every structure
+whose site the earlier STRUCTURE_STARTS pass already resolved. This
+project's own classic-flat `decoration` toggle (off by default) was
+gating that entire method, so turning decoration off — the default —
+silently dropped structure placement too, even though vanilla's own flat
+worlds always place structures regardless of their own decoration
+setting. Fixed by placing structures on their own when decoration is
+off, leaving ordinary biome decoration as the only thing the toggle
+actually controls. This affects every classic-flat config below (`66`-
+`68`) — Jason's [66] retest is the first real confirmation any of them
+ever worked as far as structures go; `69`-`71` (Deep Flat) were never
+affected, since deep-flat has no `decoration` toggle of its own.
+
 1. **Classic flat default**, `66-flat-default.yaml` (GOAL 15 core,
-   0.2.70+). Confirm the world is completely flat everywhere, no hills or
+   0.3.7+). Confirm the world is completely flat everywhere, no hills or
    mountains, surface at Y 64. Confirm there are zero caves anywhere —
    classic flat has no noise/carving of any kind. Confirm the biome is
    plains everywhere. Locate a stronghold or village (both in the default
-   `structureOverrides`) and confirm it generates normally. Subjectively
-   compare world-creation speed against a real terrain preset (e.g.
-   config 01) — classic flat should feel closer to vanilla superflat's
-   own near-instant generation, since the real noise pipeline never runs
-   (DESIGN §33.1).
+   `structureOverrides`) and confirm it generates normally, real blocks
+   and all. Subjectively compare world-creation speed against a real
+   terrain preset (e.g. config 01) — classic flat should feel closer to
+   vanilla superflat's own near-instant generation, since the real noise
+   pipeline never runs (DESIGN §33.1).
 2. **Classic flat, thin/traditional layers**, `67-flat-classic-shallow.yaml`
    (0.2.70+). Confirm you spawn at Y -60 on grass with only 3 blocks of
    solid ground before bedrock. Confirm slimes *can* spawn here (wait for
@@ -968,12 +989,13 @@ configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`.
    below the Y-40 slime cutoff, confirming "avoiding slimes" is purely a
    property of layer height (DESIGN §33.3), not a separate setting.
 3. **Classic flat, shallow underground structures**, `68-flat-structures-shallow.yaml`
-   (0.2.70+, GOAL 22). Locate a trial chamber or ancient city (both
+   (0.3.7+, GOAL 22). Locate a trial chamber or ancient city (both
    forced eligible, `structureOverrides` set explicitly) over only 10
-   blocks of stone. Confirm the structure still generates, but looks
-   honestly clipped/cut off near the bedrock — this is GOAL 22's
-   documented classic-flat tradeoff (depth is the player's own
-   configuration choice), not a bug. Keep this result in mind for #6.
+   blocks of stone. Confirm the structure actually generates now (real
+   blocks, not just a resolved site), but looks honestly clipped/cut off
+   near the bedrock — this is GOAL 22's documented classic-flat tradeoff
+   (depth is the player's own configuration choice), not a bug. Keep this
+   result in mind for #6.
 4. **Deep flat default**, `69-deep-flat-default.yaml` (GOAL 16 core,
    0.2.71+). Confirm the surface is flat everywhere at Y 64. Dig straight
    down from spawn and confirm you pass through ~3 blocks of cap into

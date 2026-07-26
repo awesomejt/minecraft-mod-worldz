@@ -82,15 +82,22 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import net.minecraft.SharedConstants;
+import net.minecraft.world.level.levelgen.RandomSupport;
+import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /** Delegates vanilla generation, then replaces columns outside a persisted square envelope. */
@@ -1190,12 +1197,34 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         ChunkPos chunkPos = chunk.getPos();
         // isEntirelyExteriorOcean already implies isEntirelyExterior (OCEAN != NORMAL).
         boolean decorateExteriorOcean = decoratesExteriorOcean(chunkPos);
-        // Flat's own decoration toggle (GOAL 15, mirrors FlatLevelGeneratorSettings.decoration's
-        // all-or-nothing behavior) gates the delegate's real biome decoration entirely -- trees/
-        // ore veins/etc. still come from the real (single, fixed) biome's own feature list when
-        // enabled, same mechanism every other preset already uses.
-        if ((!isEntirelyExterior(chunkPos) || decorateExteriorOcean) && (!this.flat.enabled() || this.flat.decoration())) {
-            this.delegate.applyBiomeDecoration(level, chunk, structureManager);
+        if (!isEntirelyExterior(chunkPos) || decorateExteriorOcean) {
+            if (!this.flat.enabled() || this.flat.decoration()) {
+                // Flat's own decoration toggle (GOAL 15, mirrors FlatLevelGeneratorSettings.
+                // decoration's all-or-nothing behavior) gates the delegate's real biome decoration
+                // entirely -- trees/ore veins/etc. still come from the real (single, fixed)
+                // biome's own feature list when enabled, same mechanism every other preset already
+                // uses.
+                this.delegate.applyBiomeDecoration(level, chunk, structureManager);
+            } else {
+                // Bug found 2026-07-26 (Jason's first real in-game test of config 66, GOAL 15):
+                // the all-or-nothing skip above, when decoration is off (the default), silently
+                // dropped *structure placement* too -- vanilla's own applyBiomeDecoration
+                // interleaves ordinary per-biome feature decoration with the actual block-writing
+                // for every structure whose start was already resolved by the earlier
+                // STRUCTURE_STARTS pass (confirmed against real decompiled source:
+                // ChunkGenerator.applyBiomeDecoration calls structureManager.startsForStructure(...)
+                // .forEach(start -> start.placeInChunk(...)) directly alongside its biome-feature
+                // loop, not gated by any decoration flag of its own). Confirmed directly against a
+                // real Worldz-66 save: village structure *starts* existed and every touched chunk
+                // had reached `full` status, but every section was still pure flat-layer palette --
+                // no village block was ever written. Vanilla's own FlatLevelSource never overrides
+                // applyBiomeDecoration at all, so vanilla flat worlds always place structures
+                // regardless of their own decoration setting -- placeStructuresOnly replicates just
+                // that half of the vanilla method (DESIGN §36's "faithful reimplementation using
+                // only public API" precedent, mirrors createStructuresRespectingDistance), skipping
+                // only the ordinary per-biome feature loop this toggle is actually meant to control.
+                placeStructuresOnly(level, chunk, structureManager);
+            }
         }
         // Stacked (GOAL 35, DESIGN §34.4): the delegate call above already runs real vanilla
         // decoration correctly for every fixed-Y-range feature (ore veins, etc.) once biome
@@ -1217,6 +1246,54 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 applyChunkIslandGeode(level, chunk);
             }
         }
+    }
+
+    /**
+     * Faithful reimplementation of just the structure-placement half of vanilla's {@code
+     * ChunkGenerator.applyBiomeDecoration} using only public API (mirrors this class's own {@code
+     * createStructuresRespectingDistance}/{@code tryGenerateRestrictedStructure} precedent, DESIGN
+     * §36) -- writes {@code StructureStart.placeInChunk} for every structure whose start the
+     * earlier STRUCTURE_STARTS pass already resolved, skipping vanilla's own per-biome ordinary
+     * feature-decoration loop entirely. Used only when {@link FlatPlan#enabled()} is true and
+     * {@link FlatPlan#decoration()} is false (GOAL 15's classic-flat "Decoration" toggle, off by
+     * default): that toggle is meant to suppress trees/ore veins/etc. only, not structures --
+     * vanilla's own {@code FlatLevelSource} never overrides {@code applyBiomeDecoration} at all, so
+     * an ordinary vanilla flat world always places structures regardless of its own decoration
+     * setting.
+     */
+    private void placeStructuresOnly(WorldGenLevel level, ChunkAccess chunk, StructureManager structureManager) {
+        ChunkPos centerPos = chunk.getPos();
+        if (SharedConstants.debugVoidTerrain(centerPos) || !structureManager.shouldGenerateStructures()) {
+            return;
+        }
+        SectionPos sectionPos = SectionPos.of(centerPos, level.getMinSectionY());
+        BlockPos origin = sectionPos.origin();
+        Registry<Structure> structuresRegistry = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+        Map<Integer, List<Structure>> structuresByStep = structuresRegistry.stream()
+            .collect(Collectors.groupingBy(structure -> structure.step().ordinal()));
+        WorldgenRandom random = new WorldgenRandom(new XoroshiroRandomSource(RandomSupport.generateUniqueSeed()));
+        long decorationSeed = random.setDecorationSeed(level.getSeed(), origin.getX(), origin.getZ());
+        BoundingBox writableArea = writableArea(chunk);
+        for (int stepIndex = 0; stepIndex < GenerationStep.Decoration.values().length; stepIndex++) {
+            int index = 0;
+            for (Structure structure : structuresByStep.getOrDefault(stepIndex, Collections.emptyList())) {
+                random.setFeatureSeed(decorationSeed, index, stepIndex);
+                structureManager.startsForStructure(sectionPos, structure)
+                    .forEach(start -> start.placeInChunk(level, structureManager, this, random, writableArea, centerPos));
+                index++;
+            }
+        }
+    }
+
+    /** Mirrors vanilla's own private {@code ChunkGenerator.getWritableArea}, unreachable from a subclass. */
+    private static BoundingBox writableArea(ChunkAccess chunk) {
+        ChunkPos chunkPos = chunk.getPos();
+        int targetBlockX = chunkPos.getMinBlockX();
+        int targetBlockZ = chunkPos.getMinBlockZ();
+        LevelHeightAccessor heightAccessor = chunk.getHeightAccessorForGeneration();
+        int minY = heightAccessor.getMinY() + 1;
+        int maxY = heightAccessor.getMaxY();
+        return new BoundingBox(targetBlockX, minY, targetBlockZ, targetBlockX + 15, maxY, targetBlockZ + 15);
     }
 
     /**
