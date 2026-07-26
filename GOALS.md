@@ -412,9 +412,19 @@ item above as one coordinated config-schema pass.
     `shroomlight`/`glow_lichen`, appropriately Nether-default `glowstone`),
     and light spacing (41.2); every chest tier guarantees a pickaxe;
     furnace + crafting table are always placed once the room is big
-    enough. Not yet on the Customize screen (config-only), not yet
-    generalized beyond Nether-start. **[Jason] in-game acceptance
-    outstanding** (TODO 14b.3, configs 62/86/87).
+    enough. **2026-07-26 follow-up:** the capsule is now the automatic
+    default (not just biased-toward) whenever `spawnY` is close enough to
+    the Nether's own floor or ceiling that natural pockets are inherently
+    rare — no `forceCapsule` needed for cases like config 62 — per
+    Jason's own "using the capsule should be the default behavior in
+    cases like [config 62]" (TODO 14b.4, DESIGN §31.9). His broader
+    "or in really dangerous scenarios unsuitable for a fresh start" isn't
+    fully covered — only Y-proximity is a modeled danger signal today;
+    biome-based danger (e.g. basalt deltas) is still the separate,
+    undesigned 2026-07-25 feedback point 3 above. Not yet on the
+    Customize screen (config-only), not yet generalized beyond
+    Nether-start. **[Jason] in-game acceptance outstanding** (TODO
+    14b.3, configs 62/86/87).
 
 ### Lava-Ocean Challenge:
 

@@ -16,7 +16,7 @@
 #     but does hold a wooden pickaxe (GOALS 41: every tier guarantees at
 #     least a pickaxe to break out with) plus bread and a random extra.
 netherStart:
-  spawnY: 4
+  spawnY: 32
   chestTier: hard
   forceCapsule: true
   capsule:

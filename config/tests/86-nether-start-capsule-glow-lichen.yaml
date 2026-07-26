@@ -1,24 +1,30 @@
-# GOALS 41 (Phase 14b, DESIGN §31.9): custom capsule size + glow_lichen
-# lighting, which behaves differently from every other light source --
-# instead of spaced points, it coats the *entire* interior surface
-# (walls, floor, ceiling). Also exercises `sizeBlocks`/`heightBlocks`
-# directly (9x9 exterior footprint, 7x7 interior; 4-tall interior).
-# **Select "Worldz: Nether Start"**.
+# GOALS 41 (Phase 14b, DESIGN §31.9): explicit `forceCapsule: true` at an
+# ordinary, safe `spawnY` (32 -- not near the floor/ceiling the way config
+# 62 is), proving the capsule can be explicitly requested independent of
+# the automatic low-spawnY default config 62 exercises. Also custom
+# capsule size + glow_lichen lighting, which behaves differently from
+# every other light source -- instead of spaced points, it coats the
+# *entire* interior surface (walls, floor, ceiling). Also exercises
+# `sizeBlocks`/`heightBlocks` directly (9x9 exterior footprint, 7x7
+# interior; 4-tall interior). **Select "Worldz: Nether Start"**.
 #
 # Steps once in-game:
-#  1. Confirm the room is noticeably bigger than config 62's default (7x7
+#  1. Check the server log: the capsule should be built because it was
+#     explicitly requested (forceCapsule), not because of a low spawnY --
+#     a different log line than config 62's.
+#  2. Confirm the room is noticeably bigger than config 62's default (7x7
 #     interior floor, not 3x3) and a full block taller.
-#  2. Confirm glow lichen coats every wall, the floor, and the ceiling --
+#  3. Confirm glow lichen coats every wall, the floor, and the ceiling --
 #     not just a few spaced points -- and that it's genuinely bright
 #     enough to see across the whole room without a held light source.
 #     Corners should show lichen on both adjoining faces.
-#  3. Confirm `lightSpacingBlocks` had no effect here (glow_lichen always
+#  4. Confirm `lightSpacingBlocks` had no effect here (glow_lichen always
 #     covers everything, ignoring spacing) -- it's set to an
 #     intentionally large 99 below specifically to prove that.
-#  4. Confirm the chest (medium tier), furnace, and crafting table are
+#  5. Confirm the chest (medium tier), furnace, and crafting table are
 #     all present and reachable.
 netherStart:
-  spawnY: 4
+  spawnY: 32
   chestTier: medium
   forceCapsule: true
   capsule:

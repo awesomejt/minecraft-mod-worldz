@@ -62,13 +62,24 @@ final class NetherStartDeployment {
 
     /**
      * Natural-first, guaranteed-capsule-fallback search (DESIGN §31.4) -- unless {@link
-     * NetherStartPlan#forceCapsule()} is set, in which case the capsule is built unconditionally
-     * and the (real, forced-chunk-generation-costly) natural search never runs at all (GOALS 41.1:
-     * "explicit, requestable option", not only a fallback).
+     * NetherStartPlan#forceCapsule()} is set (GOALS 41.1: "explicit, requestable option", not only
+     * a fallback), or {@code spawnY} itself is close enough to the Nether's own hard floor/ceiling
+     * that a natural pocket is inherently unlikely (GOALS 41 follow-up, 2026-07-26: "using the
+     * capsule should be the default behavior in cases like [config 62]... spawn low in the world
+     * with rare access to caves") -- in either case the capsule is built directly and the (real,
+     * forced-chunk-generation-costly) natural search never runs at all.
      */
     private static BlockPos resolveSite(ServerLevel nether, NetherStartPlan netherStart) {
         if (netherStart.forceCapsule()) {
             WorldzCommon.LOGGER.info("Nether-start capsule explicitly requested (forceCapsule); skipping the natural safe-site search.");
+            return buildNetherStartCapsule(nether, netherStart);
+        }
+        if (netherStart.spawnYTooCloseToBoundary(nether.getMinY(), nether.getMaxY(), SEARCH_VERTICAL_TOLERANCE)) {
+            WorldzCommon.LOGGER.info(
+                "Nether-start spawnY {} is within {} blocks of the Nether's own floor/ceiling, where natural pockets are rare;"
+                    + " building the guaranteed capsule directly instead of searching.",
+                netherStart.spawnY(), SEARCH_VERTICAL_TOLERANCE
+            );
             return buildNetherStartCapsule(nether, netherStart);
         }
         for (SpawnSearchPlan.Offset offset : SEARCH_PLAN.offsetsInSearchOrder()) {

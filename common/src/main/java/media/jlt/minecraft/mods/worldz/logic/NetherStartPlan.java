@@ -114,4 +114,24 @@ public record NetherStartPlan(
             config.capsule.sizeBlocks, config.capsule.heightBlocks, config.capsule.lightSource, config.capsule.lightSpacingBlocks
         );
     }
+
+    /**
+     * Whether {@link #spawnY()}'s own vertical search window would already be truncated by a hard
+     * floor or ceiling boundary at the given tolerance -- a cheap proxy for "terrain here is dense,
+     * real open natural pockets are rare" (DESIGN §31.9's 2026-07-26 follow-up: "using the capsule
+     * should be the default behavior in cases like [a low spawnY]"), used by {@code
+     * NetherStartDeployment.resolveSite} to skip the natural search and build the guaranteed
+     * capsule directly. Kept here (not in {@code NetherStartDeployment}) purely so it stays
+     * JUnit-testable without a real {@code ServerLevel} on the classpath -- takes the level's real
+     * bounds as plain ints rather than hardcoding the Nether's usual 0/128, so it stays correct
+     * even if a datapack ever changes Nether world height.
+     *
+     * @param levelMinY the level's actual minimum Y
+     * @param levelMaxY the level's actual maximum Y
+     * @param toleranceBlocks how far the search window extends above/below {@link #spawnY()}
+     * @return {@code true} if the window would be truncated by either boundary
+     */
+    public boolean spawnYTooCloseToBoundary(int levelMinY, int levelMaxY, int toleranceBlocks) {
+        return spawnY - toleranceBlocks < levelMinY || spawnY + toleranceBlocks > levelMaxY;
+    }
 }

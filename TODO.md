@@ -2334,12 +2334,33 @@ revisit. Full design: DESIGN §31.9.
       bound), `WorldzConfigTest` (capsule sanitize/round-trip, the fixed
       kit round-trip, updated full-config summary). Full multiloader
       build + `./gradlew test` green.
-- [ ] 14b.3 Test configs + docs; **[Jason]** in-game acceptance (room
-      size/lighting/furniture feel, pickaxe actually breaks nether bricks,
-      `forceCapsule` genuinely skips the search, each `LightSource` looks
-      right in-game — especially confirming `GLOW_LICHEN` face
-      orientation and hanging lanterns actually render hanging, not
-      floor-standing).
+- [x] 14b.3 Test configs (62 rewritten again, 86/87 rebalanced to isolate
+      `forceCapsule` from the new automatic low-`spawnY` default — see
+      14b.4) + docs (README, MANUAL_TESTING Phase 14b acceptance section,
+      config/tests/README.md). **This part done; [Jason] in-game
+      acceptance still outstanding** (room size/lighting/furniture feel,
+      pickaxe actually breaks nether bricks, `forceCapsule` genuinely
+      skips the search, each `LightSource` looks right in-game —
+      especially confirming `GLOW_LICHEN` face orientation and hanging
+      lanterns actually render hanging, not floor-standing).
+- [x] 14b.4 Automatic capsule default for a low/high `spawnY` (2026-07-26
+      follow-up): Jason widened the ask from "`forceCapsule` makes config
+      62 deterministic" to "the capsule should just be the default
+      behavior in cases like config 62" — full reasoning and the new
+      `isSpawnYTooCloseToNetherBoundary` pure-logic method: DESIGN §31.9's
+      "Automatic default for a low (or high) spawnY" subsection. Config
+      62 no longer sets `forceCapsule` at all (spawnY 4 alone triggers
+      it); configs 86/87 moved to `spawnY: 32` (an ordinary, non-boundary
+      depth) so they isolate the *explicit* `forceCapsule` pathway instead
+      of accidentally relying on the same low-spawnY default config 62
+      now demonstrates. New `NetherStartDeploymentTest` (JUnit, pure —
+      the one piece of this class's search logic that doesn't need a real
+      `ServerLevel`, unlike its search siblings). "Really dangerous
+      scenarios unsuitable for a fresh start" beyond Y-proximity (e.g.
+      basalt-delta starting biomes) is explicitly **not** covered by this
+      — no biome-awareness exists in the search at all; that's GOALS 27's
+      already-logged, still-undesigned 2026-07-25 feedback point 3, not
+      re-solved here.
 
 ## Phase 15 — End-start challenge (GOALS 34)
 

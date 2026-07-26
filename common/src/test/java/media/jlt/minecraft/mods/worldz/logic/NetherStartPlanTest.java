@@ -92,6 +92,29 @@ class NetherStartPlanTest {
         ));
     }
 
+    @Test
+    void defaultSpawnYIsComfortablyAwayFromEitherBoundary() {
+        assertFalse(plan(32, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
+    }
+
+    @Test
+    void spawnYNearTheFloorPrefersTheGuaranteedCapsule() {
+        // Config 62's own scenario: spawnY 4, well within the tolerance of the Nether's Y-0 floor.
+        assertTrue(plan(4, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
+    }
+
+    @Test
+    void spawnYNearTheCeilingPrefersTheGuaranteedCapsuleToo() {
+        assertTrue(plan(120, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
+    }
+
+    @Test
+    void spawnYExactlyAtTheToleranceBoundaryStillSearches() {
+        // 16 - 16 == 0 == levelMinY, not < it -- the window is not truncated, so this stays false.
+        assertFalse(plan(16, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
+        assertFalse(plan(112, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
+    }
+
     private static NetherStartPlan plan(int spawnY, int capsuleSizeBlocks, int capsuleHeightBlocks) {
         return new NetherStartPlan(
             true, spawnY, StarterKitTier.MEDIUM, false, capsuleSizeBlocks, capsuleHeightBlocks, LightSource.GLOWSTONE, 5

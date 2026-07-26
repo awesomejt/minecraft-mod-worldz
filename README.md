@@ -770,7 +770,12 @@ If no natural pocket is found near the configured depth within the search
 budget, a guaranteed capsule/starter base is carved instead so world
 creation can never fail to produce a safe spawn (check the server log for
 a warning if this happens) — or set `forceCapsule: true` to request it
-outright, skipping the natural search entirely.
+outright, skipping the natural search entirely. The capsule is also the
+*automatic* choice, with no `forceCapsule` needed, whenever `spawnY` is
+close enough to the Nether's own bedrock floor or ceiling (within 16
+blocks) that a real open pocket would be rare anyway — the search is
+skipped entirely rather than spending real chunk generation on a search
+unlikely to succeed.
 
 The capsule is a decent-sized, fully enclosed, always-lit nether-brick
 room (default 5x5x5 exterior, 3x3x3 interior), furnished with a furnace

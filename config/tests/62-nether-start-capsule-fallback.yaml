@@ -1,14 +1,15 @@
 # GOALS 27/41 (Phase 14.2a + 14b, DESIGN §31.4/§31.9): the guaranteed
-# capsule/starter-base, requested explicitly via `forceCapsule: true`
-# (GOALS 41.1) rather than left to chance -- this used to only be
-# reachable by biasing `spawnY` toward the bedrock floor and hoping the
-# natural search came up empty; `forceCapsule` makes it deterministic.
-# **Select "Worldz: Nether Start"**.
+# capsule/starter-base as the *automatic default* for a low `spawnY`
+# (Jason, 2026-07-26: "using the capsule should be the default behavior
+# in cases like [this config]... spawn low in the world with rare access
+# to caves") -- `spawnY: 4` is close enough to the Nether's own Y-0
+# bedrock floor that the natural safe-site search is skipped entirely,
+# with no `forceCapsule` needed. **Select "Worldz: Nether Start"**.
 #
 # Steps once in-game:
-#  1. Check the server log at world creation: it should say the capsule
-#     was explicitly requested (forceCapsule), and the natural-pocket
-#     search should never have run at all.
+#  1. Check the server log at world creation: it should say spawnY is
+#     close to the floor/ceiling and the capsule is being built directly
+#     -- the natural-pocket search should never have run at all.
 #  2. Confirm you spawn inside a decent-sized, fully enclosed nether-brick
 #     room (default 5x5x5 exterior, so a 3x3x3 interior -- floor, ceiling,
 #     and all four walls solid, not just corner posts), lit by glowstone
@@ -24,7 +25,6 @@
 netherStart:
   spawnY: 4
   chestTier: easy
-  forceCapsule: true
 overworldBorder:
   enabled: false
   ensureEndPortal: true

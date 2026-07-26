@@ -4495,6 +4495,35 @@ on `NetherStartPlan`/`NetherStartCodecs` like every other field here,
 since the plan only exists via the chunk generator's own codec-persisted
 settings (no separate ephemeral path).
 
+**Automatic default for a low (or high) `spawnY` (2026-07-26 follow-up).**
+Jason's config 62 originally only *biased* toward the capsule via a low
+`spawnY` (natural pockets are rare near the bedrock floor, but the search
+still ran and could still succeed) — his follow-up made the ask explicit:
+"using the capsule should be the default behavior in cases like [config
+62]... spawn low in the world with rare access to caves." Rather than
+requiring `forceCapsule` for this, `resolveSite` now also skips straight
+to the capsule whenever `spawnY`'s own vertical search window would
+already be truncated by the Nether's hard floor or ceiling — new pure,
+JUnit-tested `NetherStartDeployment.isSpawnYTooCloseToNetherBoundary(
+levelMinY, levelMaxY, spawnY, toleranceBlocks)`, reusing
+`SEARCH_VERTICAL_TOLERANCE` (16) as both the search's own half-height and
+the "close enough to matter" threshold — a cheap proxy for "terrain here
+is dense, real open pockets are rare" without needing an actual
+terrain-density heuristic. Takes the level's real bounds as plain ints
+rather than hardcoding the Nether's usual 0/128, so it stays correct even
+if a datapack ever changes Nether world height. At the default `spawnY`
+(32) this is false and behavior is unchanged; config 62 (`spawnY: 4`) no
+longer needs `forceCapsule` at all — it's automatic. Symmetric with the
+ceiling (a high `spawnY` gets the same treatment) on the same reasoning.
+
+Jason's phrasing also named a broader principle not implemented here —
+"or in really dangerous scenarios unsuitable for a fresh start" — but the
+only concrete, already-known danger signal beyond Y-proximity-to-boundary
+is starting-biome hazard (a vast basalt delta being brutal even on the
+easy chest tier, GOALS 27's 2026-07-25 feedback point 3, still an open,
+undesigned item — the search has no biome awareness at all today). Not
+conflated with this Y-based fix; tracked separately.
+
 **Known first-pass gap, deferred not forgotten:** none of `forceCapsule`/
 `capsule.*` are exposed on `NetherStartCustomizeScreen` yet — only the
 YAML config path (`NetherStartConfig`) can set them today. A world

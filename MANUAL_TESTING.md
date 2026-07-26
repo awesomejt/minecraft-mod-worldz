@@ -777,10 +777,11 @@ only where you spawn (and which chest tier you get) differ.
    reasonably discoverable, or whether hard tier needs a small guaranteed
    nudge after all — DESIGN §31.6 flags these defaults as a first pass,
    not signed off.
-4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.2+,
-   now `forceCapsule: true` — see Phase 14b acceptance below for the full
-   capsule/starter-base checklist). Confirm the server log shows the
-   capsule was explicitly requested, not a fallback from a failed search.
+4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.2+ —
+   see Phase 14b acceptance below for the full capsule/starter-base
+   checklist). Confirm the server log shows the capsule was built
+   automatically because `spawnY` is close to the Nether's own floor, not
+   a fallback from a failed search.
 
 **Not covered by this phase's acceptance:** an End variant (GOALS 34 is
 Phase 15, sharing this phase's own respawn-mechanics research, DESIGN
@@ -790,38 +791,54 @@ Phase 15, sharing this phase's own respawn-mechanics research, DESIGN
 
 Uses configs `62`, `86`-`87` (see
 [`config/tests/README.md`](config/tests/README.md)). **Select "Worldz:
-Nether Start"** for all three; all three set `forceCapsule: true` so the
-capsule is guaranteed to fire (no need to hunt for a seed where the
-natural search fails).
+Nether Start"** for all three; each guarantees the capsule fires for a
+different reason (no need to hunt for a seed where the natural search
+fails) — config 62 via its low `spawnY` alone (the new automatic
+default), configs 86/87 via an explicit `forceCapsule: true` at an
+ordinary `spawnY` (32).
 
-1. **Default capsule shape**, `62-nether-start-capsule-fallback.yaml`
-   (0.3.2+). Confirm the server log shows the capsule was explicitly
-   requested. Confirm you spawn inside a decent-sized (5x5x5 exterior,
-   3x3x3 interior), fully enclosed nether-brick room — floor, ceiling,
-   and all four walls solid, not just corner posts, no way to fall into
-   surrounding lava/void from inside it. Confirm the room is genuinely
-   lit (glowstone embedded in the walls) — you should not need to place
-   your own light source to see clearly. Confirm the chest (easy tier: 10
-   obsidian, flint and steel, bread, a wooden pickaxe, plus extras) sits
-   in the floor as before, and a furnace + crafting table are both
-   present nearby with room to walk between all three.
-2. **`glow_lichen` lighting + custom size**,
-   `86-nether-start-capsule-glow-lichen.yaml` (0.3.2+). Confirm the room
-   is noticeably bigger (7x7 interior floor, one block taller). Confirm
-   glow lichen coats the entire interior surface — every wall, the floor,
-   and the ceiling, not a few spaced points — including both faces at
-   each corner. Confirm it's bright enough to see across the whole room.
+1. **Default capsule shape, automatic low-spawnY default**,
+   `62-nether-start-capsule-fallback.yaml` (0.3.2+, no `forceCapsule` set
+   at all). Confirm the server log explains the capsule was built because
+   `spawnY` (4) is close to the Nether's own floor — not "explicitly
+   requested" and not "search failed, falling back". Confirm you spawn
+   inside a decent-sized (5x5x5 exterior, 3x3x3 interior), fully enclosed
+   nether-brick room — floor, ceiling, and all four walls solid, not just
+   corner posts, no way to fall into surrounding lava/void from inside
+   it. Confirm the room is genuinely lit (glowstone embedded in the
+   walls) — you should not need to place your own light source to see
+   clearly. Confirm the chest (easy tier: 10 obsidian, flint and steel,
+   bread, a wooden pickaxe, plus extras) sits in the floor as before, and
+   a furnace + crafting table are both present nearby with room to walk
+   between all three.
+2. **Explicit request at a safe spawnY + `glow_lichen` + custom size**,
+   `86-nether-start-capsule-glow-lichen.yaml` (0.3.2+, `spawnY: 32`,
+   `forceCapsule: true`). Confirm the server log shows the capsule was
+   explicitly requested this time (a different log line from config 62's
+   automatic one) — proving `forceCapsule` still works independently of
+   the low-spawnY default. Confirm the room is noticeably bigger (7x7
+   interior floor, one block taller). Confirm glow lichen coats the
+   entire interior surface — every wall, the floor, and the ceiling, not
+   a few spaced points — including both faces at each corner. Confirm
+   it's bright enough to see across the whole room.
 3. **Hanging lanterns + hard tier**,
-   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.2+). Confirm every
-   lantern is genuinely suspended from the ceiling, not floor-standing —
-   this is the one detail most worth double-checking closely. Confirm
-   they form a spaced grid, not a wall ring. Confirm the hard-tier chest
-   has no obsidian/flint and steel but does include a wooden pickaxe
-   (GOALS 41: every tier guarantees at least a pickaxe to break out with).
+   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.2+, `spawnY: 32`,
+   `forceCapsule: true`). Confirm every lantern is genuinely suspended
+   from the ceiling, not floor-standing — this is the one detail most
+   worth double-checking closely. Confirm they form a spaced grid, not a
+   wall ring. Confirm the hard-tier chest has no obsidian/flint and steel
+   but does include a wooden pickaxe (GOALS 41: every tier guarantees at
+   least a pickaxe to break out with).
 4. **Breaking out**, any of the three. Confirm the guaranteed pickaxe can
    actually mine the capsule's nether-brick walls (wooden pickaxe is the
    vanilla minimum tier nether bricks require) — the intended "at least a
    pickaxe" escape path, GOALS 41.
+5. **Normal spawnY still searches naturally**, revisit
+   `59-nether-start-default.yaml` (`spawnY: 32`, no `forceCapsule`) if not
+   already covered by Phase 14's own acceptance — confirm the natural
+   search still runs and typically succeeds at the ordinary default depth
+   (the low-spawnY default from item 1 should *not* have made this always
+   skip straight to the capsule).
 
 **Not covered by this phase's acceptance:** `forceCapsule`/`capsule.*`
 are not yet exposed on the in-game Customize screen (YAML config only,
