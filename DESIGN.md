@@ -4402,6 +4402,121 @@ prior typed preset established (`WorldPresetResourcesTest`,
   spawn point.
 - **Bonus-chest placement quirk** — logged, not fixed (§31.2).
 
+### 31.9 Universal starter capsule, first pass: Nether-start only (GOALS 41, TODO 14b)
+
+Jason's Phase 14 acceptance testing (configs 59-62) raised the original
+1x1-interior capsule as too small and pitch dark, then widened the ask
+(2026-07-25) into a general "starter capsule/base" feature spanning every
+world type/starting scenario — with a concrete first-pass spec for shape,
+lighting, and contents. Scope for this pass, per Jason's own "let's start
+with implementation in the nether and testing": `nether_start` only.
+Deliberately **not** building shared `cave`/`end_start`-spanning
+infrastructure yet (that would be designing for a hypothetical future
+requirement before the Nether pass is even validated) — but named and
+shaped so extracting a shared version later is easy: `StarterCapsuleConfig`
+(config package) is a generic, single-owner class already (mirrors
+`FloatingIslandsConfig`'s own "single current owner, generic shape"
+precedent), and every capsule-building method in `NetherStartDeployment`
+takes its shape as plain parameters rather than reaching into
+Nether-start-specific state.
+
+**Shape.** `NetherStartPlan` gains `capsuleSizeBlocks` (total exterior
+footprint, odd, default 5 — interior is this minus 2, so a 3x3 room by
+default) and `capsuleHeightBlocks` (interior height, default 3).
+`buildNetherStartCapsule` generalizes the original fixed 3x3x4 shell to
+these: `radius = (capsuleSizeBlocks - 1) / 2`, shell condition `dy == -1
+|| dy == height || abs(dx) == radius || abs(dz) == radius` for `dx, dz`
+in `[-radius, radius]`, `dy` in `[-1, height]` — the original shape is
+exactly `capsuleSizeBlocks = 3, capsuleHeightBlocks = 2`. Minimum size is
+3 (radius must be at least 1 for a real shell to exist around a center
+column); maximum 15 (generous, but still "a small base", not a hall).
+
+**Contents.** The chest keeps its original placement (`site.below()`,
+directly underfoot) — deliberately *not* relocated, since a bigger, lit
+room already resolves Jason's "no room to move" complaint without
+touching `StarterKitDeployment`'s existing contract. A furnace and
+crafting table are now always placed too (GOALS 41), at `center.offset(1,
+0, 0)` / `center.offset(-1, 0, 0)` — only when the room is big enough to
+hold them without crowding the spawn column (`radius - 1 >= 1`, i.e.
+`capsuleSizeBlocks >= 5`, the default). Every chest tier's essentials
+(`NetherStartConfig`) now guarantees one `minecraft:wooden_pickaxe`
+(GOALS 41: "there should at least be a pickaxe so players can break out
+of the structure") — essentials, not extras, so it's never left to the
+random draw.
+
+**Lighting (GOALS 41.2).** New `logic.LightSource` enum: `TORCH`,
+`LANTERN`, `SOUL_LANTERN`, `GLOWSTONE`, `SHROOMLIGHT`, `GLOW_LICHEN` —
+`nether_start`'s own default is `GLOWSTONE` ("appropriate to the world
+type", Jason's own phrase; `StarterCapsuleConfig`'s bare default is
+`TORCH`, a generic baseline other future presets can keep or override).
+Placement differs by source, verified against the real 26.2 decompiled
+sources rather than assumed from memory (this project's own
+javap-not-decompiled-source lesson, MEMORY.md — here the concern ran the
+other way: confirming the real API shape, `WallTorchBlock.FACING`,
+`LanternBlock.HANGING`, `MultifaceBlock.getFaceProperty(Direction)`,
+before writing placement code against it):
+- `GLOWSTONE`/`SHROOMLIGHT`: embedded directly into the wall ring itself
+  (replacing wall material — both are ordinary opaque blocks, so this
+  doesn't breach the shell), spaced every `capsuleLightSpacingBlocks`
+  around the room's own perimeter.
+- `TORCH`: `WallTorchBlock` isn't a solid block and needs a real solid
+  neighbor behind it to survive — placed one cell in from the wall
+  (the innermost interior ring) instead of replacing the wall itself,
+  `FACING` set to point into the room.
+- `LANTERN`/`SOUL_LANTERN`: hung from the ceiling (`HANGING = true`) in a
+  2D grid across the interior footprint, spaced by
+  `capsuleLightSpacingBlocks` on both axes (Jason, 2026-07-25: "those can
+  be hung from the ceiling") — never wall-mounted, since a real lantern
+  can't attach to a vertical face at all.
+- `GLOW_LICHEN`: every interior cell adjacent to any wall/floor/ceiling
+  gets a `GlowLichenBlock` state with the matching `MultifaceBlock` face
+  properties set true (one direction per adjacent shell neighbor,
+  multiple for corners) — covers the entire interior surface, not spaced
+  points (Jason: "the entire wall").
+
+A ring-radius of 0 or less (the minimum `capsuleSizeBlocks = 3` case, a
+single interior column) degenerates every spaced-ring algorithm down to
+exactly one fixture, regardless of configured spacing — there's no room
+for a real ring at that size.
+
+**Known, accepted limitation, not solved here:** no light-level
+computation happens anywhere in this pass; the default size/spacing/
+brightness combination just keeps a default-sized room comfortably lit.
+Also carried over verbatim from Jason's own 2026-07-25 acceptance note:
+Nether mobs that ignore light level entirely when choosing a spawn
+location (zombified piglins) can still spawn inside a fully lit capsule —
+no amount of interior lighting prevents that.
+
+**Explicit option, not only a fallback (GOALS 41.1).** New
+`NetherStartConfig.forceCapsule` (default `false`): when set, `resolveSite`
+skips the natural safe-site search entirely and always builds the capsule
+— the real, forced-chunk-generation-costly search never runs. Persisted
+on `NetherStartPlan`/`NetherStartCodecs` like every other field here,
+since the plan only exists via the chunk generator's own codec-persisted
+settings (no separate ephemeral path).
+
+**Known first-pass gap, deferred not forgotten:** none of `forceCapsule`/
+`capsule.*` are exposed on `NetherStartCustomizeScreen` yet — only the
+YAML config path (`NetherStartConfig`) can set them today. A world
+created via the in-game Customize screen always gets the compiled-in
+capsule defaults (`NetherStartCustomization.netherStartPlan()`). Flagged
+for the later cross-preset generalization pass (GOALS 41.1) rather than
+one-off UI work scoped to Nether-start alone.
+
+**Incidental bug fix, found while touching this code:** `sanitizeNetherStart`/
+`readNetherStartConfig`/`netherStartMap`/`netherStartSummary` never
+sanitized, read, exported, or summarized `easyKit`/`mediumKit`/`hardKit`
+at all — despite `NetherStartConfig` having had those fields since Phase
+14.2b. A user's `netherStart.easyKit` YAML override was silently ignored
+in every prior release; fixed here to match `cave`/`end_start`'s own
+identical pattern, while every other new field in this pass was being
+threaded through the same four methods anyway.
+
+**Deferred to a later, dedicated generalization pass (not this one):**
+extending the capsule option to `cave`/`end_start` and beyond, promoting
+`StarterCapsuleConfig`'s current single-owner shape into genuinely shared
+deployment code, and Customize-screen exposure.
+
 ## §32. Phase 15: End-start challenge (GOALS 34)
 
 ### 32.1 Building on Phase 14's spike: End-specific respawn findings

@@ -2288,6 +2288,59 @@ showcasing is seed-search-preferred selection (reusing Phase 8.2's
       `forced` `ServerPlayer.RespawnConfig` mechanism flagged as deferred
       here (DESIGN §31.8), not scheduled to be re-derived from scratch.
 
+## Phase 14b — Universal starter capsule, Nether-start first pass (GOALS 41)
+
+Jason's follow-up (2026-07-25) to the Phase 14 acceptance feedback above:
+a bigger, lit, furnished capsule/starter-base, available as an explicit
+option (not only a natural-search fallback), scoped to `nether_start`
+first ("let's start with implementation in the nether and testing"), with
+every other world type/starting scenario explicitly deferred to a later
+revisit. Full design: DESIGN §31.9.
+
+- [x] 14b.1 Design pass (DESIGN §31.9): capsule size/shape generalization
+      (`capsuleSizeBlocks`/`capsuleHeightBlocks`, radius-based shell
+      formula subsuming the original fixed 3x3x4 shape), lighting
+      placement rules per `LightSource` (wall-embedded vs. wall-mounted
+      vs. ceiling-hung vs. full-surface-coating), `forceCapsule` as an
+      explicit request separate from the fallback path, furniture/pickaxe
+      guarantees. Verified real block API (`WallTorchBlock.FACING`,
+      `LanternBlock.HANGING`, `MultifaceBlock.getFaceProperty`) against
+      the real 26.2 decompiled sources before writing placement code.
+- [x] 14b.2 Implementation: new `logic.LightSource` enum,
+      `config.StarterCapsuleConfig` (generic/single-owner, not yet
+      cross-preset-shared — DESIGN §31.9), `NetherStartPlan`/
+      `NetherStartCodecs` gain `forceCapsule`/`capsuleSizeBlocks`/
+      `capsuleHeightBlocks`/`capsuleLightSource`/`capsuleLightSpacingBlocks`,
+      `NetherStartConfig` gains `forceCapsule`/`capsule` plus a guaranteed
+      `minecraft:wooden_pickaxe` in every chest tier's essentials.
+      `NetherStartDeployment.buildNetherStartCapsule` rewritten for the
+      generalized shape, furnace/crafting-table placement, and the new
+      `placeCapsuleLighting` dispatch (wall ring / wall-mounted torch
+      ring / hanging-lantern grid / full glow-lichen coat, each with a
+      degenerate single-fixture case at the smallest capsule size).
+      `resolveSite` checks `forceCapsule` before the natural search.
+      **Incidental fix**: `sanitizeNetherStart`/`readNetherStartConfig`/
+      `netherStartMap`/`netherStartSummary` never touched
+      `easyKit`/`mediumKit`/`hardKit` at all (a pre-existing gap since
+      14.2b) — a YAML `netherStart.easyKit` override was silently
+      ignored in every prior release; fixed here to match `cave`/
+      `end_start`'s own identical pattern. `NetherStartCustomization
+      .netherStartPlan()` (the in-game Customize-screen path) updated to
+      compile against the wider record; deliberately still resolves the
+      compiled-in capsule defaults rather than gaining new UI fields this
+      pass (DESIGN §31.9's own "known first-pass gap, deferred not
+      forgotten"). JUnit: `NetherStartPlanTest` (new field validation,
+      including the degenerate ring case implicitly via the min-size
+      bound), `WorldzConfigTest` (capsule sanitize/round-trip, the fixed
+      kit round-trip, updated full-config summary). Full multiloader
+      build + `./gradlew test` green.
+- [ ] 14b.3 Test configs + docs; **[Jason]** in-game acceptance (room
+      size/lighting/furniture feel, pickaxe actually breaks nether bricks,
+      `forceCapsule` genuinely skips the search, each `LightSource` looks
+      right in-game — especially confirming `GLOW_LICHEN` face
+      orientation and hanging lanterns actually render hanging, not
+      floor-standing).
+
 ## Phase 15 — End-start challenge (GOALS 34)
 
 - [x] 15.1 Design pass building on 14.1's spike: spawn on the outer End

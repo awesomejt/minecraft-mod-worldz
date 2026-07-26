@@ -1,5 +1,6 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.logic.LightSource;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 
@@ -21,6 +22,13 @@ public final class NetherStartConfig {
     public StarterKitConfig mediumKit = mediumDefaults();
     /** Bare-essentials starter-chest contents: no guaranteed obsidian at all. */
     public StarterKitConfig hardKit = hardDefaults();
+    /**
+     * Whether to always build the guaranteed capsule instead of only falling back to it when the
+     * natural safe-site search comes up empty (GOALS 41.1, DESIGN §31.9).
+     */
+    public boolean forceCapsule = false;
+    /** The capsule's shape and lighting (GOALS 41, DESIGN §31.9), Nether-appropriate defaults. */
+    public StarterCapsuleConfig capsule = capsuleDefaults();
 
     /** Creates a config populated with defaults. */
     public NetherStartConfig() {
@@ -28,7 +36,9 @@ public final class NetherStartConfig {
 
     private static StarterKitConfig easyDefaults() {
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:obsidian:10", "minecraft:flint_and_steel:1", "minecraft:bread:8");
+        config.essentials = list(
+            "minecraft:obsidian:10", "minecraft:flint_and_steel:1", "minecraft:bread:8", "minecraft:wooden_pickaxe:1"
+        );
         config.extras = list(
             "minecraft:golden_pickaxe:1", "minecraft:golden_sword:1", "minecraft:gold_ingot:8", "minecraft:torch:16"
         );
@@ -38,7 +48,7 @@ public final class NetherStartConfig {
 
     private static StarterKitConfig mediumDefaults() {
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:obsidian:10", "minecraft:bread:4");
+        config.essentials = list("minecraft:obsidian:10", "minecraft:bread:4", "minecraft:wooden_pickaxe:1");
         config.extras = list("minecraft:gold_ingot:4", "minecraft:torch:8", "minecraft:iron_sword:1");
         config.extrasCount = 2;
         return config;
@@ -46,9 +56,15 @@ public final class NetherStartConfig {
 
     private static StarterKitConfig hardDefaults() {
         StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:bread:2");
+        config.essentials = list("minecraft:bread:2", "minecraft:wooden_pickaxe:1");
         config.extras = list("minecraft:gold_ingot:2", "minecraft:torch:4");
         config.extrasCount = 1;
+        return config;
+    }
+
+    private static StarterCapsuleConfig capsuleDefaults() {
+        StarterCapsuleConfig config = new StarterCapsuleConfig();
+        config.lightSource = LightSource.GLOWSTONE;
         return config;
     }
 

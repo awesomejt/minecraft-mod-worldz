@@ -1,15 +1,23 @@
 package media.jlt.minecraft.mods.worldz.worldgen;
 
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
+import media.jlt.minecraft.mods.worldz.logic.LightSource;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnSearchPlan;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LanternBlock;
+import net.minecraft.world.level.block.MultifaceBlock;
+import net.minecraft.world.level.block.WallTorchBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelData;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -52,7 +60,17 @@ final class NetherStartDeployment {
         return site;
     }
 
+    /**
+     * Natural-first, guaranteed-capsule-fallback search (DESIGN §31.4) -- unless {@link
+     * NetherStartPlan#forceCapsule()} is set, in which case the capsule is built unconditionally
+     * and the (real, forced-chunk-generation-costly) natural search never runs at all (GOALS 41.1:
+     * "explicit, requestable option", not only a fallback).
+     */
     private static BlockPos resolveSite(ServerLevel nether, NetherStartPlan netherStart) {
+        if (netherStart.forceCapsule()) {
+            WorldzCommon.LOGGER.info("Nether-start capsule explicitly requested (forceCapsule); skipping the natural safe-site search.");
+            return buildNetherStartCapsule(nether, netherStart);
+        }
         for (SpawnSearchPlan.Offset offset : SEARCH_PLAN.offsetsInSearchOrder()) {
             Optional<BlockPos> found = searchNetherStartSite(nether, netherStart, offset.x(), offset.z());
             if (found.isPresent()) {
@@ -108,26 +126,152 @@ final class NetherStartDeployment {
     }
 
     /**
-     * Carves a small safe capsule directly into already-generated Nether terrain when no natural
-     * site was found within budget, so world creation can never fail to produce a safe spawn --
-     * reuses {@code SpawnOriginManager.buildCaveCapsule}'s exact fully-enclosed-shell shape (the
-     * Phase 7 test-2 lesson: corner posts alone aren't a real shell), swapping stone for
+     * Carves a safe capsule/starter base directly into already-generated Nether terrain when no
+     * natural site was found within budget (or unconditionally when {@link
+     * NetherStartPlan#forceCapsule()} is set), so world creation can never fail to produce a safe
+     * spawn -- reuses {@code SpawnOriginManager.buildCaveCapsule}'s fully-enclosed-shell principle
+     * (the Phase 7 test-2 lesson: corner posts alone aren't a real shell), swapping stone for
      * nether bricks -- the same material {@code ProgressionGuarantees.buildBlazeSite} already
-     * uses for its own guaranteed Nether room.
+     * uses for its own guaranteed Nether room. Unlike the original 1x1-interior shape, this now
+     * builds a "decent sized enclosure" (GOALS 41), lit by default so the player never spawns in
+     * darkness (GOALS 41.2), with a chest (placed by the caller, {@code
+     * StarterKitDeployment.spawnNetherStartChest}, directly beneath the returned site as before),
+     * plus an always-present furnace and crafting table (GOALS 41) once the room is large enough
+     * to hold them without crowding the player's own spawn column.
      */
     private static BlockPos buildNetherStartCapsule(ServerLevel nether, NetherStartPlan netherStart) {
         BlockPos center = new BlockPos(0, netherStart.spawnY(), 0);
         nether.getChunk(0, 0);
-        BlockState brick = Blocks.NETHER_BRICKS.defaultBlockState();
+        int radius = (netherStart.capsuleSizeBlocks() - 1) / 2;
+        int height = netherStart.capsuleHeightBlocks();
+        BlockState wall = Blocks.NETHER_BRICKS.defaultBlockState();
         BlockState air = Blocks.AIR.defaultBlockState();
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                for (int dy = -1; dy <= 2; dy++) {
-                    boolean shell = dy == -1 || dy == 2 || Math.abs(dx) == 1 || Math.abs(dz) == 1;
-                    nether.setBlock(center.offset(dx, dy, dz), shell ? brick : air, 3);
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = -1; dy <= height; dy++) {
+                    boolean shell = dy == -1 || dy == height || Math.abs(dx) == radius || Math.abs(dz) == radius;
+                    nether.setBlock(center.offset(dx, dy, dz), shell ? wall : air, Block.UPDATE_ALL);
                 }
             }
         }
+        int interiorHalfWidth = radius - 1;
+        if (interiorHalfWidth >= 1) {
+            nether.setBlock(center.offset(1, 0, 0), Blocks.FURNACE.defaultBlockState(), Block.UPDATE_ALL);
+            nether.setBlock(center.offset(-1, 0, 0), Blocks.CRAFTING_TABLE.defaultBlockState(), Block.UPDATE_ALL);
+        }
+        placeCapsuleLighting(nether, netherStart, center, radius, height);
         return center;
+    }
+
+    /**
+     * Lights the capsule's interior per {@link NetherStartPlan#capsuleLightSource()} (GOALS 41.2)
+     * so it never spawns the player in darkness. Placement rule depends on the source: {@link
+     * LightSource#GLOW_LICHEN} coats the entire interior surface; {@link LightSource#LANTERN}/
+     * {@link LightSource#SOUL_LANTERN} hang from the ceiling in a grid (Jason, 2026-07-25: "those
+     * can be hung from the ceiling"); everything else is spaced every {@code
+     * capsuleLightSpacingBlocks} around the room's own wall ring. Deliberately does not attempt to
+     * compute an exact light level -- the default spacing/brightness combination keeps a
+     * default-sized room comfortably lit throughout. Known, accepted limitation (GOALS 41.2,
+     * carried over from Jason's own acceptance note): Nether mobs that ignore light level
+     * entirely when choosing a spawn location (zombified piglins in particular) can still spawn
+     * inside a fully lit capsule -- no amount of interior lighting prevents that.
+     */
+    private static void placeCapsuleLighting(ServerLevel nether, NetherStartPlan netherStart, BlockPos center, int radius, int height) {
+        LightSource source = netherStart.capsuleLightSource();
+        int spacing = netherStart.capsuleLightSpacingBlocks();
+        if (source == LightSource.GLOW_LICHEN) {
+            coatInteriorWithGlowLichen(nether, center, radius, height);
+            return;
+        }
+        if (source == LightSource.LANTERN || source == LightSource.SOUL_LANTERN) {
+            hangLanternGrid(nether, center, radius, height, spacing, source == LightSource.SOUL_LANTERN ? Blocks.SOUL_LANTERN : Blocks.LANTERN);
+            return;
+        }
+        int midY = (height - 1) / 2;
+        if (source == LightSource.TORCH) {
+            for (PerimeterPoint point : wallPerimeter(Math.max(radius - 1, 0), spacing)) {
+                BlockState torch = Blocks.WALL_TORCH.defaultBlockState().setValue(WallTorchBlock.FACING, point.outward());
+                nether.setBlock(center.offset(point.dx(), midY, point.dz()), torch, Block.UPDATE_ALL);
+            }
+            return;
+        }
+        Block embedded = source == LightSource.SHROOMLIGHT ? Blocks.SHROOMLIGHT : Blocks.GLOWSTONE;
+        for (PerimeterPoint point : wallPerimeter(radius, spacing)) {
+            nether.setBlock(center.offset(point.dx(), midY, point.dz()), embedded.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    private static void hangLanternGrid(ServerLevel nether, BlockPos center, int radius, int height, int spacing, Block lanternBlock) {
+        int half = Math.max(radius - 1, 0);
+        BlockState lantern = lanternBlock.defaultBlockState().setValue(LanternBlock.HANGING, true);
+        for (int dx = -half; dx <= half; dx += spacing) {
+            for (int dz = -half; dz <= half; dz += spacing) {
+                nether.setBlock(center.offset(dx, height - 1, dz), lantern, Block.UPDATE_ALL);
+            }
+        }
+    }
+
+    private static void coatInteriorWithGlowLichen(ServerLevel nether, BlockPos center, int radius, int height) {
+        int half = Math.max(radius - 1, 0);
+        for (int dx = -half; dx <= half; dx++) {
+            for (int dz = -half; dz <= half; dz++) {
+                for (int dy = 0; dy < height; dy++) {
+                    BlockState state = Blocks.GLOW_LICHEN.defaultBlockState();
+                    boolean anyFace = false;
+                    for (Direction direction : Direction.values()) {
+                        if (isShellNeighbor(dx, dy, dz, direction, radius, height)) {
+                            state = state.setValue(MultifaceBlock.getFaceProperty(direction), true);
+                            anyFace = true;
+                        }
+                    }
+                    if (anyFace) {
+                        nether.setBlock(center.offset(dx, dy, dz), state, Block.UPDATE_ALL);
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean isShellNeighbor(int dx, int dy, int dz, Direction direction, int radius, int height) {
+        int nx = dx + direction.getStepX();
+        int ny = dy + direction.getStepY();
+        int nz = dz + direction.getStepZ();
+        return ny == -1 || ny == height || Math.abs(nx) == radius || Math.abs(nz) == radius;
+    }
+
+    /** One spaced wall-ring placement point, tagged with the direction pointing into the room. */
+    private record PerimeterPoint(int dx, int dz, Direction outward) {
+    }
+
+    /**
+     * Walks the square ring at the given radius (clockwise from the northwest corner) and returns
+     * every {@code spacing}-th point, each tagged with the {@link Direction} a fixture mounted
+     * there should face to point into the room. A ring radius of 0 or less (the smallest supported
+     * capsule, a single interior column) degenerates to one single point -- there is no room for a
+     * real ring, so exactly one fixture is placed regardless of {@code spacing}.
+     */
+    private static List<PerimeterPoint> wallPerimeter(int radius, int spacing) {
+        List<PerimeterPoint> ring = new ArrayList<>();
+        if (radius <= 0) {
+            ring.add(new PerimeterPoint(0, 0, Direction.SOUTH));
+            return ring;
+        }
+        for (int dx = -radius; dx < radius; dx++) {
+            ring.add(new PerimeterPoint(dx, -radius, Direction.SOUTH));
+        }
+        for (int dz = -radius; dz < radius; dz++) {
+            ring.add(new PerimeterPoint(radius, dz, Direction.WEST));
+        }
+        for (int dx = radius; dx > -radius; dx--) {
+            ring.add(new PerimeterPoint(dx, radius, Direction.NORTH));
+        }
+        for (int dz = radius; dz > -radius; dz--) {
+            ring.add(new PerimeterPoint(-radius, dz, Direction.EAST));
+        }
+        List<PerimeterPoint> spaced = new ArrayList<>();
+        for (int i = 0; i < ring.size(); i += spacing) {
+            spaced.add(ring.get(i));
+        }
+        return spaced;
     }
 }

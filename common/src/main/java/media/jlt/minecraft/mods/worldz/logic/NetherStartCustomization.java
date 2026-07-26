@@ -81,12 +81,21 @@ public record NetherStartCustomization(
     }
 
     /**
-     * Resolves this world's Nether-start plan.
+     * Resolves this world's Nether-start plan. The capsule's shape/lighting and {@code
+     * forceCapsule} (GOALS 41, DESIGN §31.9) are not yet exposed on this Customize screen -- only
+     * the YAML config path ({@link #fromConfig}) can set them today; a world created here always
+     * gets the compiled-in capsule defaults. Deferred, not forgotten: DESIGN §31.9 flags full
+     * Customize-screen exposure as part of the later cross-preset generalization pass (GOALS 41.1)
+     * rather than one-off UI work scoped to Nether-start alone.
      *
      * @return resolved, enabled plan
      */
     public NetherStartPlan netherStartPlan() {
-        return new NetherStartPlan(true, spawnY, chestTier);
+        return new NetherStartPlan(
+            true, spawnY, chestTier, false,
+            NetherStartPlan.DEFAULT_CAPSULE_SIZE_BLOCKS, NetherStartPlan.DEFAULT_CAPSULE_HEIGHT_BLOCKS,
+            LightSource.GLOWSTONE, NetherStartPlan.DEFAULT_CAPSULE_LIGHT_SPACING_BLOCKS
+        );
     }
 
     /**

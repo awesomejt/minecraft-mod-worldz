@@ -40,7 +40,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Sky Island** | A true floating island: a thin, fixed-thickness slab surrounded by void above, below, and beyond its footprint — Skyblock-style. Necessities chest with easy/medium/hard tiers plus a biome-driven water-source item. Optional matching Nether sky island. See [Sky island challenge](#sky-island-challenge) below. | Small screen: island biome, radius, coastline shape, surface Y, slab thickness, chest tier, apply-to-Nether, borders, Nether exterior. |
 | **Worldz: Sky Chunk** | Chunk-shaped islands cut from the seed's own natural chunks: unlike every other island type, a selected chunk's real vanilla terrain (biome, caves, structures) is left completely untouched — only unselected chunks mask to void. Optional top-only depth cutoff; a guaranteed portal-room stronghold and a forced amethyst geode; optional Nether/End application; optional underground-content showcasing. See [Sky chunk challenge](#sky-chunk-challenge) below. | Small screen: spawn chance, cell size, top-only toggle/depth, scattered top-only chance, exclusion zone, apply-to-Nether/End, borders, Nether exterior. |
 | **Worldz: Cave** | Cave-only start: the Overworld generates exactly as vanilla would (no biome restriction, no shape at all) — only your spawn changes, placed in a real, searched-out natural underground cavity. Optional solid roof sealing off sky access everywhere; optional large carved mega-cavern around spawn; optional starter chest. See [Cave challenge](#cave-challenge) below. | Small screen: spawn depth, sealed-surface toggle/Y, mega-cavern toggle/radius/height, chest toggle/tier, borders, Nether exterior. |
-| **Worldz: Nether Start** | Nether-start challenge: the Overworld generates exactly as vanilla would — you spawn in the Nether instead, in a real safe pocket (or a small carved fallback capsule), with a difficulty-tiered starter chest (easy hands over a ready-to-use portal frame, hard leans on exploration). Dying without a personal bed/anchor returns you to the same safe site. See [Nether-start challenge](#nether-start-challenge) below. | Small screen: spawn depth, chest tier, borders, Nether exterior. |
+| **Worldz: Nether Start** | Nether-start challenge: the Overworld generates exactly as vanilla would — you spawn in the Nether instead, in a real safe pocket (or a guaranteed, lit, furnished capsule/starter base, either as a fallback or on request), with a difficulty-tiered starter chest (easy hands over a ready-to-use portal frame, hard leans on exploration; every tier guarantees a pickaxe). Dying without a personal bed/anchor returns you to the same safe site. See [Nether-start challenge](#nether-start-challenge) below. | Small screen: spawn depth, chest tier, borders, Nether exterior. |
 | **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on hand-mining the platform's own end stone to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
 | **Worldz: Flat** | Classic flat challenge: my version of vanilla superflat, with more options — an editable bottom-to-top block layer stack, a single fixed biome, an optional bedrock floor (just whether the layer list's bottom entry is bedrock), an eligible-structure-set list, and an optional decoration toggle. Zero noise or caves of any kind, matching vanilla's own real superflat behavior — and genuinely as fast to generate, since the real noise pipeline never runs at all. See [Flat challenge](#flat-challenge) below. | Small screen: layers (text), biome, decoration, structure list (text), borders, exteriors. |
 | **Worldz: Deep Flat** | Deep-flat challenge: a flat surface capped over real, unmodified vanilla terrain — caves, cave biomes, aquifers, ores, and structures all come from the seed's own real generation below the cap, completely untouched. Rivers/oceans show as water at the flat surface (optional, with a spawn-adjacent exclusion radius). See [Deep flat challenge](#deep-flat-challenge) below. | Small screen: surface Y, cap layers (text), rivers toggle, exclusion radius, borders, exteriors. |
@@ -767,9 +767,23 @@ pocket, searched out near a configurable depth (`spawnY`), rather than a
 carved cavity or the surface.
 
 If no natural pocket is found near the configured depth within the search
-budget, a small safe capsule (a sealed nether-brick room) is carved
-instead so world creation can never fail to produce a safe spawn (check
-the server log for a warning if this happens).
+budget, a guaranteed capsule/starter base is carved instead so world
+creation can never fail to produce a safe spawn (check the server log for
+a warning if this happens) — or set `forceCapsule: true` to request it
+outright, skipping the natural search entirely.
+
+The capsule is a decent-sized, fully enclosed, always-lit nether-brick
+room (default 5x5x5 exterior, 3x3x3 interior), furnished with a furnace
+and crafting table alongside the starter chest, once the room is big
+enough to hold them without crowding your spawn point. Its size, light
+source, and light spacing are all configurable:
+
+| Setting | Default | Description |
+|---|---|---|
+| `capsule.sizeBlocks` | `5` | Total exterior footprint (must be odd); interior is this minus 2. |
+| `capsule.heightBlocks` | `3` | Interior height. |
+| `capsule.lightSource` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen`. Torches/glowstone/shroomlight space themselves around the wall ring; lanterns always hang from the ceiling in a grid; `glow_lichen` ignores spacing and coats the entire interior surface instead. |
+| `capsule.lightSpacingBlocks` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
 
 **Death and respawn work like this:** the world's own default spawn point
 is redirected to the resolved Nether site at world creation, so both your
@@ -781,13 +795,15 @@ would in the Overworld.
 
 A difficulty-tiered starter chest (`chestTier`, easy/medium/hard — always
 on, unlike Cave's optional one) is set into the floor directly beneath
-your spawn position:
+your spawn position. Every tier guarantees at least a wooden pickaxe, so
+you can always mine your way out of the capsule's nether-brick walls if
+you land in one:
 
 | Tier | Contents |
 |---|---|
-| `easy` | 10 obsidian (a full portal frame, ready to place) + 1 flint and steel + 8 bread, plus 3 random extras (golden tools, gold ingots, torches). |
-| `medium` | 10 obsidian with no guaranteed ignition, plus less food and fewer extras. |
-| `hard` | No guaranteed obsidian or flint and steel at all — leans entirely on Nether exploration (ruined portals, bastion/piglin bartering, a natural lava+water combination) to stay beatable. |
+| `easy` | 10 obsidian (a full portal frame, ready to place) + 1 flint and steel + 8 bread + a wooden pickaxe, plus 3 random extras (golden tools, gold ingots, torches). |
+| `medium` | 10 obsidian with no guaranteed ignition, a wooden pickaxe, plus less food and fewer extras. |
+| `hard` | No guaranteed obsidian or flint and steel at all, just a wooden pickaxe and bread — leans entirely on Nether exploration (ruined portals, bastion/piglin bartering, a natural lava+water combination) to stay beatable. |
 
 Configure its defaults with a `netherStart:` section in
 `config/jlt_worldz.yaml`:
@@ -796,12 +812,24 @@ Configure its defaults with a `netherStart:` section in
 netherStart:
   spawnY: 32
   chestTier: medium
+  forceCapsule: false
+  capsule:
+    sizeBlocks: 5
+    heightBlocks: 3
+    lightSource: glowstone
+    lightSpacingBlocks: 5
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `spawnY` | `32` | Target Y for the safe-site search. |
 | `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+| `forceCapsule` | `false` | Always build the guaranteed capsule instead of only falling back to it when the natural search fails. |
+
+**Not yet available:** `forceCapsule` and the `capsule:` settings are
+config-only for now — the in-game Customize screen doesn't expose them
+yet, and the capsule option itself is Nether-start-only (Cave and
+End-start don't have it yet either); both are planned follow-ups.
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.

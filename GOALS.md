@@ -402,9 +402,19 @@ item above as one coordinated config-schema pass.
        the narrower per-preset fixes at goals 25/26/27), it should place
        light by default (e.g. a lantern/glowstone in the ceiling or
        floor) so the player never spawns unable to see.
-    Not designed or scheduled — needs a dedicated design pass covering
-    which presets get the option, the shared-mechanism question, and the
-    exact size/lighting defaults.
+    **First pass implemented (2026-07-25, Nether-start only, 0.3.2,
+    DESIGN §31.9, TODO Phase 14b).** Jason confirmed the shared-mechanism
+    question for now: build it directly in `nether_start` first, revisit
+    `cave`/`end_start` and true cross-preset sharing later rather than
+    designing that ahead of time. `netherStart.forceCapsule` requests the
+    capsule explicitly (41.1); `netherStart.capsule.*` configures size,
+    light source (`torch`/`lantern`/`soul_lantern`/`glowstone`/
+    `shroomlight`/`glow_lichen`, appropriately Nether-default `glowstone`),
+    and light spacing (41.2); every chest tier guarantees a pickaxe;
+    furnace + crafting table are always placed once the room is big
+    enough. Not yet on the Customize screen (config-only), not yet
+    generalized beyond Nether-start. **[Jason] in-game acceptance
+    outstanding** (TODO 14b.3, configs 62/86/87).
 
 ### Lava-Ocean Challenge:
 

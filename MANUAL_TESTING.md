@@ -777,19 +777,56 @@ only where you spawn (and which chest tier you get) differ.
    reasonably discoverable, or whether hard tier needs a small guaranteed
    nudge after all — DESIGN §31.6 flags these defaults as a first pass,
    not signed off.
-4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml`
-   (0.2.66+). Check the server log: did the natural-pocket search succeed,
-   or did it log "carving a safe capsule instead"? If the capsule fired,
-   confirm you spawn inside a small, fully enclosed nether-brick room
-   (floor, ceiling, all four walls solid, not just corner posts) with no
-   way to fall into surrounding lava/void from inside it. If the first
-   world happens to land in a natural pocket instead, that's a valid
-   outcome too — try a different seed if you specifically want to see the
-   capsule.
+4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.2+,
+   now `forceCapsule: true` — see Phase 14b acceptance below for the full
+   capsule/starter-base checklist). Confirm the server log shows the
+   capsule was explicitly requested, not a fallback from a failed search.
 
 **Not covered by this phase's acceptance:** an End variant (GOALS 34 is
 Phase 15, sharing this phase's own respawn-mechanics research, DESIGN
 §31.1/§31.3).
+
+## Phase 14b acceptance (Universal starter capsule, Nether-start first pass, GOALS 41, TODO 14b)
+
+Uses configs `62`, `86`-`87` (see
+[`config/tests/README.md`](config/tests/README.md)). **Select "Worldz:
+Nether Start"** for all three; all three set `forceCapsule: true` so the
+capsule is guaranteed to fire (no need to hunt for a seed where the
+natural search fails).
+
+1. **Default capsule shape**, `62-nether-start-capsule-fallback.yaml`
+   (0.3.2+). Confirm the server log shows the capsule was explicitly
+   requested. Confirm you spawn inside a decent-sized (5x5x5 exterior,
+   3x3x3 interior), fully enclosed nether-brick room — floor, ceiling,
+   and all four walls solid, not just corner posts, no way to fall into
+   surrounding lava/void from inside it. Confirm the room is genuinely
+   lit (glowstone embedded in the walls) — you should not need to place
+   your own light source to see clearly. Confirm the chest (easy tier: 10
+   obsidian, flint and steel, bread, a wooden pickaxe, plus extras) sits
+   in the floor as before, and a furnace + crafting table are both
+   present nearby with room to walk between all three.
+2. **`glow_lichen` lighting + custom size**,
+   `86-nether-start-capsule-glow-lichen.yaml` (0.3.2+). Confirm the room
+   is noticeably bigger (7x7 interior floor, one block taller). Confirm
+   glow lichen coats the entire interior surface — every wall, the floor,
+   and the ceiling, not a few spaced points — including both faces at
+   each corner. Confirm it's bright enough to see across the whole room.
+3. **Hanging lanterns + hard tier**,
+   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.2+). Confirm every
+   lantern is genuinely suspended from the ceiling, not floor-standing —
+   this is the one detail most worth double-checking closely. Confirm
+   they form a spaced grid, not a wall ring. Confirm the hard-tier chest
+   has no obsidian/flint and steel but does include a wooden pickaxe
+   (GOALS 41: every tier guarantees at least a pickaxe to break out with).
+4. **Breaking out**, any of the three. Confirm the guaranteed pickaxe can
+   actually mine the capsule's nether-brick walls (wooden pickaxe is the
+   vanilla minimum tier nether bricks require) — the intended "at least a
+   pickaxe" escape path, GOALS 41.
+
+**Not covered by this phase's acceptance:** `forceCapsule`/`capsule.*`
+are not yet exposed on the in-game Customize screen (YAML config only,
+DESIGN §31.9's own flagged gap); `cave`/`end_start` don't have this
+capsule option yet (deferred generalization, GOALS 41.1).
 
 ## Phase 15 acceptance (End-start challenge, GOALS 34, TODO 15.2a-15.2b)
 

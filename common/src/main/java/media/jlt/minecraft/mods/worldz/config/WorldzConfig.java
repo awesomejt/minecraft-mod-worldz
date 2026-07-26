@@ -11,6 +11,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.LightSource;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SealedSurfaceBlock;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
@@ -544,6 +545,33 @@ public final class WorldzConfig {
             sanitized.spawnY, NetherStartPlan.MIN_SPAWN_Y, NetherStartPlan.MAX_SPAWN_Y, "netherStart.spawnY", logger
         );
         sanitized.chestTier = sanitized.chestTier == null ? StarterKitTier.MEDIUM : sanitized.chestTier;
+        sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "netherStart.easyKit", logger);
+        sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "netherStart.mediumKit", logger);
+        sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "netherStart.hardKit", logger);
+        sanitized.capsule = sanitizeStarterCapsule(sanitized.capsule, "netherStart.capsule", logger);
+        return sanitized;
+    }
+
+    private static StarterCapsuleConfig sanitizeStarterCapsule(StarterCapsuleConfig config, String name, Logger logger) {
+        StarterCapsuleConfig sanitized = config == null ? new StarterCapsuleConfig() : config;
+        if (sanitized.sizeBlocks % 2 == 0) {
+            int oddened = sanitized.sizeBlocks + 1;
+            logger.warn("Rounded {}.sizeBlocks from {} to {} (must be odd).", name, sanitized.sizeBlocks, oddened);
+            sanitized.sizeBlocks = oddened;
+        }
+        sanitized.sizeBlocks = clampWithWarning(
+            sanitized.sizeBlocks, NetherStartPlan.MIN_CAPSULE_SIZE_BLOCKS, NetherStartPlan.MAX_CAPSULE_SIZE_BLOCKS,
+            name + ".sizeBlocks", logger
+        );
+        sanitized.heightBlocks = clampWithWarning(
+            sanitized.heightBlocks, NetherStartPlan.MIN_CAPSULE_HEIGHT_BLOCKS, NetherStartPlan.MAX_CAPSULE_HEIGHT_BLOCKS,
+            name + ".heightBlocks", logger
+        );
+        sanitized.lightSource = sanitized.lightSource == null ? LightSource.TORCH : sanitized.lightSource;
+        sanitized.lightSpacingBlocks = clampWithWarning(
+            sanitized.lightSpacingBlocks, NetherStartPlan.MIN_CAPSULE_LIGHT_SPACING_BLOCKS,
+            NetherStartPlan.MAX_CAPSULE_LIGHT_SPACING_BLOCKS, name + ".lightSpacingBlocks", logger
+        );
         return sanitized;
     }
 
@@ -1288,6 +1316,41 @@ public final class WorldzConfig {
         if (map.containsKey("chestTier")) {
             config.chestTier = StarterKitTier.parse(readString(map.get("chestTier"), name + ".chestTier"));
         }
+        if (map.containsKey("easyKit")) {
+            config.easyKit = readStarterKitConfig(map.get("easyKit"), name + ".easyKit", logger);
+        }
+        if (map.containsKey("mediumKit")) {
+            config.mediumKit = readStarterKitConfig(map.get("mediumKit"), name + ".mediumKit", logger);
+        }
+        if (map.containsKey("hardKit")) {
+            config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
+        }
+        if (map.containsKey("forceCapsule")) {
+            config.forceCapsule = readBoolean(map.get("forceCapsule"), name + ".forceCapsule");
+        }
+        if (map.containsKey("capsule")) {
+            config.capsule = readStarterCapsuleConfig(map.get("capsule"), name + ".capsule");
+        }
+        return config;
+    }
+
+    private static StarterCapsuleConfig readStarterCapsuleConfig(Object value, String name) {
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a mapping");
+        }
+        StarterCapsuleConfig config = new StarterCapsuleConfig();
+        if (map.containsKey("sizeBlocks")) {
+            config.sizeBlocks = readInt(map.get("sizeBlocks"), name + ".sizeBlocks");
+        }
+        if (map.containsKey("heightBlocks")) {
+            config.heightBlocks = readInt(map.get("heightBlocks"), name + ".heightBlocks");
+        }
+        if (map.containsKey("lightSource")) {
+            config.lightSource = LightSource.parse(readString(map.get("lightSource"), name + ".lightSource"));
+        }
+        if (map.containsKey("lightSpacingBlocks")) {
+            config.lightSpacingBlocks = readInt(map.get("lightSpacingBlocks"), name + ".lightSpacingBlocks");
+        }
         return config;
     }
 
@@ -1940,6 +2003,20 @@ public final class WorldzConfig {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("spawnY", config.spawnY);
         values.put("chestTier", config.chestTier.serializedName());
+        values.put("easyKit", starterKitMap(config.easyKit));
+        values.put("mediumKit", starterKitMap(config.mediumKit));
+        values.put("hardKit", starterKitMap(config.hardKit));
+        values.put("forceCapsule", config.forceCapsule);
+        values.put("capsule", starterCapsuleMap(config.capsule));
+        return values;
+    }
+
+    private static Map<String, Object> starterCapsuleMap(StarterCapsuleConfig config) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("sizeBlocks", config.sizeBlocks);
+        values.put("heightBlocks", config.heightBlocks);
+        values.put("lightSource", config.lightSource.serializedName());
+        values.put("lightSpacingBlocks", config.lightSpacingBlocks);
         return values;
     }
 
@@ -2175,7 +2252,19 @@ public final class WorldzConfig {
     }
 
     private static String netherStartSummary(NetherStartConfig config) {
-        return "spawnY=" + config.spawnY + ", chestTier=" + config.chestTier.serializedName();
+        return "spawnY=" + config.spawnY + ", chestTier=" + config.chestTier.serializedName()
+            + ", easyKit=" + starterKitSummary(config.easyKit)
+            + ", mediumKit=" + starterKitSummary(config.mediumKit)
+            + ", hardKit=" + starterKitSummary(config.hardKit)
+            + ", forceCapsule=" + config.forceCapsule
+            + ", capsule=" + starterCapsuleSummary(config.capsule);
+    }
+
+    private static String starterCapsuleSummary(StarterCapsuleConfig config) {
+        return "sizeBlocks=" + config.sizeBlocks
+            + ", heightBlocks=" + config.heightBlocks
+            + ", lightSource=" + config.lightSource.serializedName()
+            + ", lightSpacingBlocks=" + config.lightSpacingBlocks;
     }
 
     private static String endStartSummary(EndStartConfig config) {

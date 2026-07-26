@@ -1,32 +1,30 @@
-# GOALS 27 (Phase 14.2a, DESIGN §31.4): biased toward the guaranteed
-# capsule fallback path, to actually exercise it (not just the natural-
-# pocket path every other Nether-start config is more likely to hit).
+# GOALS 27/41 (Phase 14.2a + 14b, DESIGN §31.4/§31.9): the guaranteed
+# capsule/starter-base, requested explicitly via `forceCapsule: true`
+# (GOALS 41.1) rather than left to chance -- this used to only be
+# reachable by biasing `spawnY` toward the bedrock floor and hoping the
+# natural search came up empty; `forceCapsule` makes it deterministic.
 # **Select "Worldz: Nether Start"**.
 #
-# Not deterministically forceable from config alone -- the safe-site
-# search still tries a real natural pocket first (Jason's own chosen
-# design, DESIGN §31.4) -- but `spawnY: 4` targets a Y very close to the
-# Nether's own bedrock floor, where large open natural pockets are rare
-# (mostly solid netherrack/blackstone/bedrock down there), making the
-# carved nether-brick capsule fallback meaningfully more likely to fire
-# than at the default spawnY 32. If the first world you create lands in a
-# natural pocket anyway, that's a valid outcome too -- just try a couple
-# of different seeds until the server log shows "carving a safe capsule
-# instead" if you specifically want to see the fallback shell.
-#
 # Steps once in-game:
-#  1. Check the server log at world creation: does it say "carving a
-#     safe capsule instead", or did a natural pocket search succeed?
-#  2. If the capsule fired: confirm you spawn inside a small, fully
-#     enclosed 3x3x4 nether-brick room (floor, ceiling, and all four
-#     walls solid -- not just corner posts) with the chest set into the
-#     floor. Confirm there's no way to fall into surrounding lava/void
-#     from inside it -- it's genuinely sealed.
-#  3. Confirm the capsule doesn't overwrite anything unexpected outside
-#     its own small footprint.
+#  1. Check the server log at world creation: it should say the capsule
+#     was explicitly requested (forceCapsule), and the natural-pocket
+#     search should never have run at all.
+#  2. Confirm you spawn inside a decent-sized, fully enclosed nether-brick
+#     room (default 5x5x5 exterior, so a 3x3x3 interior -- floor, ceiling,
+#     and all four walls solid, not just corner posts), lit by glowstone
+#     (the Nether-appropriate default light source) embedded in the walls.
+#     Confirm there's no way to fall into surrounding lava/void from
+#     inside it -- it's genuinely sealed.
+#  3. Confirm a chest sits in the floor beneath your feet (easy tier: 10
+#     obsidian, 1 flint and steel, bread, a wooden pickaxe, plus random
+#     extras), and a furnace + crafting table are placed nearby, with
+#     enough room to walk between all three.
+#  4. Confirm the capsule doesn't overwrite anything unexpected outside
+#     its own footprint.
 netherStart:
   spawnY: 4
   chestTier: easy
+  forceCapsule: true
 overworldBorder:
   enabled: false
   ensureEndPortal: true

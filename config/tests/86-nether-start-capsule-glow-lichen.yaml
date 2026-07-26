@@ -1,0 +1,31 @@
+# GOALS 41 (Phase 14b, DESIGN §31.9): custom capsule size + glow_lichen
+# lighting, which behaves differently from every other light source --
+# instead of spaced points, it coats the *entire* interior surface
+# (walls, floor, ceiling). Also exercises `sizeBlocks`/`heightBlocks`
+# directly (9x9 exterior footprint, 7x7 interior; 4-tall interior).
+# **Select "Worldz: Nether Start"**.
+#
+# Steps once in-game:
+#  1. Confirm the room is noticeably bigger than config 62's default (7x7
+#     interior floor, not 3x3) and a full block taller.
+#  2. Confirm glow lichen coats every wall, the floor, and the ceiling --
+#     not just a few spaced points -- and that it's genuinely bright
+#     enough to see across the whole room without a held light source.
+#     Corners should show lichen on both adjoining faces.
+#  3. Confirm `lightSpacingBlocks` had no effect here (glow_lichen always
+#     covers everything, ignoring spacing) -- it's set to an
+#     intentionally large 99 below specifically to prove that.
+#  4. Confirm the chest (medium tier), furnace, and crafting table are
+#     all present and reachable.
+netherStart:
+  spawnY: 4
+  chestTier: medium
+  forceCapsule: true
+  capsule:
+    sizeBlocks: 9
+    heightBlocks: 4
+    lightSource: glow_lichen
+    lightSpacingBlocks: 99
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

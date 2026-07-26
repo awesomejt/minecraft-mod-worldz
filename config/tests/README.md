@@ -72,15 +72,23 @@ Every field not mentioned in a file falls back to Worldz's documented default
    spawn, `cave.cavernRadiusBlocks`/`cavernHeightBlocks`). `cave.chestEnabled`
    plus `cave.chestTier` (`easy`/`medium`/`hard`) optionally place a
    starter chest at spawn, unlike every other typed preset's chest (which
-   is always on). "Worldz: Nether Start" (files `59`-`61`, GOALS 27,
-   Phase 14) reads only its own `netherStart:` section -- the Overworld
-   generates exactly as vanilla would, and you spawn in the Nether instead
-   (a real safe pocket searched out near `netherStart.spawnY`, or a small
-   carved capsule if none is found); `netherStart.chestTier`
-   (`easy`/`medium`/`hard`, always on, unlike cave's optional one) picks
-   the starter-chest difficulty -- easy hands over a full 10-obsidian
-   portal frame plus flint and steel, hard gives no guaranteed obsidian at
-   all. "Worldz: End Start" (files `63`-`65`, GOALS 34, Phase 15) reads
+   is always on). "Worldz: Nether Start" (files `59`-`62`, `86`-`87`,
+   GOALS 27/41, Phase 14/14b) reads only its own `netherStart:` section --
+   the Overworld generates exactly as vanilla would, and you spawn in the
+   Nether instead (a real safe pocket searched out near
+   `netherStart.spawnY`, or a guaranteed capsule/starter base if none is
+   found, or always when `netherStart.forceCapsule` is set);
+   `netherStart.chestTier` (`easy`/`medium`/`hard`, always on, unlike
+   cave's optional one) picks the starter-chest difficulty -- easy hands
+   over a full 10-obsidian portal frame plus flint and steel, hard gives
+   no guaranteed obsidian at all, every tier guarantees at least a wooden
+   pickaxe. The capsule itself (GOALS 41, DESIGN §31.9) is a decent-sized,
+   always-lit, always-furnished (chest/furnace/crafting table) room, whose
+   size (`netherStart.capsule.sizeBlocks`/`heightBlocks`), light source
+   (`netherStart.capsule.lightSource` -- `torch`/`lantern`/`soul_lantern`/
+   `glowstone`/`shroomlight`/`glow_lichen`), and light spacing
+   (`netherStart.capsule.lightSpacingBlocks`) are all configurable.
+   "Worldz: End Start" (files `63`-`65`, GOALS 34, Phase 15) reads
    only its own `endStart:` section -- the Overworld and the Nether both
    generate exactly as vanilla would, and you spawn on a guaranteed
    end-stone platform in the End instead (always built, no natural
@@ -218,7 +226,9 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `59-nether-start-default.yaml` | GOALS 27 (Phase 14.2a/14.2b, DESIGN §31): the core mechanic and default (medium) chest tier — spawn is a real, safe Nether pocket (or a carved capsule fallback), the world's default spawn is redirected there so both first join and no-anchor deaths land back at the same site, and a real Nether respawn anchor placed elsewhere correctly overrides it. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
 | `60-nether-start-chest-easy.yaml` | GOALS 27 (Phase 14.2b): the easy chest tier — 10 obsidian (a full portal frame) plus flint and steel, the "everything needed to build a portal out" GOALS 27 names by name. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
 | `61-nether-start-chest-hard.yaml` | GOALS 27 (Phase 14.2b): the hard chest tier — no guaranteed obsidian or flint and steel at all, relies entirely on Nether exploration; confirms the world still feels beatable from this minimal a start. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
-| `62-nether-start-capsule-fallback.yaml` | GOALS 27 (Phase 14.2a, DESIGN §31.4): `spawnY: 4`, biased (not guaranteed) toward the guaranteed-capsule safe-site fallback rather than a natural pocket — confirms the fully-enclosed nether-brick capsule shell when it fires. **Select "Worldz: Nether Start"**. Requires 0.2.66+. |
+| `62-nether-start-capsule-fallback.yaml` | GOALS 27/41 (Phase 14.2a + 14b, DESIGN §31.4/§31.9): `forceCapsule: true` deterministically requests the guaranteed capsule/starter base instead of the natural search — confirms the default-sized (5x5x5 exterior), glowstone-lit, furnished (chest/furnace/crafting table) nether-brick capsule. **Select "Worldz: Nether Start"**. Requires 0.3.2+. |
+| `86-nether-start-capsule-glow-lichen.yaml` | GOALS 41 (Phase 14b, DESIGN §31.9): custom `capsule.sizeBlocks`/`heightBlocks` (9x9x4 interior 7x7x4) plus `glow_lichen` lighting, which coats the entire interior surface instead of spaced points. **Select "Worldz: Nether Start"**. Requires 0.3.2+. |
+| `87-nether-start-capsule-hanging-lanterns.yaml` | GOALS 41 (Phase 14b, DESIGN §31.9): `lantern` lighting, which always hangs from the ceiling in a spaced grid rather than wall-mounting; hard chest tier confirms the guaranteed wooden-pickaxe essential. **Select "Worldz: Nether Start"**. Requires 0.3.2+. |
 | `63-end-start-default.yaml` | GOALS 34 (Phase 15.2a/15.2b): the End-start challenge's core mechanic and default (medium) chest tier — the Overworld and Nether both generate exactly as vanilla would, spawn is a guaranteed end-stone platform far out along the outer-island belt. **Select "Worldz: End Start"**. Requires 0.2.68+. |
 | `64-end-start-chest-easy.yaml` | GOALS 34 (Phase 15.2b): the easy chest tier — rockets, cobblestone, food, and real combat gear for the dragon fight. **Select "Worldz: End Start"**. Requires 0.2.68+. |
 | `65-end-start-chest-hard.yaml` | GOALS 34 (Phase 15.2b): the hard chest tier — no rockets or guaranteed weapon at all, relies entirely on hand-mining the platform's own end stone to bridge toward the central island. **Select "Worldz: End Start"**. Requires 0.2.68+. |

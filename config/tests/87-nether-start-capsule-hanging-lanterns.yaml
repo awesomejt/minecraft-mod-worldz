@@ -1,0 +1,29 @@
+# GOALS 41 (Phase 14b, DESIGN §31.9): lantern lighting -- unlike torches
+# or embedded glowstone, lanterns always hang from the ceiling (Jason,
+# 2026-07-25: "those can be hung from the ceiling"), never wall-mounted,
+# spaced across the interior in a 2D grid rather than a wall ring. Also
+# exercises the hard chest tier's guaranteed pickaxe (no other guaranteed
+# tool/obsidian this tier). **Select "Worldz: Nether Start"**.
+#
+# Steps once in-game:
+#  1. Confirm every lantern is genuinely hanging from the ceiling (visibly
+#     suspended, not sitting on the floor) -- this is the one detail worth
+#     double-checking closely, since a floor-standing lantern would mean
+#     the HANGING blockstate wasn't actually being set.
+#  2. Confirm the lanterns form a spaced grid across the room, not a wall
+#     ring like torches/glowstone would.
+#  3. Confirm the hard-tier chest holds no obsidian or flint and steel,
+#     but does hold a wooden pickaxe (GOALS 41: every tier guarantees at
+#     least a pickaxe to break out with) plus bread and a random extra.
+netherStart:
+  spawnY: 4
+  chestTier: hard
+  forceCapsule: true
+  capsule:
+    sizeBlocks: 7
+    heightBlocks: 3
+    lightSource: lantern
+    lightSpacingBlocks: 3
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -8,6 +8,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.IslandSource;
 import media.jlt.minecraft.mods.worldz.logic.LayoutMode;
+import media.jlt.minecraft.mods.worldz.logic.LightSource;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
@@ -584,6 +585,16 @@ class WorldzConfigTest {
                 + " extras=[minecraft:coal:4], extrasCount=1"
                 + ", hardKit=essentials=[minecraft:torch:1, minecraft:wooden_pickaxe:1], extras=[], extrasCount=0"
                 + ", netherStart=spawnY=32, chestTier=medium"
+                + ", easyKit=essentials=[minecraft:obsidian:10, minecraft:flint_and_steel:1, minecraft:bread:8,"
+                + " minecraft:wooden_pickaxe:1],"
+                + " extras=[minecraft:golden_pickaxe:1, minecraft:golden_sword:1, minecraft:gold_ingot:8,"
+                + " minecraft:torch:16], extrasCount=3"
+                + ", mediumKit=essentials=[minecraft:obsidian:10, minecraft:bread:4, minecraft:wooden_pickaxe:1],"
+                + " extras=[minecraft:gold_ingot:4, minecraft:torch:8, minecraft:iron_sword:1], extrasCount=2"
+                + ", hardKit=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
+                + " extras=[minecraft:gold_ingot:2, minecraft:torch:4], extrasCount=1"
+                + ", forceCapsule=false"
+                + ", capsule=sizeBlocks=5, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
                 + ", endStart=chestTier=medium"
                 + ", easyKit=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
                 + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1],"
@@ -1115,10 +1126,41 @@ class WorldzConfigTest {
             netherStart:
               spawnY: 64
               chestTier: hard
+              forceCapsule: true
+              capsule:
+                sizeBlocks: 7
+                heightBlocks: 4
+                lightSource: lantern
+                lightSpacingBlocks: 3
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(64, config.netherStart.spawnY);
         assertEquals(StarterKitTier.HARD, config.netherStart.chestTier);
+        assertTrue(config.netherStart.forceCapsule);
+        assertEquals(7, config.netherStart.capsule.sizeBlocks);
+        assertEquals(4, config.netherStart.capsule.heightBlocks);
+        assertEquals(LightSource.LANTERN, config.netherStart.capsule.lightSource);
+        assertEquals(3, config.netherStart.capsule.lightSpacingBlocks);
+    }
+
+    @Test
+    void netherStartKitsLoadIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            netherStart:
+              easyKit:
+                essentials:
+                  - minecraft:bread:10
+                extrasCount: 0
+              hardKit:
+                essentials:
+                  - minecraft:oak_sapling:1
+                extrasCount: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(List.of("minecraft:bread:10"), config.netherStart.easyKit.essentials);
+        assertEquals(List.of("minecraft:oak_sapling:1"), config.netherStart.hardKit.essentials);
+        // Untouched kit keeps its own defaults.
+        assertEquals(new NetherStartConfig().mediumKit.essentials, config.netherStart.mediumKit.essentials);
     }
 
     @Test
@@ -1127,6 +1169,34 @@ class WorldzConfigTest {
 
         assertEquals(NetherStartPlan.DEFAULT_SPAWN_Y, config.netherStart.spawnY);
         assertEquals(StarterKitTier.MEDIUM, config.netherStart.chestTier);
+        assertFalse(config.netherStart.forceCapsule);
+        assertEquals(NetherStartPlan.DEFAULT_CAPSULE_SIZE_BLOCKS, config.netherStart.capsule.sizeBlocks);
+        assertEquals(NetherStartPlan.DEFAULT_CAPSULE_HEIGHT_BLOCKS, config.netherStart.capsule.heightBlocks);
+        assertEquals(LightSource.GLOWSTONE, config.netherStart.capsule.lightSource);
+        assertEquals(NetherStartPlan.DEFAULT_CAPSULE_LIGHT_SPACING_BLOCKS, config.netherStart.capsule.lightSpacingBlocks);
+    }
+
+    @Test
+    void netherStartCapsuleSizeIsOddenedAndClamped() {
+        WorldzConfig even = WorldzConfig.parse("""
+            netherStart:
+              capsule:
+                sizeBlocks: 6
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            netherStart:
+              capsule:
+                sizeBlocks: -5
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            netherStart:
+              capsule:
+                sizeBlocks: 9999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(7, even.netherStart.capsule.sizeBlocks);
+        assertEquals(NetherStartPlan.MIN_CAPSULE_SIZE_BLOCKS, tooSmall.netherStart.capsule.sizeBlocks);
+        assertEquals(NetherStartPlan.MAX_CAPSULE_SIZE_BLOCKS, tooLarge.netherStart.capsule.sizeBlocks);
     }
 
     @Test
