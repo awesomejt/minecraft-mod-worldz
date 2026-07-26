@@ -3,6 +3,13 @@
 # contrast with config 68's classic-flat "honestly clipped" case.
 # **Select "Worldz: Deep Flat"**.
 #
+# Requires 0.3.9+ (same `applyDeepFlatCap` chunk-generation crash as
+# config 69 -- see its own note -- affected every deep_flat config
+# including this one; delete any pre-0.3.9 save first). 0.3.10/0.3.11's
+# `sealBeneathCap` fixes (stray surface ponds, water draining into cave
+# breaches) apply here too, though this config's own focus is the
+# structure below the cap, not the surface itself.
+#
 # Unlike classic flat, deep_flat has no structureOverrides toggle at all
 # -- structures come from the real, unmodified delegate exactly like
 # every other typed preset with full vanilla variety (cave/single_biome/
