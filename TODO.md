@@ -2905,6 +2905,30 @@ revisit. Full design: DESIGN §31.9.
       **[Jason] retest outstanding** on configs 69-71 (delete any
       pre-0.3.9 deep-flat saves first -- already-generated chunks near
       spawn may have corrupted/incomplete heightmap data from the crash).
+- [x] 16.7 **Follow-up (0.3.10, same config 69 retest):** Jason's
+      screenshots near spawn showed small dirt-rimmed pits with real
+      water sitting in the middle of otherwise-flat grass, unrelated to
+      any river/ocean biome -- confirmed as an ordinary terrain-noise low
+      spot (ground that's naturally a few blocks lower than its
+      surroundings, water-filled the same way any vanilla world's small
+      natural ponds are) whose real depth dipped below the shallow
+      default land cap (4 blocks: `dirt:3`+`grass_block:1`).
+      `applyDeepFlatCap`'s band paint only ever overwrites its own
+      configured thickness and never checked what was immediately
+      beneath it, so a pond bottoming out lower than that band punched
+      straight through the flat surface. **Fixed:** new
+      `EnvelopedChunkGenerator.sealBeneathCap`, run immediately after a
+      land-capped column's band paint -- continues downward replacing
+      any immediately-connected open pocket (air or a liquid) with solid
+      stone until hitting the first genuinely solid block, bounded to 8
+      blocks (`SEAL_DEPTH_BLOCKS`) so real caves still start a little
+      further down exactly as GOAL 16 intends ("dig through the cap...
+      into real stone, then real caves eventually appear"); a deeper
+      real cave or aquifer beyond that bound is left completely
+      untouched. River/ocean (water-capped) columns are unaffected by
+      this commit -- see 16.8 for that half (water draining into caves).
+      Full multiloader build green. **[Jason] retest outstanding** on
+      config 69 (delete any pre-0.3.10 save first).
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

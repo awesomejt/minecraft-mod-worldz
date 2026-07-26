@@ -1136,8 +1136,11 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * at or above {@link DeepFlatPlan#surfaceY()} to air, paints the cap layer stack immediately
      * below it -- a water fill instead of the land cap where the real biome is a river/ocean
      * (unless within {@link DeepFlatPlan#riverExclusionRadiusBlocks()} of the origin, or {@link
-     * DeepFlatPlan#riversEnabled()} is off). Everything below the cap band is untouched real
-     * terrain: caves, cave biomes, aquifers, ores, and structures at their natural depth.
+     * DeepFlatPlan#riversEnabled()} is off). A land-capped column also gets {@link
+     * #sealBeneathCap} run immediately below the band, so a shallow natural pond/lake doesn't
+     * punch a hole through the flat grass surface. Everything beyond that bounded seal is
+     * untouched real terrain: caves, cave biomes, aquifers, ores, and structures at their natural
+     * depth.
      */
     private void applyDeepFlatCap(WorldGenRegion level, ChunkAccess chunk) {
         DeepFlatPlan plan = this.deepFlat;
@@ -1181,7 +1184,40 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     oceanFloor.update(localX, y, localZ, state);
                     worldSurface.update(localX, y, localZ, state);
                 }
+                if (!waterCap) {
+                    sealBeneathCap(chunk, pos, x, z, surfaceY - capThickness);
+                }
             }
+        }
+    }
+
+    /** How far below the painted cap band {@link #sealBeneathCap} will patch an open pocket. */
+    private static final int SEAL_DEPTH_BLOCKS = 8;
+
+    /**
+     * Bug found and fixed 2026-07-26, Jason's real config 69 retest: a small natural pond/lake
+     * (unrelated to any river/ocean biome -- just ordinary terrain-noise low ground) whose real
+     * depth dipped below the shallow default land cap (4 blocks, {@code dirt:3}+{@code
+     * grass_block:1}) punched a visible hole with real water straight through the otherwise-flat
+     * grass surface, since {@link #applyDeepFlatCap}'s band paint only ever overwrites its own
+     * configured thickness and never checks what's immediately beneath it. Continues downward
+     * from directly below the freshly painted land-cap band, replacing any immediately-connected
+     * open pocket (air, or a liquid such as water) with solid stone until hitting the first
+     * genuinely solid block, bounded to {@link #SEAL_DEPTH_BLOCKS} so real caves still start a
+     * little further down exactly as GOAL 16 intends ("dig through the cap... into real stone,
+     * then real caves eventually appear") -- a deeper real cave or aquifer beyond that bound is
+     * left completely untouched.
+     */
+    private static void sealBeneathCap(ChunkAccess chunk, BlockPos.MutableBlockPos pos, int x, int z, int bandBottomY) {
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        int minY = Math.max(chunk.getMinY(), bandBottomY - SEAL_DEPTH_BLOCKS);
+        for (int y = bandBottomY - 1; y >= minY; y--) {
+            pos.set(x, y, z);
+            BlockState state = chunk.getBlockState(pos);
+            if (!state.isAir() && state.getFluidState().isEmpty()) {
+                return;
+            }
+            setBlockIfDifferent(chunk, pos, stone);
         }
     }
 
