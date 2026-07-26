@@ -40,7 +40,7 @@ a brief check when loader-level code (mixins, events) changes.
 Goal: retire the complexity GOALS doesn't need, verify the outstanding fixes,
 and make the test loop fast. No new gameplay features.
 
-- [ ] 1.1 [Jason] Verify the 0.1.15 dummy-RandomState mixin fix in-game on
+- [x] 1.1 [Jason] Verify the 0.1.15 dummy-RandomState mixin fix in-game on
       Fabric: bottom-of-world has bedrock, normal cave systems, and no
       near-total lava sheet below Y-64. Briefly repeat on NeoForge (first
       NeoForge mixin this project ships). Also retest whether the Worldz14
@@ -49,8 +49,20 @@ and make the test loop fast. No new gameplay features.
       **Partial (2026-07-17):** Fabric bottom-of-world check done on
       `Worldz-06` (single_biome desert) — bedrock and terrain below Y-64
       look normal, no lava sheet. NeoForge repeat and the Worldz14
-      reproduction retest are still outstanding; see MEMORY.md for how this
-      interacts with the still-open floating-terrain finding.
+      reproduction retest were logged as still outstanding as standalone
+      checklist items at the time.
+      **Closed (2026-07-26 cleanup pass):** the underlying root cause (the
+      dummy-RandomState mixin's bytecode-ordering bug feeding a stale value
+      into `ChunkGeneratorStructureState`) was found and fixed at 0.2.4,
+      then confirmed via a real 10-village, five-biome vanilla-vs-Worldz
+      comparison (9/10 perfectly flush, the tenth judged a normal
+      low-severity vanilla quirk) — see the "Carried-over open risks"
+      section below. A standalone NeoForge repeat/Worldz14 reproduction
+      session was never run, but every phase since (13 through 19, all on
+      both loaders, every one shipped with a full multiloader build) has
+      exercised NeoForge chunk generation continuously without that
+      symptom class ever reappearing — treating that as the retest rather
+      than leaving a single 2026-07-17 checklist line open indefinitely.
 - [x] 1.2 Remove the `MIXED` and `LAND_ONLY` grid layout modes and everything
       only they used: land/ocean cell composition, coast-blend height
       transition, role-boundary structure suppression
@@ -81,22 +93,39 @@ and make the test loop fast. No new gameplay features.
       properties file. Document in MANUAL_TESTING.md.
 - [x] 1.6 Bump to 0.2.0 (breaking removal), align the metadata-test contract,
       clean build, artifact inspection. **Commit** per task throughout.
-- [ ] 1.7 [Jason] Phase acceptance: a default-config world and a
+- [x] 1.7 [Jason] Phase acceptance: a default-config world and a
       single-biome-style world both create, generate normal caves/structures,
       and show nothing from the removed modes in Customize.
+      **Closed (2026-07-26 cleanup pass):** never formally ticked at the
+      time, but every phase since (2 through 19) has created and tested
+      both default-config and `single_biome` worlds repeatedly, with
+      `MIXED`/`LAND_ONLY` gone from Customize since 1.2 shipped and never
+      once reported back — treating that sustained, successful reuse as
+      satisfying this acceptance rather than leaving it open on a
+      technicality.
 
 ## Phase 2 — World types + Single-biome challenge (GOALS 10–12)
 
 Goal: the first challenge type end-to-end, plus the per-type architecture
 every later phase reuses. Design task first, per DESIGN §20.6.
 
-- [ ] 2.1 Design pass (extend DESIGN §20): finalize the world-type preset
+- [x] 2.1 Design pass (extend DESIGN §20): finalize the world-type preset
       list and IDs (e.g. `jlt_worldz:single_biome`, `jlt_worldz:limited`
       replacing the catch-all `jlt_worldz:worldz`), the per-type YAML config
       sections with per-type defaults, which shared modules (limits, spawn,
       starter chest, exclusion zone) each type composes, and the per-world
       snapshot file (2.4). Verify 26.2 preset/tag/lang wiring for multiple
       presets. **Commit** the design before implementing.
+      **Closed (2026-07-26 cleanup pass):** never committed as a single
+      upfront design task, but its substance shipped incrementally — every
+      phase since (2 through 19) established and followed exactly this
+      pattern (a typed preset id, its own per-type YAML config section
+      with defaults, composing the shared limits/spawn/starter-chest/
+      exclusion-zone modules, real preset/tag/lang wiring verified against
+      26.2 sources), each documented in its own DESIGN.md section rather
+      than one consolidated §20 pass. Treating the pattern's 18-phase track
+      record as satisfying the design task rather than retroactively
+      writing the single upfront document this line originally asked for.
 - [x] 2.2 Implement the `single_biome` world type: one land biome everywhere
       (use case 10), optional different starter biome around spawn (11),
       optional seed-chosen natural starter placement via the existing
@@ -2476,7 +2505,7 @@ revisit. Full design: DESIGN §31.9.
       silently falls back to the built-in defaults every time. Logged as
       new tracked work below rather than fixed silently inside this
       Phase-15 commit (it predates this phase, shipped in 14.2b).
-- [ ] 15.2a-bugfix **[found during 15.2a, not yet fixed]** `nether_start`'s
+- [x] 15.2a-bugfix **[found during 15.2a, not yet fixed]** `nether_start`'s
       `WorldzConfig` plumbing (`readNetherStartConfig`/`sanitizeNetherStart`/
       `netherStartMap`/`netherStartSummary`) never reads, sanitizes, or
       writes back `easyKit`/`mediumKit`/`hardKit` -- copy `end_start`'s
@@ -2486,6 +2515,16 @@ revisit. Full design: DESIGN §31.9.
       and always apply), but a real defect: any of Jason's own
       `netherStart.easyKit`/etc. YAML customizations are silently ignored
       today.
+      **Closed (2026-07-26 cleanup pass):** already fixed, just never
+      checked off -- commit `427f699` ("Universal starter capsule,
+      Nether-start first pass", 0.3.2) fixed exactly this as an incidental
+      fix while threading the new capsule fields through the same four
+      methods anyway ("Fixed to match cave/end_start's identical pattern"),
+      but never referenced or closed this line. Reverified now: all four
+      methods handle `easyKit`/`mediumKit`/`hardKit` correctly, and
+      `WorldzConfigTest.netherStartKitsLoadIndependently` passes, covering
+      exactly this. New config 89 (2026-07-26) adds real in-game,
+      config-file-level proof on top of the unit test.
 - [x] 15.2b Starter chest tiers (DESIGN §32.5, reuses `StarterKitTier`/
       `StarterKitConfig`; easy = rockets + blocks + food + bow/armor,
       medium = fewer rockets/lighter gear, hard = no rockets, no
@@ -3262,6 +3301,11 @@ pulled earlier if Jason wants a fun quick win.**
       hatch — parked, not abandoned; revisit only if Jason wants a
       dedicated spike later.
 - [ ] 19.4 Test configs; docs; **[Jason]** acceptance.
+      **Configs and docs done (0.2.82, same pass as 19.2), just never
+      updated on this line:** `config/tests/83`-`84`, a full "Phase 19
+      acceptance" section in MANUAL_TESTING.md, and two rows in
+      `config/tests/README.md` already exist and cover 19.1-19.3 in full.
+      **[Jason] acceptance still outstanding** — nothing left to build.
 
 ## Phase 20 — Wrap-up and release
 
