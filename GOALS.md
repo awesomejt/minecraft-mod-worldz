@@ -359,12 +359,52 @@ item above as one coordinated config-schema pass.
     5. **New feature request: capsule as an explicit option for any
        tier**, not just the natural-search fallback — a ready-made small
        base in the Nether, available on request regardless of whether a
-       natural pocket exists.
-    6. **Capsule is too small to be usable.** Interior is a single 1×1
-       column, 2 blocks of headroom (the "3×3×4" shell is almost entirely
-       wall/floor/ceiling) — the player spawns standing directly on top of
-       the chest with no room to move at all. Needs configurable size
-       options (tiny/small/medium/large, or a player-specified size).
+       natural pocket exists. **Superseded/expanded by goal 41 below
+       (2026-07-25 follow-up)** — Jason wants this available for every
+       world type/starting scenario, not just Nether-start.
+    6. **Capsule is too small to be usable, and spawns pitch dark.**
+       Interior is a single 1×1 column, 2 blocks of headroom (the
+       "3×3×4" shell is almost entirely wall/floor/ceiling) — the player
+       spawns standing directly on top of the chest with no room to move
+       at all. Needs configurable size options (tiny/small/medium/large,
+       or a player-specified size). Confirmed in code
+       (`NetherStartDeployment.buildNetherStartCapsule`, and its two
+       siblings `SpawnOriginManager.buildCaveCapsule`/
+       `EndStartDeployment.buildEndPlatform`): none of the three place
+       any light source at all, so every guaranteed-capsule spawn today
+       starts the player in complete darkness. See goal 41 for the
+       shared fix (this applies to all three capsule builders, not just
+       Nether-start's).
+
+41. **Universal starter capsule/base, and lit capsules (added 2026-07-25,
+    Jason).** Two related requests, both cross-cutting — not scoped to
+    Nether-start:
+    1. The guaranteed-capsule mechanic (today: `SpawnOriginManager
+       .buildCaveCapsule` for Cave, `NetherStartDeployment
+       .buildNetherStartCapsule` for Nether-start, `EndStartDeployment
+       .buildEndPlatform` for End-start — each only fires as a
+       last-resort fallback when its own natural-site search comes up
+       empty) should be offered as an explicit, requestable option for
+       **every** world type and starting scenario, not just the three
+       presets that already have a private fallback shape, and not only
+       as a fallback — a genuine "spawn with a ready-made small base"
+       toggle usable on its own terms (e.g. Ocean Island, Sky Island,
+       Sky Chunk, Single-biome — any preset with an otherwise-uncertain
+       or hazardous immediate surroundings). Likely needs promoting the
+       three existing private capsule builders into one shared,
+       parameterized mechanism (material, size, doorway) rather than
+       three independent copies of the same shell-carving loop — mirrors
+       this project's own precedent for consolidating duplicated
+       mechanics (e.g. GOAL 39's shared safe-area-boundary request).
+    2. **Every capsule spawns pitch dark today** — confirmed in code,
+       none of the three existing capsule builders place a light source.
+       Whatever shape the capsule mechanic ends up taking (goal 41.1, or
+       the narrower per-preset fixes at goals 25/26/27), it should place
+       light by default (e.g. a lantern/glowstone in the ceiling or
+       floor) so the player never spawns unable to see.
+    Not designed or scheduled — needs a dedicated design pass covering
+    which presets get the option, the shared-mechanism question, and the
+    exact size/lighting defaults.
 
 ### Lava-Ocean Challenge:
 

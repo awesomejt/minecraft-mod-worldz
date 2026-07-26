@@ -3125,16 +3125,41 @@ pulled earlier if Jason wants a fun quick win.**
      placement) — needs a doc warning so it doesn't read as a Worldz bug.
   5. **New feature: the capsule as an explicit, requestable option for
      any chest tier** (a ready-made small Nether base), not only the
-     natural-search fallback.
-  6. **Capsule is too small.** `buildNetherStartCapsule`'s interior is a
-     single 1×1 column with 2 blocks of headroom (dx/dz shell at ±1, dy
-     shell at -1/2) — the player spawns standing on the chest with no
-     room to move. Needs configurable size (tiny/small/medium/large, or
-     player-specified).
+     natural-search fallback. **Expanded 2026-07-25** (below) to every
+     world type, not just Nether-start — see GOALS 41.
+  6. **Capsule is too small, and spawns dark.** `buildNetherStartCapsule`'s
+     interior is a single 1×1 column with 2 blocks of headroom (dx/dz
+     shell at ±1, dy shell at -1/2) — the player spawns standing on the
+     chest with no room to move, and no light source is ever placed.
+     Needs configurable size (tiny/small/medium/large, or player-
+     specified) and default lighting — see GOALS 41, which generalizes
+     this to the cave/end-start capsule builders too.
   **Not yet designed or scheduled** — per this project's own workflow
   (GOALS.md "Workflow" §1), this is a requirements-capture pass only.
   Recommend a dedicated Phase 14b (or folding into whenever Phase 14 gets
   revisited) rather than reopening Phase 14's own now-closed checkboxes.
+- 2026-07-25 — **Follow-up to the above: universal starter capsule + lit
+  capsules, new cross-cutting scope (GOALS 41), not yet designed or
+  scheduled.** Jason widened item 5 above from Nether-start-only into two
+  general requests, explicitly "requirements/clarification, implement
+  later":
+  1. The guaranteed-capsule/base option should be available for **any**
+     world type and starting scenario, not just as the private fallback
+     the three existing presets (Cave, Nether-start, End-start) each
+     already have. Likely means consolidating `SpawnOriginManager
+     .buildCaveCapsule`, `NetherStartDeployment.buildNetherStartCapsule`,
+     and `EndStartDeployment.buildEndPlatform` — today three independent
+     copies of the same shell-carving loop (material swapped: stone/
+     nether bricks/end stone) — into one shared, parameterized mechanism,
+     rather than adding a fourth/fifth copy per additional preset.
+  2. **All three existing capsule builders place zero light source** —
+     confirmed by reading each method directly (see code refs above);
+     every guaranteed-capsule spawn today is pitch dark. Whatever the
+     capsule mechanic's eventual shape, it should light itself by
+     default.
+  Full text in GOALS.md's new item 41. Not designed — open questions
+  include which presets get the option, whether it's really one shared
+  mechanism or per-preset, and default size/light-source choices.
 
 ## Deviation log
 
