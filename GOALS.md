@@ -325,6 +325,47 @@ item above as one coordinated config-schema pass.
 
 27. Player begins in the Nether instead of the Overworld (Overworld generates normally and is reachable by portal). Configurable starter chest sets the difficulty — easy includes what is needed to build a portal out (obsidian, flint and steel); harder tiers give less, but every offered tier must leave the game beatable. Respawn behavior in the Nether (respawn anchor semantics, spawn-point safety) needs design.
 
+    **Acceptance feedback (2026-07-25, Jason, configs 59-62).** Core
+    mechanic confirmed working — every config spawned him in the Nether,
+    and the redirect-spawn/respawn mechanic held up. Six follow-on points,
+    none designed or implemented yet:
+    1. **Natural safe-site search can strand the player.** The site search
+       only guarantees a single 1×2 air pocket with a solid floor and no
+       lava touching that floor — it never checks whether the surrounding
+       rock is open or even reachable. A "natural" site can be just as
+       sealed-in as the guaranteed capsule, except without the capsule's
+       guarantee that what surrounds you is minable at all (could be
+       basalt/blackstone) or that breaking through won't open straight
+       into lava on the other side. Sometimes the chest ends up hard, or
+       in rare cases effectively impossible, to reach.
+    2. **Chest-tier philosophy needs rethinking**, not just re-tuning.
+       Jason's framing: easy should get the player to the Overworld fast
+       (matches today's design — ready-to-use portal kit); medium should
+       push the player to *stay in the Nether* long enough to gather what
+       a portal needs, rather than just handing over the obsidian outright
+       (today's medium is the same posture as easy minus ignition — no
+       gathering required); hard should give just enough to survive long
+       enough to gather Nether resources (today's hard is close to this
+       already, but unconfirmed by real play). Overlaps DESIGN §31.6's own
+       "first-pass, not signed off" flag.
+    3. **New feature request: constrain/specify the starting Nether
+       biome.** No config exists for this today — a config can currently
+       land a player in a vast basalt delta, which is brutally hard even
+       on the easy chest tier.
+    4. **Documentation gap:** building a portal from the Nether often
+       drops the player into a cave in the Overworld (ordinary vanilla
+       portal-placement behavior) — worth a warning in the docs so it
+       doesn't read as a bug.
+    5. **New feature request: capsule as an explicit option for any
+       tier**, not just the natural-search fallback — a ready-made small
+       base in the Nether, available on request regardless of whether a
+       natural pocket exists.
+    6. **Capsule is too small to be usable.** Interior is a single 1×1
+       column, 2 blocks of headroom (the "3×3×4" shell is almost entirely
+       wall/floor/ceiling) — the player spawns standing directly on top of
+       the chest with no room to move at all. Needs configurable size
+       options (tiny/small/medium/large, or a player-specified size).
+
 ### Lava-Ocean Challenge:
 
 28. Same shape as the ocean island challenge (01/04), but the endless ocean is lava instead of water. The island remains a normal land biome with a transition shore. Consider travel (no boats — striders/bridging) and fire hazards near the shore. Nether and End unchanged; game beatable.

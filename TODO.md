@@ -3094,6 +3094,47 @@ pulled earlier if Jason wants a fun quick win.**
   surface. Not designed, not scheduled — this is a real schema change
   across most config sections and every `config/tests/*.yaml` file, not a
   quick edit.
+- 2026-07-25 — **Phase 14 in-game acceptance (configs 59-62), six
+  follow-on requests — none designed or scheduled to a phase.** Jason
+  confirmed the core Nether-start mechanic works (spawns in the Nether,
+  redirect/respawn holds up across all four configs). Full text captured
+  in GOALS.md item 27's new feedback block; summary with code references:
+  1. **Natural safe-site search doesn't verify reachability.**
+     `NetherStartDeployment.searchNetherStartSite` only checks a single
+     `(x, z)` column: solid non-fluid floor, air at feet/head, and no
+     lava touching the four floor-neighbors — it never checks whether the
+     column's own horizontal neighbors are open. A "natural" site can be
+     just as sealed-in as `buildNetherStartCapsule`'s guaranteed shell,
+     except with no guarantee the surrounding block is even minable
+     netherrack (could be basalt/blackstone) or that breaking through
+     doesn't open into lava. Confirmed in code, not yet fixed.
+  2. **Chest-tier philosophy needs rethinking, not just re-tuning.**
+     Jason's ask: easy = fast path to the Overworld (matches today,
+     `NetherStartConfig.easyDefaults()`); medium = oriented toward staying
+     in the Nether long enough to gather portal materials, not handed 10
+     obsidian outright the way `mediumDefaults()` does today (same
+     posture as easy minus ignition); hard = just enough to survive long
+     enough to gather resources (`hardDefaults()` — closest to the ask
+     already, unconfirmed by real play). Overlaps DESIGN §31.6's existing
+     "first-pass, not signed off" flag on all three tiers.
+  3. **New feature: constrain/specify the starting Nether biome.** No
+     such config exists on `NetherStartConfig` today — a config can land
+     a player in a vast basalt delta, brutal even on the easy tier.
+  4. **Docs gap:** building an Overworld-bound portal from the Nether
+     often drops the player into a cave (ordinary vanilla portal
+     placement) — needs a doc warning so it doesn't read as a Worldz bug.
+  5. **New feature: the capsule as an explicit, requestable option for
+     any chest tier** (a ready-made small Nether base), not only the
+     natural-search fallback.
+  6. **Capsule is too small.** `buildNetherStartCapsule`'s interior is a
+     single 1×1 column with 2 blocks of headroom (dx/dz shell at ±1, dy
+     shell at -1/2) — the player spawns standing on the chest with no
+     room to move. Needs configurable size (tiny/small/medium/large, or
+     player-specified).
+  **Not yet designed or scheduled** — per this project's own workflow
+  (GOALS.md "Workflow" §1), this is a requirements-capture pass only.
+  Recommend a dedicated Phase 14b (or folding into whenever Phase 14 gets
+  revisited) rather than reopening Phase 14's own now-closed checkboxes.
 
 ## Deviation log
 
