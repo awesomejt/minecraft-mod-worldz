@@ -977,9 +977,10 @@ defaults (5x5 interior, glowstone).
 
 ## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b, 16.3, 16.6)
 
-Uses configs `66`-`71` (see [`config/tests/README.md`](config/tests/README.md)).
+Uses configs `66`-`71`, `93` (see [`config/tests/README.md`](config/tests/README.md)).
 Two typed presets this phase, not one — **select "Worldz: Flat"** for
-configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`.
+configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`. Config `93`
+(added 2026-07-26, GOALS 15 clarification) also selects "Worldz: Flat".
 
 **Real bug found and fixed (0.3.7, Jason's first actual in-game test of
 config 66, 2026-07-26):** no structures anywhere. Confirmed directly
@@ -1082,6 +1083,22 @@ affected, since deep-flat has no `decoration` toggle of its own.
    the flat surface above it, GOAL 22 satisfied by construction. **Compare
    directly against #3's classic-flat result** — same structure types,
    completely different (correct) burial here.
+7. **Slime cavity via an air layer**, `93-flat-slime-cavity.yaml` (GOALS
+   15 clarification, 2026-07-26 — no code change, documentation/example
+   only). Confirm the surface is at Y 60, and no slimes spawn there. Dig
+   down through ~24 blocks of grass/dirt/sand/stone and confirm you break
+   into a big, hollow, fully enclosed cavity from about Y 35 down to
+   Y -14 (50 blocks tall), then deepslate below down to bedrock. Confirm
+   slimes can spawn in that cavity given enough time (1-in-10 "slime
+   chunk" odds — try a few chunks if the first shows nothing). This
+   proves an ordinary `flat.layers` entry can already be `minecraft:air`,
+   not just the top one — a raised, slime-free surface and a reachable
+   slime-farming cavity were never mutually exclusive, and no new
+   "void"/"air" layer type needed building. Also confirm every listed
+   Overworld structure set (every vanilla structure set except the
+   Nether-only `nether_complexes`/`nether_fossils` and the End-only
+   `end_cities`) can still generate over this layer stack — locate a few
+   (villages, a stronghold, a desert pyramid).
 
 **Not covered by this phase's acceptance:** the exact `(1200, 64, 0)`-style
 fixture defaults for `flat`/`deep_flat` are first-pass numbers, same

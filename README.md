@@ -961,6 +961,29 @@ is what "avoiding slimes" means in practice; a short stack close to
 vanilla's own historical `classic_flat` numbers (4 blocks total, landing
 around Y -60) intentionally allows them.
 
+**Slime cavity trick**: "avoiding slimes" and "still being able to farm
+them" aren't mutually exclusive. Any layer entry can be `minecraft:air`,
+not just the top one — an air layer placed below Y 40 and sandwiched
+between solid floor/ceiling entries carves a hollow, enclosed cavity
+where slimes can still spawn (in a "slime chunk"), while your actual
+playable surface sits safely above Y 40:
+
+```yaml
+flat:
+  layers:
+    - "minecraft:bedrock:1"
+    - "minecraft:stone:90"
+    - "minecraft:air:10"
+    - "minecraft:stone:23"
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+```
+
+This keeps the same 128-block total and Y 64 surface as the default
+above, but hollows out a 10-block-tall cavity between Y 27 and Y 36 —
+entirely below the Y-40 cutoff, and only reachable by digging down to it.
+See `config/tests/93-flat-slime-cavity.yaml` for a ready-to-use example.
+
 **Underground structures aren't automatically buried** — with no real
 terrain to bury into, a structure set like `trial_chambers` or
 `ancient_cities` is only as "buried" as your own stone-layer depth makes

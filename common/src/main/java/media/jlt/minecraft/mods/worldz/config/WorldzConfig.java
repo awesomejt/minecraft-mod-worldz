@@ -91,7 +91,8 @@ public final class WorldzConfig {
         "minecraft:stony_shore",
         "minecraft:dripstone_caves",
         "minecraft:lush_caves",
-        "minecraft:deep_dark"
+        "minecraft:deep_dark",
+        "minecraft:sulfur_caves"
     ));
     /** Optional biome id forced around the origin. */
     public String starterBiome = "minecraft:plains";

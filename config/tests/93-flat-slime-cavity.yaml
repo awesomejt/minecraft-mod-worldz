@@ -1,0 +1,66 @@
+# GOAL 15 (Phase 16.9, DESIGN §33.3, GOALS 15 clarification 2026-07-26):
+# a raised, slime-free surface and a reachable slime-farming cavity aren't
+# mutually exclusive -- no dedicated "void"/"air" layer type is needed,
+# since any entry in `flat.layers` already accepts `minecraft:air`, not
+# just the top one. **Select "Worldz: Flat"**.
+#
+# 124 blocks total, surface at Y 60 (bedrock 2 + deepslate 48 + air 50 +
+# stone 20 + sand 1 + dirt 2 + grass 1, starting at Y -64) -- a big,
+# 50-block-tall hollow cavity from Y -14 to Y 35, entirely below the
+# Y-40 slime-spawn cutoff, enclosed on every side so it's only reachable
+# by digging down to it. Every vanilla Overworld structure set is listed
+# in `structureOverrides` (everything except the Nether-only
+# `nether_complexes`/`nether_fossils` and the End-only `end_cities`).
+#
+# Steps once in-game:
+#  1. Confirm the world is completely flat, surface at Y 60 (F3).
+#  2. Confirm slimes do NOT spawn on the surface (wait for a night, or
+#     force one, near unlit areas) -- the surface itself is above the
+#     Y-40 cutoff.
+#  3. Dig straight down from spawn. Confirm you pass through ~24 blocks
+#     of grass/dirt/sand/stone, then break into a big, open, enclosed
+#     cavity from roughly Y 35 down to Y -14 (50 blocks tall), then
+#     deepslate below that down to bedrock at Y -64.
+#  4. Wait in the cavity (light a torch only if you want to see, not to
+#     prevent spawns -- slime spawning here is unrelated to light).
+#     Confirm slimes CAN spawn in this cavity given enough time -- it's a
+#     1-in-10 chance per chunk ("slime chunk"), so try a few different
+#     chunks/columns if the first doesn't show any.
+#  5. Confirm the cavity is fully enclosed (solid floor, ceiling, no
+#     surface exposure) -- it should only be reachable by mining down to
+#     it, not visible or fall-into-able from the surface.
+#  6. Confirm every listed structure set can still generate over this
+#     layer stack (locate a few -- e.g. villages, a stronghold, a desert
+#     pyramid) -- same "honestly clipped by your own stone depth" caveat
+#     as every other classic-flat config (GOAL 22).
+flat:
+  layers:
+    - "minecraft:bedrock:2"
+    - "minecraft:deepslate:48"
+    - "minecraft:air:50"
+    - "minecraft:stone:20"
+    - "minecraft:sand:1"
+    - "minecraft:dirt:2"
+    - "minecraft:grass_block:1"
+  biome: minecraft:plains
+  structureOverrides:
+    - "minecraft:ancient_cities"
+    - "minecraft:buried_treasures"
+    - "minecraft:desert_pyramids"
+    - "minecraft:igloos"
+    - "minecraft:jungle_temples"
+    - "minecraft:mineshafts"
+    - "minecraft:ocean_monuments"
+    - "minecraft:ocean_ruins"
+    - "minecraft:pillager_outposts"
+    - "minecraft:ruined_portals"
+    - "minecraft:shipwrecks"
+    - "minecraft:strongholds"
+    - "minecraft:swamp_huts"
+    - "minecraft:trail_ruins"
+    - "minecraft:trial_chambers"
+    - "minecraft:villages"
+    - "minecraft:woodland_mansions"
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

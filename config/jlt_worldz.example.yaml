@@ -17,6 +17,7 @@ allowedBiomes:
   - 'minecraft:dripstone_caves'
   - 'minecraft:lush_caves'
   - 'minecraft:deep_dark'
+  - 'minecraft:sulfur_caves'
 
 # Biome id forced around origin in newly created worlds. Default:
 # minecraft:plains. Empty disables the starter zone. Tags are not accepted.

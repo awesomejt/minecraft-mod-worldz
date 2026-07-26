@@ -45,7 +45,8 @@ class WorldzConfigTest {
         "minecraft:stony_shore",
         "minecraft:dripstone_caves",
         "minecraft:lush_caves",
-        "minecraft:deep_dark"
+        "minecraft:deep_dark",
+        "minecraft:sulfur_caves"
     );
 
     @TempDir

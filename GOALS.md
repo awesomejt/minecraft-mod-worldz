@@ -202,6 +202,18 @@ item above as one coordinated config-schema pass.
 15. World is flat or mostly flat. No hills or mountains. Based upon a single biome - default to plains like vanilla. Options to generate structures (including trial chambers). Option for starting Y level to avoid slimes if desired. Options for floor components like different layers with presets. Bottom layer to be bedrock or not - allowing for building "under" the world. Basically, my version of vanilla superflat but with more options.
 16. World is flat - no hills or mountains, but underground can contain caves if deep enough. Can use seed to determine randomness of caves, structure, and cave biomes. Option for rivers to generate if enough layers exist - with option ensure they generate far away from world spawn.
 
+    **Clarified (2026-07-26):** a raised surface (above the Y-40 slime
+    cutoff, §33.3) and a reachable slime-spawning cavity aren't mutually
+    exclusive — no new "void"/"air" layer type is needed, since `flat`'s
+    layer list already accepts any block id, including `minecraft:air`,
+    for any entry, not just the top. An `air` entry placed below Y 40 and
+    sandwiched between solid floor/ceiling entries carves a hollow,
+    enclosed cavity purely through existing layer-stack configuration —
+    verified against `fillFlatColumns`/`flatBaseHeight`'s own top-down
+    opaque-block scan, which already handles a non-opaque middle layer
+    correctly. See README's Flat challenge section for the worked example
+    and `config/tests/93-flat-slime-cavity.yaml`.
+
 ### Minecraft World Limited Size:
 
 17. Limit world size to certain number of blocks (square radius) or chunks. This is independent of above use cases - so vanilla generation or any of the above cases would still be impacted. Option to force access to blaze rods and end portal so game remains beatable. Option to carry world size to Nether and End - but must be large enough to defeat the game. Thus, really small sizes should be overridden in End to allow access to kill the Ender Dragon.

@@ -3002,6 +3002,20 @@ revisit. Full design: DESIGN §31.9.
       mitigation rather than a fully open gap. Full multiloader build
       green. **[Jason] retest outstanding** on config 69 (delete any
       pre-0.3.11 save first).
+- [x] 16.9 **Follow-up (2026-07-26, Jason):** wanted an option to raise
+      the flat surface above the Y-40 slime cutoff while still being able
+      to farm slimes underground -- his suggestion was a dedicated
+      "void"/"air" layer type. Investigated first rather than building
+      blind: `fillFlatColumns`/`flatLayerStates` never special-case a
+      layer's block id, and `flatBaseHeight`/`flatBaseColumn` already scan
+      top-down for the first opaque block, so a non-opaque middle layer
+      was already handled correctly -- `flat.layers` can already contain
+      a `minecraft:air` entry anywhere in the stack, not just at the top,
+      turning the "avoid slimes" and "slime farm" asks into one
+      config, not two mutually exclusive ones. **No code change** --
+      documented the trick (README's Flat challenge section, GOALS 15
+      clarification) and added `config/tests/93-flat-slime-cavity.yaml`
+      plus its Phase 16 acceptance step. **[Jason] retest outstanding.**
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 
