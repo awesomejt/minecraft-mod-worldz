@@ -968,6 +968,14 @@ it. A shallow stack gives an honestly clipped result; that's an accepted
 tradeoff of classic flat, not a bug (see [Deep flat challenge](#deep-flat-challenge)
 below for a variant where structures are always naturally buried).
 
+**`ancient_cities` also needs the right biome**: real vanilla only places
+ancient cities in the `minecraft:deep_dark` biome, on top of its usual
+structure spacing. Since `flat` reports one single `biome` everywhere,
+listing `minecraft:ancient_cities` in `structureOverrides` only actually
+does anything if `biome` is itself set to `minecraft:deep_dark` — over
+any other biome it behaves exactly as if disabled, no matter the stone
+depth.
+
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
 

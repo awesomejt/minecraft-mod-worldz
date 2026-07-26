@@ -2841,6 +2841,37 @@ revisit. Full design: DESIGN §31.9.
       67 (delete the old save first -- `isFlat` is baked into `level.dat`
       at world creation, same as every other setting here, so an existing
       save won't retroactively pick this up).
+- [x] 16.5 **Follow-up (2026-07-26, config 68 retest):** Jason confirmed
+      trial chambers generate (honestly clipped, GOAL 22's expected
+      classic-flat tradeoff -- with the flat world's unobstructed sightlines,
+      several clipped structure tops were simultaneously visible from
+      height, reading as "very frequent"; trial chambers' own real spacing
+      is unchanged, `data/minecraft/worldgen/structure_set/
+      trial_chambers.json`'s `random_spread` placement is `spacing: 34`/
+      `separation: 12`, identical to any ordinary vanilla world -- not a
+      config-68-specific frequency effect). No strongholds and, separately,
+      no ancient cities -- strongholds are expected (`strongholds` was never
+      in config 68's own `structureOverrides` list to begin with). Ancient
+      cities root-caused as a real, permanent constraint rather than a bug:
+      verified against `data/minecraft/worldgen/structure/ancient_city.json`
+      (`"biomes": "#minecraft:has_structure/ancient_city"`) and
+      `data/minecraft/tags/worldgen/biome/has_structure/ancient_city.json`
+      (only `minecraft:deep_dark`) -- vanilla gates ancient-city placement
+      to the `deep_dark` biome specifically, on top of (not instead of) its
+      structure-set spacing. `flat`'s single-biome design (DESIGN §33.2's
+      `flatDefaults`/`resolveFlatAllowed`, always exactly one biome
+      everywhere) means `ancient_cities` in `structureOverrides` can never
+      actually place unless that one biome *is* `minecraft:deep_dark` --
+      enabling it over `plains` (config 68's own biome) looks identical to
+      leaving it disabled. `deep_flat` is unaffected (full vanilla biome
+      variety per its own delegate, config 71 already covers it correctly).
+      Documented rather than fixed -- this is the same "player's own
+      configuration choice" posture GOAL 22 already takes on shallow-stone
+      clipping, just for biome instead of depth. **Docs updated:** config
+      68's own header comment, MANUAL_TESTING.md step 3, README.md's
+      "Underground structures" note, and DESIGN §33.2 all now say so
+      explicitly. No code changes -- requirements capture only, no version
+      bump.
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

@@ -4972,6 +4972,21 @@ flat preset simply never lists it by choice, not because it can't place on
 flat ground (§19's "structure difference is preset configuration rather
 than an inherent limitation" claim re-verified, not just carried forward).
 
+**`ancient_cities` is biome-gated, not just spacing-gated** (found during
+Jason's config 68 retest): unlike `trial_chambers`, `ancient_city.json`
+restricts placement to `"biomes": "#minecraft:has_structure/ancient_city"`,
+a tag containing only `minecraft:deep_dark`
+(`data/minecraft/tags/worldgen/biome/has_structure/ancient_city.json`,
+both verified against real game data). `flat`'s single-biome design means
+every chunk reports the one configured `biome` everywhere -- so listing
+`minecraft:ancient_cities` in `structureOverrides` only actually places
+anything if that single biome *is* `minecraft:deep_dark`; over any other
+biome (`plains` in config 68) it is indistinguishable from disabled. This
+is orthogonal to and additive with the GOAL 22 depth-clipping tradeoff
+below, not an alternative explanation of it. `deep_flat` doesn't share
+this gap since it keeps the delegate's full real biome variety, including
+naturally-occurring `deep_dark`.
+
 **Fieldless-preset defaulting** (the "closes the gap from day one" pattern
 every typed preset since `strip_world`'s own after-the-fact fix now
 follows, §31.5 etc.): unlike `cave`/`nether_start`/`end_start`'s "full

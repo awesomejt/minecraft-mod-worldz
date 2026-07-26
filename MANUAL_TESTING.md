@@ -1004,13 +1004,21 @@ affected, since deep-flat has no `decoration` toggle of its own.
    `isFlat` the same way vanilla's own superflat is. Confirm the horizon
    now looks like an ordinary open sky all the way down, no dark band.
 3. **Classic flat, shallow underground structures**, `68-flat-structures-shallow.yaml`
-   (0.3.7+, GOAL 22). Locate a trial chamber or ancient city (both
-   forced eligible, `structureOverrides` set explicitly) over only 10
-   blocks of stone. Confirm the structure actually generates now (real
-   blocks, not just a resolved site), but looks honestly clipped/cut off
-   near the bedrock — this is GOAL 22's documented classic-flat tradeoff
-   (depth is the player's own configuration choice), not a bug. Keep this
-   result in mind for #6.
+   (0.3.7+, GOAL 22). Locate a trial chamber (`trial_chambers` forced
+   eligible, `structureOverrides` set explicitly) over only 10 blocks of
+   stone. Confirm the structure actually generates now (real blocks, not
+   just a resolved site), but looks honestly clipped/cut off near the
+   bedrock — this is GOAL 22's documented classic-flat tradeoff (depth is
+   the player's own configuration choice), not a bug; from height, flat's
+   open sightlines can make several clipped structures visible at once,
+   which is the same tradeoff, not unusually frequent placement. **Don't
+   expect an ancient city here**, even though `minecraft:ancient_cities`
+   is also listed in this config's `structureOverrides` — real vanilla
+   gates ancient-city placement to the `minecraft:deep_dark` biome
+   specifically (DESIGN §33.2), and this config's single biome is
+   `plains`, so it can never place regardless of stone depth; this is a
+   permanent constraint of any single-biome `flat` world, not something
+   this config's shallow stone broke. Keep this result in mind for #6.
 4. **Deep flat default**, `69-deep-flat-default.yaml` (GOAL 16 core,
    0.2.71+). Confirm the surface is flat everywhere at Y 64. Dig straight
    down from spawn and confirm you pass through ~3 blocks of cap into

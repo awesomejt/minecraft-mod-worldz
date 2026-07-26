@@ -13,15 +13,23 @@
 # Steps once in-game:
 #  1. Confirm the world is flat, surface at Y -50 (bedrock 1 + stone 10 +
 #     dirt 3 + grass 1, starting at Y -64).
-#  2. Locate a trial chamber or ancient city (structure block / locate
-#     command, or explore) and confirm it generates -- structure
-#     *placement* itself is unaffected by the shallow stone (DESIGN
-#     §33.2's trial_chambers finding).
-#  3. Confirm the structure looks honestly clipped/cut off where it
+#  2. Locate a trial chamber (structure block / locate command, or
+#     explore) and confirm it generates -- structure *placement* itself
+#     is unaffected by the shallow stone (DESIGN §33.2's trial_chambers
+#     finding). Don't expect to find an ancient city here: it's real-
+#     vanilla biome-gated to `minecraft:deep_dark` (DESIGN §33.2), and
+#     this config's single biome is `plains` -- listing
+#     `minecraft:ancient_cities` above is left in deliberately to show
+#     that case (verified: it never places), not because one is
+#     expected to be found.
+#  3. Confirm the trial chamber looks honestly clipped/cut off where it
 #     would normally extend below Y -60 (past the bedrock) -- this is
-#     the expected, documented tradeoff, not a bug. Compare mentally
-#     against config 71 (deep_flat), where the same structure type
-#     generates fully buried at its natural real depth.
+#     the expected, documented tradeoff, not a bug. From height, flat's
+#     unobstructed sightlines mean several clipped structures can be
+#     visible at once -- that's the same tradeoff, not unusually frequent
+#     placement (trial_chambers' real spacing is untouched). Compare
+#     mentally against config 71 (deep_flat), where the same structure
+#     type generates fully buried at its natural real depth.
 flat:
   layers:
     - "minecraft:bedrock:1"
