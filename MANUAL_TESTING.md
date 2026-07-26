@@ -945,7 +945,7 @@ today, same deferral as Nether-start's own capsule, GOALS 41.1) — a
 world created via the Customize screen always gets the compiled-in
 defaults (5x5 interior, glowstone).
 
-## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b, 16.3)
+## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b, 16.3, 16.6)
 
 Uses configs `66`-`71` (see [`config/tests/README.md`](config/tests/README.md)).
 Two typed presets this phase, not one — **select "Worldz: Flat"** for
@@ -1020,7 +1020,11 @@ affected, since deep-flat has no `decoration` toggle of its own.
    permanent constraint of any single-biome `flat` world, not something
    this config's shallow stone broke. Keep this result in mind for #6.
 4. **Deep flat default**, `69-deep-flat-default.yaml` (GOAL 16 core,
-   0.2.71+). Confirm the surface is flat everywhere at Y 64. Dig straight
+   0.3.9+ (0.2.71-0.3.8 crashed generating almost any chunk away from
+   spawn's own (0,0) — `applyDeepFlatCap` passed absolute world
+   coordinates into `Heightmap.update`, which needs chunk-local 0-15;
+   fixed in `EnvelopedChunkGenerator`, delete any pre-0.3.9 deep-flat
+   saves first)). Confirm the surface is flat everywhere at Y 64. Dig straight
    down from spawn and confirm you pass through ~3 blocks of cap into
    real stone, then find genuine, varied real caves/ravines. Explore for
    a real cave biome (lush caves, dripstone, deep dark). Find a river or

@@ -2872,6 +2872,39 @@ revisit. Full design: DESIGN §31.9.
       "Underground structures" note, and DESIGN §33.2 all now say so
       explicitly. No code changes -- requirements capture only, no version
       bump.
+- [x] 16.6 **Crash found and fixed (0.3.9, 2026-07-26, Jason's config 69
+      retest):** game crashed generating a chunk near spawn with
+      `IllegalArgumentException: The value -544 is not in the specified
+      inclusive range of 0 to 255` at `SimpleBitStorage.get`, reached via
+      `Heightmap.getFirstAvailable` <- `Heightmap.update` <-
+      `EnvelopedChunkGenerator.applyDeepFlatCap` (crash report: chunk
+      (-2,-2), `minecraft:surface` status). Root-caused against real
+      decompiled vanilla source (`Heightmap.update`/`getIndex`): a
+      heightmap's backing `BitStorage` is a fixed 256-slot array indexed
+      by `x + z*16`, so `Heightmap.update(x, y, z, state)` requires
+      chunk-*local* x/z (0-15) -- unlike `ChunkAccess.setBlockState`,
+      which accepts absolute world coordinates and was the convention
+      `applyDeepFlatCap`'s own loop (over `chunkPos.getMinBlockX()`..
+      `getMaxBlockX()`) otherwise correctly followed. Passing that same
+      absolute x/z straight into `oceanFloor.update`/`worldSurface.update`
+      produced a wildly out-of-range bit-storage index the moment either
+      coordinate went negative or reached 16+ -- deterministic for any
+      chunk not at (0,0), so this affected every `deep_flat` world from
+      day one (GOAL 16, configs `69`-`71`), just never hit until Jason's
+      first real chunk-boundary-crossing retest. `fillFlatColumns`/
+      `fillStackedColumns` (this same class) were already doing this
+      correctly, using their own local 0-15 loop variables -- confirms
+      this was an `applyDeepFlatCap`-specific oversight, not a systemic
+      one. **Fixed:** compute `localX`/`localZ` once per column and pass
+      those (not the absolute `x`/`z` already used for `setBlockIfDifferent`)
+      to both heightmap `update` calls. Full multiloader build green
+      (`common`/`fabric`/`neoforge` compile, all `common` tests pass); no
+      new unit test added, matching this class's existing precedent (real
+      `ChunkAccess`/registries needed, exercised via manual/in-game testing
+      only, same as every other `EnvelopedChunkGenerator` fix this phase).
+      **[Jason] retest outstanding** on configs 69-71 (delete any
+      pre-0.3.9 deep-flat saves first -- already-generated chunks near
+      spawn may have corrupted/incomplete heightmap data from the crash).
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

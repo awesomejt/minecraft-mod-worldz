@@ -1154,6 +1154,8 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
 
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
+                int localX = x - chunkPos.getMinBlockX();
+                int localZ = z - chunkPos.getMinBlockZ();
                 long dx = x - originX();
                 long dz = z - originZ();
                 boolean waterCap = plan.riversEnabled()
@@ -1170,8 +1172,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     }
                     BlockState state = waterCap ? water : capStates.get(i);
                     setBlockIfDifferent(chunk, pos.set(x, y, z), state);
-                    oceanFloor.update(x, y, z, state);
-                    worldSurface.update(x, y, z, state);
+                    // Heightmap.update takes chunk-LOCAL x/z (0-15, packed via x + z*16 into a
+                    // 256-slot bit storage) unlike ChunkAccess.setBlockState above, which accepts
+                    // absolute world coordinates -- passing the same absolute x/z here (crash
+                    // found 2026-07-26, Jason's real config 69 retest at chunk (-2,-2)) produces a
+                    // wildly out-of-range bit-storage index the moment either coordinate is
+                    // negative or >= 16, throwing IllegalArgumentException.
+                    oceanFloor.update(localX, y, localZ, state);
+                    worldSurface.update(localX, y, localZ, state);
                 }
             }
         }
