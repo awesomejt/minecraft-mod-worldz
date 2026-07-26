@@ -549,6 +549,68 @@ item above as one coordinated config-schema pass.
 35. A limited-size world (blocks/chunks, per 17) where the underground is replaced by stacked horizontal biome layers instead of normal caves — plains above desert above taiga, and so on, each layer a horizontal slab with its own surface. Layer list, order, and thicknesses configurable, with a seed-randomized option. Must account for ores that normally require deep levels (lapis, gold, diamond) — e.g. distribute an ore budget across the layers or expose config. Stronghold/End-portal placement within the stack needs design so the game stays beatable.
     **Clarified 2026-07-16:** each layer is a flat or low-relief slab — a thin slice through the world can't fit multiple "extreme hills"-style biomes, so layers mainly use the flatter variants of their biome. This ties the feature to the flat-world layer machinery (15–16) rather than full noise terrain per layer. There must be an **air gap above each layer's surface** (configurable headroom) so biome-specific trees and structures can generate and grow on every layer, not just the top one.
 
+### Biome Fidelity (added 2026-07-26, Jason):
+
+42. **Surface biomes and underground biomes should coexist the way vanilla
+    does today — cave biomes must never be reported at the surface.** In
+    real vanilla the two are tied together (deep dark appears *under*
+    extreme hills and mountains, not instead of them); the goal is that
+    same relationship, not a separate underground-only world type. The
+    concrete, already-observed defect is cave biomes appearing **on the
+    surface** in the `legacy` layout mode (see 44). For world types with a
+    synthetic surface at a known Y — the flat family and sky islands — the
+    boundary can simply be "N layers below the surface starts underground"
+    (Jason's own suggestion, ~10). For real noise terrain with varying
+    height, a reasonable low point decides what still counts as surface,
+    **except** ravines and pits, which should legitimately read as
+    underground the way they do in vanilla.
+
+    **Feasibility confirmed (2026-07-26)** against the real 26.2 sources:
+    vanilla already separates the two purely through the `depth` climate
+    parameter (`OverworldBiomeBuilder.addSurfaceBiome` registers each
+    surface biome at depth `0.0` *and* `1.0`; `addUndergroundBiome` uses
+    depth `span(0.2, 0.9)`; `addBottomBiome` pins deep dark at `1.1`), and
+    that value is already available at this project's own biome-query call
+    site via `Climate.Sampler.sample(...).depth()`. Because vanilla's depth
+    is derived from the terrain-shaping density function rather than a flat
+    Y cutoff, it *already* treats a ravine floor as genuinely deep — the
+    ravine/pit carve-out Jason asked for falls out for free rather than
+    needing special-casing. See DESIGN §37.
+
+43. **Multiple surface biomes in one world, with each column's surface
+    painted in that biome's own top block** — plains grass, desert sand,
+    water for river/ocean, and so on — so that **biome-specific surface
+    structures** (desert temples, jungle temples, shipwrecks, ocean
+    monuments, igloos) can actually generate instead of being silently
+    biome-gated out of a single-biome world. Scoped (Jason, 2026-07-26) as
+    an additive option on the existing `flat` and `deep_flat` presets
+    rather than a new preset or a sky-island change.
+
+    **Feasibility confirmed (2026-07-26):** half of this already exists —
+    `deep_flat`'s own cap pass already makes a per-column, biome-aware
+    surface decision (real water where the underlying biome is river/ocean
+    tagged, land layers otherwise, DESIGN §33.4), and `StackedBiomeDefaults`
+    already maintains a pure biome-to-block-composition table covering ~35
+    vanilla biomes with a generic fallback. The missing pieces are a
+    per-column biome source for `flat` and promoting that table to shared
+    code. Structure eligibility then needs no new work at all: placement is
+    already gated on the biome this project reports per column, which is
+    exactly the mechanism the 0.3.12 `structureOverrides` warning was built
+    against. See DESIGN §38.
+
+44. **The `legacy` layout mode is badly named and buggy — rename it and fix
+    it.** It is the *default* `layout.mode`, so "legacy" is actively
+    misleading: it describes a mode most worlds are actually using. Decision
+    (Jason, 2026-07-26): **rename to `climate_filter`** — an honest
+    description of what it really does (filter vanilla's own climate table
+    down to an allowed-biome list) — keep `legacy` parsing as a deprecated
+    alias so existing configs and saved worlds keep working, and fix its
+    bugs in place rather than extracting its good parts and deleting it.
+    Known defects to resolve or honestly document: cave biomes on the
+    surface (42), and biome labels that disagree with the terrain actually
+    generated beneath them (the already-documented ocean-reported-as-river
+    case). See DESIGN §39.
+
 ## Considered and rejected (2026-07-16):
 
 - **Glowing ores option** — proposed as an off-by-default world-generation

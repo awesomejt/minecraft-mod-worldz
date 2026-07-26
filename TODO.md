@@ -3366,12 +3366,172 @@ pulled earlier if Jason wants a fun quick win.**
 
 ## Phase 20 — Wrap-up and release
 
+> **Ordering note (2026-07-26):** Phases 21-24 were added after this phase
+> was numbered, and run *before* it — Phase 20 stays the final release
+> wrap-up. Kept at 20 rather than renumbered because several other
+> documents already cross-reference "Phase 20's planned config-reference
+> rewrite" (GOALS.md, TODO backlog entries).
+
 - [ ] 20.1 Full README/config-reference/example rewrite in challenge-first
       terms; MANUAL_TESTING.md final scenario tables; MEMORY.md tidy.
 - [ ] 20.2 Final clean multiloader build, artifact inspection, version bump.
       Publishing decisions remain Jason's.
 - [ ] 20.3 Revisit any newly suggested challenge ideas with Jason — plan
       approved ones as new phases.
+
+## Phase 21 — Surface vs. underground biomes (GOAL 42)
+
+Added 2026-07-26 (Jason). Sequenced **first** of the four new phases at his
+explicit choice: it is the only one fixing an observed defect (cave biomes
+on the surface), and it builds the depth-partition machinery Phase 22
+reuses. Full design pass in DESIGN §37 — read it before starting; the
+vanilla mechanism (`depth` climate parameter, not a Y cutoff) is already
+verified there against the real 26.2 artifacts.
+
+- [ ] 21.1 Design pass — **done**, DESIGN §37. Root cause confirmed:
+      `resolveAllowedBiomes` filters vanilla's 7-D climate parameter list,
+      and nearest-neighbour lookup then returns a cave entry at surface
+      depth whenever the surviving surface entries match the other six
+      parameters worse. Reachable with the shipped default `allowedBiomes`
+      (7 surface vs 4 cave biomes). Verified `Climate.Sampler.sample(...)
+      .depth()` is already available at the `getNoiseBiome` call site.
+- [ ] 21.2 Extend `BiomeRoles` with an underground classification —
+      maintained `UNDERGROUND_IDS` set (`dripstone_caves`, `lush_caves`,
+      `sulfur_caves`, `deep_dark`) plus `isUnderground(id, overrides)`,
+      matching its existing maintained-default-plus-override shape.
+      **This is the unit-testable part of the phase** (`BiomeRoles` is
+      deliberately registry-independent) — add `BiomeRolesTest` coverage
+      for defaults, overrides, and unknown/modded ids.
+- [ ] 21.3 Split `resolveAllowedBiomes` into surface and underground
+      parameter lists, each with its own `MultiNoiseBiomeSource` and its
+      own empty-list fail-safe. Route `getNoiseBiome`'s final fallback to
+      whichever list matches the query's own depth (vanilla's own `0.2`
+      band start; compare in quantized space via `Climate.quantizeCoord`).
+- [ ] 21.4 Synthetic-surface presets (DESIGN §37.3): new
+      `undergroundBelowSurfaceBlocks` config field (default `10` per
+      Jason, `0` = disabled/today's behavior) on `flat`, `deepFlat`, and
+      `skyIsland`. Surface Y comes from
+      `FlatPlan.totalHeightBlocks()`/`DeepFlatPlan.surfaceY()`/
+      `SkyIslandPlan.surfaceY()` respectively. **`stacked` is deliberately
+      excluded** — it already assigns biomes by Y via `StackedPlan.layerAt`,
+      a stronger statement this must not override.
+- [ ] 21.5 Test configs + docs: a `legacy`/`climate_filter` config proving
+      cave biomes no longer surface (the defect Jason reported), and a
+      flat config with `undergroundBelowSurfaceBlocks` showing a cave
+      biome reported below the boundary and a surface biome above it.
+      MANUAL_TESTING acceptance section, `config/tests/README.md` rows,
+      README documentation of the new field. Confirm ravines/pits still
+      read as underground (they should, for free — DESIGN §37.0).
+
+## Phase 22 — Multi-biome surface with biome-correct top blocks (GOAL 43)
+
+Added 2026-07-26 (Jason). Scoped by his own choice to an **additive option
+on `flat`/`deep_flat`** — not a new preset, not sky islands. Design pass in
+DESIGN §38. Depends on Phase 21 (the surface band must agree with where
+underground biomes start, DESIGN §38.5).
+
+- [ ] 22.1 Design pass — **done**, DESIGN §38. Confirmed most of this is
+      assembly: `applyDeepFlatCap` already makes a per-column biome-aware
+      surface decision, `StackedBiomeDefaults` already maps ~35 biomes to
+      block compositions, and biome-specific structure eligibility needs
+      **no** structure-side work (placement is already gated on the biome
+      reported per column — the mechanism 0.3.12's `structureOverrides`
+      warning checks).
+- [ ] 22.2 Promote `StackedBiomeDefaults` → shared public
+      `BiomeSurfaceDefaults` (behavior-identical; `stacked` unaffected).
+      Overlaps Phase 24 deliberately — GOAL 43 forces this one extraction
+      early, the rest waits.
+- [ ] 22.3 Config: optional `biomes` list + `biomeRegionBlocks` on `flat`
+      (and `deepFlat`), leaving singular `biome` as the required codec
+      field so every existing world/config is untouched.
+- [ ] 22.4 Per-column biome selection via `WorldLayoutPlan`'s existing
+      seeded region grid. **Rivers/oceans deliberately stay on the
+      existing pass-through + water-cap path** (DESIGN §38.3), not the
+      region grid — README already documents why narrow winding biomes
+      don't suit region cells, and `applyDeepFlatCap`'s water branch
+      already handles the cave-breach sealing that took TODO 16.6-16.8 to
+      get right.
+- [ ] 22.5 Top-block painting from `BiomeSurfaceDefaults` for the surface
+      band; `deep_flat`'s existing cap band swaps its fixed `capLayers`
+      for the per-biome lookup when `biomes` is configured.
+- [ ] 22.6 Update 0.3.12's `structureOverrides` warning text — it names
+      `flat.biome` (singular) and must describe the configured list once
+      multi-biome exists (DESIGN §38.5).
+- [ ] 22.7 **Ask Jason** whether multi-biome flat should flip
+      `flat.decoration`'s default (off today): biome-correct *blocks*
+      without decoration means a desert with no cacti (DESIGN §38.5).
+- [ ] 22.8 Test configs + docs: a multi-biome flat world confirming
+      per-biome top blocks and at least two biome-specific surface
+      structures actually generating (e.g. desert temple + jungle temple),
+      which is GOAL 43's real acceptance criterion.
+
+## Phase 23 — `legacy` → `climate_filter` rename (GOAL 44)
+
+Added 2026-07-26 (Jason). His decision: **rename and fix in place**, keeping
+`legacy` as a deprecated alias — explicitly *not* extract-and-delete, since
+`legacy` is the shipped default and removing it would change behavior for
+every existing world and every config omitting `layout.mode`. Design pass in
+DESIGN §39. Sequenced after Phase 21 because the cave-biome fix (21.3) lands
+in this mode's own code path.
+
+- [ ] 23.1 Design pass — **done**, DESIGN §39, including the defect
+      inventory and the finding that the terrain/label disagreement is
+      *inherent* to filtering-without-reshaping, not a fixable bug.
+- [ ] 23.2 Rename `LayoutMode.LEGACY` → `CLIMATE_FILTER`; special-case
+      `"legacy"` in `parse` to resolve to it with a one-time deprecation
+      warning (warn-and-continue, matching this project's existing config
+      posture). Confirm no datafixer is needed — the codec persists
+      `serializedName()`, and existing saves' `"legacy"` resolves through
+      the alias.
+- [ ] 23.3 Mechanical rename of every `LayoutMode.LEGACY` comparison
+      (`LimitedBiomeSource`, `resolveAllowedBiomes`, `resolveLayoutBiomes`,
+      `WorldLayoutPlan`); the enum makes the compiler enumerate them.
+- [ ] 23.4 Docs/config sweep: README, DESIGN, `config/jlt_worldz.example.yaml`,
+      `config/tests/*` — update to `climate_filter`, keeping one explicit
+      note that `legacy` still parses. Rewrite README's "Current
+      terrain-composition limitation (legacy mode only)" section to
+      describe the inherent tradeoff honestly under the new name.
+- [ ] 23.5 Confirm `WorldzConfigTest`'s YAML round-trip and the
+      documented-example test still pass, and that a config written with
+      the old name still loads.
+
+## Phase 24 — Shared/common code extraction (engineering, no GOAL)
+
+Added 2026-07-26 (Jason: "review the code to look for other shared
+functionality that could be placed into common/shared part of the code
+base"). Design pass in DESIGN §40. Deliberately **last**: Phases 21-22 both
+add code to exactly the files this would refactor, so extracting first would
+mean refactoring code that is about to change shape.
+
+**Hard constraint: behavior-preserving.** Every item is a pure refactor with
+no config, codec, or generation change. Anything that cannot be done without
+a behavior change gets dropped from this phase and raised as its own item.
+
+- [ ] 24.1 Design pass — **done**, DESIGN §40. Duplication inventory drawn
+      from the codebase's own Javadoc admissions ("Mirrors `flatBaseHeight`
+      exactly", "Mirrors `flatBaseColumn` exactly", "mirrors
+      `fillFlatColumns` almost exactly", plus GOALS 41.1's already-requested
+      capsule consolidation).
+- [ ] 24.2 Extract a shared flat/stacked column helper covering
+      `flatLayerStates` + the `*BaseHeight`/`*BaseColumn`/`fill*Columns`
+      trio (`EnvelopedChunkGenerator`, currently 2992 lines).
+- [ ] 24.3 Collapse the five near-identical "resolve id list →
+      `Map<String, Holder<Biome>>`, warn on unknown" helpers in
+      `LimitedBiomeSource` (`resolveSkyIslandBiomes`, `resolveIslandBiomes`,
+      `resolveLayoutBiomes`, `resolveStackedAllowed`,
+      `resolveChaosBiomesAllowed`) into one parameterized method.
+- [ ] 24.4 Shared capsule builder consolidating `buildCaveCapsule` /
+      `buildNetherStartCapsule` / `buildEndPlatform` — **highest value
+      (GOALS 41.1 asks for it) but highest risk**, since all three have
+      preset-specific behavior Jason iterated on in-game across 0.3.2-0.3.6.
+      Land it only with those presets' manual configs re-run; drop it from
+      the phase rather than risk regressing them.
+- [ ] 24.5 Consider consolidating the duplicated `NetherStartPlan`/
+      `EndStartPlan` capsule config fields (DESIGN §32 recorded them as
+      "duplicated rather than shared per this goal's own 'true cross-preset
+      sharing later' precedent" — this is that "later").
+- [ ] 24.6 Re-run the full manual acceptance configs for every preset
+      touched, plus the full multiloader build, before closing the phase.
 
 ---
 

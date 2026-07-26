@@ -5950,3 +5950,373 @@ for that spike would be confirming whether `Structure.generate`'s
 returned `StructureStart`/bounding box is available early enough, relative
 to `fillFromNoise`, to still redirect terrain shaping for the same chunk.
 
+
+## 37. Surface vs. underground biomes (GOAL 42) — design pass (TODO 21.1)
+
+### 37.0 Verified 26.2 mechanism — vanilla separates the two with one climate parameter
+
+Per `AGENTS.md`, every claim below was checked against the real 26.2
+artifacts (`OverworldBiomeBuilder` decompiled from the NeoForm decompile
+output; `Climate`/`Climate$Sampler`/`Climate$TargetPoint` via `javap` on
+`minecraft_26.2_client.jar`), not assumed.
+
+Vanilla does **not** use a Y cutoff to decide surface vs. underground. It
+uses the `depth` climate parameter — the 5th of the seven positional
+arguments to `Climate.parameters(temperature, humidity, continentalness,
+erosion, depth, weirdness, offset)` — and registers biomes into disjoint
+depth bands:
+
+| Builder method | `depth` registered at | Used for |
+|---|---|---|
+| `addSurfaceBiome` | `point(0.0)` **and** `point(1.0)` (two entries) | every ordinary surface biome |
+| `addUndergroundBiome` | `span(0.2, 0.9)` | `dripstone_caves`, `lush_caves`, `sulfur_caves` |
+| `addBottomBiome` | `point(1.1)` | `deep_dark` |
+
+Two facts follow, and they are the whole basis of this design:
+
+1. **`depth` is already available at this project's own biome-query call
+   site.** `LimitedBiomeSource.getNoiseBiome(int quartX, int quartY, int
+   quartZ, Climate.Sampler sampler)` already receives the sampler;
+   `Climate.Sampler.sample(int, int, int)` returns a `Climate.TargetPoint`
+   with a public `depth()` accessor (a quantized `long`; convert with the
+   public `Climate.unquantizeCoord(long)`, or compare against
+   `Climate.quantizeCoord(0.2f)` to stay in quantized space). No new
+   plumbing, no density-function reimplementation.
+2. **`depth` already respects real terrain height.** It comes from the
+   noise router's own depth density function, not from Y alone — which is
+   exactly why vanilla puts cave biomes under mountains at a different
+   absolute Y than under plains. This means GOAL 42's "reasonable low
+   point, except ravines and pits" requirement is satisfied *by
+   construction*: a ravine floor genuinely has high depth, so it reads as
+   underground, matching vanilla. No ravine special-case is needed, and
+   deliberately none should be added.
+
+`OverworldBiomeBuilder.isDeepDarkRegion(erosion, depth, context)` —
+`erosion < -0.225F && depth > 0.9F` — independently confirms the same
+model: deep dark is gated on a depth threshold, not a Y level.
+
+### 37.1 Root cause of "cave biomes on the surface" (the observed defect)
+
+`LimitedBiomeSource.resolveAllowedBiomes` filters vanilla's overworld
+parameter list down to only those entries whose biome is in
+`allowedBiomes`, then builds a `MultiNoiseBiomeSource` from the survivors.
+Vanilla biome lookup is a **nearest-neighbour search in 7-dimensional
+climate space** (`Climate.RTree`), so it always returns *something* — the
+closest surviving entry, however far away.
+
+Filtering therefore silently breaks vanilla's depth banding. Once the
+allowed list is cave-heavy, a surface column (depth ≈ 0.0) whose other six
+parameters don't closely match any surviving *surface* entry will match a
+*cave* entry instead: depth is one dimension out of seven, and being 0.2–0.9
+off in that single dimension is easily outweighed by the other six matching
+better. The shipped default `allowedBiomes` list is exactly this shape —
+seven surface biomes (`desert`, `beach`, `river`, `badlands`,
+`eroded_badlands`, `wooded_badlands`, `stony_shore`) against four cave
+biomes (`dripstone_caves`, `lush_caves`, `deep_dark`, and since 0.3.12
+`sulfur_caves`) — so the defect is reachable out of the box, not just in
+exotic configurations.
+
+This also explains why the defect is `legacy`-mode-specific, as Jason
+observed: `legacy` is the only mode that falls all the way through to this
+filtered delegate. Every non-`legacy` mode answers from
+`WorldLayoutPlan.sampleAt(blockX, blockZ)` first, which is **2D only** — it
+returns one biome for the entire column. Non-`legacy` modes therefore have
+the opposite problem: no underground biomes at all, at any depth, unless a
+cave biome is itself in the layout list (in which case it would surface for
+the whole column).
+
+### 37.2 Design: partition the allowed set by depth role, choose by depth
+
+Add a depth role to the existing, already-`JUnit`-testable classification
+layer rather than inventing a parallel one. `BiomeRoles` is explicitly
+"pure and independent of the Minecraft biome registry so it stays
+JUnit-testable" and already maintains `OCEAN`/`BEACH`/`LAND` sets plus an
+override map (`BiomeRoles.resolve(id, roleOverrides)`). Extend it with an
+underground classification — a maintained `UNDERGROUND_IDS` set
+(`dripstone_caves`, `lush_caves`, `sulfur_caves`, `deep_dark`) and a
+`BiomeRoles.isUnderground(id, overrides)` — keeping the same
+maintained-default-plus-override shape, and inheriting its unit-testability
+(this is the one part of this whole design that *can* be unit-tested, and
+should be).
+
+Then, in `resolveAllowedBiomes`, build **two** filtered parameter lists
+instead of one:
+
+- **surface list** — allowed biomes that are not underground-classified,
+  filtered against vanilla's parameter list as today;
+- **underground list** — allowed biomes that are underground-classified.
+
+`getNoiseBiome`'s final fallback consults whichever list matches the query's
+own depth (`sampler.sample(quartX, quartY, quartZ).depth()` against
+vanilla's own `0.2` band start), rather than one merged list. Each list
+keeps its own `MultiNoiseBiomeSource`; the existing empty-list fail-safe
+(fall back to the full vanilla overworld list, with a warning) applies per
+list, so a configuration with no cave biomes at all keeps real vanilla cave
+biomes underground instead of projecting surface biomes downward.
+
+This is a structural fix, not a heuristic: a cave biome is no longer *in*
+the candidate set consulted at surface depth, so it cannot be selected there
+no matter how the other six parameters fall.
+
+### 37.3 Synthetic surfaces: flat, deep_flat, sky islands, stacked
+
+Where terrain is synthetic, vanilla's depth signal is meaningless (there is
+no real noise terrain being shaped), so the boundary is Jason's own
+proposal: a configured number of blocks below the known surface Y.
+
+- **`flat`** — surface Y is exactly `minY + FlatPlan.totalHeightBlocks()`.
+- **`deep_flat`** — surface Y is `DeepFlatPlan.surfaceY()` outright.
+- **`skyIsland`** — `SkyIslandPlan.surfaceY()` already exists and is already
+  used for exactly this kind of vertical pinning in `getNoiseBiome`.
+- **`stacked`** — deliberately excluded. It already assigns biomes by Y via
+  `StackedPlan.layerAt(resolved, QuartPos.toBlock(quartY))`, which is a
+  *stronger* statement than a surface/underground split and would be
+  overridden by it. `stacked` is also the proof that Y-driven biome
+  assignment works in this codebase — this design generalizes its precedent
+  rather than introducing a new idea.
+
+New shared config field, one per applicable preset (mirroring how
+`riversEnabled`/`surfaceY` are per-preset rather than global):
+`undergroundBelowSurfaceBlocks`, default `10` per Jason. `0` disables the
+split for that preset (single-biome behavior as today), which keeps every
+existing world's behavior reachable.
+
+An underground biome for these presets needs a source: reuse the same
+underground list from §37.2 (climate-sampled at the column, so cave-biome
+variety still varies across the world rather than being one fixed cave
+biome everywhere), falling back to the preset's own configured biome when
+no underground biome is allowed at all.
+
+### 37.4 Deliberately out of scope
+
+- **Making cave biomes generate *matching terrain*** (real lush-cave
+  vegetation, dripstone clusters, sculk) in the flat family. Reporting the
+  biome makes vanilla's own decoration pass place its features where the
+  terrain permits; carving cave *shapes* into a solid flat stack is a
+  different feature entirely (that is what `deep_flat` is for).
+- **Per-biome depth bands** (e.g. deep dark only below Y −40 in flat
+  worlds). Vanilla's own band is a single threshold plus climate matching;
+  adding a second, mod-specific vertical model would diverge from vanilla
+  for no requirement GOAL 42 actually states.
+- **Fixing `legacy`'s terrain/label disagreement.** Separate defect, §39.
+
+## 38. Multi-biome surface with biome-correct top blocks (GOAL 43) — design pass (TODO 22.1)
+
+### 38.1 What already exists (most of this is assembly, not new machinery)
+
+- **Per-column biome-aware surface painting** — `EnvelopedChunkGenerator
+  .applyDeepFlatCap` already decides, per column, whether the cap band is
+  water (real biome is `BiomeTags.IS_RIVER`/`IS_OCEAN` tagged, outside the
+  exclusion radius) or the configured land layers (DESIGN §33.4). GOAL 43 is
+  a generalization of that binary decision into a full table lookup.
+- **A maintained biome-to-block table** — `StackedBiomeDefaults` maps ~35
+  vanilla biomes to block compositions whose top entry is already exactly
+  what GOAL 43 asks for (`plains`→`grass_block`, `desert`→`sand`,
+  `badlands`→`red_sand`, `snowy_plains`→`snow_block`, …), with a `GENERIC`
+  fallback so any unlisted or modded biome still resolves. It is currently
+  package-private and stacked-only.
+- **Real vanilla rivers/oceans passing through a restricted world** —
+  `naturalPassThroughBiome` plus `allowRivers`/`allowOceans`/`allowBeaches`
+  (DESIGN §20.5) already exists precisely so a Worldz-restricted world can
+  still show vanilla's own river/ocean placement.
+- **Biome-gated structure eligibility** — already load-bearing and already
+  understood: structure placement is gated on the biome this project reports
+  per column (`Structure.biomes()`), which is the exact mechanism 0.3.12's
+  `flat.structureOverrides` warning checks against. Reporting several real
+  surface biomes is therefore *sufficient* for GOAL 43's "temples,
+  shipwrecks" ask — no structure-side work at all.
+
+### 38.2 Config shape (Jason's choice: additive option on `flat`/`deep_flat`)
+
+Today `flat.biome` / `deepFlat` are single-biome. Add an optional list
+alongside, not replacing it:
+
+```yaml
+flat:
+  biomes:                     # optional; when absent, `biome` behaves exactly as today
+    - "minecraft:plains"
+    - "minecraft:desert"
+    - "minecraft:jungle"
+  biomeRegionBlocks: 512      # region cell size, mirrors layout.regionScaleBlocks
+```
+
+`biome` (singular) stays the default and stays the codec's required field,
+so every existing world and config is untouched and `biomes` is a purely
+additive optional field — the same additive-optional-field pattern
+`stacked`'s own later fields already established.
+
+### 38.3 Per-column biome selection
+
+Two candidate sources, both already in the codebase:
+
+1. **Region-grid sampling** — reuse `WorldLayoutPlan`'s existing seeded
+   region grid (`sampleAt`, `regionScaleBlocks`). Cheap, deterministic,
+   already unit-tested, and already exposed on the Customize screen. Its
+   known limitation is documented in README: one biome per region cell
+   suits broad biomes but *not* narrow winding ones like `river`.
+2. **Climate sampling** — consult the surface parameter list from §37.2 at
+   the column. Gives vanilla-shaped, organically-bounded biome regions
+   including rivers, at the cost of being harder to predict from config.
+
+**Recommendation: region-grid first** (option 1) for the configured
+`biomes` list, and get rivers/oceans from the *existing* pass-through
+mechanism (§38.1) rather than from the region grid — which is exactly the
+division of labour README already documents ("don't add `river` to
+`layout.biomes`"). This avoids re-litigating a limitation this project has
+already reasoned about, and keeps the water case on the code path
+(`applyDeepFlatCap`'s river/ocean branch) that already handles it correctly,
+including the cave-breach sealing that took three fixes to get right
+(§33.4, TODO 16.6–16.8).
+
+### 38.4 Top-block painting
+
+Promote `StackedBiomeDefaults` to a shared, public helper (see §40 — this is
+the single clearest shared-code candidate in the whole codebase, and GOAL 43
+is what forces the issue). Rename to something preset-neutral, e.g.
+`BiomeSurfaceDefaults`, keeping `StackedBiomeDefaults`' existing behavior
+intact so `stacked` is unaffected.
+
+For `flat`, the per-column layer stack becomes: configured `layers` for
+everything below the surface band, with the top N blocks replaced by the
+resolved biome's own composition. For `deep_flat`, the existing cap band
+already has this shape — the change is swapping its fixed `capLayers` for
+the per-biome lookup when `biomes` is configured.
+
+Two gaps in the existing table to close: it has **no ocean/river entries**
+(no water), and no `deep_dark`/cave entries. Rivers/oceans stay on the
+pass-through/water-cap path per §38.3, so the table needs extending only if
+that recommendation is overridden.
+
+### 38.5 Risks / open questions
+
+- **Biome-correct *decoration* vs. biome-correct *blocks*.** Painting sand
+  makes a column look like desert; vanilla's decoration pass is what puts
+  cacti on it. `flat.decoration` is a single all-or-nothing toggle today
+  (and defaults off), so a multi-biome flat world with decoration off will
+  look biome-correct but be empty of vegetation. Worth confirming with Jason
+  whether multi-biome flat should flip that default.
+- **Structure/biome mismatch warnings.** 0.3.12's `structureOverrides`
+  warning checks against `allowedBiomes()`, which for multi-biome flat
+  becomes the whole configured list — the warning keeps working, and gets
+  *more* useful, but its message text says `flat.biome` (singular) and will
+  need updating.
+- **Surface-band thickness** interacts with §37.3's
+  `undergroundBelowSurfaceBlocks`: the biome-painted band must not extend
+  below where underground biomes start, or the two features will disagree
+  about what biome a block is in.
+
+## 39. `legacy` layout mode → `climate_filter` (GOAL 44) — design pass (TODO 23.1)
+
+### 39.1 What the mode actually does
+
+Despite the name, `LayoutMode.LEGACY` is not deprecated, not superseded, and
+not rare — it is the **shipped default** for `layout.mode`, so every config
+that omits the field (including most of `config/tests/`) is running it. Its
+actual behavior is precisely one thing: filter vanilla's own overworld
+climate parameter list down to the `allowedBiomes` set and let vanilla's
+nearest-neighbour climate lookup do the rest (`resolveAllowedBiomes` →
+`MultiNoiseBiomeSource.createFromList`). Terrain shape, continentalness and
+density are left completely untouched.
+
+`climate_filter` describes that exactly, which is why it is the chosen name.
+
+### 39.2 Defect inventory
+
+| Defect | Status | Disposition |
+|---|---|---|
+| Cave biomes reported at the surface | Root-caused, §37.1 | **Fix** via §37.2's depth partition |
+| Biome label disagrees with terrain beneath it (allowed land biome over vanilla ocean; the documented "config `01` showed ocean labeled as river" case) | Documented in README and `config/tests/README.md` | **Inherent** to filtering-without-reshaping — cannot be fixed within this mode's definition. Document precisely; the non-`climate_filter` modes exist as the actual answer |
+| Nearest-neighbour returns a far-away biome when the allowed list is sparse | Same root mechanism as above | Mitigated by the depth partition; otherwise inherent |
+
+The second row is the important one: it is not a bug to fix but the defining
+tradeoff of the mode. The rename makes that honest — "climate filter" tells
+a player what they are getting in a way "legacy" never did.
+
+### 39.3 Rename mechanics (no save-compat break)
+
+`LayoutMode.parse(String)` already upper-cases and matches enum names, and
+`serializedName()` lower-cases for YAML/codec output. So:
+
+- Rename the constant `LEGACY` → `CLIMATE_FILTER`.
+- Special-case `"legacy"` in `parse` to return `CLIMATE_FILTER`, with a
+  one-time deprecation warning naming the new value — matching this
+  project's existing warn-and-continue posture for configuration
+  (`LimitedBiomeSource`'s unknown-biome warnings) rather than failing world
+  creation.
+- **Saved worlds:** the codec persists `serializedName()`. Existing saves
+  contain `"legacy"`, which the aliased `parse` resolves — so no datafixer
+  is required, which is the main reason this option was preferred over
+  extract-and-delete.
+- Every `mode() != LayoutMode.LEGACY` / `== LEGACY` comparison
+  (`LimitedBiomeSource`, `resolveAllowedBiomes`, `resolveLayoutBiomes`,
+  `WorldLayoutPlan`) is a mechanical rename; the enum makes the compiler
+  find all of them.
+- Docs/config/tests referring to `legacy` get updated to `climate_filter`,
+  keeping one explicit note that the old name still parses.
+
+### 39.4 Explicitly *not* doing extract-and-delete
+
+Jason's decision, 2026-07-26. Recorded because it is the kind of choice that
+gets revisited: deleting the mode would change the default behavior of every
+existing world and every config that omits `layout.mode`, and would require
+a real migration. Renaming carries none of that risk and resolves the actual
+complaint (the misleading name plus the fixable bug).
+
+## 40. Shared/common code extraction (engineering, no GOAL) — design pass (TODO 24.1)
+
+Jason's ask, 2026-07-26: "review the code to look for other shared
+functionality that could be placed into common/shared part of the code
+base." Everything already lives in the `common` Gradle module, so this is
+intra-module extraction of duplicated logic, not a multiloader concern.
+
+### 40.1 Confirmed duplication (the codebase says so itself)
+
+The strongest candidates are the ones whose own Javadoc already admits the
+duplication:
+
+| Duplicate pair | Evidence |
+|---|---|
+| `EnvelopedChunkGenerator.flatBaseHeight` / `stackedBaseHeight` | Javadoc: *"Mirrors `flatBaseHeight` exactly, fed one column's own resolved stacked states."* |
+| `flatBaseColumn` / `stackedBaseColumn` | Javadoc: *"Mirrors `flatBaseColumn` exactly…"* |
+| `fillFlatColumns` / `fillStackedColumns` | Javadoc: *"mirrors `fillFlatColumns` almost exactly, except…"* |
+| `NetherStartPlan`/`NetherStartConfig` vs `EndStartPlan`/`EndStartConfig` capsule fields | DESIGN §32/GOALS 41: *"duplicated rather than shared per this goal's own 'true cross-preset sharing later' precedent"* |
+| The three capsule builders (`buildCaveCapsule`, `buildNetherStartCapsule`, `buildEndPlatform`) | GOALS 41.1 already asks for exactly this consolidation |
+
+Plus five near-identical "resolve id list → `Map<String, Holder<Biome>>`,
+warn on unknown" helpers in `LimitedBiomeSource` (`resolveSkyIslandBiomes`,
+`resolveIslandBiomes`, `resolveLayoutBiomes`, `resolveStackedAllowed`,
+`resolveChaosBiomesAllowed`), which differ only in which ids they collect
+and the wording of the warning.
+
+### 40.2 Size pressure
+
+`EnvelopedChunkGenerator` is 2992 lines and `WorldzConfig` 2395 — both well
+past the point where they are one cohesive unit. `EnvelopedChunkGenerator`
+in particular now carries flat fill, stacked fill, deep-flat capping,
+exterior masking, structure distance, capsule/chest deployment and biome
+reporting. Natural seams, in increasing order of risk:
+
+1. **`BiomeSurfaceDefaults`** (from `StackedBiomeDefaults`) — pure data, no
+   generator coupling, already unit-testable. GOAL 43 forces it anyway.
+2. **A `FlatColumnPainter`-style helper** owning `flatLayerStates` +
+   the base-height/base-column/fill trio shared by flat and stacked.
+3. **A biome-id-resolution helper** collapsing the five `LimitedBiomeSource`
+   lookups into one parameterized method taking the id set and a warning
+   label.
+4. **A shared capsule builder** — highest value (GOALS 41.1 wants it) but
+   highest risk, since all three current copies have preset-specific
+   behavior that Jason has already iterated on in-game across 0.3.2–0.3.6.
+
+### 40.3 Sequencing and risk posture
+
+Deliberately scheduled **last** (TODO Phase 24), after the three behavioral
+phases. Rationale: §37 and §38 will both add code to exactly these files, so
+extracting first would mean refactoring code that is about to change shape,
+then refactoring again. Doing it after means the shared abstractions are
+drawn around what the code actually became.
+
+Hard constraint: this phase must be **behavior-preserving**. Every item is a
+pure refactor with no config, codec, or generation change, verified by the
+existing suite plus a re-run of the affected presets' manual configs. Any
+extraction that cannot be done without a behavior change should be dropped
+from the phase and raised as its own item instead.
