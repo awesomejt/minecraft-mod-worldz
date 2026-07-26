@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.DeepFlatPlan;
+import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
@@ -597,14 +598,15 @@ class WorldzConfigTest {
                 + ", capsule=sizeBlocks=7, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
                 + ", endStart=chestTier=medium"
                 + ", easyKit=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
-                + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1],"
+                + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1, minecraft:copper_pickaxe:1],"
                 + " extras=[minecraft:iron_chestplate:1, minecraft:iron_helmet:1, minecraft:golden_apple:2,"
                 + " minecraft:ender_pearl:4], extrasCount=3"
                 + ", mediumKit=essentials=[minecraft:firework_rocket:8, minecraft:cobblestone:32, minecraft:bread:4,"
-                + " minecraft:iron_sword:1], extras=[minecraft:arrow:16, minecraft:bow:1, minecraft:ender_pearl:2],"
-                + " extrasCount=2"
-                + ", hardKit=essentials=[minecraft:bread:2],"
+                + " minecraft:iron_sword:1, minecraft:stone_pickaxe:1], extras=[minecraft:arrow:16, minecraft:bow:1,"
+                + " minecraft:ender_pearl:2], extrasCount=2"
+                + ", hardKit=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
                 + " extras=[minecraft:arrow:8, minecraft:ender_pearl:1], extrasCount=1"
+                + ", capsule=sizeBlocks=7, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
                 + ", flat=layers=[minecraft:bedrock:1, minecraft:stone:123, minecraft:dirt:3, minecraft:grass_block:1],"
                 + " biome=minecraft:plains, decoration=false,"
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
@@ -1223,11 +1225,20 @@ class WorldzConfigTest {
                 essentials: ["minecraft:firework_rocket:99"]
                 extras: []
                 extrasCount: 0
+              capsule:
+                sizeBlocks: 7
+                heightBlocks: 4
+                lightSource: lantern
+                lightSpacingBlocks: 3
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(StarterKitTier.HARD, config.endStart.chestTier);
         assertEquals(List.of("minecraft:firework_rocket:99"), config.endStart.easyKit.essentials);
         assertEquals(0, config.endStart.easyKit.extrasCount);
+        assertEquals(7, config.endStart.capsule.sizeBlocks);
+        assertEquals(4, config.endStart.capsule.heightBlocks);
+        assertEquals(LightSource.LANTERN, config.endStart.capsule.lightSource);
+        assertEquals(3, config.endStart.capsule.lightSpacingBlocks);
     }
 
     @Test
@@ -1238,6 +1249,33 @@ class WorldzConfigTest {
         assertFalse(config.endStart.easyKit.essentials.isEmpty());
         assertFalse(config.endStart.mediumKit.essentials.isEmpty());
         assertFalse(config.endStart.hardKit.essentials.isEmpty());
+        assertEquals(EndStartPlan.DEFAULT_CAPSULE_SIZE_BLOCKS, config.endStart.capsule.sizeBlocks);
+        assertEquals(EndStartPlan.DEFAULT_CAPSULE_HEIGHT_BLOCKS, config.endStart.capsule.heightBlocks);
+        assertEquals(LightSource.GLOWSTONE, config.endStart.capsule.lightSource);
+        assertEquals(EndStartPlan.DEFAULT_CAPSULE_LIGHT_SPACING_BLOCKS, config.endStart.capsule.lightSpacingBlocks);
+    }
+
+    @Test
+    void endStartCapsuleSizeIsOddenedAndClamped() {
+        WorldzConfig even = WorldzConfig.parse("""
+            endStart:
+              capsule:
+                sizeBlocks: 6
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            endStart:
+              capsule:
+                sizeBlocks: -5
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig tooLarge = WorldzConfig.parse("""
+            endStart:
+              capsule:
+                sizeBlocks: 9999
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(7, even.endStart.capsule.sizeBlocks);
+        assertEquals(EndStartPlan.MIN_CAPSULE_SIZE_BLOCKS, tooSmall.endStart.capsule.sizeBlocks);
+        assertEquals(EndStartPlan.MAX_CAPSULE_SIZE_BLOCKS, tooLarge.endStart.capsule.sizeBlocks);
     }
 
     @Test

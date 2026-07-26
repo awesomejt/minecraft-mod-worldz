@@ -439,6 +439,58 @@ item above as one coordinated config-schema pass.
     plus a new size threshold (6x6 interior) past which ceiling/floor
     lights join the walls. **[Jason] retest still outstanding** (TODO
     14b.3, configs 62/86/87 — delete the pre-0.3.4 worlds first).
+    **Generalized to `end_start` (0.3.5, TODO 15.3, 2026-07-25):** Jason's
+    first real in-game test of config 63 (goal 34) found no chest at all
+    and asked for "a larger platform" with "the chest to one side" plus
+    "the starter base thing from the nether... implemented here as an
+    option" — exactly this goal's own "revisit... end_start... later"
+    deferral. Investigating the missing chest found a real bug, not just
+    a size complaint: `end_start`'s guaranteed platform is a fully sealed
+    shell, and it had been deliberately left out of `PlayerSpawnFinderMixin`'s
+    trusted-suggestion list on the (wrong) theory that the End's mostly-
+    void surroundings would let vanilla's own same-column heightmap search
+    naturally re-find the platform's floor; it actually hits the sealed
+    *roof* first, landing the player standing on top of the box instead of
+    inside it — the chest was never missing, just sealed inside a room the
+    player never actually entered. Fixed by adding `end_start` to that
+    mixin's trusted list (matching cave/Nether-start). Generalized the
+    capsule mechanism itself in the same pass: `endStart.capsule.*`
+    (`sizeBlocks`/`heightBlocks`/`lightSource`/`lightSpacingBlocks`,
+    `EndStartPlan`/`EndStartConfig` mirroring `NetherStartPlan`/
+    `NetherStartConfig`'s own fields, duplicated rather than shared per
+    this goal's own "true cross-preset sharing later" precedent), default
+    platform widened from the original 1x1-interior shape to a 5x5
+    interior (matches Nether-start's own now-current default), lit by
+    default (glowstone), chest moved off the original underfoot placement
+    to line one wall to the side once the room is big enough to have one
+    (falls back to underfoot only at the smallest, 1x1-interior size,
+    which has no side wall to line). No furnace/crafting table unlike
+    Nether-start's own furnished capsule -- End-start's chest tiers need
+    no smelting or crafting to begin bridging/hand-mining, so Jason's
+    "starter base thing" ask is read here as the shape/lighting mechanism,
+    not the furniture. Config-only for now, same Customize-screen
+    deferral as Nether-start's own capsule (GOALS 41.1). New config 88
+    exercises a custom size/height/lantern-lighting combination. Full
+    multiloader build green. **[Jason] retest outstanding** (configs
+    63-65, 88 — delete any pre-0.3.5 End-start worlds first, the spawn-
+    placement fix changes where a new player actually lands).
+    **Follow-up fix (0.3.6, same retest):** Jason confirmed the
+    spawn/platform/chest fix above but found none of the chest tiers
+    could actually get him out of the platform — "mainly need a pickaxe
+    to break out of the starting box". Confirmed against real decompiled
+    vanilla source: End Stone has `requiresCorrectToolForDrops()` set and
+    sits in the `mineable/pickaxe` tag (any tier works) but isn't
+    hand-minable — bare-hand mining breaks it with no drop, same as
+    Stone. This project's own "minable by hand, no tool required"
+    assumption (GOALS 34's original wording, carried into README/
+    MANUAL_TESTING/several config comments) was wrong the whole time.
+    Fixed by adding a guaranteed pickaxe to every tier, escalating with
+    the rest of each tier's gear (Jason's own choice over a single shared
+    pickaxe): hard = wooden, medium = stone, easy = copper. All "minable
+    by hand" doc claims corrected to describe the guaranteed pickaxe
+    instead (historical decision-log entries left alone -- they record
+    what was believed at the time). **[Jason] retest outstanding** on
+    configs 63-65 to confirm the pickaxes actually work.
 
 ### Lava-Ocean Challenge:
 

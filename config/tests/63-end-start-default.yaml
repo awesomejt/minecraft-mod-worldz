@@ -1,30 +1,38 @@
-# GOALS 34 (Phase 15.2a/15.2b, DESIGN §32): the End-start challenge's
-# core mechanic and default (medium) chest tier. **Select "Worldz: End
-# Start"**.
+# GOALS 34/41 (Phase 15.2a/15.2b/15.3, DESIGN §32): the End-start
+# challenge's core mechanic and default (medium) chest tier. **Select
+# "Worldz: End Start"**.
 #
 # The Overworld and the Nether both generate exactly as vanilla would --
 # no biome restriction, no shape at all. The only change is where you
 # spawn: a guaranteed, always-built safe platform in the End, far out
-# along the outer-island belt (never the central island itself).
+# along the outer-island belt (never the central island itself). The
+# platform is a real 5x5-interior room by default (0.3.5+, was an
+# effectively-unusable 1x1-interior box before), lit by default
+# (glowstone), size/height/lighting all configurable via
+# `endStart.capsule.*`.
 #
 # Steps once in-game:
-#  1. Confirm you spawn in the End, not the Overworld -- standing inside
-#     a small, fully enclosed end-stone room (floor, ceiling, all four
-#     walls solid, not just corner posts), far from the central island
-#     (F3 coordinates should read roughly X=1200, Z=0).
+#  1. Confirm you spawn *inside* the End platform, not on top of it --
+#     standing inside a small, fully enclosed end-stone room (floor,
+#     ceiling, all four walls solid, not just corner posts), far from the
+#     central island (F3 coordinates should read roughly X=1200, Z=0).
+#     (0.3.5 fix: earlier versions landed the player standing on the
+#     sealed roof instead, which read as "a small platform, no chest".)
 #  2. Check the server log for "Set the GOALS 34 End-start world spawn
 #     at ..." and confirm the coordinates match where you actually spawned.
-#  3. Confirm a chest sits directly beneath your feet (replacing the
-#     floor block) with the medium tier's contents: 8 firework rockets,
-#     32 cobblestone, 4 bread, 1 iron sword, plus random extras.
+#  3. Confirm a chest lines one wall to the side (not underfoot) with the
+#     medium tier's contents: 8 firework rockets, 32 cobblestone, 4
+#     bread, 1 iron sword, 1 stone pickaxe, plus a random extra.
 #  4. Die (no bed/anchor is ever possible in the End -- vanilla's own
-#     rule) and confirm you respawn at the exact same End platform, not
-#     back in the Overworld -- this is the core beatability mechanic
-#     (DESIGN §32.4).
-#  5. Mine the platform's own end stone (always available, every tier) to
-#     start bridging toward the central island, or explore for an End
-#     City to find an Elytra -- confirm the rockets are usable once you
-#     have one. Report back on how the "reach the dragon" journey felt.
+#     rule) and confirm you respawn at the exact same End platform, still
+#     inside it, not back in the Overworld -- this is the core
+#     beatability mechanic (DESIGN §32.4).
+#  5. Confirm the stone pickaxe actually breaks the platform's own end
+#     stone and drops it (0.3.6 fix: End Stone requires a pickaxe to drop
+#     at all -- every tier now guarantees one) to start bridging toward
+#     the central island, or explore for an End City to find an Elytra --
+#     confirm the rockets are usable once you have one. Report back on
+#     how the "reach the dragon" journey felt.
 endStart:
   chestTier: medium
 overworldBorder:

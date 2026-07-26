@@ -1,0 +1,36 @@
+# GOALS 34/41 (Phase 15.3, DESIGN §32.4/§32.7): generalizes Nether-start's
+# own configurable capsule mechanism to end_start (2026-07-25 Jason
+# follow-up after his first real in-game test of config 63 found the
+# original fixed 3x3-footprint/1x1-interior platform "too small" and the
+# chest invisible underfoot). Also exercises the fix for the real bug that
+# test found: the player was landing standing on top of the sealed
+# platform's roof instead of inside it (vanilla's own same-column
+# heightmap spawn search hit the roof first), which is what actually made
+# the chest unreachable/invisible -- not the platform's size. **Select
+# "Worldz: End Start"**.
+#
+# Steps once in-game:
+#  1. Confirm you spawn *inside* the platform this time -- standing in an
+#     open room, not on top of a sealed box. Check the server log for
+#     "Set the GOALS 34 End-start world spawn at ..." and confirm the
+#     coordinates match roughly X=1200, Z=0.
+#  2. Confirm the room is noticeably bigger than config 63's default (7x7
+#     interior floor, not 3x3) and a full block taller.
+#  3. Confirm the chest (medium tier) lines one wall to one side -- not
+#     directly underfoot -- with room to walk around it.
+#  4. Confirm `lantern` lighting hangs from the ceiling in a real spaced
+#     grid (not just one), plus a second floor-standing lantern grid
+#     (this room is at/above the 6x6 "dense room" threshold).
+#  5. Confirm the medium tier's guaranteed stone pickaxe still breaks the
+#     platform's own end stone (drops the block -- a bare hand can't), and
+#     die to confirm you respawn at the same platform, still inside it.
+endStart:
+  chestTier: medium
+  capsule:
+    sizeBlocks: 9
+    heightBlocks: 4
+    lightSource: lantern
+    lightSpacingBlocks: 3
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -12,7 +12,6 @@ import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -193,8 +192,8 @@ public final class WorldLimitManager {
         if (end != null) {
             initializeEndBorder(end, plan.end(), plan.overworld());
             if (needsEndStart) {
-                BlockPos site = EndStartDeployment.buildAndRedirectSpawn(overworld, end);
-                StarterKitDeployment.spawnEndStartChest(end, site, endStart);
+                EndStartDeployment.Site site = EndStartDeployment.buildAndRedirectSpawn(overworld, end, endStart);
+                StarterKitDeployment.spawnEndStartChest(end, site.chestPos(), endStart);
             }
         }
         overworld.getDataStorage().set(

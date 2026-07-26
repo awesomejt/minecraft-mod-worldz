@@ -50,12 +50,19 @@ public record EndStartCustomization(
     }
 
     /**
-     * Resolves this world's End-start plan.
+     * Resolves this world's End-start plan. The platform's shape/lighting (GOALS 41) isn't yet
+     * exposed on this Customize screen -- only the YAML config path ({@link #fromConfig}) can set
+     * it today; a world created here always gets the compiled-in defaults, mirroring {@code
+     * NetherStartCustomization.netherStartPlan}'s own identical deferral.
      *
      * @return resolved, enabled plan
      */
     public EndStartPlan endStartPlan() {
-        return new EndStartPlan(true, chestTier);
+        return new EndStartPlan(
+            true, chestTier,
+            EndStartPlan.DEFAULT_CAPSULE_SIZE_BLOCKS, EndStartPlan.DEFAULT_CAPSULE_HEIGHT_BLOCKS,
+            LightSource.GLOWSTONE, EndStartPlan.DEFAULT_CAPSULE_LIGHT_SPACING_BLOCKS
+        );
     }
 
     /**

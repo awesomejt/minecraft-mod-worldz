@@ -41,7 +41,7 @@ challenge family, each with its own small Customize screen:
 | **Worldz: Sky Chunk** | Chunk-shaped islands cut from the seed's own natural chunks: unlike every other island type, a selected chunk's real vanilla terrain (biome, caves, structures) is left completely untouched — only unselected chunks mask to void. Optional top-only depth cutoff; a guaranteed portal-room stronghold and a forced amethyst geode; optional Nether/End application; optional underground-content showcasing. See [Sky chunk challenge](#sky-chunk-challenge) below. | Small screen: spawn chance, cell size, top-only toggle/depth, scattered top-only chance, exclusion zone, apply-to-Nether/End, borders, Nether exterior. |
 | **Worldz: Cave** | Cave-only start: the Overworld generates exactly as vanilla would (no biome restriction, no shape at all) — only your spawn changes, placed in a real, searched-out natural underground cavity. Optional solid roof sealing off sky access everywhere; optional large carved mega-cavern around spawn; optional starter chest. See [Cave challenge](#cave-challenge) below. | Small screen: spawn depth, sealed-surface toggle/Y, mega-cavern toggle/radius/height, chest toggle/tier, borders, Nether exterior. |
 | **Worldz: Nether Start** | Nether-start challenge: the Overworld generates exactly as vanilla would — you spawn in the Nether instead, in a real safe pocket (or a guaranteed, lit, furnished capsule/starter base, either as a fallback or on request), with a difficulty-tiered starter chest (easy hands over a ready-to-use portal frame, hard leans on exploration; every tier guarantees a pickaxe). Dying without a personal bed/anchor returns you to the same safe site. See [Nether-start challenge](#nether-start-challenge) below. | Small screen: spawn depth, chest tier, borders, Nether exterior. |
-| **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on hand-mining the platform's own end stone to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
+| **Worldz: End Start** | End-start challenge: the Overworld and the Nether both generate exactly as vanilla would — you spawn in the End instead, on a guaranteed safe platform far out along the outer-island belt, with a difficulty-tiered starter chest tuned toward reaching and defeating the Ender Dragon (easy hands over rockets/blocks/combat gear, hard leans entirely on the platform's own end stone — plus its guaranteed pickaxe — to bridge across). Dying (beds/anchors are both impossible in the End) returns you to the same platform. See [End-start challenge](#end-start-challenge) below. | Small screen: chest tier, borders. |
 | **Worldz: Flat** | Classic flat challenge: my version of vanilla superflat, with more options — an editable bottom-to-top block layer stack, a single fixed biome, an optional bedrock floor (just whether the layer list's bottom entry is bedrock), an eligible-structure-set list, and an optional decoration toggle. Zero noise or caves of any kind, matching vanilla's own real superflat behavior — and genuinely as fast to generate, since the real noise pipeline never runs at all. See [Flat challenge](#flat-challenge) below. | Small screen: layers (text), biome, decoration, structure list (text), borders, exteriors. |
 | **Worldz: Deep Flat** | Deep-flat challenge: a flat surface capped over real, unmodified vanilla terrain — caves, cave biomes, aquifers, ores, and structures all come from the seed's own real generation below the cap, completely untouched. Rivers/oceans show as water at the flat surface (optional, with a spawn-adjacent exclusion radius). See [Deep flat challenge](#deep-flat-challenge) below. | Small screen: surface Y, cap layers (text), rivers toggle, exclusion radius, borders, exteriors. |
 | **Worldz: Stacked** | Stacked-biome-layers challenge: the underground is replaced entirely by horizontal biome bands, bottom to top, starting at the dimension's own min Y — eight bands by default, or any editable ordering/count — each with its own block stack, a gently uneven surface, and an air gap for that biome's own trees/vegetation to grow into. Ore veins naturally land in whichever layer sits at their real vanilla depth; the default bottom layer is deep enough to reliably anchor the End portal too. Bounded to a small border by default. Optional seed-randomized layer order. See [Stacked challenge](#stacked-challenge) below. | Small screen: layers (text), seed-randomized order toggle, relief blocks, borders, exteriors. |
@@ -834,8 +834,9 @@ netherStart:
 
 **Not yet available:** `forceCapsule` and the `capsule:` settings are
 config-only for now — the in-game Customize screen doesn't expose them
-yet, and the capsule option itself is Nether-start-only (Cave and
-End-start don't have it yet either); both are planned follow-ups.
+yet. End-start's own platform now shares this same configurable
+shape/lighting mechanism (see below); Cave doesn't have it yet, a planned
+follow-up.
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
@@ -849,7 +850,11 @@ shape or restriction of any kind. The only change is where you spawn: a
 small, fully enclosed end-stone platform, always built (no natural-site
 search — the End's outer regions are mostly void, so a Nether/Cave-style
 search would rarely find real terrain worth the cost) far out along the
-outer-island belt, never the central island itself.
+outer-island belt, never the central island itself. The platform's size,
+interior height, and lighting are configurable (`endStart.capsule.*`,
+shape shared with Nether-start's own capsule mechanism); the chest lines
+one wall to one side once the room is big enough to have a real interior,
+rather than sitting underfoot.
 
 **Death and respawn work like this:** the world's own default spawn point
 is redirected to the platform at world creation, so both your very first
@@ -861,19 +866,23 @@ the way Nether-start's respawn anchors work.
 **Reaching the Ender Dragon is part of the challenge.** No guaranteed
 gateway or teleporter is built, and no Elytra is handed over — Elytra
 stays an ordinary End City find, the same way vanilla intends. A
-difficulty-tiered starter chest (`chestTier`, easy/medium/hard) is set
-into the floor directly beneath the platform:
+difficulty-tiered starter chest (`chestTier`, easy/medium/hard) lines the
+platform's south wall (or sits underfoot at the smallest platform size,
+where there's no side wall to line). Every tier guarantees a pickaxe —
+End Stone requires one (any tier) to actually drop when mined, so a
+platform with no pickaxe at all would trap you (2026-07-25 fix, Jason's
+in-game retest: "mainly need a pickaxe to break out of the starting box"):
 
 | Tier | Contents |
 |---|---|
-| `easy` | 16 firework rockets, 64 cobblestone, 8 bread, a bow, 32 arrows, an iron sword, plus 3 random extras (iron armor pieces, golden apples, ender pearls). |
-| `medium` | Fewer rockets and cobblestone, less food, lighter combat gear. |
-| `hard` | No rockets and no guaranteed weapon at all — leans entirely on the platform's own end stone (minable by hand, no tool required) to bridge across the void, plus whatever an End City visit turns up. |
+| `easy` | 16 firework rockets, 64 cobblestone, 8 bread, a bow, 32 arrows, an iron sword, a copper pickaxe, plus 3 random extras (iron armor pieces, golden apples, ender pearls). |
+| `medium` | Fewer rockets and cobblestone, less food, lighter combat gear, a stone pickaxe. |
+| `hard` | No rockets and no guaranteed weapon at all — just a wooden pickaxe, leaning entirely on the platform's own end stone to bridge across the void, plus whatever an End City visit turns up. |
 
 Every tier keeps one guaranteed, always-available path to beatability
-regardless of chest contents: the platform itself is minable end stone,
-so even a zero-rockets hard-tier world can be hand-bridged toward the
-central island.
+regardless of chest contents: the platform itself is minable end stone
+(with the guaranteed pickaxe above), so even a zero-rockets hard-tier
+world can be hand-bridged toward the central island.
 
 Configure its defaults with an `endStart:` section in
 `config/jlt_worldz.yaml`:
@@ -881,11 +890,20 @@ Configure its defaults with an `endStart:` section in
 ```yaml
 endStart:
   chestTier: medium
+  capsule:
+    sizeBlocks: 7
+    heightBlocks: 3
+    lightSource: glowstone
+    lightSpacingBlocks: 5
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+| `capsule.sizeBlocks` | `7` | Total *exterior* footprint width/depth, walls included (must be odd) — `7` means a 5x5 interior. |
+| `capsule.heightBlocks` | `3` | Interior height (already "as seen from inside"). |
+| `capsule.lightSource` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen` — same placement rules as Nether-start's own `netherStart.capsule.lightSource` (see above). The south wall (where the chest sits) never gets a wall fixture. |
+| `capsule.lightSpacingBlocks` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.

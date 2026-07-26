@@ -2535,6 +2535,86 @@ revisit. Full design: DESIGN §31.9.
       `nether_start` config-plumbing gap found while writing this phase,
       not itself part of GOALS 34) remains open and unscheduled; pick it
       up whenever convenient, it doesn't block Phase 16.
+- [x] 15.3 **Real-world feedback (2026-07-25, Jason's first actual in-game
+      test of config 63):** no chest found, spawned on a small platform;
+      asked for a larger platform, the chest moved to one side, and
+      Nether-start's own configurable capsule mechanism (GOALS 41)
+      generalized to `end_start`. Root-caused the missing chest to a real
+      bug, not just a size complaint: `end_start` was deliberately left
+      out of `PlayerSpawnFinderMixin`'s trusted-suggestion list (GOALS
+      41's own reasoning at the time: the End's mostly-void surroundings
+      should let vanilla's same-column heightmap search re-find the
+      platform's floor on its own) -- wrong, since the platform's sealed
+      *roof* is what that search actually finds first, landing the player
+      on top of the box, not inside it. **Fixed (0.3.5):** added
+      `end_start` to the mixin (fabric + neoforge), matching cave/
+      Nether-start's own trusted treatment. Generalized the capsule in
+      the same pass -- `EndStartPlan`/`EndStartConfig` gain
+      `capsuleSizeBlocks`/`heightBlocks`/`lightSource`/
+      `lightSpacingBlocks` (mirrors `NetherStartPlan`/`NetherStartConfig`
+      exactly, duplicated rather than shared per GOALS 41.1's own "true
+      cross-preset sharing later" precedent), `EndStartCodecs` persists
+      them, `WorldzConfig`'s `sanitizeStarterCapsule` helper is
+      parameterized on bounds so both `netherStart.capsule` and
+      `endStart.capsule` share the one implementation safely.
+      `EndStartDeployment` rewritten: config-driven size/height, full
+      lighting dispatch (torch/lantern/soul_lantern/glowstone/
+      shroomlight/glow_lichen, dense-room ceiling/floor lights) ported
+      from `NetherStartDeployment.placeCapsuleLighting` verbatim (end
+      stone instead of nether bricks, no furnace/crafting table -- End-
+      start's chest tiers need no smelting/crafting to begin bridging),
+      default platform widened from the original 1x1-interior shape to a
+      5x5 interior, and the chest moved off underfoot to line the south
+      wall once the room is big enough (falls back to underfoot only at
+      the smallest size, which has no side wall). `EndStartDeployment`
+      now returns a `Site(spawnPos, chestPos)` record (mirroring
+      `NetherStartDeployment.Site`) instead of a single `BlockPos`;
+      `StarterKitDeployment.spawnEndStartChest` takes the resolved chest
+      position directly instead of computing `.below()` itself.
+      `EndStartCustomization.endStartPlan()` supplies the compiled-in
+      capsule defaults, same config-only deferral as Nether-start's own
+      (GOALS 41.1) -- not yet on the Customize screen. New
+      `EndStartPlanTest` capsule coverage (bounds, `centeredCapsuleOffsets`)
+      and `WorldzConfigTest` `endStart.capsule` read/sanitize/round-trip
+      tests, mirroring `NetherStartPlanTest`/the existing `netherStart.
+      capsule` tests. New config 88 (custom 9x9/7x7-interior, 4-tall,
+      lantern-lit platform). Docs updated: GOALS 41's own log, README's
+      End-start section (capsule table, config-only note), config/tests/
+      README.md (files 63-65 now require 0.3.5+, new row for 88), and a
+      new MANUAL_TESTING.md Phase 15 acceptance item covering the fix and
+      config 88. Full multiloader build green (`common`/`fabric`/
+      `neoforge` compile, all `common` tests pass). **[Jason] retest
+      outstanding** -- delete any pre-0.3.5 End-start world saves first,
+      since the spawn-placement fix changes where a new player actually
+      lands (previously on the roof, now genuinely inside the room).
+- [x] 15.4 **Follow-up (0.3.6, same 2026-07-25 retest):** Jason confirmed
+      15.3's spawn/platform/chest fix (configs 63-65) but found none of
+      the chest tiers could actually get him out of the platform --
+      "mainly need a pickaxe to break out of the starting box". Verified
+      against real decompiled vanilla source rather than assuming: End
+      Stone has `.requiresCorrectToolForDrops()` set on `Blocks.END_STONE`
+      and sits in the `minecraft:mineable/pickaxe` tag (any tier counts,
+      it's absent from every `needs_*_tool` tag) but not in any
+      "hand-minable" allowance -- so bare-hand mining breaks the block
+      with *no drop*, exactly like Stone. This project's own docs (GOALS
+      34, README, MANUAL_TESTING, several config-63/65 comments) had
+      assumed "minable by hand, no tool required" since Phase 15 shipped;
+      wrong the whole time, just never caught until Jason's actual
+      in-game retest. Fixed by adding a guaranteed pickaxe to every
+      `EndStartConfig` tier's essentials, escalating with the rest of
+      each tier's gear (Jason's explicit choice over one shared pickaxe
+      for all three, mirroring how the rest of each kit already
+      escalates): hard gets a wooden pickaxe, medium a stone pickaxe,
+      easy a copper pickaxe. Updated `WorldzConfigTest`'s full-config
+      summary assertion and `ProjectMetadataTest`'s version-string
+      assertion (bumped to 0.3.6) to match. Corrected every "minable by
+      hand" claim found across README.md, MANUAL_TESTING.md, and configs
+      63/65/88's own in-file comments to describe the guaranteed pickaxe
+      instead (left GOALS 34/TODO 15.1's own historical decision-log
+      entries alone -- they record what was believed *at the time*, not
+      current behavior). Full multiloader build green. **[Jason] retest
+      outstanding** on configs 63-65 -- confirm the guaranteed pickaxe in
+      each tier actually breaks the platform's end stone and drops it.
 
 ## Phase 16 — Flat worlds (GOALS 15, 16, 22)
 

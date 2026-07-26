@@ -181,19 +181,20 @@ final class StarterKitDeployment {
     }
 
     /**
-     * Places a filled chest set into the floor directly beneath the resolved guaranteed End
-     * platform (GOALS 34, DESIGN §32.5) -- the same "replace solid ground within the already-
-     * validated safe area" placement {@link #spawnNetherStartChest} uses. Filled from the selected
+     * Places a filled chest set at the resolved guaranteed End platform's chest position (GOALS
+     * 34/41, DESIGN §32.5) -- lining the platform's south wall once the room is big enough to have
+     * one, embedded in the floor directly beneath the player's own spawn column only for the
+     * smallest (1x1-interior) room ({@code EndStartDeployment.buildEndPlatform}'s own placement
+     * decision; this method just places whatever position it's handed). Filled from the selected
      * difficulty tier's essentials/extras; no biome-driven item, same reasoning as {@link
      * #spawnNetherStartChest} -- End-start has no biome concept of its own to key off. Called
      * once, only for a new {@code end_start} world.
      *
      * @param end the End server level
-     * @param site the resolved guaranteed platform position (DESIGN §32.4)
+     * @param pos the resolved chest position ({@code EndStartDeployment.Site.chestPos()})
      * @param endStart the world's resolved End-start plan
      */
-    static void spawnEndStartChest(ServerLevel end, BlockPos site, EndStartPlan endStart) {
-        BlockPos pos = site.below();
+    static void spawnEndStartChest(ServerLevel end, BlockPos pos, EndStartPlan endStart) {
         end.setBlock(pos, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
 
         StarterKitPlan plan = resolvePlan(tierConfig(WorldzCommon.config().endStart, endStart.chestTier()));

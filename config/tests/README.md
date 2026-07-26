@@ -88,7 +88,7 @@ Every field not mentioned in a file falls back to Worldz's documented default
    (`netherStart.capsule.lightSource` -- `torch`/`lantern`/`soul_lantern`/
    `glowstone`/`shroomlight`/`glow_lichen`), and light spacing
    (`netherStart.capsule.lightSpacingBlocks`) are all configurable.
-   "Worldz: End Start" (files `63`-`65`, GOALS 34, Phase 15) reads
+   "Worldz: End Start" (files `63`-`65`, `88`, GOALS 34/41, Phase 15) reads
    only its own `endStart:` section -- the Overworld and the Nether both
    generate exactly as vanilla would, and you spawn on a guaranteed
    end-stone platform in the End instead (always built, no natural
@@ -96,8 +96,16 @@ Every field not mentioned in a file falls back to Worldz's documented default
    worth the cost); `endStart.chestTier` (`easy`/`medium`/`hard`, always
    on) picks the starter-chest difficulty -- easy hands over firework
    rockets, building blocks, and combat gear, hard gives no rockets and no
-   guaranteed weapon at all, leaning entirely on hand-mining the
-   platform's own end stone to bridge toward the central island.
+   guaranteed weapon at all, leaning entirely on the platform's own end
+   stone (plus every tier's own guaranteed pickaxe -- copper/stone/wooden,
+   easy to hard -- End Stone requires one to drop at all) to bridge
+   toward the central island. The
+   platform itself shares Nether-start's own configurable capsule shape
+   (GOALS 41, generalized here 2026-07-25): size (`endStart.capsule.
+   sizeBlocks`/`heightBlocks`), light source (`endStart.capsule.
+   lightSource`), and light spacing (`endStart.capsule.lightSpacingBlocks`)
+   are all configurable, and the chest lines the south wall (off-center)
+   once the room is big enough to have one, rather than sitting underfoot.
    "Worldz: Flat" (files `66`-`68`, GOAL 15, Phase 16) reads only its own
    `flat:` section -- a classic superflat world, zero noise/caves of any
    kind; `flat.layers` is the editable bottom-to-top block stack (a
@@ -229,9 +237,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `62-nether-start-capsule-fallback.yaml` | GOALS 27/41 (Phase 14.2a + 14b, DESIGN §31.4/§31.9): `spawnY: 4` alone (no `forceCapsule`) automatically triggers the guaranteed capsule/starter base instead of the natural search, since it's close enough to the Nether's own floor — confirms the default-sized (7x7x5 exterior, 5x5x3 interior), glowstone-lit (one fixture centered per wall), furnished (chest/furnace/crafting table lining one wall together) nether-brick capsule. **Select "Worldz: Nether Start"**. Requires 0.3.4+. |
 | `86-nether-start-capsule-glow-lichen.yaml` | GOALS 41 (Phase 14b, DESIGN §31.9): explicit `forceCapsule: true` at an ordinary `spawnY: 32`, isolating the explicit-request pathway from config 62's automatic one; custom `capsule.sizeBlocks`/`heightBlocks` (9x9x4 interior 7x7x4) plus `glow_lichen` lighting, which coats the entire interior surface instead of spaced points. **Select "Worldz: Nether Start"**. Requires 0.3.4+. |
 | `87-nether-start-capsule-hanging-lanterns.yaml` | GOALS 41 (Phase 14b, DESIGN §31.9): explicit `forceCapsule: true` at `spawnY: 32`; `sizeBlocks: 9` (7x7 interior, at/above the 6x6 "dense room" threshold) with `lantern` lighting, which always hangs from the ceiling in a real spaced grid (not just one) rather than wall-mounting, plus a second floor-standing lantern grid from the dense-room addition; hard chest tier confirms the guaranteed wooden-pickaxe essential. **Select "Worldz: Nether Start"**. Requires 0.3.4+. |
-| `63-end-start-default.yaml` | GOALS 34 (Phase 15.2a/15.2b): the End-start challenge's core mechanic and default (medium) chest tier — the Overworld and Nether both generate exactly as vanilla would, spawn is a guaranteed end-stone platform far out along the outer-island belt. **Select "Worldz: End Start"**. Requires 0.2.68+. |
-| `64-end-start-chest-easy.yaml` | GOALS 34 (Phase 15.2b): the easy chest tier — rockets, cobblestone, food, and real combat gear for the dragon fight. **Select "Worldz: End Start"**. Requires 0.2.68+. |
-| `65-end-start-chest-hard.yaml` | GOALS 34 (Phase 15.2b): the hard chest tier — no rockets or guaranteed weapon at all, relies entirely on hand-mining the platform's own end stone to bridge toward the central island. **Select "Worldz: End Start"**. Requires 0.2.68+. |
+| `88-end-start-capsule-custom.yaml` | GOALS 34/41 (Phase 15.3, generalizing Nether-start's own capsule mechanism to `end_start`, 2026-07-25 Jason follow-up): custom `endStart.capsule.sizeBlocks`/`heightBlocks` (9x9 exterior, 7x7 interior, 4 tall) plus `lantern` lighting, isolating the platform-shape option from configs 63-65's own compiled-in defaults. Also the fix for the config-63-era bug where the player landed standing on top of the sealed platform's roof (vanilla's own same-column heightmap spawn search finding the roof before the interior) instead of inside it, missing the chest entirely -- confirm you land *inside* the room this time. **Select "Worldz: End Start"**. Requires 0.3.5+. |
+| `63-end-start-default.yaml` | GOALS 34/41 (Phase 15.2a/15.2b/15.3): the End-start challenge's core mechanic and default (medium) chest tier — the Overworld and Nether both generate exactly as vanilla would, spawn is a guaranteed end-stone platform far out along the outer-island belt. **Select "Worldz: End Start"**. Requires 0.3.6+ (0.2.68-0.3.4 shipped this config with a spawn-placement bug — see 88's own note; 0.3.5 fixed that but still lacked a guaranteed pickaxe, see 65's own note). |
+| `64-end-start-chest-easy.yaml` | GOALS 34/41 (Phase 15.2b/15.3): the easy chest tier — rockets, cobblestone, food, real combat gear, and a copper pickaxe for the dragon fight. **Select "Worldz: End Start"**. Requires 0.3.6+. |
+| `65-end-start-chest-hard.yaml` | GOALS 34/41 (Phase 15.2b/15.3): the hard chest tier — no rockets or guaranteed weapon, just a wooden pickaxe to mine the platform's own end stone and bridge toward the central island. **Select "Worldz: End Start"**. Requires 0.3.6+ (0.2.68-0.3.5 shipped every tier with no guaranteed pickaxe at all — End Stone requires one to drop, so hand-mining it, as this project's docs originally assumed, never actually worked; Jason's in-game retest caught it). |
 | `66-flat-default.yaml` | GOAL 15 (Phase 16.2a): classic flat's core mechanic and Worldz-native default layer stack (surface at Y 64, above the slime-spawn cutoff), zero caves. **Select "Worldz: Flat"**. Requires 0.2.70+. |
 | `67-flat-classic-shallow.yaml` | GOAL 15 (Phase 16.2a, DESIGN §33.3): a thin, vanilla-`classic_flat`-style layer stack (surface at Y -60) — confirms "avoiding slimes" is purely a property of layer height. **Select "Worldz: Flat"**. Requires 0.2.70+. |
 | `68-flat-structures-shallow.yaml` | GOAL 22 (Phase 16.2a): trial chambers/ancient cities forced eligible over only 10 blocks of stone — classic flat's "honestly clipped" underground-structure tradeoff, deliberately exercised. **Select "Worldz: Flat"**. Requires 0.2.70+. |

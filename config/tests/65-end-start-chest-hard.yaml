@@ -2,16 +2,18 @@
 # chest tier. **Select "Worldz: End Start"**.
 #
 # Steps once in-game:
-#  1. Confirm the chest holds only 2 bread plus 1 random extra (arrows or
-#     an ender pearl) -- no rockets, no guaranteed weapon at all.
-#  2. Confirm the platform's own end stone is still minable by hand (no
-#     tool required, just slow) -- this is the tier's only guaranteed
-#     path to beatability (DESIGN §32.2/§32.5), so it must always work.
-#  3. Report back whether the "mine and bridge by hand, no weapon, no
-#     rockets" path felt like a long grind (expected) or genuinely
-#     unreasonable -- DESIGN §32.5 flags this as a first pass, not signed
-#     off, and names shortening the platform distance or adding a small
-#     guaranteed nudge (e.g. a pickaxe) as the likely fix if so.
+#  1. Confirm the chest holds only 2 bread, 1 wooden pickaxe, plus 1
+#     random extra (arrows or an ender pearl) -- no rockets, no guaranteed
+#     weapon at all. (0.3.6 fix: End Stone actually requires a pickaxe to
+#     drop -- hand-mining it never worked, confirmed against real vanilla
+#     source; every tier now guarantees one, hard's the minimum wooden.)
+#  2. Confirm the wooden pickaxe actually breaks the platform's own end
+#     stone (drops the block) -- this is the tier's only guaranteed path
+#     to beatability (DESIGN §32.2/§32.5), so it must always work.
+#  3. Report back whether the "mine and bridge with just a wooden
+#     pickaxe, no weapon, no rockets" path felt like a long grind
+#     (expected) or genuinely unreasonable -- DESIGN §32.5 flags this as a
+#     first pass, not signed off.
 endStart:
   chestTier: hard
 overworldBorder:

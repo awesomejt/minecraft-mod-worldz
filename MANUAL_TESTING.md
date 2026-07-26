@@ -852,39 +852,85 @@ are not yet exposed on the in-game Customize screen (YAML config only,
 DESIGN §31.9's own flagged gap); `cave`/`end_start` don't have this
 capsule option yet (deferred generalization, GOALS 41.1).
 
-## Phase 15 acceptance (End-start challenge, GOALS 34, TODO 15.2a-15.2b)
+## Phase 15 acceptance (End-start challenge, GOALS 34/41, TODO 15.2a-15.2b, 15.3)
 
-Uses configs `63`-`65` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: End Start"** for all three. Unlike every other typed
+Uses configs `63`-`65`, `88` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: End Start"** for all four. Unlike every other typed
 preset except Nether Start, the Overworld itself is completely untouched
 vanilla terrain — this time the Nether is too, and only the End (where
-you spawn) and the chest tier differ.
+you spawn) and the chest tier/platform shape differ.
+
+**Real bug found and fixed (0.3.5, Jason's first actual in-game test of
+config 63, 2026-07-25):** he spawned standing on top of a small platform
+with no chest visible anywhere. Root cause: the guaranteed platform is a
+fully sealed shell (floor/ceiling/walls all solid), and `end_start` had
+been deliberately left out of `PlayerSpawnFinderMixin`'s "trust the
+resolved site outright" list on the theory that the End's mostly-void
+surroundings would make vanilla's own same-column heightmap search
+naturally re-find the platform's floor. Wrong: that search hits the
+sealed *roof* first, same as any other solid ceiling, landing the player
+standing on top of the box instead of inside it — reading as "a small
+platform, no chest" (the chest is sealed inside, right below the roof).
+Fixed by adding `end_start` to the mixin's trusted list, matching cave
+and Nether-start's own treatment. Also generalized Nether-start's
+configurable capsule mechanism (GOALS 41) to `end_start` in the same
+pass: the default platform is now a 5x5 interior (was a 1x1-interior
+shape effectively unusable), size/height/lighting are all configurable
+via `endStart.capsule.*`, and the starter chest lines one wall to one
+side once the room is big enough, instead of sitting invisibly underfoot.
+**[Jason] confirmed 0.3.5, configs 63-65, 2026-07-25: spawn/platform/chest
+mechanic all correct.**
+
+**Follow-up fix (0.3.6, same retest):** Jason found none of the tiers
+could actually get him out of the platform — "mainly need a pickaxe to
+break out of the starting box". Confirmed against real vanilla source:
+End Stone requires a pickaxe (any tier) to drop at all
+(`BlockBehaviour.Properties.requiresCorrectToolForDrops()` on vanilla's
+own `Blocks.END_STONE`) — hand-mining it, what this project's docs had
+assumed since Phase 15, never actually worked. Every tier now guarantees
+a pickaxe, escalating with the rest of each tier's gear (Jason's own
+choice over one shared tier): hard gets a wooden pickaxe, medium a stone
+pickaxe, easy a copper pickaxe.
 
 1. **Default core mechanic**, `63-end-start-default.yaml` (GOALS 34 core,
-   0.2.68+). Confirm you spawn in the End, not the Overworld — inside a
-   small, fully enclosed end-stone room (floor, ceiling, all four walls
-   solid, not just corner posts), far from the central island (F3 should
-   read roughly X=1200, Z=0). Check the server log for "Set the GOALS 34
-   End-start world spawn at ..." and confirm the coordinates match. Confirm
-   a chest sits in the floor beneath your feet with the medium tier's
-   contents (8 firework rockets, 32 cobblestone, 4 bread, 1 iron sword,
-   one random extra). **Die and confirm you respawn at the exact same End
-   platform** — beds and respawn anchors are both impossible in the End
-   (vanilla's own rule), so this is the single most important thing to
-   verify this phase, the same way it was for Nether-start (DESIGN §32.1/
-   §32.4). Confirm the platform's own end stone is minable by hand.
-2. **Easy chest tier**, `64-end-start-chest-easy.yaml` (0.2.68+). Confirm
+   0.3.6+). Confirm you spawn **inside** the End platform (not on top of
+   it) — a small, fully enclosed end-stone room (floor, ceiling, all four
+   walls solid, not just corner posts), far from the central island (F3
+   should read roughly X=1200, Z=0). Check the server log for "Set the
+   GOALS 34 End-start world spawn at ..." and confirm the coordinates
+   match. Confirm the room is a real 5x5 interior you can walk around in
+   (not a single column), lit by default (glowstone), and that the chest
+   lines one wall to the side — not directly underfoot — with the medium
+   tier's contents (8 firework rockets, 32 cobblestone, 4 bread, 1 iron
+   sword, 1 stone pickaxe, one random extra). **Die and confirm you
+   respawn at the exact same End platform, still inside it** — beds and
+   respawn anchors are both impossible in the End (vanilla's own rule),
+   so this is the single most important thing to verify this phase, the
+   same way it was for Nether-start (DESIGN §32.1/§32.4). Confirm the
+   stone pickaxe actually breaks the platform's own end stone (drops the
+   block, not just breaks it).
+2. **Easy chest tier**, `64-end-start-chest-easy.yaml` (0.3.6+). Confirm
    the chest holds 16 firework rockets, 64 cobblestone, 8 bread, a bow, 32
-   arrows, an iron sword, and 3 random extras. Confirm the cobblestone
-   alone is enough to start a real bridge toward the central island.
-3. **Hard chest tier**, `65-end-start-chest-hard.yaml` (0.2.68+). Confirm
-   the chest holds only 2 bread plus 1 random extra — no rockets, no
-   guaranteed weapon. Confirm hand-mining the platform's own end stone and
-   bridging toward the center is still genuinely possible, if slow — this
-   is hard tier's *only* guaranteed path (no gateway/Elytra is ever
-   provided, per Jason's 15.1 decision), so report back whether it felt
-   like a long grind (expected) or unreasonably punishing. DESIGN §32.5
-   flags these defaults as a first pass, not signed off.
+   arrows, an iron sword, a copper pickaxe, and 3 random extras. Confirm
+   the cobblestone alone is enough to start a real bridge toward the
+   central island.
+3. **Hard chest tier**, `65-end-start-chest-hard.yaml` (0.3.6+). Confirm
+   the chest holds only 2 bread, 1 wooden pickaxe, plus 1 random extra —
+   no rockets, no guaranteed weapon. Confirm mining the platform's own end
+   stone with the wooden pickaxe and bridging toward the center is still
+   genuinely possible, if slow — this is hard tier's *only* guaranteed
+   path (no gateway/Elytra is ever provided, per Jason's 15.1 decision),
+   so report back whether it felt like a long grind (expected) or
+   unreasonably punishing. DESIGN §32.5 flags these defaults as a first
+   pass, not signed off.
+4. **Custom capsule shape**, `88-end-start-capsule-custom.yaml` (GOALS 41,
+   0.3.5+). Custom `endStart.capsule.sizeBlocks: 9`/`heightBlocks: 4`
+   (7x7 interior, a full block taller than default) with `lantern`
+   lighting. Confirm the room is noticeably bigger than config 63's
+   default, lanterns hang from the ceiling in a real spaced grid (this
+   room is at/above the 6x6 "dense room" threshold, so also a
+   floor-standing lantern grid), and the chest still lines one wall with
+   real room to walk around.
 
 **Ideally also attempt a full run** on at least one config: find or fight
 your way to an End City for an Elytra, use the chest's rockets to fly (or
@@ -893,8 +939,11 @@ Dragon is genuinely achievable — including a hardcore attempt if you're
 up for it, per GOALS 34's own "must be beatable in hardcore, even if
 really hard" requirement.
 
-**Not covered by this phase's acceptance:** nothing deferred — GOALS 34
-is fully in scope for Phase 15.
+**Not covered by this phase's acceptance:** the platform's shape/lighting
+options aren't yet exposed on the in-game Customize screen (config-only
+today, same deferral as Nether-start's own capsule, GOALS 41.1) — a
+world created via the Customize screen always gets the compiled-in
+defaults (5x5 interior, glowstone).
 
 ## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b)
 

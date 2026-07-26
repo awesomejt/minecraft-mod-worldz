@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.DeepFlatPlan;
+import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
@@ -548,29 +549,32 @@ public final class WorldzConfig {
         sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "netherStart.easyKit", logger);
         sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "netherStart.mediumKit", logger);
         sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "netherStart.hardKit", logger);
-        sanitized.capsule = sanitizeStarterCapsule(sanitized.capsule, "netherStart.capsule", logger);
+        sanitized.capsule = sanitizeStarterCapsule(
+            sanitized.capsule, "netherStart.capsule",
+            NetherStartPlan.MIN_CAPSULE_SIZE_BLOCKS, NetherStartPlan.MAX_CAPSULE_SIZE_BLOCKS,
+            NetherStartPlan.MIN_CAPSULE_HEIGHT_BLOCKS, NetherStartPlan.MAX_CAPSULE_HEIGHT_BLOCKS,
+            NetherStartPlan.MIN_CAPSULE_LIGHT_SPACING_BLOCKS, NetherStartPlan.MAX_CAPSULE_LIGHT_SPACING_BLOCKS,
+            logger
+        );
         return sanitized;
     }
 
-    private static StarterCapsuleConfig sanitizeStarterCapsule(StarterCapsuleConfig config, String name, Logger logger) {
+    private static StarterCapsuleConfig sanitizeStarterCapsule(
+        StarterCapsuleConfig config, String name,
+        int minSize, int maxSize, int minHeight, int maxHeight, int minSpacing, int maxSpacing,
+        Logger logger
+    ) {
         StarterCapsuleConfig sanitized = config == null ? new StarterCapsuleConfig() : config;
         if (sanitized.sizeBlocks % 2 == 0) {
             int oddened = sanitized.sizeBlocks + 1;
             logger.warn("Rounded {}.sizeBlocks from {} to {} (must be odd).", name, sanitized.sizeBlocks, oddened);
             sanitized.sizeBlocks = oddened;
         }
-        sanitized.sizeBlocks = clampWithWarning(
-            sanitized.sizeBlocks, NetherStartPlan.MIN_CAPSULE_SIZE_BLOCKS, NetherStartPlan.MAX_CAPSULE_SIZE_BLOCKS,
-            name + ".sizeBlocks", logger
-        );
-        sanitized.heightBlocks = clampWithWarning(
-            sanitized.heightBlocks, NetherStartPlan.MIN_CAPSULE_HEIGHT_BLOCKS, NetherStartPlan.MAX_CAPSULE_HEIGHT_BLOCKS,
-            name + ".heightBlocks", logger
-        );
+        sanitized.sizeBlocks = clampWithWarning(sanitized.sizeBlocks, minSize, maxSize, name + ".sizeBlocks", logger);
+        sanitized.heightBlocks = clampWithWarning(sanitized.heightBlocks, minHeight, maxHeight, name + ".heightBlocks", logger);
         sanitized.lightSource = sanitized.lightSource == null ? LightSource.TORCH : sanitized.lightSource;
         sanitized.lightSpacingBlocks = clampWithWarning(
-            sanitized.lightSpacingBlocks, NetherStartPlan.MIN_CAPSULE_LIGHT_SPACING_BLOCKS,
-            NetherStartPlan.MAX_CAPSULE_LIGHT_SPACING_BLOCKS, name + ".lightSpacingBlocks", logger
+            sanitized.lightSpacingBlocks, minSpacing, maxSpacing, name + ".lightSpacingBlocks", logger
         );
         return sanitized;
     }
@@ -581,6 +585,13 @@ public final class WorldzConfig {
         sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "endStart.easyKit", logger);
         sanitized.mediumKit = sanitizeStarterKit(sanitized.mediumKit, "endStart.mediumKit", logger);
         sanitized.hardKit = sanitizeStarterKit(sanitized.hardKit, "endStart.hardKit", logger);
+        sanitized.capsule = sanitizeStarterCapsule(
+            sanitized.capsule, "endStart.capsule",
+            EndStartPlan.MIN_CAPSULE_SIZE_BLOCKS, EndStartPlan.MAX_CAPSULE_SIZE_BLOCKS,
+            EndStartPlan.MIN_CAPSULE_HEIGHT_BLOCKS, EndStartPlan.MAX_CAPSULE_HEIGHT_BLOCKS,
+            EndStartPlan.MIN_CAPSULE_LIGHT_SPACING_BLOCKS, EndStartPlan.MAX_CAPSULE_LIGHT_SPACING_BLOCKS,
+            logger
+        );
         return sanitized;
     }
 
@@ -1371,6 +1382,9 @@ public final class WorldzConfig {
         if (map.containsKey("hardKit")) {
             config.hardKit = readStarterKitConfig(map.get("hardKit"), name + ".hardKit", logger);
         }
+        if (map.containsKey("capsule")) {
+            config.capsule = readStarterCapsuleConfig(map.get("capsule"), name + ".capsule");
+        }
         return config;
     }
 
@@ -2026,6 +2040,7 @@ public final class WorldzConfig {
         values.put("easyKit", starterKitMap(config.easyKit));
         values.put("mediumKit", starterKitMap(config.mediumKit));
         values.put("hardKit", starterKitMap(config.hardKit));
+        values.put("capsule", starterCapsuleMap(config.capsule));
         return values;
     }
 
@@ -2271,7 +2286,8 @@ public final class WorldzConfig {
         return "chestTier=" + config.chestTier.serializedName()
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
-            + ", hardKit=" + starterKitSummary(config.hardKit);
+            + ", hardKit=" + starterKitSummary(config.hardKit)
+            + ", capsule=" + starterCapsuleSummary(config.capsule);
     }
 
     private static String flatSummary(FlatConfig config) {

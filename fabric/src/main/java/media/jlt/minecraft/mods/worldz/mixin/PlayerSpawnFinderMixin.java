@@ -47,12 +47,19 @@ import java.util.concurrent.CompletableFuture;
  * resolved sites -- natural search result, forced capsule, or automatic low/high-{@code spawnY}
  * capsule alike -- are already verified open-air-with-solid-floor (or an explicitly carved safe
  * shell) at the moment they're computed, so no further vanilla safety search is needed, nearby or
- * otherwise. {@code end_start} deliberately not added here -- unlike the Nether, the End's outer
- * regions are mostly void, so the same-column heightmap candidate {@code getLevelRespawnPos}
- * computes naturally re-finds the guaranteed platform's own solid floor (nothing else occupies
- * that column to intercept the downward scan first); DESIGN §32.1 already designed the platform's
- * shape around exactly this constraint ("must be real, solid, generated terrain occupying its own
- * X/Z column").
+ * otherwise.
+ *
+ * <p>{@code end_start} was originally left out of this list on the theory that the End's mostly-
+ * void outer regions would let the same-column heightmap candidate {@code getLevelRespawnPos}
+ * computes naturally re-find the guaranteed platform's own solid floor, since nothing else
+ * occupies that column to intercept the downward scan first (DESIGN §32.1). **Wrong, confirmed by
+ * Jason's real first in-game test of config 63 (2026-07-25):** the guaranteed platform is a fully
+ * enclosed shell (DESIGN §32.4's own "floor, ceiling, all four walls solid") -- its *roof* is the
+ * first solid block the same-column heightmap scan hits, same as any other solid ceiling, so
+ * vanilla lands the player standing on top of the sealed box instead of inside it. That reads as "a
+ * small platform, no chest" (the chest is sealed inside, directly below the roof the player is
+ * actually standing on) rather than the intended enclosed room. Added {@code end_start} here to
+ * match cave/Nether-start's own trusted-suggestion treatment, closing the gap.
  *
  * <p>Known, accepted simplification: this also applies to a later bed-based respawn on a
  * cave-preset or {@code nether_start} level, trusting the bed position directly rather than
@@ -69,7 +76,7 @@ abstract class PlayerSpawnFinderMixin {
     ) {
         ChunkGenerator generator = level.getChunkSource().getGenerator();
         if (generator instanceof EnvelopedChunkGenerator enveloped
-            && (enveloped.cave().enabled() || enveloped.netherStart().enabled())) {
+            && (enveloped.cave().enabled() || enveloped.netherStart().enabled() || enveloped.endStart().enabled())) {
             callback.setReturnValue(CompletableFuture.completedFuture(Vec3.atBottomCenterOf(spawnSuggestion)));
         }
     }
