@@ -6,7 +6,8 @@
   "mixins": [
     "ChunkMapMixin",
     "MinecraftServerMixin",
-    "PlayerSpawnFinderMixin"
+    "PlayerSpawnFinderMixin",
+    "WorldDimensionsMixin"
   ],
   "client": [
     "client.WorldCreationUiStateMixin"

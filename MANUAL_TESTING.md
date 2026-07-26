@@ -983,11 +983,26 @@ affected, since deep-flat has no `decoration` toggle of its own.
    vanilla superflat's own near-instant generation, since the real noise
    pipeline never runs (DESIGN §33.1).
 2. **Classic flat, thin/traditional layers**, `67-flat-classic-shallow.yaml`
-   (0.2.70+). Confirm you spawn at Y -60 on grass with only 3 blocks of
+   (0.3.8+). Confirm you spawn at Y -60 on grass with only 3 blocks of
    solid ground before bedrock. Confirm slimes *can* spawn here (wait for
    night in an unlit area) — unlike config 66's default, this stack sits
    below the Y-40 slime cutoff, confirming "avoiding slimes" is purely a
    property of layer height (DESIGN §33.3), not a separate setting.
+   **Bug found and fixed (0.3.8, Jason's real retest):** low spawn used
+   to show a very dark horizon band, all the way around, cutting the sky
+   off sharply above the grass line. Root cause, confirmed against real
+   decompiled sources: vanilla's own "dark disc" horizon plane
+   (`SkyRenderer.shouldRenderDarkDisc`) only renders below sea level
+   (Y 63) *unless* the world is flagged `isFlat` (vanilla's own superflat
+   marker, set by a plain `instanceof FlatLevelSource` check at world
+   creation) -- in which case the threshold drops to the world's real
+   floor instead. `jlt_worldz`'s own `flat`/`deep_flat` presets never
+   satisfied that check (their real generator is always
+   `EnvelopedChunkGenerator`, not `FlatLevelSource`), so a low classic-flat
+   spawn always fell below the ordinary sea-level threshold. Fixed via a
+   `WorldDimensionsMixin` that marks a `flat`/`deep_flat` Overworld
+   `isFlat` the same way vanilla's own superflat is. Confirm the horizon
+   now looks like an ordinary open sky all the way down, no dark band.
 3. **Classic flat, shallow underground structures**, `68-flat-structures-shallow.yaml`
    (0.3.7+, GOAL 22). Locate a trial chamber or ancient city (both
    forced eligible, `structureOverrides` set explicitly) over only 10

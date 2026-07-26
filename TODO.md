@@ -2799,6 +2799,48 @@ revisit. Full design: DESIGN §31.9.
       `minecraft:villages` set, unlike older Minecraft versions -- so no
       second bug there, just worth noting for future reference since the
       README/config comments predate this discovery.
+- [x] 16.4 **Follow-up (0.3.8, same 2026-07-26 retest, config 67):** Jason
+      confirmed 16.3's structure fix (config 66 -- villages on the surface,
+      strongholds underground/exposed, "like vanilla") and separately
+      confirmed config 67 works, but flagged "low spawn has a very dark
+      horizon". Confirmed by pulling his own screenshots directly from the
+      Prism instance's screenshots folder: a solid black band wraps the
+      entire horizon at low Y (e.g. Y -31), while an equivalent screenshot
+      at the default Y 64 spawn showed a perfectly ordinary sky with none.
+      Root-caused against real decompiled sources: vanilla's own
+      `SkyRenderer.shouldRenderDarkDisc` renders a black "dark disc" plane
+      whenever the camera's eye Y is below `ClientLevel.ClientLevelData.
+      getHorizonHeight`, which returns the level's real minimum Y if the
+      world is flagged `isFlat` -- but a hardcoded sea level of `63.0`
+      otherwise. `isFlat` (`PrimaryLevelData.isFlatWorld()`) is computed
+      exactly once at world creation, by `WorldDimensions.
+      specialWorldProperty`'s plain `generator instanceof FlatLevelSource`
+      check -- `jlt_worldz`'s own `flat`/`deep_flat` presets never satisfy
+      this (their real generator is always `EnvelopedChunkGenerator`, a
+      delegate wrapper vanilla has no way to recognize as "flat"), so
+      every Worldz flat world fell into the ordinary sea-level-63 branch
+      regardless of its own configured surface height -- invisible at the
+      default Y 64 spawn (64 - 63 >= 0), glaring at config 67's Y -60
+      (-60 - 63 is deeply negative). **Fixed:** new `WorldDimensionsMixin`
+      (fabric + neoforge, registered in both loaders' mixin configs)
+      injects at the `RETURN` of `WorldDimensions.bake` and upgrades the
+      result to `SpecialWorldProperty.FLAT` whenever the baked Overworld's
+      generator is an `EnvelopedChunkGenerator` with `flat.enabled()` or
+      `deepFlat.enabled()` true and vanilla's own check hadn't already
+      flagged something else -- mirrors `PlayerSpawnFinderMixin`'s own
+      per-loader-duplicate, `CallbackInfoReturnable`-based convention
+      exactly. Deep-flat included proactively (same uniformly-flat-surface
+      shape as classic flat, GOAL 16) even though config 67 was the only
+      one actually retested. Verified two ways: a full multiloader build,
+      and a real `:fabric:runServer` smoke test against the plain default
+      world (confirms the mixin doesn't break `WorldDimensions.bake`'s
+      ordinary, non-flat path -- ran to "Done" with no mixin-apply errors
+      or crash); did not stand up a real flat-world server run to confirm
+      the positive case directly, since that needs a real client to
+      actually see the horizon. **[Jason] retest outstanding** on config
+      67 (delete the old save first -- `isFlat` is baked into `level.dat`
+      at world creation, same as every other setting here, so an existing
+      save won't retroactively pick this up).
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 
