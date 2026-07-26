@@ -777,7 +777,7 @@ only where you spawn (and which chest tier you get) differ.
    reasonably discoverable, or whether hard tier needs a small guaranteed
    nudge after all — DESIGN §31.6 flags these defaults as a first pass,
    not signed off.
-4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.2+ —
+4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.3+ —
    see Phase 14b acceptance below for the full capsule/starter-base
    checklist). Confirm the server log shows the capsule was built
    automatically because `spawnY` is close to the Nether's own floor, not
@@ -798,7 +798,7 @@ default), configs 86/87 via an explicit `forceCapsule: true` at an
 ordinary `spawnY` (32).
 
 1. **Default capsule shape, automatic low-spawnY default**,
-   `62-nether-start-capsule-fallback.yaml` (0.3.2+, no `forceCapsule` set
+   `62-nether-start-capsule-fallback.yaml` (0.3.3+, no `forceCapsule` set
    at all). Confirm the server log explains the capsule was built because
    `spawnY` (4) is close to the Nether's own floor — not "explicitly
    requested" and not "search failed, falling back". Confirm you spawn
@@ -812,7 +812,7 @@ ordinary `spawnY` (32).
    a furnace + crafting table are both present nearby with room to walk
    between all three.
 2. **Explicit request at a safe spawnY + `glow_lichen` + custom size**,
-   `86-nether-start-capsule-glow-lichen.yaml` (0.3.2+, `spawnY: 32`,
+   `86-nether-start-capsule-glow-lichen.yaml` (0.3.3+, `spawnY: 32`,
    `forceCapsule: true`). Confirm the server log shows the capsule was
    explicitly requested this time (a different log line from config 62's
    automatic one) — proving `forceCapsule` still works independently of
@@ -822,7 +822,7 @@ ordinary `spawnY` (32).
    a few spaced points — including both faces at each corner. Confirm
    it's bright enough to see across the whole room.
 3. **Hanging lanterns + hard tier**,
-   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.2+, `spawnY: 32`,
+   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.3+, `spawnY: 32`,
    `forceCapsule: true`). Confirm every lantern is genuinely suspended
    from the ceiling, not floor-standing — this is the one detail most
    worth double-checking closely. Confirm they form a spaced grid, not a

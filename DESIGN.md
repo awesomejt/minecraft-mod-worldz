@@ -4286,8 +4286,14 @@ than `searchCaveCavity`'s:
 - **Search** (`searchNetherStartSite`, force-generates each candidate
   chunk exactly like `searchCaveCavity`): scans a vertical window around
   a configurable target Y (`NetherStartConfig.spawnY`, default 32 —
-  comfortably between the Y-0 floor and the Y-128 bedrock ceiling, same
-  "fixture-verified default" posture as `CavePlan.DEFAULT_SPAWN_DEPTH_Y`)
+  comfortably between the Y-0 floor and the Y-255 top of the world
+  (**correction, 2026-07-26**: the Nether's real `height` is `256`, not
+  `128` — `128` is `logicalHeight`, a different value used elsewhere
+  (world-border/portal-search math), not the actual build limit; verified
+  directly against `DimensionTypes.bootstrap`'s real constructor call.
+  `MIN_SPAWN_Y`/`MAX_SPAWN_Y` (1/120) already sit safely inside either
+  number either way, so this was a wrong comment, not a functional bug),
+  same "fixture-verified default" posture as `CavePlan.DEFAULT_SPAWN_DEPTH_Y`)
   for a solid, non-fluid floor with two clear blocks above it (identical
   bar to `searchCaveCavity`), **plus** a horizontal check that the floor
   block's four neighbors at the same Y are not lava — cheap, and rules

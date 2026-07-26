@@ -2347,20 +2347,38 @@ revisit. Full design: DESIGN §31.9.
       follow-up): Jason widened the ask from "`forceCapsule` makes config
       62 deterministic" to "the capsule should just be the default
       behavior in cases like config 62" — full reasoning and the new
-      `isSpawnYTooCloseToNetherBoundary` pure-logic method: DESIGN §31.9's
-      "Automatic default for a low (or high) spawnY" subsection. Config
-      62 no longer sets `forceCapsule` at all (spawnY 4 alone triggers
-      it); configs 86/87 moved to `spawnY: 32` (an ordinary, non-boundary
-      depth) so they isolate the *explicit* `forceCapsule` pathway instead
-      of accidentally relying on the same low-spawnY default config 62
-      now demonstrates. New `NetherStartDeploymentTest` (JUnit, pure —
-      the one piece of this class's search logic that doesn't need a real
-      `ServerLevel`, unlike its search siblings). "Really dangerous
-      scenarios unsuitable for a fresh start" beyond Y-proximity (e.g.
-      basalt-delta starting biomes) is explicitly **not** covered by this
-      — no biome-awareness exists in the search at all; that's GOALS 27's
-      already-logged, still-undesigned 2026-07-25 feedback point 3, not
-      re-solved here.
+      `NetherStartPlan.spawnYTooCloseToBoundary` pure-logic method: DESIGN
+      §31.9's "Automatic default for a low (or high) spawnY" subsection.
+      Config 62 no longer sets `forceCapsule` at all (spawnY 4 alone
+      triggers it); configs 86/87 moved to `spawnY: 32` (an ordinary,
+      non-boundary depth) so they isolate the *explicit* `forceCapsule`
+      pathway instead of accidentally relying on the same low-spawnY
+      default config 62 now demonstrates. New tests in
+      `NetherStartPlanTest` (pure logic, no `ServerLevel` needed — a
+      first attempt living in `NetherStartDeployment`/the worldgen
+      package instead failed with `NoClassDefFoundError`, since plain
+      JUnit has no Minecraft classes on its classpath; moved into the
+      `logic` package instead, matching why every other Deployment/
+      Manager class in this codebase keeps its own pure logic out of the
+      worldgen package entirely). "Really dangerous scenarios unsuitable
+      for a fresh start" beyond Y-proximity (e.g. basalt-delta starting
+      biomes) is explicitly **not** covered by this — no biome-awareness
+      exists in the search at all; that's GOALS 27's already-logged,
+      still-undesigned 2026-07-25 feedback point 3, not re-solved here.
+- [x] 14b.5 **Fixed (0.3.3): `nether_start` spawns ignored the resolved
+      site, landing far above it** — found via Jason's config 62 retest
+      (twice, screenshots). Same bug class as the earlier cave-preset fix
+      (0.2.85), just never extended to `nether_start`:
+      `PlayerSpawnFinderMixin` only checked `enveloped.cave().enabled()`.
+      Now also checks `enveloped.netherStart().enabled()` on both
+      loaders. Full root cause and fix: Deviation log below (2026-07-26).
+      Also corrected a wrong "Y-128 bedrock ceiling" assumption baked
+      into `NetherStartPlan`/DESIGN §31.4 since Phase 14.1 — the Nether's
+      real top is Y-255 (`height` 256, not `logicalHeight` 128) — a
+      documentation-only fix, `MIN_SPAWN_Y`/`MAX_SPAWN_Y` already sat
+      safely clear of either number. **[Jason] retest on a fresh config-62
+      world outstanding** (the 0.3.2 world is from the buggy jar and
+      should be deleted, not reopened).
 
 ## Phase 15 — End-start challenge (GOALS 34)
 
@@ -3239,6 +3257,50 @@ pulled earlier if Jason wants a fun quick win.**
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
 
+- 2026-07-26 (Phase 14b acceptance, fixed 0.3.3) — **`nether_start`
+  spawned players far above the resolved site**, found via Jason's config
+  62 retest (twice, with screenshots): "config 62 puts me much higher."
+  Root cause, confirmed against the real 26.2 decompiled
+  `PlayerSpawnFinder.java`/`DimensionTypes.java`: `PlayerSpawnFinder
+  .findSpawn` never simply trusts its own suggested position first — it
+  always tries `getLevelRespawnPos` at the *same* X/Z first (the default
+  `spawnRadius` gamerule is `0`, so there's no real candidate-count
+  jitter, just this one same-column recompute), which discards the
+  suggestion's Y entirely and scans down from the chunk generator's own
+  `getSpawnHeight()` — used because the Nether's real dimension type has
+  `hasCeiling = true` (verified as the *third* constructor argument in
+  `DimensionTypes.bootstrap`, not inferable from `height`/`logicalHeight`
+  alone; also corrects an unverified assumption already baked into
+  `NetherStartPlan`'s own `MAX_SPAWN_Y` comment/DESIGN §31 text, "Y-128
+  bedrock ceiling" — the Nether's real `height` is `256`, `minY` is `0`,
+  so the actual top is Y 255, not 128; `logicalHeight` (128) is a
+  different value used elsewhere, not the real build limit. Not fixed
+  here — `MIN_SPAWN_Y`/`MAX_SPAWN_Y` (1/120) already sit safely inside
+  either number, so no functional bug follows from the wrong comment,
+  just a documentation correction owed for a future pass). This exact
+  "vanilla search overrides the resolved suggestion" bug class was
+  already found and fixed for the `cave` preset (0.2.85, "Cave-preset
+  spawn silently landed on the surface") but the fix
+  (`PlayerSpawnFinderMixin`) only ever checked `enveloped.cave()
+  .enabled()` — `nether_start` was never covered, and its own natural-
+  search/capsule Y was small enough (and Nether terrain chaotic enough in
+  Y) that the divergence was never obviously wrong before the capsule
+  became the common case this session (Phase 14b's `forceCapsule` +
+  automatic low/high-`spawnY` default, TODO 14b.4) made a tiny, isolated
+  structure the norm instead of a natural pocket blending into its own
+  surroundings. **Fix:** `PlayerSpawnFinderMixin` (both loaders) now also
+  short-circuits when `enveloped.netherStart().enabled()`, trusting
+  `NetherStartDeployment`'s resolved site outright exactly like `cave`
+  already does. `end_start` deliberately not touched — DESIGN §32.1
+  already designed its guaranteed platform's shape around this same
+  same-column-recompute behavior (a real solid floor at that exact X/Z,
+  with nothing else in the column to intercept the scan, so the void
+  around it in the End means the recomputed candidate naturally re-finds
+  the platform anyway). Full multiloader build + `./gradlew test` green,
+  redeployed to Worldz-Test. **[Jason] retest on a fresh config-62 world
+  outstanding** — the old world created under the buggy 0.3.2 jar should
+  be deleted, not reopened, per this project's own new-worlds-only
+  policy.
 - 2026-07-25 (Phase 11 acceptance retest, fixed 0.3.1) — **The guaranteed
   village's own island could report an unrelated real-seed biome on F3**,
   found via Jason's fourth config-58 retest: a clearly savanna-style

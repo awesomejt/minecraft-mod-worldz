@@ -423,8 +423,13 @@ item above as one coordinated config-schema pass.
     biome-based danger (e.g. basalt deltas) is still the separate,
     undesigned 2026-07-25 feedback point 3 above. Not yet on the
     Customize screen (config-only), not yet generalized beyond
-    Nether-start. **[Jason] in-game acceptance outstanding** (TODO
-    14b.3, configs 62/86/87).
+    Nether-start. **Fixed (0.3.3, TODO 14b.5):** Jason's first in-game
+    retest found the resolved capsule site was ignored entirely, spawning
+    him far above it — vanilla's own `PlayerSpawnFinder` was never
+    trusted for `nether_start` the way it already was for `cave`, only
+    surfacing now that the capsule became the common case. **[Jason]
+    retest on a fresh config-62 world still outstanding** (TODO 14b.3,
+    configs 62/86/87).
 
 ### Lava-Ocean Challenge:
 

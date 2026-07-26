@@ -33,7 +33,12 @@ public record NetherStartPlan(
     LightSource capsuleLightSource,
     int capsuleLightSpacingBlocks
 ) {
-    /** Fixture-verified default: comfortably between the Y-0 floor and the Y-128 bedrock ceiling. */
+    /**
+     * Fixture-verified default: comfortably between the Y-0 floor and the real Nether world top
+     * (2026-07-26 correction: Y-255, not the previously-assumed Y-128 -- {@code
+     * DimensionTypes.bootstrap}'s real Nether registration is {@code height = 256}, {@code minY =
+     * 0}; 128 is {@code logicalHeight}, a different value, not the actual build limit).
+     */
     public static final int DEFAULT_SPAWN_Y = 32;
     /** Smallest supported search-target Y -- keeps well clear of the Nether's own bedrock floor. */
     public static final int MIN_SPAWN_Y = 1;
@@ -123,7 +128,7 @@ public record NetherStartPlan(
      * NetherStartDeployment.resolveSite} to skip the natural search and build the guaranteed
      * capsule directly. Kept here (not in {@code NetherStartDeployment}) purely so it stays
      * JUnit-testable without a real {@code ServerLevel} on the classpath -- takes the level's real
-     * bounds as plain ints rather than hardcoding the Nether's usual 0/128, so it stays correct
+     * bounds as plain ints rather than hardcoding the Nether's usual 0/255, so it stays correct
      * even if a datapack ever changes Nether world height.
      *
      * @param levelMinY the level's actual minimum Y
