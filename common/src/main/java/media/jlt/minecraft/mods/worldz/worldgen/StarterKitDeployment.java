@@ -134,19 +134,22 @@ final class StarterKitDeployment {
     }
 
     /**
-     * Places a filled chest set into the floor directly beneath the resolved safe Nether-start
-     * site (GOALS 27, DESIGN §31.6) -- the same "replace solid ground within the already-
-     * validated safe area" placement {@link #spawnCaveStarterChest} uses. Filled from the selected
-     * difficulty tier's essentials/extras; no biome-driven item the way {@link #spawnStarterChest}
-     * has -- Nether-start has no biome concept of its own to key off (single fixed dimension).
-     * Called once, only for a new {@code nether_start} world.
+     * Places a filled chest at the resolved Nether-start chest position (GOALS 27, DESIGN §31.6)
+     * -- directly beneath the player's own spawn column for a natural pocket (the same "replace
+     * solid ground within the already-validated safe area" placement {@link
+     * #spawnCaveStarterChest} uses), or lining the capsule's south wall alongside the furnace and
+     * crafting table for the guaranteed capsule (GOALS 41, 2026-07-27 follow-up -- {@code
+     * NetherStartDeployment.Site} already resolves the right position for either case, so this
+     * method no longer needs to know which one it got). Filled from the selected difficulty
+     * tier's essentials/extras; no biome-driven item the way {@link #spawnStarterChest} has --
+     * Nether-start has no biome concept of its own to key off (single fixed dimension). Called
+     * once, only for a new {@code nether_start} world.
      *
      * @param nether the Nether server level
-     * @param site the resolved safe spawn site (DESIGN §31.4)
+     * @param pos the resolved chest position (DESIGN §31.4/§31.9)
      * @param netherStart the world's resolved Nether-start plan
      */
-    static void spawnNetherStartChest(ServerLevel nether, BlockPos site, NetherStartPlan netherStart) {
-        BlockPos pos = site.below();
+    static void spawnNetherStartChest(ServerLevel nether, BlockPos pos, NetherStartPlan netherStart) {
         nether.setBlock(pos, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
 
         StarterKitPlan plan = resolvePlan(tierConfig(WorldzCommon.config().netherStart, netherStart.chestTier()));

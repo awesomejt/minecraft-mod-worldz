@@ -11,15 +11,17 @@
 #     close to the floor/ceiling and the capsule is being built directly
 #     -- the natural-pocket search should never have run at all.
 #  2. Confirm you spawn inside a decent-sized, fully enclosed nether-brick
-#     room (default 5x5x5 exterior, so a 3x3x3 interior -- floor, ceiling,
-#     and all four walls solid, not just corner posts), lit by glowstone
-#     (the Nether-appropriate default light source) embedded in the walls.
+#     room (default 7x7x5 exterior, so a 5x5x3 interior as seen from
+#     inside -- floor, ceiling, and all four walls solid, not just corner
+#     posts), lit by one glowstone block centered on each of the north/
+#     east/west walls (the south wall is the furniture wall, see step 3).
 #     Confirm there's no way to fall into surrounding lava/void from
 #     inside it -- it's genuinely sealed.
-#  3. Confirm a chest sits in the floor beneath your feet (easy tier: 10
-#     obsidian, 1 flint and steel, bread, a wooden pickaxe, plus random
-#     extras), and a furnace + crafting table are placed nearby, with
-#     enough room to walk between all three.
+#  3. Confirm the chest (easy tier: 10 obsidian, 1 flint and steel, bread,
+#     a wooden pickaxe, plus random extras), a furnace, and a crafting
+#     table all line the south wall together, centered -- chest in the
+#     middle, furnace and crafting table on either side -- not the chest
+#     alone underfoot with no room to move.
 #  4. Confirm the capsule doesn't overwrite anything unexpected outside
 #     its own footprint.
 netherStart:

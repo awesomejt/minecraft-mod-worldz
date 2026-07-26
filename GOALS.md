@@ -427,9 +427,18 @@ item above as one coordinated config-schema pass.
     retest found the resolved capsule site was ignored entirely, spawning
     him far above it — vanilla's own `PlayerSpawnFinder` was never
     trusted for `nether_start` the way it already was for `cave`, only
-    surfacing now that the capsule became the common case. **[Jason]
-    retest on a fresh config-62 world still outstanding** (TODO 14b.3,
-    configs 62/86/87).
+    surfacing now that the capsule became the common case.
+    **Follow-up fixed (0.3.4, TODO 14b.6):** his second real in-game
+    retest (once the spawn placement itself was fixed) found the chest
+    still underfoot with furniture scattered instead of "along one wall
+    - centered", wall lights landing at uncentered offsets instead of
+    "in the middle of the walls", and the default room too small ("5x5
+    and 3 tall as seen from inside"). All three fixed — furniture now
+    lines the south wall together; each wall lights independently,
+    centered on its own span; default capsule widened to a 5x5 interior;
+    plus a new size threshold (6x6 interior) past which ceiling/floor
+    lights join the walls. **[Jason] retest still outstanding** (TODO
+    14b.3, configs 62/86/87 — delete the pre-0.3.4 worlds first).
 
 ### Lava-Ocean Challenge:
 

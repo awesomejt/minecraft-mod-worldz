@@ -777,7 +777,7 @@ only where you spawn (and which chest tier you get) differ.
    reasonably discoverable, or whether hard tier needs a small guaranteed
    nudge after all — DESIGN §31.6 flags these defaults as a first pass,
    not signed off.
-4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.3+ —
+4. **Capsule fallback**, `62-nether-start-capsule-fallback.yaml` (0.3.4+ —
    see Phase 14b acceptance below for the full capsule/starter-base
    checklist). Confirm the server log shows the capsule was built
    automatically because `spawnY` is close to the Nether's own floor, not
@@ -798,21 +798,23 @@ default), configs 86/87 via an explicit `forceCapsule: true` at an
 ordinary `spawnY` (32).
 
 1. **Default capsule shape, automatic low-spawnY default**,
-   `62-nether-start-capsule-fallback.yaml` (0.3.3+, no `forceCapsule` set
+   `62-nether-start-capsule-fallback.yaml` (0.3.4+, no `forceCapsule` set
    at all). Confirm the server log explains the capsule was built because
    `spawnY` (4) is close to the Nether's own floor — not "explicitly
    requested" and not "search failed, falling back". Confirm you spawn
-   inside a decent-sized (5x5x5 exterior, 3x3x3 interior), fully enclosed
-   nether-brick room — floor, ceiling, and all four walls solid, not just
-   corner posts, no way to fall into surrounding lava/void from inside
-   it. Confirm the room is genuinely lit (glowstone embedded in the
-   walls) — you should not need to place your own light source to see
-   clearly. Confirm the chest (easy tier: 10 obsidian, flint and steel,
-   bread, a wooden pickaxe, plus extras) sits in the floor as before, and
-   a furnace + crafting table are both present nearby with room to walk
-   between all three.
+   inside a decent-sized (7x7x5 exterior, a 5x5x3 room as seen from
+   inside), fully enclosed nether-brick room — floor, ceiling, and all
+   four walls solid, not just corner posts, no way to fall into
+   surrounding lava/void from inside it. Confirm the room is genuinely
+   lit by one glowstone block centered on each of the north/east/west
+   walls (not off to one side) — you should not need to place your own
+   light source to see clearly. Confirm the chest (easy tier: 10
+   obsidian, flint and steel, bread, a wooden pickaxe, plus extras), a
+   furnace, and a crafting table all line the south wall together,
+   centered — chest in the middle, furnace and crafting table on either
+   side — not the chest alone underfoot with nothing around it.
 2. **Explicit request at a safe spawnY + `glow_lichen` + custom size**,
-   `86-nether-start-capsule-glow-lichen.yaml` (0.3.3+, `spawnY: 32`,
+   `86-nether-start-capsule-glow-lichen.yaml` (0.3.4+, `spawnY: 32`,
    `forceCapsule: true`). Confirm the server log shows the capsule was
    explicitly requested this time (a different log line from config 62's
    automatic one) — proving `forceCapsule` still works independently of
@@ -820,15 +822,20 @@ ordinary `spawnY` (32).
    interior floor, one block taller). Confirm glow lichen coats the
    entire interior surface — every wall, the floor, and the ceiling, not
    a few spaced points — including both faces at each corner. Confirm
-   it's bright enough to see across the whole room.
-3. **Hanging lanterns + hard tier**,
-   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.3+, `spawnY: 32`,
-   `forceCapsule: true`). Confirm every lantern is genuinely suspended
-   from the ceiling, not floor-standing — this is the one detail most
-   worth double-checking closely. Confirm they form a spaced grid, not a
-   wall ring. Confirm the hard-tier chest has no obsidian/flint and steel
-   but does include a wooden pickaxe (GOALS 41: every tier guarantees at
-   least a pickaxe to break out with).
+   it's bright enough to see across the whole room. Confirm the chest,
+   furnace, and crafting table still line one wall together here too.
+3. **Hanging lanterns, dense-room floor grid, + hard tier**,
+   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.4+, `spawnY: 32`,
+   `forceCapsule: true`, `sizeBlocks: 9` — a 7x7 interior, at the 6x6
+   "dense room" threshold). Confirm every ceiling lantern is genuinely
+   suspended, not floor-standing — this is the one detail most worth
+   double-checking closely. Confirm the ceiling lanterns form a real
+   spaced 3x3 grid (not just one in the middle, and not a wall ring).
+   Confirm a *second* grid of floor-standing lanterns also exists (the
+   dense-room addition), but not at the exact center of the floor where
+   you spawn. Confirm the hard-tier chest has no obsidian/flint and
+   steel but does include a wooden pickaxe (GOALS 41: every tier
+   guarantees at least a pickaxe to break out with).
 4. **Breaking out**, any of the three. Confirm the guaranteed pickaxe can
    actually mine the capsule's nether-brick walls (wooden pickaxe is the
    vanilla minimum tier nether bricks require) — the intended "at least a

@@ -16,7 +16,6 @@ import net.minecraft.world.level.block.WallTorchBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelData;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,8 +38,19 @@ final class NetherStartDeployment {
     private static final SpawnSearchPlan SEARCH_PLAN = new SpawnSearchPlan(320, 16, 8);
     /** How far above/below {@link NetherStartPlan#spawnY()} the site search scans per column. */
     private static final int SEARCH_VERTICAL_TOLERANCE = 16;
+    /** Interior footprint (either dimension) at or above which ceiling/floor lights join the wall lights (Jason, 2026-07-27). */
+    private static final int DENSE_ROOM_INTERIOR_THRESHOLD = 6;
 
     private NetherStartDeployment() {
+    }
+
+    /**
+     * The resolved safe Nether spawn site, plus where the starter chest goes -- distinct positions
+     * for the guaranteed capsule (chest lines the furniture wall, DESIGN §31.9's 2026-07-27
+     * follow-up) but the same position (one below the player) for a natural pocket, matching
+     * {@code SpawnOriginManager}'s own cave-chest precedent.
+     */
+    record Site(BlockPos spawnPos, BlockPos chestPos) {
     }
 
     /**
@@ -51,12 +61,12 @@ final class NetherStartDeployment {
      * @param overworld the Overworld server level (holds the world's stored default spawn)
      * @param nether the Nether server level (where the site itself is resolved)
      * @param netherStart the enabled Nether-start plan
-     * @return the resolved safe site, for the caller to place the starter chest at (TODO 14.2b)
+     * @return the resolved site, for the caller to place the starter chest at (TODO 14.2b)
      */
-    static BlockPos resolveAndRedirectSpawn(ServerLevel overworld, ServerLevel nether, NetherStartPlan netherStart) {
-        BlockPos site = resolveSite(nether, netherStart);
-        overworld.getServer().setRespawnData(LevelData.RespawnData.of(Level.NETHER, site, 0.0F, 0.0F));
-        WorldzCommon.LOGGER.info("Set the GOALS 27 Nether-start world spawn at {}.", site);
+    static Site resolveAndRedirectSpawn(ServerLevel overworld, ServerLevel nether, NetherStartPlan netherStart) {
+        Site site = resolveSite(nether, netherStart);
+        overworld.getServer().setRespawnData(LevelData.RespawnData.of(Level.NETHER, site.spawnPos(), 0.0F, 0.0F));
+        WorldzCommon.LOGGER.info("Set the GOALS 27 Nether-start world spawn at {}.", site.spawnPos());
         return site;
     }
 
@@ -69,7 +79,7 @@ final class NetherStartDeployment {
      * with rare access to caves") -- in either case the capsule is built directly and the (real,
      * forced-chunk-generation-costly) natural search never runs at all.
      */
-    private static BlockPos resolveSite(ServerLevel nether, NetherStartPlan netherStart) {
+    private static Site resolveSite(ServerLevel nether, NetherStartPlan netherStart) {
         if (netherStart.forceCapsule()) {
             WorldzCommon.LOGGER.info("Nether-start capsule explicitly requested (forceCapsule); skipping the natural safe-site search.");
             return buildNetherStartCapsule(nether, netherStart);
@@ -85,7 +95,8 @@ final class NetherStartDeployment {
         for (SpawnSearchPlan.Offset offset : SEARCH_PLAN.offsetsInSearchOrder()) {
             Optional<BlockPos> found = searchNetherStartSite(nether, netherStart, offset.x(), offset.z());
             if (found.isPresent()) {
-                return found.get();
+                BlockPos spawnPos = found.get();
+                return new Site(spawnPos, spawnPos.below());
             }
         }
         WorldzCommon.LOGGER.warn(
@@ -143,14 +154,16 @@ final class NetherStartDeployment {
      * spawn -- reuses {@code SpawnOriginManager.buildCaveCapsule}'s fully-enclosed-shell principle
      * (the Phase 7 test-2 lesson: corner posts alone aren't a real shell), swapping stone for
      * nether bricks -- the same material {@code ProgressionGuarantees.buildBlazeSite} already
-     * uses for its own guaranteed Nether room. Unlike the original 1x1-interior shape, this now
-     * builds a "decent sized enclosure" (GOALS 41), lit by default so the player never spawns in
-     * darkness (GOALS 41.2), with a chest (placed by the caller, {@code
-     * StarterKitDeployment.spawnNetherStartChest}, directly beneath the returned site as before),
-     * plus an always-present furnace and crafting table (GOALS 41) once the room is large enough
-     * to hold them without crowding the player's own spawn column.
+     * uses for its own guaranteed Nether room. Builds a "decent sized enclosure" (GOALS 41), lit
+     * by default so the player never spawns in darkness (GOALS 41.2). The chest, furnace, and
+     * crafting table all line the south wall together, centered (2026-07-27 follow-up -- the
+     * chest used to sit directly underfoot, "no room to walk around"/"spawns on top of the chest"
+     * per Jason's own acceptance notes); the south wall is deliberately excluded from
+     * {@link #placeCapsuleLighting} to avoid the furniture and a wall fixture landing on the same
+     * tile. Only placed once the room is big enough to hold all three without crowding the
+     * player's own spawn column (center).
      */
-    private static BlockPos buildNetherStartCapsule(ServerLevel nether, NetherStartPlan netherStart) {
+    private static Site buildNetherStartCapsule(ServerLevel nether, NetherStartPlan netherStart) {
         BlockPos center = new BlockPos(0, netherStart.spawnY(), 0);
         nether.getChunk(0, 0);
         int radius = (netherStart.capsuleSizeBlocks() - 1) / 2;
@@ -165,27 +178,39 @@ final class NetherStartDeployment {
                 }
             }
         }
-        int interiorHalfWidth = radius - 1;
-        if (interiorHalfWidth >= 1) {
-            nether.setBlock(center.offset(1, 0, 0), Blocks.FURNACE.defaultBlockState(), Block.UPDATE_ALL);
-            nether.setBlock(center.offset(-1, 0, 0), Blocks.CRAFTING_TABLE.defaultBlockState(), Block.UPDATE_ALL);
-        }
         placeCapsuleLighting(nether, netherStart, center, radius, height);
-        return center;
+        int interiorHalfWidth = radius - 1;
+        BlockPos chestPos = center.offset(0, 0, 1);
+        if (interiorHalfWidth >= 1) {
+            int southRow = interiorHalfWidth;
+            chestPos = center.offset(0, 0, southRow);
+            nether.setBlock(center.offset(-1, 0, southRow), Blocks.CRAFTING_TABLE.defaultBlockState(), Block.UPDATE_ALL);
+            nether.setBlock(center.offset(1, 0, southRow), Blocks.FURNACE.defaultBlockState(), Block.UPDATE_ALL);
+        }
+        return new Site(center, chestPos);
     }
 
     /**
      * Lights the capsule's interior per {@link NetherStartPlan#capsuleLightSource()} (GOALS 41.2)
-     * so it never spawns the player in darkness. Placement rule depends on the source: {@link
-     * LightSource#GLOW_LICHEN} coats the entire interior surface; {@link LightSource#LANTERN}/
-     * {@link LightSource#SOUL_LANTERN} hang from the ceiling in a grid (Jason, 2026-07-25: "those
-     * can be hung from the ceiling"); everything else is spaced every {@code
-     * capsuleLightSpacingBlocks} around the room's own wall ring. Deliberately does not attempt to
-     * compute an exact light level -- the default spacing/brightness combination keeps a
-     * default-sized room comfortably lit throughout. Known, accepted limitation (GOALS 41.2,
-     * carried over from Jason's own acceptance note): Nether mobs that ignore light level
-     * entirely when choosing a spawn location (zombified piglins in particular) can still spawn
-     * inside a fully lit capsule -- no amount of interior lighting prevents that.
+     * so it never spawns the player in darkness. The north/east/west walls each get one fixture
+     * centered on that wall (or several, symmetric about the center, for a wall long enough to
+     * need more at the configured spacing -- {@link NetherStartPlan#centeredCapsuleOffsets}); the
+     * south wall is skipped (the furniture wall, {@link #buildNetherStartCapsule}). Placement rule
+     * depends on the source: {@link LightSource#GLOW_LICHEN} coats the entire interior surface regardless of
+     * room size; {@link LightSource#LANTERN}/{@link LightSource#SOUL_LANTERN} hang from the
+     * ceiling (Jason, 2026-07-25: "those can be hung from the ceiling"); everything else embeds
+     * into (glowstone/shroomlight) or mounts one cell in from (torch) the wall itself. A room with
+     * either interior dimension at or above {@link #DENSE_ROOM_INTERIOR_THRESHOLD} also gets
+     * ceiling/floor lights in addition to the walls (Jason, 2026-07-27: "larger area structures
+     * would need light blocks in the ceiling and floor... but not for anything under 6x6 spaces")
+     * -- skipped for {@link LightSource#TORCH}'s ceiling specifically, since a standing torch has
+     * no vanilla ceiling-mounted variant; the exact center of the floor grid is always skipped too,
+     * so a floor-standing fixture never lands on the player's own spawn column. Deliberately does
+     * not attempt to compute an exact light level -- the default size/spacing/brightness
+     * combination keeps a default-sized room comfortably lit throughout. Known, accepted
+     * limitation (GOALS 41.2, carried over from Jason's own acceptance note): Nether mobs that
+     * ignore light level entirely when choosing a spawn location (zombified piglins in particular)
+     * can still spawn inside a fully lit capsule -- no amount of interior lighting prevents that.
      */
     private static void placeCapsuleLighting(ServerLevel nether, NetherStartPlan netherStart, BlockPos center, int radius, int height) {
         LightSource source = netherStart.capsuleLightSource();
@@ -194,30 +219,66 @@ final class NetherStartDeployment {
             coatInteriorWithGlowLichen(nether, center, radius, height);
             return;
         }
+        int interiorHalfWidth = Math.max(radius - 1, 0);
+        boolean denseRoom = (2 * interiorHalfWidth + 1) >= DENSE_ROOM_INTERIOR_THRESHOLD;
         if (source == LightSource.LANTERN || source == LightSource.SOUL_LANTERN) {
-            hangLanternGrid(nether, center, radius, height, spacing, source == LightSource.SOUL_LANTERN ? Blocks.SOUL_LANTERN : Blocks.LANTERN);
+            Block lanternBlock = source == LightSource.SOUL_LANTERN ? Blocks.SOUL_LANTERN : Blocks.LANTERN;
+            placeGrid(nether, center, interiorHalfWidth, spacing, height - 1, lanternBlock.defaultBlockState().setValue(LanternBlock.HANGING, true), false);
+            if (denseRoom) {
+                placeGrid(nether, center, interiorHalfWidth, spacing, 0, lanternBlock.defaultBlockState().setValue(LanternBlock.HANGING, false), true);
+            }
             return;
         }
         int midY = (height - 1) / 2;
+        List<Integer> offsets = NetherStartPlan.centeredCapsuleOffsets(interiorHalfWidth, spacing);
         if (source == LightSource.TORCH) {
-            for (PerimeterPoint point : wallPerimeter(Math.max(radius - 1, 0), spacing)) {
-                BlockState torch = Blocks.WALL_TORCH.defaultBlockState().setValue(WallTorchBlock.FACING, point.outward());
-                nether.setBlock(center.offset(point.dx(), midY, point.dz()), torch, Block.UPDATE_ALL);
+            int inner = Math.max(radius - 1, 0);
+            for (int offset : offsets) {
+                place(nether, center, offset, midY, -inner, wallTorch(Direction.SOUTH));
+                place(nether, center, inner, midY, offset, wallTorch(Direction.WEST));
+                place(nether, center, -inner, midY, offset, wallTorch(Direction.EAST));
+            }
+            if (denseRoom) {
+                placeGrid(nether, center, interiorHalfWidth, spacing, 0, Blocks.TORCH.defaultBlockState(), true);
             }
             return;
         }
         Block embedded = source == LightSource.SHROOMLIGHT ? Blocks.SHROOMLIGHT : Blocks.GLOWSTONE;
-        for (PerimeterPoint point : wallPerimeter(radius, spacing)) {
-            nether.setBlock(center.offset(point.dx(), midY, point.dz()), embedded.defaultBlockState(), Block.UPDATE_ALL);
+        BlockState embeddedState = embedded.defaultBlockState();
+        for (int offset : offsets) {
+            place(nether, center, offset, midY, -radius, embeddedState);
+            place(nether, center, radius, midY, offset, embeddedState);
+            place(nether, center, -radius, midY, offset, embeddedState);
+        }
+        if (denseRoom) {
+            placeGrid(nether, center, interiorHalfWidth, spacing, -1, embeddedState, false);
+            placeGrid(nether, center, interiorHalfWidth, spacing, height, embeddedState, false);
         }
     }
 
-    private static void hangLanternGrid(ServerLevel nether, BlockPos center, int radius, int height, int spacing, Block lanternBlock) {
-        int half = Math.max(radius - 1, 0);
-        BlockState lantern = lanternBlock.defaultBlockState().setValue(LanternBlock.HANGING, true);
-        for (int dx = -half; dx <= half; dx += spacing) {
-            for (int dz = -half; dz <= half; dz += spacing) {
-                nether.setBlock(center.offset(dx, height - 1, dz), lantern, Block.UPDATE_ALL);
+    private static BlockState wallTorch(Direction facing) {
+        return Blocks.WALL_TORCH.defaultBlockState().setValue(WallTorchBlock.FACING, facing);
+    }
+
+    private static void place(ServerLevel nether, BlockPos center, int dx, int dy, int dz, BlockState state) {
+        nether.setBlock(center.offset(dx, dy, dz), state, Block.UPDATE_ALL);
+    }
+
+    /**
+     * Places {@code state} at every point of a symmetric, centered {@code dx}/{@code dz} grid
+     * (see {@link NetherStartPlan#centeredCapsuleOffsets}) at the fixed interior height {@code dy}
+     * -- used for the ceiling/floor lighting a dense room adds on top of its wall lights, and for
+     * the lantern grid every room gets regardless of size. When {@code skipCenter} is set, the
+     * exact center point ({@code dx = dz = 0}) is left alone, so a floor-standing fixture never
+     * lands on the player's own spawn column.
+     */
+    private static void placeGrid(ServerLevel nether, BlockPos center, int half, int spacing, int dy, BlockState state, boolean skipCenter) {
+        for (int dx : NetherStartPlan.centeredCapsuleOffsets(half, spacing)) {
+            for (int dz : NetherStartPlan.centeredCapsuleOffsets(half, spacing)) {
+                if (skipCenter && dx == 0 && dz == 0) {
+                    continue;
+                }
+                place(nether, center, dx, dy, dz, state);
             }
         }
     }
@@ -248,41 +309,5 @@ final class NetherStartDeployment {
         int ny = dy + direction.getStepY();
         int nz = dz + direction.getStepZ();
         return ny == -1 || ny == height || Math.abs(nx) == radius || Math.abs(nz) == radius;
-    }
-
-    /** One spaced wall-ring placement point, tagged with the direction pointing into the room. */
-    private record PerimeterPoint(int dx, int dz, Direction outward) {
-    }
-
-    /**
-     * Walks the square ring at the given radius (clockwise from the northwest corner) and returns
-     * every {@code spacing}-th point, each tagged with the {@link Direction} a fixture mounted
-     * there should face to point into the room. A ring radius of 0 or less (the smallest supported
-     * capsule, a single interior column) degenerates to one single point -- there is no room for a
-     * real ring, so exactly one fixture is placed regardless of {@code spacing}.
-     */
-    private static List<PerimeterPoint> wallPerimeter(int radius, int spacing) {
-        List<PerimeterPoint> ring = new ArrayList<>();
-        if (radius <= 0) {
-            ring.add(new PerimeterPoint(0, 0, Direction.SOUTH));
-            return ring;
-        }
-        for (int dx = -radius; dx < radius; dx++) {
-            ring.add(new PerimeterPoint(dx, -radius, Direction.SOUTH));
-        }
-        for (int dz = -radius; dz < radius; dz++) {
-            ring.add(new PerimeterPoint(radius, dz, Direction.WEST));
-        }
-        for (int dx = radius; dx > -radius; dx--) {
-            ring.add(new PerimeterPoint(dx, radius, Direction.NORTH));
-        }
-        for (int dz = radius; dz > -radius; dz--) {
-            ring.add(new PerimeterPoint(-radius, dz, Direction.EAST));
-        }
-        List<PerimeterPoint> spaced = new ArrayList<>();
-        for (int i = 0; i < ring.size(); i += spacing) {
-            spaced.add(ring.get(i));
-        }
-        return spaced;
     }
 }

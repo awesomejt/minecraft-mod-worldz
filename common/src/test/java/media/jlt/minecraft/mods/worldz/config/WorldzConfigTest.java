@@ -594,7 +594,7 @@ class WorldzConfigTest {
                 + ", hardKit=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
                 + " extras=[minecraft:gold_ingot:2, minecraft:torch:4], extrasCount=1"
                 + ", forceCapsule=false"
-                + ", capsule=sizeBlocks=5, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
+                + ", capsule=sizeBlocks=7, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
                 + ", endStart=chestTier=medium"
                 + ", easyKit=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
                 + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1],"

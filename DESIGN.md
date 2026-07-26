@@ -4510,13 +4510,17 @@ still ran and could still succeed) — his follow-up made the ask explicit:
 requiring `forceCapsule` for this, `resolveSite` now also skips straight
 to the capsule whenever `spawnY`'s own vertical search window would
 already be truncated by the Nether's hard floor or ceiling — new pure,
-JUnit-tested `NetherStartDeployment.isSpawnYTooCloseToNetherBoundary(
-levelMinY, levelMaxY, spawnY, toleranceBlocks)`, reusing
-`SEARCH_VERTICAL_TOLERANCE` (16) as both the search's own half-height and
-the "close enough to matter" threshold — a cheap proxy for "terrain here
-is dense, real open pockets are rare" without needing an actual
-terrain-density heuristic. Takes the level's real bounds as plain ints
-rather than hardcoding the Nether's usual 0/128, so it stays correct even
+JUnit-tested `NetherStartPlan.spawnYTooCloseToBoundary(levelMinY,
+levelMaxY, toleranceBlocks)` (moved from `NetherStartDeployment` into
+`NetherStartPlan` after a first attempt in the worldgen package failed
+with `NoClassDefFoundError` — plain JUnit has no Minecraft classes on its
+classpath, so any pure logic worth testing needs to live in `logic`, not
+`worldgen`), reusing `SEARCH_VERTICAL_TOLERANCE` (16) as both the
+search's own half-height and the "close enough to matter" threshold — a
+cheap proxy for "terrain here is dense, real open pockets are rare"
+without needing an actual terrain-density heuristic. Takes the level's
+real bounds as plain ints rather than hardcoding the Nether's usual
+0/255 (not 0/128 — see the correction below), so it stays correct even
 if a datapack ever changes Nether world height. At the default `spawnY`
 (32) this is false and behavior is unchanged; config 62 (`spawnY: 4`) no
 longer needs `forceCapsule` at all — it's automatic. Symmetric with the
@@ -4529,6 +4533,76 @@ is starting-biome hazard (a vast basalt delta being brutal even on the
 easy chest tier, GOALS 27's 2026-07-25 feedback point 3, still an open,
 undesigned item — the search has no biome awareness at all today). Not
 conflated with this Y-based fix; tracked separately.
+
+**Furniture arrangement, default size, and light centering (2026-07-27
+follow-up).** Jason's first real in-game retest of the fixed capsule
+(0.3.3, config 62) found three more things worth fixing before calling
+this pass done:
+
+1. **Chest underfoot, furniture scattered.** The chest still replaced the
+   floor directly beneath the player (unchanged since the very first
+   1x1-interior capsule), while the furnace/crafting table sat in a row
+   through the room's own center — not "along one wall" the way real
+   furniture placement reads naturally. Jason's ask: "Place all the
+   provided blocks (furnace, crafting table, and chest) along one wall -
+   centered if possible." Resolved by picking the south wall as a
+   dedicated "furniture wall": chest in the middle (`center.offset(0, 0,
+   southRow)`), crafting table and furnace flanking it on either side,
+   at `southRow = radius - 1` (the interior row immediately bordering
+   the south wall). `NetherStartDeployment.resolveSite`/`buildNetherStartCapsule`
+   now return a new `Site(spawnPos, chestPos)` record instead of a bare
+   `BlockPos`, since the chest position and the player's own spawn point
+   are no longer the same tile for the capsule case (they still are for
+   a natural pocket, which keeps `spawnPos.below()` unchanged — no wall
+   concept there). `StarterKitDeployment.spawnNetherStartChest`'s own
+   parameter renamed from `site` to `pos` to match — it no longer
+   computes `.below()` itself, since the caller now always passes the
+   exact final chest position.
+2. **Lights landed at odd offsets, not centered.** The old wall-lighting
+   algorithm walked the entire room perimeter as one continuous ring and
+   took every `lightSpacingBlocks`-th point from a fixed starting corner
+   — for the old default (interior 3x3, `lightSpacingBlocks: 5`), the
+   16-point ring produced points at indices 0/5/10/15, which land on
+   different, uncentered offsets per wall depending on where each wall
+   happens to fall in that shared index sequence (confirmed by hand: the
+   north wall got a literal corner, east/west got `dz = -1`, not `0`) --
+   exactly Jason's "offset on the right and left walls" report. Replaced
+   with new `NetherStartPlan.centeredCapsuleOffsets(half, spacing)`:
+   always includes `0` (so the default case is exactly one fixture, dead
+   center — "light source in the middle of the walls"), then symmetric
+   `±spacing`, `±2*spacing`, ... pairs for a wall long enough to need
+   more. Each of the north/east/west walls is now lit independently
+   using this same centered set (the south wall is skipped entirely --
+   it's the furniture wall, avoiding a fixture and a chest/furnace/table
+   landing on the same tile).
+3. **Default size widened, and a size/lighting-density rule for bigger
+   rooms.** Jason: "Let's make the default capsule size a bit larger -
+   5x5 and 3 tall as seen from inside" — `capsuleSizeBlocks` has always
+   been the *exterior* footprint including walls (interior = this minus
+   2, `NetherStartPlan`'s own javadoc already said so, but
+   `StarterCapsuleConfig.sizeBlocks`'s own field comment wrongly said
+   "interior" — fixed as a documentation correction while touching this
+   file, likely the actual source of the confusion). `DEFAULT_CAPSULE_SIZE_BLOCKS`
+   raised from 5 to 7 (5x5 interior); `capsuleHeightBlocks` already meant
+   interior height, so 3 needed no change. Also new: "larger area
+   structures would need light blocks in the ceiling and floor in
+   addition to the wall - but not for anything under 6x6 spaces" — new
+   `DENSE_ROOM_INTERIOR_THRESHOLD` (6) gate: once either interior
+   dimension reaches it, `GLOWSTONE`/`SHROOMLIGHT` also embed into the
+   floor/ceiling shell (trivial, both are ordinary opaque blocks with no
+   directional property to get right) and `LANTERN`/`SOUL_LANTERN` gain
+   a second, floor-standing grid (`HANGING = false`) alongside their
+   existing ceiling one. `TORCH` gets floor-standing torches
+   (`Blocks.TORCH`, not the wall variant) but deliberately *no* ceiling
+   pass — vanilla has no upside-down/ceiling-mounted torch variant, a
+   real engine constraint, not a design choice. Every floor grid
+   (torch/lantern/embedded alike) skips its own exact center point, so a
+   floor-standing fixture never lands on the player's own spawn column.
+   `GLOW_LICHEN` already covered the entire interior surface regardless
+   of size, so the threshold doesn't apply to it at all. Furniture is
+   always placed *after* lighting, so it correctly overwrites any
+   dense-room floor light or glow-lichen tile that would otherwise have
+   landed on the furniture wall's own row.
 
 **Known first-pass gap, deferred not forgotten:** none of `forceCapsule`/
 `capsule.*` are exposed on `NetherStartCustomizeScreen` yet — only the

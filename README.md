@@ -778,16 +778,17 @@ skipped entirely rather than spending real chunk generation on a search
 unlikely to succeed.
 
 The capsule is a decent-sized, fully enclosed, always-lit nether-brick
-room (default 5x5x5 exterior, 3x3x3 interior), furnished with a furnace
-and crafting table alongside the starter chest, once the room is big
-enough to hold them without crowding your spawn point. Its size, light
+room (default 7x7x5 exterior, a 5x5x3 room as seen from inside). The
+chest, a furnace, and a crafting table all line one wall together,
+centered (chest in the middle), once the room is big enough to hold them
+without crowding your own spawn point in the center. Its size, light
 source, and light spacing are all configurable:
 
 | Setting | Default | Description |
 |---|---|---|
-| `capsule.sizeBlocks` | `5` | Total exterior footprint (must be odd); interior is this minus 2. |
-| `capsule.heightBlocks` | `3` | Interior height. |
-| `capsule.lightSource` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen`. Torches/glowstone/shroomlight space themselves around the wall ring; lanterns always hang from the ceiling in a grid; `glow_lichen` ignores spacing and coats the entire interior surface instead. |
+| `capsule.sizeBlocks` | `7` | Total exterior footprint, walls included (must be odd); the room you actually stand in is this minus 2 — the default `7` means a 5x5 interior. |
+| `capsule.heightBlocks` | `3` | Interior height (already "as seen from inside" — no adjustment needed). |
+| `capsule.lightSource` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen`. Torches/glowstone/shroomlight each light the north/east/west walls with one fixture centered on that wall (more, symmetric about the center, if the wall is long enough for the configured spacing); lanterns always hang from the ceiling in a grid instead; `glow_lichen` ignores spacing and coats the entire interior surface. The south wall (where the chest/furnace/crafting table sit) never gets a wall fixture. A room with either interior dimension at 6 or more also gets ceiling/floor lights in addition to the walls (floor-standing only for `torch` — there's no vanilla ceiling-mounted torch). |
 | `capsule.lightSpacingBlocks` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
 
 **Death and respawn work like this:** the world's own default spawn point

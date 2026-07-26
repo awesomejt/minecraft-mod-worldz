@@ -1,18 +1,28 @@
 # GOALS 41 (Phase 14b, DESIGN §31.9): lantern lighting -- unlike torches
 # or embedded glowstone, lanterns always hang from the ceiling (Jason,
 # 2026-07-25: "those can be hung from the ceiling"), never wall-mounted,
-# spaced across the interior in a 2D grid rather than a wall ring. Also
-# exercises the hard chest tier's guaranteed pickaxe (no other guaranteed
-# tool/obsidian this tier). **Select "Worldz: Nether Start"**.
+# spaced across the interior in a 2D grid rather than a wall ring. `sizeBlocks: 9`
+# (7x7 interior) is large enough (>= 6x6, the 2026-07-27 "dense room"
+# threshold) to need more than one lantern per axis at `lightSpacingBlocks:
+# 3`, and to also get a second, floor-standing lantern grid in addition to
+# the ceiling one. Also exercises the hard chest tier's guaranteed pickaxe
+# (no other guaranteed tool/obsidian this tier). **Select "Worldz: Nether
+# Start"**.
 #
 # Steps once in-game:
-#  1. Confirm every lantern is genuinely hanging from the ceiling (visibly
+#  1. Confirm the ceiling lanterns are genuinely hanging (visibly
 #     suspended, not sitting on the floor) -- this is the one detail worth
 #     double-checking closely, since a floor-standing lantern would mean
 #     the HANGING blockstate wasn't actually being set.
-#  2. Confirm the lanterns form a spaced grid across the room, not a wall
-#     ring like torches/glowstone would.
-#  3. Confirm the hard-tier chest holds no obsidian or flint and steel,
+#  2. Confirm the ceiling lanterns form a real spaced 3x3 grid across the
+#     room (not just one in the middle, and not a wall ring like
+#     torches/glowstone would use).
+#  3. Confirm a second grid of *floor-standing* lanterns also exists
+#     (room is large enough for the dense-room ceiling+floor addition) --
+#     but not at the exact center of the floor, where the player spawns.
+#  4. Confirm the chest, furnace, and crafting table all line one wall
+#     together, centered -- not the chest alone underfoot.
+#  5. Confirm the hard-tier chest holds no obsidian or flint and steel,
 #     but does hold a wooden pickaxe (GOALS 41: every tier guarantees at
 #     least a pickaxe to break out with) plus bread and a random extra.
 netherStart:
@@ -20,7 +30,7 @@ netherStart:
   chestTier: hard
   forceCapsule: true
   capsule:
-    sizeBlocks: 7
+    sizeBlocks: 9
     heightBlocks: 3
     lightSource: lantern
     lightSpacingBlocks: 3

@@ -10,9 +10,15 @@ import media.jlt.minecraft.mods.worldz.logic.LightSource;
  * FloatingIslandsConfig}'s own "single current owner, generic shape" precedent.
  */
 public final class StarterCapsuleConfig {
-    /** Interior footprint width/depth, in blocks -- must stay odd so the room has a true center column. */
-    public int sizeBlocks = 5;
-    /** Interior height, in blocks. */
+    /**
+     * Total *exterior* footprint width/depth, walls included, in blocks -- must stay odd so the
+     * room has a true center column; the interior you actually stand in is this minus 2 (2026-07-27
+     * correction: an earlier version of this comment wrongly said "interior" -- the code has always
+     * treated it as exterior, see {@code NetherStartDeployment.buildNetherStartCapsule}'s own
+     * {@code radius = (capsuleSizeBlocks - 1) / 2}). Default 7 means a 5x5 interior room.
+     */
+    public int sizeBlocks = 7;
+    /** Interior height, in blocks (this one already meant "as seen from inside" from the start). */
     public int heightBlocks = 3;
     /** Which block lights the capsule; defaults are overridden per world type ("appropriate to the world type", Jason 2026-07-25). */
     public LightSource lightSource = LightSource.TORCH;

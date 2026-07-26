@@ -186,8 +186,8 @@ public final class WorldLimitManager {
             netherResult = initializeBorder(nether, plan.nether(), "Nether", 0, 0);
             ProgressionGuarantees.ensureBlazeAccess(nether, plan.nether(), exterior.nether(), netherStrip, netherSkyIsland);
             if (needsNetherStart) {
-                BlockPos site = NetherStartDeployment.resolveAndRedirectSpawn(overworld, nether, netherStart);
-                StarterKitDeployment.spawnNetherStartChest(nether, site, netherStart);
+                NetherStartDeployment.Site site = NetherStartDeployment.resolveAndRedirectSpawn(overworld, nether, netherStart);
+                StarterKitDeployment.spawnNetherStartChest(nether, site.chestPos(), netherStart);
             }
         }
         if (end != null) {

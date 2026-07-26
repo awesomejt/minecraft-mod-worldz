@@ -2,6 +2,9 @@ package media.jlt.minecraft.mods.worldz.logic;
 
 import media.jlt.minecraft.mods.worldz.config.NetherStartConfig;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The {@code nether_start} typed preset's resolved settings (GOALS 27, DESIGN §31): a guaranteed
  * safe Nether spawn site plus a difficulty-tiered starter chest there, Overworld otherwise
@@ -44,8 +47,13 @@ public record NetherStartPlan(
     public static final int MIN_SPAWN_Y = 1;
     /** Largest supported search-target Y -- keeps well clear of the Nether's own bedrock ceiling. */
     public static final int MAX_SPAWN_Y = 120;
-    /** Default capsule interior footprint (DESIGN §31.9's "decent sized enclosure"). */
-    public static final int DEFAULT_CAPSULE_SIZE_BLOCKS = 5;
+    /**
+     * Default capsule *exterior* footprint, walls included (DESIGN §31.9's "decent sized
+     * enclosure"; widened 2026-07-27 from 5 to 7 per Jason's own "5x5... as seen from inside" --
+     * this field is the exterior, so a 5x5 interior needs 7 here, interior always being this minus
+     * 2, {@link #capsuleSizeBlocks}'s own javadoc).
+     */
+    public static final int DEFAULT_CAPSULE_SIZE_BLOCKS = 7;
     /** Smallest supported capsule footprint -- the original 1x1-interior shape (a 1-thick shell around a single column). */
     public static final int MIN_CAPSULE_SIZE_BLOCKS = 3;
     /** Largest supported capsule footprint -- generous but still "a small base", not a hall. */
@@ -138,5 +146,28 @@ public record NetherStartPlan(
      */
     public boolean spawnYTooCloseToBoundary(int levelMinY, int levelMaxY, int toleranceBlocks) {
         return spawnY - toleranceBlocks < levelMinY || spawnY + toleranceBlocks > levelMaxY;
+    }
+
+    /**
+     * Symmetric offsets centered on 0 (always included), then {@code ±spacing}, {@code
+     * ±2*spacing}, and so on while still within {@code [-half, half]} -- e.g. {@code half = 2,
+     * spacing = 5} yields just {@code [0]} (Jason, 2026-07-27: "light source in the middle of the
+     * walls"); {@code half = 5, spacing = 5} yields {@code [-5, 0, 5]}. Used by {@code
+     * NetherStartDeployment} to center the capsule's wall/ceiling/floor lights and the lantern
+     * grid; kept here (not there) for the same JUnit-testability reason as {@link
+     * #spawnYTooCloseToBoundary} -- pure int math, no {@code ServerLevel} needed.
+     *
+     * @param half how far the offsets may extend from 0 in either direction
+     * @param spacing the step between successive offsets
+     * @return the symmetric offset list, always including 0
+     */
+    public static List<Integer> centeredCapsuleOffsets(int half, int spacing) {
+        List<Integer> offsets = new ArrayList<>();
+        offsets.add(0);
+        for (int step = spacing; step <= half; step += spacing) {
+            offsets.add(-step);
+            offsets.add(step);
+        }
+        return offsets;
     }
 }

@@ -3,6 +3,8 @@ package media.jlt.minecraft.mods.worldz.logic;
 import media.jlt.minecraft.mods.worldz.config.NetherStartConfig;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -113,6 +115,25 @@ class NetherStartPlanTest {
         // 16 - 16 == 0 == levelMinY, not < it -- the window is not truncated, so this stays false.
         assertFalse(plan(16, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
         assertFalse(plan(112, 5, 3).spawnYTooCloseToBoundary(0, 128, 16));
+    }
+
+    @Test
+    void centeredCapsuleOffsetsAlwaysIncludesTheCenter() {
+        // The default capsule (interior half-width 2) with the default spacing (5): only one
+        // fixture fits, dead center on the wall -- Jason's own "light source in the middle".
+        assertEquals(List.of(0), NetherStartPlan.centeredCapsuleOffsets(2, 5));
+    }
+
+    @Test
+    void centeredCapsuleOffsetsAddSymmetricPairsWithinBounds() {
+        assertEquals(List.of(0, -5, 5), NetherStartPlan.centeredCapsuleOffsets(5, 5));
+        assertEquals(List.of(0, -5, 5, -10, 10), NetherStartPlan.centeredCapsuleOffsets(11, 5));
+    }
+
+    @Test
+    void centeredCapsuleOffsetsHandleAZeroHalfWidth() {
+        // The smallest capsule (a single interior column) -- no room for anything but the center.
+        assertEquals(List.of(0), NetherStartPlan.centeredCapsuleOffsets(0, 5));
     }
 
     private static NetherStartPlan plan(int spawnY, int capsuleSizeBlocks, int capsuleHeightBlocks) {

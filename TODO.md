@@ -2379,6 +2379,50 @@ revisit. Full design: DESIGN §31.9.
       safely clear of either number. **[Jason] retest on a fresh config-62
       world outstanding** (the 0.3.2 world is from the buggy jar and
       should be deleted, not reopened).
+- [x] 14b.6 **Furniture arrangement + light centering + default size,
+      0.3.4** — Jason's real in-game retest of the fixed capsule (0.3.3,
+      config 62) found three more things: chest still underfoot with
+      furniture scattered through the room instead of "along one wall -
+      centered"; wall lights landed at uncentered offsets ("offset on the
+      right and left walls") instead of "in the middle of the walls";
+      default room too small ("5x5 and 3 tall as seen from inside").
+      Full design: DESIGN §31.9's 2026-07-27 follow-up.
+      - Chest/furnace/crafting table now all line the south wall,
+        centered (chest in the middle); `NetherStartDeployment.Site`
+        (new record: `spawnPos`, `chestPos`) replaces the old bare
+        `BlockPos` return, since the two are no longer the same tile for
+        the capsule case. `StarterKitDeployment.spawnNetherStartChest`
+        takes the exact final chest position now instead of computing
+        `.below()` itself.
+      - New `NetherStartPlan.centeredCapsuleOffsets(half, spacing)`
+        (pure, JUnit-tested) replaces the old ring-walk-with-global-
+        spacing algorithm that produced the uncentered offsets; each of
+        north/east/west is now lit independently, centered on its own
+        span (south is the furniture wall, always skipped for lighting).
+      - `DEFAULT_CAPSULE_SIZE_BLOCKS` raised 5→7 (5x5 interior, matching
+        "as seen from inside"); found and fixed a real documentation bug
+        while at it — `StarterCapsuleConfig.sizeBlocks`'s own comment
+        wrongly said "interior" when the field (and all the actual code)
+        has always meant the exterior footprint, likely the real source
+        of Jason's "5x5" being ambiguous in the first place.
+      - New `DENSE_ROOM_INTERIOR_THRESHOLD` (6): a room with either
+        interior dimension at or above it also gets ceiling/floor lights
+        in addition to the walls (Jason: "larger area structures would
+        need light blocks in the ceiling and floor... but not for
+        anything under 6x6 spaces") — glowstone/shroomlight embed
+        directly, lanterns gain a second floor-standing grid, torches
+        get floor-standing (not ceiling — no vanilla variant exists)
+        fixtures; every floor grid skips its own exact center so nothing
+        lands on the player's own spawn column; `glow_lichen` already
+        covered everything regardless of size, unaffected.
+      - Configs 62/86/87 updated to match (62's own description/room
+        size; 87 widened to a 7x7 interior so it actually demonstrates a
+        multi-point lantern grid, which also exercises the new
+        dense-room floor-lantern pass). New `NetherStartPlanTest` cases
+        for `centeredCapsuleOffsets`. Full multiloader build +
+        `./gradlew test` green, redeployed to Worldz-Test. **[Jason]
+        retest outstanding** — delete the 0.3.3 config-62/86/87 worlds
+        first, they predate this fix.
 
 ## Phase 15 — End-start challenge (GOALS 34)
 
