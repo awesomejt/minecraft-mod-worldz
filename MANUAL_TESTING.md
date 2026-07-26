@@ -1020,18 +1020,25 @@ affected, since deep-flat has no `decoration` toggle of its own.
    permanent constraint of any single-biome `flat` world, not something
    this config's shallow stone broke. Keep this result in mind for #6.
 4. **Deep flat default**, `69-deep-flat-default.yaml` (GOAL 16 core,
-   0.3.9+ (0.2.71-0.3.8 crashed generating almost any chunk away from
+   0.3.11+ (0.2.71-0.3.8 crashed generating almost any chunk away from
    spawn's own (0,0) — `applyDeepFlatCap` passed absolute world
    coordinates into `Heightmap.update`, which needs chunk-local 0-15;
-   fixed in `EnvelopedChunkGenerator`, delete any pre-0.3.9 deep-flat
-   saves first)). Confirm the surface is flat everywhere at Y 64. Dig straight
-   down from spawn and confirm you pass through ~3 blocks of cap into
-   real stone, then find genuine, varied real caves/ravines. Explore for
-   a real cave biome (lush caves, dripstone, deep dark). Find a river or
-   ocean biome (F3) and confirm it shows as water at the flat surface,
-   not paved over — **watch specifically for water draining down into any
-   nearby cave opening near the surface** (DESIGN §33.4's known
-   first-pass gap) and report back if you see it. Confirm spawn itself
+   0.3.9-0.3.10 no longer crashed but could show small dirt-rimmed ponds
+   punched through the flat grass, or water draining down into a cave
+   breach under a river/ocean — both fixed via a bounded `sealBeneathCap`
+   pass, DESIGN §33.4; delete any pre-0.3.11 deep-flat saves first)).
+   Confirm the surface is flat everywhere at Y 64, with no stray ponds or
+   pits breaking the flat grass. Dig straight down from spawn and confirm
+   you pass through ~3 blocks of cap into real stone, then find genuine,
+   varied real caves/ravines. Explore for a real cave biome (lush caves,
+   dripstone, deep dark). Find a river or ocean biome (F3) — note that
+   `riverExclusionRadiusBlocks` (default 512) keeps a large area around
+   spawn land-capped regardless of the real biome underneath, so look
+   well past that radius — and confirm it shows as water at the flat
+   surface, not paved over. A real cave breach immediately under the
+   water should no longer drain it away (fixed, DESIGN §33.4); a
+   genuinely deeper cave system further down still floods normally, same
+   as any ordinary vanilla body of water. Confirm spawn itself
    lands exactly at Y 64, not wherever the real underlying terrain
    height happens to be.
 5. **Deep flat, rivers disabled**, `70-deep-flat-no-rivers.yaml`

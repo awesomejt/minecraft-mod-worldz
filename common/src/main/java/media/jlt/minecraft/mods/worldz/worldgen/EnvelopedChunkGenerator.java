@@ -1136,9 +1136,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
      * at or above {@link DeepFlatPlan#surfaceY()} to air, paints the cap layer stack immediately
      * below it -- a water fill instead of the land cap where the real biome is a river/ocean
      * (unless within {@link DeepFlatPlan#riverExclusionRadiusBlocks()} of the origin, or {@link
-     * DeepFlatPlan#riversEnabled()} is off). A land-capped column also gets {@link
-     * #sealBeneathCap} run immediately below the band, so a shallow natural pond/lake doesn't
-     * punch a hole through the flat grass surface. Everything beyond that bounded seal is
+     * DeepFlatPlan#riversEnabled()} is off). Every column also gets {@link #sealBeneathCap} run
+     * immediately below the band, so a shallow natural pond/lake doesn't punch a hole through the
+     * flat grass surface, and a river/ocean's freshly painted water doesn't drain straight down
+     * into a real cave breach sitting right beneath it. Everything beyond that bounded seal is
      * untouched real terrain: caves, cave biomes, aquifers, ores, and structures at their natural
      * depth.
      */
@@ -1184,9 +1185,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                     oceanFloor.update(localX, y, localZ, state);
                     worldSurface.update(localX, y, localZ, state);
                 }
-                if (!waterCap) {
-                    sealBeneathCap(chunk, pos, x, z, surfaceY - capThickness);
-                }
+                sealBeneathCap(chunk, pos, x, z, surfaceY - capThickness);
             }
         }
     }
@@ -1195,18 +1194,23 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static final int SEAL_DEPTH_BLOCKS = 8;
 
     /**
-     * Bug found and fixed 2026-07-26, Jason's real config 69 retest: a small natural pond/lake
+     * Two bugs found and fixed 2026-07-26, Jason's real config 69 retest, both from the same root
+     * cause: {@link #applyDeepFlatCap}'s band paint only ever overwrites its own configured
+     * thickness and never checked what's immediately beneath it. First, a small natural pond/lake
      * (unrelated to any river/ocean biome -- just ordinary terrain-noise low ground) whose real
      * depth dipped below the shallow default land cap (4 blocks, {@code dirt:3}+{@code
      * grass_block:1}) punched a visible hole with real water straight through the otherwise-flat
-     * grass surface, since {@link #applyDeepFlatCap}'s band paint only ever overwrites its own
-     * configured thickness and never checks what's immediately beneath it. Continues downward
-     * from directly below the freshly painted land-cap band, replacing any immediately-connected
-     * open pocket (air, or a liquid such as water) with solid stone until hitting the first
-     * genuinely solid block, bounded to {@link #SEAL_DEPTH_BLOCKS} so real caves still start a
-     * little further down exactly as GOAL 16 intends ("dig through the cap... into real stone,
-     * then real caves eventually appear") -- a deeper real cave or aquifer beyond that bound is
-     * left completely untouched.
+     * grass surface. Second -- confirming DESIGN §33.4's previously-only-theoretical "water
+     * draining into caves" gap -- a river/ocean's water-cap band, painted directly above whatever
+     * real terrain already existed there, drained straight down via ordinary fluid physics
+     * whenever a real cave breach sat right beneath it. Continues downward from directly below
+     * the freshly painted band (either kind), replacing any immediately-connected open pocket (air
+     * or a liquid) with solid stone until hitting the first genuinely solid block, bounded to
+     * {@link #SEAL_DEPTH_BLOCKS} so real caves still start a little further down exactly as GOAL
+     * 16 intends ("dig through the cap... into real stone, then real caves eventually appear") --
+     * a deeper real cave or aquifer beyond that bound is left completely untouched, so a river or
+     * ocean sitting over a genuinely deep cave system still floods it, same as any ordinary body
+     * of water in vanilla; this only closes the immediate, cap-boundary-adjacent breach.
      */
     private static void sealBeneathCap(ChunkAccess chunk, BlockPos.MutableBlockPos pos, int x, int z, int bandBottomY) {
         BlockState stone = Blocks.STONE.defaultBlockState();

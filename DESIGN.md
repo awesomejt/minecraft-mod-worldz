@@ -5070,20 +5070,31 @@ place it, which for every underground-structure set is already below
 `surfaceY` in the overwhelming majority of columns as long as `surfaceY`
 is set at a reasonable height).
 
-**Sealing beneath a land-capped column** (`sealBeneathCap`, found and
-fixed 2026-07-26, Jason's real config 69 retest, TODO 16.7): the band
+**Sealing beneath the cap band** (`sealBeneathCap`, found and fixed
+2026-07-26, Jason's real config 69 retest, TODO 16.7/16.8): the band
 paint above only ever overwrites its own configured thickness and never
-checked what was immediately beneath it, so an ordinary terrain-noise
-low spot (a small natural pond, unrelated to any river/ocean biome) whose
-real depth dipped below the shallow default land cap punched a visible
-hole with real water straight through the otherwise-flat grass surface.
-Fixed by continuing downward immediately below a land-capped column's
-band, replacing any immediately-connected open pocket (air or a liquid)
-with solid stone until hitting the first genuinely solid block, bounded
-to 8 blocks so real caves still start a little further down exactly as
-this section's own "dig through the cap... into real stone, then real
-caves eventually appear" already promises — a deeper real cave or
-aquifer beyond that bound is left completely untouched.
+checked what was immediately beneath it. Two real gaps shared this same
+root cause: an ordinary terrain-noise low spot (a small natural pond,
+unrelated to any river/ocean biome) whose real depth dipped below the
+shallow default land cap punched a visible hole with real water straight
+through the otherwise-flat grass surface; and a river/ocean's water-cap
+band, painted directly above whatever real terrain already existed
+there, drained straight down via ordinary fluid physics whenever a real
+cave breach sat right beneath it — this second one *was* already a known,
+documented first-pass gap (this section originally shipped with it
+undefended), now confirmed with real evidence rather than just
+theorized. Fixed by continuing downward immediately below every capped
+column's band (land or water), replacing any immediately-connected open
+pocket (air or a liquid) with solid stone until hitting the first
+genuinely solid block, bounded to 8 blocks so real caves still start a
+little further down exactly as this section's own "dig through the
+cap... into real stone, then real caves eventually appear" already
+promises. A deeper real cave or aquifer beyond that bound is left
+completely untouched, so a river or ocean sitting over a genuinely deep
+cave system still floods it, same as any ordinary body of water would in
+vanilla — this is a bounded mitigation of the *immediate*,
+cap-boundary-adjacent breach, not a claim that every possible drainage
+path is now closed.
 
 **Implementation notes (found while building 16.2b, correcting this
 section's first draft):**

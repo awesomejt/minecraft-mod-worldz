@@ -11,19 +11,26 @@
 #
 # Steps once in-game:
 #  1. Confirm the surface is flat everywhere at Y 64 (dirt+grass cap) --
-#     no hills or mountains visible anywhere.
+#     no hills or mountains visible anywhere, and no stray dirt-rimmed
+#     ponds/pits punched through it either (0.3.10 fix: a shallow
+#     natural pond dipping below the 4-block cap used to punch straight
+#     through -- now sealed with stone down to a bounded depth,
+#     DESIGN §33.4).
 #  2. Dig straight down from spawn. Confirm you pass through the cap
 #     layers (~3 blocks) into real stone, then real caves/ravines
 #     eventually appear -- genuinely varied, not a repeating pattern.
 #  3. Explore underground for a cave biome (lush caves, dripstone caves,
 #     deep dark) -- confirm real vanilla variety, the same as any normal
 #     world.
-#  4. Find a river or ocean biome at a distance from spawn (F3 biome
-#     readout) and confirm it shows as water at the flat surface, not
-#     paved over with the land cap -- this is riversEnabled's default
-#     (on). Watch specifically for water draining down into any nearby
-#     cave opening near the surface (DESIGN §33.4's known first-pass
-#     gap) and report back if you see it.
+#  4. Find a river or ocean biome well past `riverExclusionRadiusBlocks`
+#     (512 blocks from spawn, below) and confirm it shows as water at
+#     the flat surface, not paved over with the land cap -- this is
+#     riversEnabled's default (on). A real cave breach immediately
+#     beneath the water should no longer drain it away (0.3.11 fix,
+#     DESIGN §33.4's previously-known first-pass gap, now bounded); a
+#     genuinely deeper cave system further down still floods normally,
+#     same as any ordinary vanilla body of water, so report back if you
+#     find a case where the immediate seal doesn't hold.
 #  5. Confirm spawn itself lands exactly on the flat surface (Y 64), not
 #     wherever the real underlying terrain height happens to be.
 deepFlat:

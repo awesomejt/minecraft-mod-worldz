@@ -2929,6 +2929,27 @@ revisit. Full design: DESIGN §31.9.
       this commit -- see 16.8 for that half (water draining into caves).
       Full multiloader build green. **[Jason] retest outstanding** on
       config 69 (delete any pre-0.3.10 save first).
+- [x] 16.8 **Follow-up (0.3.11, same config 69 retest):** Jason's
+      screenshots also showed water pouring down through a breach into a
+      lit cave with exposed lava at Y28, near a river/ocean-tagged
+      surface column -- a real, now-confirmed instance of DESIGN
+      §33.4's previously-only-theoretical "water draining into caves"
+      gap, root-caused the same way as 16.7: the water-cap band is
+      painted directly above whatever real terrain already exists there,
+      with no check for an open pocket immediately beneath it, so a real
+      cave breach right under a river/ocean column lets the freshly
+      placed water flow straight down via ordinary fluid physics.
+      **Fixed:** `sealBeneathCap` (16.7) now also runs for water-capped
+      columns, not just land-capped ones -- same bounded 8-block seal,
+      same reasoning (a real cave breach immediately under the surface
+      gets patched; a real cave system starting further down is
+      untouched, so the water still floods it exactly like any ordinary
+      body of water sitting over a distant cave system would in vanilla
+      -- this only closes the *immediate*, cap-boundary-adjacent
+      breach). DESIGN §33.4 updated to describe this as a bounded
+      mitigation rather than a fully open gap. Full multiloader build
+      green. **[Jason] retest outstanding** on config 69 (delete any
+      pre-0.3.11 save first).
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 
