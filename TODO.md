@@ -3016,6 +3016,36 @@ revisit. Full design: DESIGN §31.9.
       documented the trick (README's Flat challenge section, GOALS 15
       clarification) and added `config/tests/93-flat-slime-cavity.yaml`
       plus its Phase 16 acceptance step. **[Jason] retest outstanding.**
+- [x] 16.10 **Follow-up (2026-07-26, Jason):** asked for cave biomes below
+      the surface (see 16.9's sibling ask, resolved separately by adding
+      MC 26.2's new `minecraft:sulfur_caves` to `WorldzConfig.allowedBiomes`'s
+      default list, verified against the real game jar -- not a Phase 16
+      item, no code here needed it), plus a log warning telling the player
+      to remove/ignore any `structureOverrides` entry that can never
+      generate without a specific biome. Generalizes 16.5's own
+      `ancient_cities`/`deep_dark` finding (README's "`ancient_cities` also
+      needs the right biome" note) into an automatic check: real code
+      change in `EnvelopedChunkGenerator.createState` -- once a `flat`
+      generator's structure state resolves, an explicitly configured (never
+      the empty "every set eligible" default) `structureOverrides` entry
+      gets checked against `flat.biome` using each candidate structure
+      set's own real vanilla eligible-biome data (`StructureSet.structures()`
+      → `Structure.biomes()`), not a hardcoded structure-to-biome table --
+      same "reuse the real vanilla mechanism" posture as every other
+      biome-eligibility check in this project. Uses
+      `LimitedBiomeSource.allowedBiomes()` (the raw configured biome set)
+      rather than the broader, fallback-widened `BiomeSource.possibleBiomes()`.
+      Logs once per world/dimension load (`ChunkGenerator.createState` is
+      only ever called once, confirmed against the real decompiled
+      `ChunkMap` constructor), matching every other resolve-time warning's
+      own log-once precedent. No unit test is feasible (this reads real
+      registry holders that need a bootstrapped game environment the test
+      suite doesn't have, same as every other generator-level check) --
+      manual-test only: added `config/tests/94-flat-structure-override-
+      biome-match.yaml` (biome matches, warning silent, structure really
+      places) alongside configs 68/93 (biome mismatches, warning fires),
+      new Phase 16 acceptance item 8. Full multiloader build green.
+      **[Jason] retest outstanding.**
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

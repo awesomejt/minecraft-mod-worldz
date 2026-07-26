@@ -1069,13 +1069,58 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
                 : structureSets.listElements()
                     .filter(holder -> this.flat.structureOverrides().contains(structureSetId(holder)))
                     .map(e -> (Holder<StructureSet>) e);
-            return ChunkGeneratorStructureState.createForFlat(randomState, legacyLevelSeed, this.getBiomeSource(), structures);
+            ChunkGeneratorStructureState state =
+                ChunkGeneratorStructureState.createForFlat(randomState, legacyLevelSeed, this.getBiomeSource(), structures);
+            // GOALS 15/22 clarification (2026-07-26): an explicitly curated structureOverrides
+            // entry can be biome-gated in real vanilla data (e.g. ancient_cities needs
+            // deep_dark, DESIGN §33.2's own documented case) while flat.biome never matches --
+            // vanilla's own structure placement then silently never places it, with nothing to
+            // tell the player why. Only checked for an explicit list, not the empty "every
+            // registered set eligible" default, which deliberately mirrors vanilla's own
+            // all-eligible default and would otherwise warn on every biome-gated vanilla
+            // structure set (~10 of them) on every single default flat world.
+            if (!this.flat.structureOverrides().isEmpty()) {
+                warnUnreachableFlatStructureOverrides(state.possibleStructureSets());
+            }
+            return state;
         }
         return this.delegate.createState(structureSets, randomState, legacyLevelSeed);
     }
 
     private static String structureSetId(Holder<StructureSet> holder) {
         return holder.unwrapKey().map(key -> key.identifier().toString()).orElseGet(holder::getRegisteredName);
+    }
+
+    /**
+     * Warns about a {@code flat.structureOverrides} entry that real vanilla data says can never
+     * generate under the configured {@code flat.biome} (GOALS 15/22 clarification, 2026-07-26) --
+     * entirely derived from real registry data ({@link Structure#biomes()}), never a hardcoded
+     * structure-to-biome table, matching every other biome-eligibility check in this project.
+     * {@link LimitedBiomeSource#allowedBiomes()} is the raw configured biome set (exactly {@code
+     * flat.biome} alone for flat, {@code resolveFlatAllowed}), not the broader, fallback-widened
+     * {@link net.minecraft.world.level.biome.BiomeSource#possibleBiomes()}.
+     */
+    private void warnUnreachableFlatStructureOverrides(List<Holder<StructureSet>> configured) {
+        Set<Holder<Biome>> reachable = this.originSource.map(LimitedBiomeSource::allowedBiomes)
+            .map(set -> Set.copyOf(set.stream().toList()))
+            .orElse(Set.of());
+        if (reachable.isEmpty()) {
+            // flat.biome itself is unresolvable -- LimitedBiomeSource already warned about that
+            // specifically ("Unknown flat.biome '{}'."); don't pile redundant warnings on top.
+            return;
+        }
+        for (Holder<StructureSet> holder : configured) {
+            boolean eligible = holder.value().structures().stream()
+                .flatMap(entry -> entry.structure().value().biomes().stream())
+                .anyMatch(reachable::contains);
+            if (!eligible) {
+                WorldzCommon.LOGGER.warn(
+                    "flat.structureOverrides lists '{}', but it is only ever eligible in biomes flat.biome ('{}') "
+                        + "doesn't include; it will never generate. Remove it, or change flat.biome to a biome it's eligible for.",
+                    structureSetId(holder), this.flat.biome()
+                );
+            }
+        }
     }
 
     @Override

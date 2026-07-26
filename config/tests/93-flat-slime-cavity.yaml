@@ -33,6 +33,12 @@
 #     layer stack (locate a few -- e.g. villages, a stronghold, a desert
 #     pyramid) -- same "honestly clipped by your own stone depth" caveat
 #     as every other classic-flat config (GOAL 22).
+#  7. Check the server log (Phase 16.10, 2026-07-26): confirm a
+#     "flat.structureOverrides lists 'minecraft:ancient_cities' ... it
+#     will never generate" warning appears at world creation --
+#     `biome` here is `minecraft:plains`, and `ancient_cities` is only
+#     ever eligible in `minecraft:deep_dark` (see config 68's own note).
+#     Contrast with config 94, which matches the biome and logs nothing.
 flat:
   layers:
     - "minecraft:bedrock:2"

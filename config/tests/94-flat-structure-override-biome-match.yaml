@@ -1,0 +1,35 @@
+# GOALS 15/22 (Phase 16.10, DESIGN §33.2, GOALS 15/22 clarification
+# 2026-07-26): the flip side of config 68/93's deliberate mismatch --
+# `flat.biome` actually matches every structure set listed in
+# `structureOverrides`, so the new automatic "this will never generate"
+# log warning should stay silent, and the structure should really place.
+# **Select "Worldz: Flat"**.
+#
+# Same 128-block default layer stack as config 66 (surface at Y 64), but
+# `biome` is `minecraft:deep_dark` instead of `plains` -- the one real
+# vanilla biome `minecraft:ancient_cities` is ever eligible in -- so the
+# structure set configured in `structureOverrides` isn't biome-gated out.
+#
+# Steps once in-game:
+#  1. Confirm the world is completely flat, surface at Y 64, biome
+#     deep_dark everywhere (F3).
+#  2. Check the server log at world creation: confirm there is NO
+#     "flat.structureOverrides lists ... it will never generate" warning
+#     for `minecraft:ancient_cities` -- contrast directly with config 68
+#     or 93, where the same structure set on a `plains` biome does log
+#     that warning.
+#  3. Locate an ancient city (structure block / locate command, or
+#     explore) and confirm it actually generates -- real blocks, not
+#     just a resolved site -- now that the biome matches.
+flat:
+  layers:
+    - "minecraft:bedrock:1"
+    - "minecraft:stone:123"
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  biome: minecraft:deep_dark
+  structureOverrides:
+    - "minecraft:ancient_cities"
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

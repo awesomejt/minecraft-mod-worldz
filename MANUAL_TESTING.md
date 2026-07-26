@@ -977,10 +977,10 @@ defaults (5x5 interior, glowstone).
 
 ## Phase 16 acceptance (Flat worlds challenge, GOALS 15/16/22, TODO 16.2a-16.2b, 16.3, 16.6)
 
-Uses configs `66`-`71`, `93` (see [`config/tests/README.md`](config/tests/README.md)).
+Uses configs `66`-`71`, `93`-`94` (see [`config/tests/README.md`](config/tests/README.md)).
 Two typed presets this phase, not one — **select "Worldz: Flat"** for
-configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`. Config `93`
-(added 2026-07-26, GOALS 15 clarification) also selects "Worldz: Flat".
+configs `66`-`68`, **"Worldz: Deep Flat"** for `69`-`71`. Configs `93`-`94`
+(added 2026-07-26, GOALS 15/22 clarifications) also select "Worldz: Flat".
 
 **Real bug found and fixed (0.3.7, Jason's first actual in-game test of
 config 66, 2026-07-26):** no structures anywhere. Confirmed directly
@@ -1099,6 +1099,24 @@ affected, since deep-flat has no `decoration` toggle of its own.
    Nether-only `nether_complexes`/`nether_fossils` and the End-only
    `end_cities`) can still generate over this layer stack — locate a few
    (villages, a stronghold, a desert pyramid).
+8. **Automatic biome-mismatch warning**, `93`/`94` compared (GOALS 15/22,
+   Phase 16.10, 2026-07-26 — real code change, not documentation-only).
+   `93` lists `minecraft:ancient_cities` in `structureOverrides` over a
+   `plains` biome; confirm the server log shows a
+   `"flat.structureOverrides lists 'minecraft:ancient_cities' ... it
+   will never generate"` warning at world creation. `94-flat-structure-
+   override-biome-match.yaml` lists the same structure set but sets
+   `flat.biome: minecraft:deep_dark` (the one biome it's actually
+   eligible in); confirm no such warning appears for it, and that the
+   ancient city actually generates (real blocks, not just a resolved
+   site). This automates the exact manual finding `68`'s own acceptance
+   note (item 3 above) already documented for `ancient_cities`/`plains`,
+   generalized to any structure set in any `structureOverrides` list —
+   confirm `68`'s log also shows the new warning now. The check is
+   derived entirely from real vanilla structure/biome registry data
+   (`Structure#biomes()`), not a hardcoded table, so it should also
+   correctly stay silent for every non-biome-gated structure set in
+   these same configs (villages, strongholds, etc.).
 
 **Not covered by this phase's acceptance:** the exact `(1200, 64, 0)`-style
 fixture defaults for `flat`/`deep_flat` are first-pass numbers, same

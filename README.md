@@ -999,6 +999,18 @@ does anything if `biome` is itself set to `minecraft:deep_dark` — over
 any other biome it behaves exactly as if disabled, no matter the stone
 depth.
 
+**Biome-gated `structureOverrides` entries warn automatically**: this isn't
+just an `ancient_cities`-specific caveat — any explicitly listed structure
+set that's biome-gated in real vanilla data (checked directly against that
+structure's own real eligible-biome list, not a hardcoded table) logs a
+warning at world creation if `biome` can never satisfy it, e.g.
+`flat.structureOverrides lists 'minecraft:ancient_cities', but it is only
+ever eligible in biomes flat.biome ('minecraft:plains') doesn't include; it
+will never generate.` Only fires for an explicit `structureOverrides` list —
+the empty "every registered set eligible" default deliberately mirrors
+vanilla's own all-eligible behavior and stays silent, matching how vanilla
+itself never warns about that case either.
+
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
 

@@ -21,7 +21,13 @@
 #     this config's single biome is `plains` -- listing
 #     `minecraft:ancient_cities` above is left in deliberately to show
 #     that case (verified: it never places), not because one is
-#     expected to be found.
+#     expected to be found. Check the server log too (Phase 16.10,
+#     2026-07-26): confirm a "flat.structureOverrides lists
+#     'minecraft:ancient_cities' ... it will never generate" warning
+#     appears at world creation -- the automatic version of this exact
+#     manual finding. Contrast with config 94, which lists the same
+#     structure set over a matching `deep_dark` biome and logs no
+#     warning at all.
 #  3. Confirm the trial chamber looks honestly clipped/cut off where it
 #     would normally extend below Y -60 (past the bedrock) -- this is
 #     the expected, documented tradeoff, not a bug. From height, flat's

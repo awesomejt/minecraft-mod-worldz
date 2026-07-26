@@ -279,6 +279,20 @@ item above as one coordinated config-schema pass.
 
 21. Default should be for structure to generate in natural locations and Y levels.
 22. Flat worlds with deep enough layers should have option to have underground structures generate below surface level so they aren't floating and too easy to find.
+
+    **Clarified (2026-07-26):** a related but separate footgun to depth —
+    some vanilla structure sets are also biome-gated (e.g.
+    `minecraft:ancient_cities` only ever places in `minecraft:deep_dark`,
+    README's own already-documented case). Since `flat` reports one single
+    fixed biome everywhere, an explicitly configured `structureOverrides`
+    entry the configured `biome` can never satisfy used to fail silently —
+    accepted as "eligible" but never actually placed, with nothing telling
+    the player why. Now warns automatically at world creation, checked
+    directly against real vanilla structure/biome registry data
+    (`Structure.biomes()`), not a hardcoded table — see README's Flat
+    challenge section and `config/tests/93`/`94-flat-structure-override-
+    biome-match.yaml` for the mismatched/matched pair demonstrating it.
+
 23. Having an option for certain land structures to float high above - like Pandora in Avatar. Floating islands containing a village would be pretty cool generation - but only as an option.
 
     **Status:** spiked and parked (TODO 19.3, DESIGN §36.4) — needs a
