@@ -789,9 +789,9 @@ Phase 15, sharing this phase's own respawn-mechanics research, DESIGN
 
 ## Phase 14b acceptance (Universal starter capsule, Nether-start first pass, GOALS 41, TODO 14b)
 
-Uses configs `62`, `86`-`87` (see
+Uses configs `62`, `86`-`87`, `89` (see
 [`config/tests/README.md`](config/tests/README.md)). **Select "Worldz:
-Nether Start"** for all three; each guarantees the capsule fires for a
+Nether Start"** for all four; each guarantees the capsule fires for a
 different reason (no need to hunt for a seed where the natural search
 fails) — config 62 via its low `spawnY` alone (the new automatic
 default), configs 86/87 via an explicit `forceCapsule: true` at an
@@ -846,16 +846,27 @@ ordinary `spawnY` (32).
    search still runs and typically succeeds at the ordinary default depth
    (the low-spawnY default from item 1 should *not* have made this always
    skip straight to the capsule).
+6. **Custom kit contents actually apply**, `89-nether-start-custom-kit.yaml`
+   (0.3.2+, 2026-07-26 cleanup pass). TODO 15.2a-bugfix logged
+   `netherStart.<tier>Kit` YAML overrides as silently ignored, but that
+   turned out to already be fixed — this is the real in-game check that
+   was missing. Confirm the hard-tier chest holds *exactly* this config's
+   override (5 diamonds, 3 emeralds, 2 bread, one golden apple extra) —
+   not the built-in hard defaults (2 bread, a wooden pickaxe, one random
+   gold-ingot/torch extra). If you see the built-in defaults instead, the
+   config plumbing has regressed.
 
 **Not covered by this phase's acceptance:** `forceCapsule`/`capsule.*`
 are not yet exposed on the in-game Customize screen (YAML config only,
-DESIGN §31.9's own flagged gap); `cave`/`end_start` don't have this
-capsule option yet (deferred generalization, GOALS 41.1).
+DESIGN §31.9's own flagged gap); `cave` doesn't have this capsule option
+yet (deferred generalization, GOALS 41.1 — `end_start` gained it at 0.3.5,
+see Phase 15's own acceptance below).
 
 ## Phase 15 acceptance (End-start challenge, GOALS 34/41, TODO 15.2a-15.2b, 15.3)
 
-Uses configs `63`-`65`, `88` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: End Start"** for all four. Unlike every other typed
+Uses configs `63`-`65`, `88`, `90`-`92` (see
+[`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: End Start"** for all seven. Unlike every other typed
 preset except Nether Start, the Overworld itself is completely untouched
 vanilla terrain — this time the Nether is too, and only the End (where
 you spawn) and the chest tier/platform shape differ.
@@ -931,6 +942,25 @@ pickaxe, easy a copper pickaxe.
    room is at/above the 6x6 "dense room" threshold, so also a
    floor-standing lantern grid), and the chest still lines one wall with
    real room to walk around.
+5. **Torch lighting, dense room**, `90-end-start-capsule-torch-dense.yaml`
+   (test-coverage gap closed 2026-07-26, 0.3.11+). `torch` had never
+   actually been used by any capsule config for either preset before this
+   one. Confirm wall torches line the north/east/west walls (south is the
+   chest wall), spaced per `lightSpacingBlocks`, and that a *second*,
+   floor-standing set of torches also exists (the dense-room addition, at
+   this 7x7-interior size) — scattered, not at the exact spawn center.
+6. **Shroomlight, dense room**, `91-end-start-capsule-shroomlight-dense.yaml`
+   (test-coverage gap closed 2026-07-26, 0.3.11+). Confirm shroomlight is
+   embedded in the north/east/west walls, *and* in a separate floor grid,
+   *and* in a separate ceiling grid — unlike torch/lantern, a dense
+   embedded-source room (shroomlight or the default glowstone) gets both
+   floor and ceiling additions, not just one.
+7. **Glow lichen coating**, `92-end-start-capsule-glow-lichen.yaml`
+   (test-coverage parity with nether_start config 86, 2026-07-26,
+   0.3.11+). Confirm glow lichen coats every wall, the floor, and the
+   ceiling of the default-sized room — not just spaced points — bright
+   enough to see the whole room unaided, same behavior as config 86 but
+   over end-stone instead of nether brick.
 
 **Ideally also attempt a full run** on at least one config: find or fight
 your way to an End City for an Elytra, use the chest's rockets to fly (or

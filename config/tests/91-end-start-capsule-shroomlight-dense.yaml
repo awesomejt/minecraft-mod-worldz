@@ -1,0 +1,28 @@
+# GOALS 34/41 (test-coverage gap found 2026-07-26): `shroomlight` shares
+# its placement logic with the default `glowstone` (both embed directly
+# into the wall ring), but no existing config -- for either `nether_start`
+# or `end_start` -- had ever used either one at a "dense room" size (>=6x6
+# interior, `sizeBlocks: 9` here gives 7x7). Unlike `torch`/`lantern`,
+# dense-room embedded sources (`EndStartDeployment.placeCapsuleLighting`)
+# add *both* a floor grid *and* a ceiling grid, not just one -- a code
+# path config 63's small default room never reaches. **Select "Worldz:
+# End Start"**.
+#
+# Steps once in-game:
+#  1. Confirm you spawn inside a real 7x7-interior, 4-tall end-stone room,
+#     with shroomlight embedded directly into the north/east/west walls
+#     (south is the chest wall) -- spaced per `lightSpacingBlocks: 3`.
+#  2. Confirm shroomlight is *also* embedded in the floor *and* the
+#     ceiling, each its own spaced grid -- not just the walls, and not
+#     just one of floor/ceiling.
+#  3. Confirm the chest (easy tier) lines the south wall, centered.
+endStart:
+  chestTier: easy
+  capsule:
+    sizeBlocks: 9
+    heightBlocks: 4
+    lightSource: shroomlight
+    lightSpacingBlocks: 3
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true

@@ -2654,6 +2654,19 @@ revisit. Full design: DESIGN §31.9.
       current behavior). Full multiloader build green. **[Jason] retest
       outstanding** on configs 63-65 -- confirm the guaranteed pickaxe in
       each tier actually breaks the platform's end stone and drops it.
+- [x] 15.5 **Test-coverage gap pass (2026-07-26 cleanup pass):** auditing
+      every capsule config across both `nether_start` and `end_start`
+      found `end_start` had no `glow_lichen` coverage (nether_start's own
+      config 86 was never mirrored), and that `torch` and dense-room
+      embedded sources (`glowstone`/`shroomlight`) had *zero* coverage
+      anywhere -- not for either preset. New configs 90 (`torch`, dense
+      room -- also the previously-untested dense-room floor-torch
+      addition), 91 (`shroomlight`, dense room -- also the previously-
+      untested dense-room floor+ceiling addition embedded sources get,
+      distinct from lantern/torch's floor-only addition), 92
+      (`glow_lichen`, parity with config 86). Docs updated:
+      `config/tests/README.md`, MANUAL_TESTING.md's Phase 15 acceptance.
+      No code changes -- test-fixture/doc additions only, no version bump.
 
 ## Phase 16 — Flat worlds (GOALS 15, 16, 22)
 

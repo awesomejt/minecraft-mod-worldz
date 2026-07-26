@@ -1,0 +1,30 @@
+# GOALS 34/41 (test-coverage gap found 2026-07-26): `torch` is the
+# capsule's own sanitize-time fallback light source (`WorldzConfig.
+# sanitizeStarterCapsule`), yet no existing test config -- for either
+# `nether_start` or `end_start` -- had ever actually set `lightSource:
+# torch` explicitly. `sizeBlocks: 9` (7x7 interior) also puts this at/
+# above the 6x6 "dense room" threshold, exercising the floor-standing
+# torch grid `EndStartDeployment.placeCapsuleLighting` adds on top of the
+# wall-mounted ring for dense rooms specifically -- also previously
+# untested. **Select "Worldz: End Start"**.
+#
+# Steps once in-game:
+#  1. Confirm you spawn inside a real 7x7-interior, 3-tall end-stone room
+#     (bigger than config 63's 5x5 default), with wall torches on the
+#     north/east/west walls (south is the chest wall) -- spaced per
+#     `lightSpacingBlocks: 3`, not just one per wall.
+#  2. Confirm a *second*, floor-standing set of torches also exists,
+#     scattered across the floor in a spaced grid -- but not at the exact
+#     center, where you spawn.
+#  3. Confirm the chest (medium tier) lines the south wall, centered, with
+#     real room on either side.
+endStart:
+  chestTier: medium
+  capsule:
+    sizeBlocks: 9
+    heightBlocks: 3
+    lightSource: torch
+    lightSpacingBlocks: 3
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true
