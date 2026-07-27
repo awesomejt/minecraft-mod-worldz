@@ -3283,8 +3283,12 @@ composes with.
       Same `[0, maxReliefBlocks]` contract and single call site
       (`stackedColumnStates`), so painted terrain and reported height
       still can't disagree. DESIGN §34.7 updated in place. Full
-      multiloader build green. **[Jason] retest outstanding** on configs
-      72-75 (delete any pre-0.3.19 save first).
+      multiloader build green. **Confirmed (2026-07-26, Jason's real
+      0.3.19 retest, fresh config 72 world):** "terrain looks better" --
+      screenshots show smooth, curved-edge undulation on the plains
+      layer and an organic-looking mound around a snowy taiga lava
+      pool, no more hard-edged plateaus. Configs 73-75 share the same
+      fix but weren't separately retested; low risk, same code path.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 
