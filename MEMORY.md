@@ -2859,3 +2859,48 @@ Durable decisions, verified API notes, and rationale that should survive across 
   independent of 21.2/21.3's climate-list machinery entirely -- a plain Y
   check against a single configured biome, no `MultiNoiseBiomeSource`
   involvement.
+
+- 2026-07-26 — **Phase 21 (Surface vs. underground biomes, GOAL 42)
+  executed and fully committed, 0.3.13-0.3.17.** Full design in DESIGN §37;
+  pre-work corrections and Jason's underground-biome-shape decision already
+  recorded in this file's own preceding "Phase 21 pre-work" entry above.
+  **21.2 (0.3.13):** `BiomeRoles.isUnderground`/`undergroundIds()` -- a
+  maintained set of the four real vanilla underground biomes, a separate
+  axis from `BiomeRole` (layout-composition role, not depth). Unit-tested
+  (`BiomeRolesTest`) -- the only part of this phase that could be.
+  **21.3 (0.3.14):** the actual bug fix. `resolveAllowedBiomes` partitions
+  its `allowed` input into surface/underground subsets and builds a
+  separate `MultiNoiseBiomeSource` delegate for each; `getNoiseBiome`'s
+  final fallback picks by the query's own real climate `depth()` against
+  vanilla's `0.2` band threshold. The empty-subset fallback is symmetric
+  (an empty side borrows the other's delegate) rather than each
+  independently falling back to full vanilla -- verified this reproduces
+  today's exact single-delegate behavior for `flat`/`single_biome`/
+  `stacked` (their own allowed sets are naturally one-sided) and only
+  diverges for `legacy`'s own mixed default list.
+  **21.4a (0.3.15)/21.4b (0.3.16):** `flat.undergroundBiome`/
+  `undergroundBelowSurfaceBlocks` and `skyIsland`'s identical pair -- one
+  single configured biome (not sampled variety, Jason's decision) reported
+  below a Y threshold relative to each preset's own known surface.
+  `FlatPlan` threads its two new fields into `LimitedBiomeSource` via a new
+  `setFlatUnderground(...)` setter (mirroring `setStackedLayers`'s exact
+  precedent, since `FlatPlan` isn't a codec field there); `SkyIslandPlan`
+  already had its own codec slot, so its fields just nest in directly (new
+  legacy 9-arg constructor added, defaulting to disabled, so every existing
+  8-/9-arg call site -- mostly test fixtures -- keeps compiling unchanged).
+  Both are **config-only for now**: `FlatCustomization`/`SkyIslandCustomization`
+  (the Customize-screen data models) always pass the band disabled, same
+  deferral posture this project already uses for other new fields (e.g.
+  the capsule mechanism) -- only a config-driven world that never opens
+  Customize reads either field today. Noted in README: sky island's default
+  `thicknessBlocks` (6) is *shorter* than the default
+  `undergroundBelowSurfaceBlocks` (10), so the band falls in the void
+  beneath the slab unless shrunk (config 97 uses `3`).
+  **21.5 (0.3.17):** configs `95` (deliberately adversarial `allowedBiomes`,
+  1 surface vs. 3 cave biomes, proves 21.3's fix), `96` (flat), `97` (sky
+  island) -- both `96`/`97` configs and MANUAL_TESTING explicitly warn not
+  to open the Customize screen, which would silently re-disable the
+  config-only field. New "Phase 21 acceptance" section in MANUAL_TESTING.md.
+  Full multiloader build green at every commit. **[Jason] retest of
+  configs 95-97 outstanding** — Phase 22 not started, per the standing
+  phase-gate rule.
