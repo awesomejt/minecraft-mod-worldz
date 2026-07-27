@@ -3325,8 +3325,9 @@ composes with.
       first time. Config-only fix: added `worldSizeChunks: 0`, no code
       changed (the derivation logic itself is correct and intentional,
       documented behavior -- this was a missing field in the test config,
-      not a bug in `StackedConfig`). **[Jason] retest outstanding** on
-      the corrected config 76.
+      not a bug in `StackedConfig`). **Confirmed (2026-07-27, Jason's
+      real retest):** config 76 "works as expected." Phase 17 fully
+      closed.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 
