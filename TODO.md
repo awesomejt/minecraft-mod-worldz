@@ -3412,7 +3412,7 @@ verified there against the real 26.2 artifacts.
       configured biome, not climate-sampled variety — simpler, matches his
       own phrasing, and decouples 21.4 entirely from 21.2/21.3's
       climate-list machinery.
-- [ ] 21.2 Extend `BiomeRoles` with an underground classification —
+- [x] 21.2 Extend `BiomeRoles` with an underground classification —
       maintained `UNDERGROUND_IDS` set (`dripstone_caves`, `lush_caves`,
       `sulfur_caves`, `deep_dark`) plus `isUnderground(id)` (no overrides
       parameter — nothing would populate one today, and `BiomeRole`'s own

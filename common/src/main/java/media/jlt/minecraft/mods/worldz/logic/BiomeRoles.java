@@ -9,6 +9,11 @@ import java.util.Set;
  * independent of the Minecraft biome registry so it stays JUnit-testable.
  * Callers apply an explicit role-override map on top of this default and
  * treat any id absent here (including modded ids) as {@link BiomeRole#LAND}.
+ *
+ * <p>Also maintains an independent underground/surface classification
+ * ({@link #isUnderground(String)}, GOAL 42, DESIGN §37.2) -- a different axis
+ * from {@link BiomeRole} (which layout-composition role a biome plays for
+ * coordinated terrain shaping), not a fourth {@link BiomeRole} value.
  */
 public final class BiomeRoles {
     private static final Set<String> OCEAN_IDS = Set.of(
@@ -27,6 +32,16 @@ public final class BiomeRoles {
         "minecraft:beach",
         "minecraft:snowy_beach",
         "minecraft:stony_shore"
+    );
+
+    /** Vanilla biomes registered at underground/bottom depth bands
+     * (verified against the real 26.2 {@code OverworldBiomeBuilder
+     * .addUndergroundBiome}/{@code addBottomBiome}, DESIGN §37.0). */
+    private static final Set<String> UNDERGROUND_IDS = Set.of(
+        "minecraft:dripstone_caves",
+        "minecraft:lush_caves",
+        "minecraft:sulfur_caves",
+        "minecraft:deep_dark"
     );
 
     private BiomeRoles() {
@@ -68,5 +83,29 @@ public final class BiomeRoles {
      */
     public static List<String> oceanIds() {
         return List.copyOf(OCEAN_IDS);
+    }
+
+    /**
+     * Reports whether a biome is one of the maintained vanilla underground/bottom-depth
+     * biomes (GOAL 42, DESIGN §37.2) -- unrecognized ids (including modded ones) are never
+     * underground by default, mirroring {@link #defaultRole(String)}'s own "absent means
+     * ordinary" posture. No override parameter: unlike {@link #resolve(String, Map)}, nothing
+     * in this codebase populates one for this classification today.
+     *
+     * @param biomeId canonical, namespaced biome id
+     * @return {@code true} for a maintained underground biome id
+     */
+    public static boolean isUnderground(String biomeId) {
+        return UNDERGROUND_IDS.contains(biomeId);
+    }
+
+    /**
+     * Returns the maintained set of vanilla underground/bottom-depth biome ids, for callers
+     * that need the full pool rather than a per-id check.
+     *
+     * @return immutable list of canonical underground biome ids
+     */
+    public static List<String> undergroundIds() {
+        return List.copyOf(UNDERGROUND_IDS);
     }
 }
