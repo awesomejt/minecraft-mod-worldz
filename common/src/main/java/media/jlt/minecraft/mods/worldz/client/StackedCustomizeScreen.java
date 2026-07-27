@@ -32,6 +32,7 @@ final class StackedCustomizeScreen extends Screen implements
     private MultiLineEditBox layers;
     private boolean seedRandomizedOrder;
     private EditBox reliefBlocks;
+    private boolean forceTopVillage;
     private MultiLineTextWidget errorMessage;
     private ScrollableLayout scrollArea;
     private WorldzCustomization.BorderSettings overworldBorder;
@@ -46,6 +47,7 @@ final class StackedCustomizeScreen extends Screen implements
         this.layersText = initial.layersText();
         this.seedRandomizedOrder = initial.seedRandomizedOrder();
         this.reliefBlocksText = Integer.toString(initial.reliefBlocks());
+        this.forceTopVillage = initial.forceTopVillage();
         this.overworldBorder = initial.overworldBorder();
         this.netherBorder = initial.netherBorder();
         this.endBorder = initial.endBorder();
@@ -77,6 +79,12 @@ final class StackedCustomizeScreen extends Screen implements
         form.addChild(CommonLayouts.labeledElement(
             this.font, this.reliefBlocks, Component.translatable("jlt_worldz.stacked.relief_blocks")
         ));
+
+        form.addChild(Checkbox.builder(Component.translatable("jlt_worldz.stacked.force_top_village"), this.font)
+            .selected(this.forceTopVillage)
+            .onValueChange((checkbox, selected) -> this.forceTopVillage = selected)
+            .maxWidth(FORM_WIDTH)
+            .build());
 
         Tooltip borderTooltip = Tooltip.create(Component.translatable("jlt_worldz.customize.border.tooltip"));
         LinearLayout borderButtons = LinearLayout.horizontal().spacing(10);
@@ -135,6 +143,7 @@ final class StackedCustomizeScreen extends Screen implements
                 this.layers.getValue(),
                 this.seedRandomizedOrder,
                 this.reliefBlocks.getValue(),
+                this.forceTopVillage,
                 this.overworldBorder,
                 this.netherBorder,
                 this.endBorder,

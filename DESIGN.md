@@ -5600,6 +5600,96 @@ call the same one implementation — the gap opened specifically because
 the logic was inlined once instead of centralized; centralizing it is
 the actual fix, not just patching the two missed call sites.
 
+### 34.9 Force-placed top-layer village (GOAL 35 follow-up, Jason's 2026-07-27 ask)
+
+Jason asked for an option to force a real village onto stacked's top
+layer, if that layer's own biome supports one. Confirmed via a
+clarifying question: **always force-generate at a fixed, deterministic
+site, never a natural-search-first attempt** — the same "guaranteed,
+not best-effort" posture sky island's own guaranteed village (GOALS 07)
+already established, since natural random-spread structure placement
+isn't reliable to land anywhere reachable in a small, bounded stacked
+world.
+
+New `stacked.forceTopVillage` boolean (`StackedPlan`/`StackedConfig`/
+`StackedCustomization`, `false` by default, fully wired into the
+Customize screen like every other stacked field — unlike some newer
+"config-only for now" features, stacked already has full Customize
+support, so leaving this one field out would let opening Customize
+silently reset it). New `StackedVillageDeployment.placeGuaranteedTopVillage`
+(`worldgen` package), wired into `WorldLimitManager.onServerStarted`
+alongside the existing `needsGuaranteedVillage`/`needsGuaranteedPortalRoom`
+one-time deployment gates.
+
+**Reuses two existing patterns instead of inventing a third:**
+
+- **Force-generation mechanics**, verbatim from `FloatingIslandsDeployment
+  .placeGuaranteedVillage`/`ChunkIslandDeployment.placeGuaranteedPortalRoom`:
+  resolve a site, call the real vanilla `Structure.generate(...)` with a
+  `biome -> true` predicate to bypass normal spacing/biome checks, then
+  `start.placeInChunk(...)` per chunk in the resulting bounding box.
+- **Biome-eligibility check**, from `EnvelopedChunkGenerator
+  .warnUnreachableFlatStructureOverrides`: walk a structure set's real
+  `structures()`/`biomes()` data instead of a hardcoded biome→structure
+  table. Concretely: resolve `minecraft:villages` (`BuiltinStructureSets
+  .VILLAGES`) and find the first entry whose `Structure.biomes()`
+  contains the top layer's own biome — this *is* the exact structure to
+  force, no second by-id lookup needed (`StructureSet
+  .StructureSelectionEntry.structure()` already returns `Holder<Structure>`
+  directly). Deliberately **not** reusing `FloatingIslandsPlan`'s own
+  `VILLAGE_BIOME_IDS`/`VILLAGE_STRUCTURE_IDS` hardcoded parallel arrays —
+  that table is a real, documented past bug source when it drifted out
+  of sync with which biomes a village variant is actually eligible for
+  in real vanilla data; deriving eligibility live from the registry makes
+  that whole bug class structurally impossible here.
+
+No match (the top biome isn't village-compatible) logs at **INFO**, not
+WARN — an expected, valid outcome per Jason's own "if it is a
+village-compatible one" phrasing, not a misconfiguration. WARN is
+reserved for genuine problems: an unresolvable top-layer biome id, a
+missing `minecraft:villages` structure set (should never happen against
+real vanilla data), or the jigsaw search itself failing to find a valid
+site.
+
+**Site placement** reuses `ObjectiveSite.fallbackX`/`supportiveFallbackZ`
+directly — the same helpers `ProgressionGuarantees.ensureEndPortal`'s
+fallback vault already uses — fed `ObjectiveSite.supportiveRadius(...)`.
+One deliberate divergence: `ensureEndPortal` treats an unbounded world
+(`supportiveRadius` returning empty) as "nothing to do, let natural
+search handle it" and returns early; this feature always forces a
+village regardless of boundedness, so `Integer.MAX_VALUE` stands in for
+the radius instead — `fallbackX`/`supportiveFallbackZ` naturally degrade
+to their own small `PREFERRED_X`-scale default rather than picking
+something degenerate.
+
+**Surface Y** reuses a new small extracted helper, `StackedPlan.surfaceY
+(resolvedLayers, minY, height)` — the exact formula `getSpawnHeight`'s
+stacked branch already computed inline, pulled out into one shared
+static method so spawn placement and the guaranteed village can never
+disagree about "where is the real ground here" (mirrors this project's
+own established `stackedColumnStates`-style DRY precedent).
+
+**Known, accepted risk, not engineered around** (same posture as every
+other "flag it, verify empirically" entry in this project, e.g. §34.5's
+own stronghold-fit question): stacked's own bounded default is only a
+64-block-radius border — the same size already documented as smaller
+than `ProgressionGuarantees.NATURAL_STRUCTURE_MARGIN` (128), which is
+exactly why the fallback End portal always wins there over a natural
+stronghold. A real vanilla `village_plains` jigsaw structure is very
+commonly wider than 128 blocks, and this feature forces one only
+`fallbackX(64) = 32` blocks from origin — a large fraction of it will
+plausibly extend past the border/void wall. Shipped and tested as-is
+(config 99, unmodified default border) rather than guessed at
+preemptively. `VILLAGE_MARGIN_BLOCKS = 128` (the fit margin fed into
+`supportiveFallbackZ`) is likewise a documented, unverified first-pass
+estimate — no existing constant of the right shape to reuse cleanly
+(`ProgressionGuarantees.NATURAL_STRUCTURE_MARGIN` is private to a
+sibling class).
+
+New test configs 99 (default stack, `forceTopVillage: true`, top biome
+plains — the border-clipping question) and 100 (top layer swapped to
+swamp — confirms the silent-skip negative path).
+
 ## §35. Phase 18: World-hazard rules module (GOALS 29–30) — design pass (TODO 18.0)
 
 ### 35.0 Verified 26.2 APIs — the original TODO wording's assumed mechanism no longer exists

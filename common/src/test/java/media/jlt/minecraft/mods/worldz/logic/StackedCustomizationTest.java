@@ -67,7 +67,7 @@ class StackedCustomizationTest {
     void stackedPlanCarriesReliefBlocks() {
         StackedCustomization customization = new StackedCustomization(
             List.of(new StackedLayerSpec("minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", 20)), 0)),
-            false, 5,
+            false, 5, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
@@ -76,9 +76,31 @@ class StackedCustomizationTest {
     }
 
     @Test
+    void stackedPlanCarriesForceTopVillage() {
+        StackedCustomization customization = new StackedCustomization(
+            List.of(new StackedLayerSpec("minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", 20)), 0)),
+            false, 0, true,
+            defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
+            WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
+        );
+
+        assertTrue(customization.stackedPlan().forceTopVillage());
+    }
+
+    @Test
+    void fromConfigCopiesForceTopVillage() {
+        WorldzConfig config = new WorldzConfig();
+        config.stacked.forceTopVillage = true;
+
+        StackedCustomization customization = StackedCustomization.fromConfig(config);
+
+        assertTrue(customization.forceTopVillage());
+    }
+
+    @Test
     void fromTextRejectsNonNumericReliefBlocks() {
         assertThrows(IllegalArgumentException.class, () -> StackedCustomization.fromText(
-            "minecraft:plains;minecraft:stone:20;0", false, "not-a-number",
+            "minecraft:plains;minecraft:stone:20;0", false, "not-a-number", false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));
@@ -88,7 +110,7 @@ class StackedCustomizationTest {
     void negativeReliefBlocksIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new StackedCustomization(
             List.of(new StackedLayerSpec("minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", 20)), 0)),
-            false, -1,
+            false, -1, false,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         ));

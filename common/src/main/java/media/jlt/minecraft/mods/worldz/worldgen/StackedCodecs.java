@@ -16,7 +16,10 @@ final class StackedCodecs {
         Codec.BOOL.fieldOf("seed_randomized_order").forGetter(StackedPlan::seedRandomizedOrder),
         // Optional with a zero default (DESIGN §34.7) for save-compat with worlds generated
         // before relief existed -- they resume as perfectly flat, exactly as before.
-        Codec.INT.optionalFieldOf("relief_blocks", 0).forGetter(StackedPlan::reliefBlocks)
+        Codec.INT.optionalFieldOf("relief_blocks", 0).forGetter(StackedPlan::reliefBlocks),
+        // Optional with a false default (DESIGN §34.9) for save-compat with worlds generated
+        // before the guaranteed top-layer village existed -- they resume with no forced village.
+        Codec.BOOL.optionalFieldOf("force_top_village", false).forGetter(StackedPlan::forceTopVillage)
     ).apply(instance, StackedPlan::new));
 
     private StackedCodecs() {

@@ -32,6 +32,11 @@ public final class StackedConfig {
      * layer's own air gap so biome-band boundaries never move (DESIGN §34.7). Zero restores the
      * pre-§34.7 perfectly flat layers. */
     public int reliefBlocks = 4;
+    /** Whether a real vanilla village is always force-generated near spawn on the top layer's own
+     * surface, provided its biome is village-compatible (DESIGN §34.9). Always forced, never a
+     * natural-search-first attempt -- mirrors sky island's own guaranteed-village posture (GOALS
+     * 07), since natural random-spread placement isn't reliable in a small, bounded stacked world. */
+    public boolean forceTopVillage = false;
 
     /** Creates a config populated with defaults. */
     public StackedConfig() {

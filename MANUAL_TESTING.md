@@ -1198,6 +1198,23 @@ Uses configs `72`-`77` (see [`config/tests/README.md`](config/tests/README.md)).
    stone/dirt/grass composition rather than erroring or failing to
    generate. Confirm every non-top layer's air gap is the simplified
    shorthand's own 30-block default.
+8. **Forced top-layer village**, `99-stacked-force-top-village.yaml`
+   (GOAL 35 follow-up, DESIGN §34.9, 0.3.20+). Check the server log for
+   "Placed the stacked top-layer guaranteed village (biome
+   'minecraft:plains') near (X, Z)." and travel there — confirm a real
+   plains village actually exists on the top layer's surface. **This is
+   also the real test of an open risk, not a known-good check:** the
+   default 64-block border may well be smaller than the village's actual
+   footprint — report back exactly what you find (fully intact, or
+   visibly clipped by the border/void wall), and whether the village's
+   own foundation looks broken against the thin (10-block, no air gap)
+   plains layer.
+9. **Forced top-layer village, incompatible biome**,
+   `100-stacked-force-top-village-incompatible-biome.yaml` (same DESIGN
+   §34.9, 0.3.20+). Top layer is swamp instead of plains. Confirm no
+   village generates, the server log shows only an `INFO` line ("...is
+   not village-compatible; forceTopVillage stays a no-op this world."),
+   no warning, and the world otherwise plays normally.
 
 **Not covered by this phase's acceptance:** exact per-layer default block
 choices/thicknesses, the 64-block default world-size radius, and the

@@ -119,8 +119,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
    below the cap); `deepFlat.surfaceY` the cap height, `deepFlat.capLayers`
    the land-cap stack, `deepFlat.riversEnabled`/`riverExclusionRadiusBlocks`
    whether river/ocean columns show as water at the surface and how close
-   to spawn that's suppressed. "Worldz: Stacked" (files `72`-`77`, GOAL 35,
-   Phase 17, DESIGN §34) reads only its own `stacked:` section -- the
+   to spawn that's suppressed. "Worldz: Stacked" (files `72`-`77`, `99`-`100`,
+   GOAL 35, Phase 17, DESIGN §34) reads only its own `stacked:` section -- the
    underground is replaced entirely by horizontal biome layers, bottom to
    top, stacked starting at the dimension's own min Y; `stacked.layers` is
    the editable layer list, each entry either the full `biome;blocks;air
@@ -141,7 +141,11 @@ Every field not mentioned in a file falls back to Worldz's documented default
    `stacked.reliefBlocks` (default 4) is the maximum per-column height
    bump on each layer's own surface, traded out of that layer's own air
    gap so biome-band boundaries never move -- zero restores perfectly flat
-   layers. Each preset ignores every other type's dedicated section.
+   layers. Since DESIGN §34.9: `stacked.forceTopVillage` (default `false`)
+   always force-generates a real vanilla village near spawn on the top
+   layer's own surface, provided that layer's biome is village-compatible
+   (silently skipped, logged at `INFO`, otherwise). Each preset ignores
+   every other type's dedicated section.
 
 4. `foreverNight:`/`risingLava:` (GOALS 30/29, Phase 18, DESIGN §35) are
    shared runtime *rules*, not worldgen or typed presets -- they apply on
@@ -271,6 +275,8 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `96-legacy-cave-biomes-underground-only.yaml` | GOAL 42 (Phase 21.3): the actual fix for cave biomes surfacing in `legacy` layout mode — a deliberately adversarial `allowedBiomes` list (1 surface biome vs. 3 cave biomes) proves `dripstone_caves`/`lush_caves`/`deep_dark` never appear above ground, but still generate underground with real decoration; also confirms a ravine floor reads as underground for free (vanilla's own climate `depth`, not a Y cutoff). Plain "Worldz". Requires 0.3.14+. |
 | `97-flat-underground-biome-band.yaml` | GOAL 42 (Phase 21.4a): `flat.undergroundBiome`/`undergroundBelowSurfaceBlocks` report `dripstone_caves` below Y 54 while the surface (Y 54 up) stays `plains` — a biome-reporting change only, the layer stack's actual blocks are unaffected. Config-only (create the world directly, don't open Customize). **Select "Worldz: Flat"**. Requires 0.3.15+. |
 | `98-sky-island-underground-biome-band.yaml` | GOAL 42 (Phase 21.4b): same idea as `96`, applied to sky island's own thin slab — `undergroundBelowSurfaceBlocks: 3` (smaller than the default `10`) keeps the band within the slab's own diggable ground instead of the void beneath it. Config-only (create the world directly, don't open Customize). **Select "Worldz: Sky Island"**. Requires 0.3.16+. |
+| `99-stacked-force-top-village.yaml` | GOAL 35 follow-up (DESIGN §34.9): `stacked.forceTopVillage: true` on config 72's own default stack (top layer plains, village-compatible) — a real vanilla village always force-generated near spawn on the top layer's surface. Also the real test of the border-clipping risk flagged in DESIGN §34.9 (default 64-block border vs. a village's typical footprint). **Select "Worldz: Stacked"**. Requires 0.3.20+. |
+| `100-stacked-force-top-village-incompatible-biome.yaml` | GOAL 35 follow-up (DESIGN §34.9): same as `99`, but the top layer is swamp (not village-compatible) — confirms the silent-skip negative path, an `INFO` log line, no village, no warning. **Select "Worldz: Stacked"**. Requires 0.3.20+. |
 
 ### Why `01` showed ocean labeled as river
 

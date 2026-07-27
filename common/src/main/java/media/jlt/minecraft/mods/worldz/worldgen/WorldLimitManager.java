@@ -11,6 +11,7 @@ import media.jlt.minecraft.mods.worldz.logic.IslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ResizeStyle;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
+import media.jlt.minecraft.mods.worldz.logic.StackedPlan;
 import media.jlt.minecraft.mods.worldz.logic.StripPlan;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -73,6 +74,11 @@ public final class WorldLimitManager {
         CavePlan overworldCave = overworldGenerator instanceof EnvelopedChunkGenerator caveEnveloped
             ? caveEnveloped.cave()
             : CavePlan.disabled();
+        // Stacked (GOAL 35, DESIGN §34.9) reads its plan straight off the generator too, same
+        // reasoning as cave -- needed here for the guaranteed top-layer village gate below.
+        StackedPlan overworldStacked = overworldGenerator instanceof EnvelopedChunkGenerator stackedEnveloped
+            ? stackedEnveloped.stacked()
+            : StackedPlan.disabled();
         // Fetched early (rather than only inside the `nether != null` block below) so its own
         // sky island plan (GOALS 06, DESIGN §27.6) can join the exteriorObjective gate the same
         // way the Overworld's does -- it never expresses itself through ExteriorPlan either.
@@ -125,6 +131,11 @@ public final class WorldLimitManager {
         // mechanism, not a fallback (exteriorObjective's own generic vault is still a secondary
         // safety net on top, per limit.ensureObjective()).
         boolean needsGuaranteedPortalRoom = overworldChunkIsland.enabled();
+        // Same reasoning again for stacked's own guaranteed top-layer village (GOAL 35 follow-up,
+        // DESIGN §34.9): every stacked world with the option enabled gets one, unconditionally --
+        // natural random-spread placement isn't reliable to land anywhere reachable in a small,
+        // bounded stacked world.
+        boolean needsStackedTopVillage = overworldStacked.enabled() && overworldStacked.forceTopVillage();
         // Same reasoning again for cave's own optional starter chest (GOALS 25, DESIGN §30.3):
         // every cave world with the chest option enabled gets one, regardless of border/objective.
         boolean needsCaveChest = overworldCave.enabled() && overworldCave.chestEnabled();
@@ -135,7 +146,7 @@ public final class WorldLimitManager {
         // DESIGN §32.4): every end_start world needs its world-spawn redirect, unconditionally.
         boolean needsEndStart = endStart.enabled();
         if (!plan.enabled() && !exteriorObjective && !needsChestBoat && !needsStarterChest
-            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsCaveChest
+            && !needsGuaranteedVillage && !needsGuaranteedPortalRoom && !needsStackedTopVillage && !needsCaveChest
             && !needsNetherStart && !needsEndStart) {
             return;
         }
@@ -163,6 +174,12 @@ public final class WorldLimitManager {
         }
         if (needsGuaranteedPortalRoom) {
             ChunkIslandDeployment.placeGuaranteedPortalRoom(overworld, originX, originZ, overworldChunkIsland);
+        }
+        if (needsStackedTopVillage) {
+            StackedVillageDeployment.placeGuaranteedTopVillage(
+                overworld, originX, originZ, overworldStacked,
+                plan.overworld(), exterior.overworld(), overworldStrip, limitedSource.worldLayoutPlan()
+            );
         }
         if (needsCaveChest) {
             // Cave's own spawn is resolved by SpawnOriginManager.resolveCaveOrigin, never

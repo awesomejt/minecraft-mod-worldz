@@ -25,8 +25,15 @@ import java.util.Random;
  *     §34.7), traded out of that layer's own air gap so a layer's cumulative-height zone boundary
  *     -- and therefore {@link #layerAt}'s Y-only biome lookup -- never moves; zero restores the
  *     original perfectly flat layers
+ * @param forceTopVillage whether a real vanilla village is always force-generated at a fixed,
+ *     deterministic site near spawn on the top layer's own surface (DESIGN §34.9), provided the
+ *     top layer's biome is village-compatible -- never a natural-search-first attempt, matching
+ *     sky island's own guaranteed-village posture (GOALS 07): natural random-spread placement
+ *     isn't reliable to land anywhere reachable in a small, bounded stacked world
  */
-public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolean seedRandomizedOrder, int reliefBlocks) {
+public record StackedPlan(
+    boolean enabled, List<StackedLayerSpec> layers, boolean seedRandomizedOrder, int reliefBlocks, boolean forceTopVillage
+) {
     /** Validates persisted values even while the stacked shape is disabled. */
     public StackedPlan {
         if (layers == null || layers.isEmpty()) {
@@ -56,7 +63,8 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
             false,
             List.of(new StackedLayerSpec("minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", 1)), 0)),
             false,
-            0
+            0,
+            false
         );
     }
 
@@ -71,7 +79,7 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
         for (String raw : config.layers) {
             layers.add(StackedLayerSpec.parse(raw));
         }
-        return new StackedPlan(true, layers, config.seedRandomizedOrder, config.reliefBlocks);
+        return new StackedPlan(true, layers, config.seedRandomizedOrder, config.reliefBlocks, config.forceTopVillage);
     }
 
     /**
@@ -102,6 +110,24 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
      */
     public static int totalHeightBlocks(List<StackedLayerSpec> resolvedLayers) {
         return resolvedLayers.stream().mapToInt(StackedLayerSpec::totalHeightBlocks).sum();
+    }
+
+    /**
+     * Returns the stacked world's own top surface Y: the topmost layer's own block-stack surface,
+     * not including its own trailing air gap (that's just open sky above, not headroom to stand
+     * in mid-air over) -- mirrors {@code EnvelopedChunkGenerator.getSpawnHeight}'s stacked branch
+     * exactly (DESIGN §34.4's "spawn lands on the topmost layer's own surface" spawn semantic),
+     * extracted here as a single shared helper (DESIGN §34.9) so spawn placement and the guaranteed
+     * top-layer village (both need "where is the real ground here") can never disagree.
+     *
+     * @param resolvedLayers layer order from {@link #resolvedLayers}
+     * @param minY the dimension's own min Y
+     * @param height the dimension's own total height in blocks
+     * @return absolute block Y of the top layer's own surface
+     */
+    public static int surfaceY(List<StackedLayerSpec> resolvedLayers, int minY, int height) {
+        int surfaceHeight = totalHeightBlocks(resolvedLayers) - resolvedLayers.get(resolvedLayers.size() - 1).airGapBlocks();
+        return minY + Math.min(height, surfaceHeight);
     }
 
     /**

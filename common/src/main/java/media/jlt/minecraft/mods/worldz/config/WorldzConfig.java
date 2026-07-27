@@ -1446,6 +1446,9 @@ public final class WorldzConfig {
         if (map.containsKey("reliefBlocks")) {
             config.reliefBlocks = readInt(map.get("reliefBlocks"), name + ".reliefBlocks");
         }
+        if (map.containsKey("forceTopVillage")) {
+            config.forceTopVillage = readBoolean(map.get("forceTopVillage"), name + ".forceTopVillage");
+        }
         return config;
     }
 
@@ -2069,6 +2072,7 @@ public final class WorldzConfig {
         values.put("seedRandomizedOrder", config.seedRandomizedOrder);
         values.put("worldSizeChunks", config.worldSizeChunks);
         values.put("reliefBlocks", config.reliefBlocks);
+        values.put("forceTopVillage", config.forceTopVillage);
         return values;
     }
 
@@ -2307,7 +2311,8 @@ public final class WorldzConfig {
 
     private static String stackedSummary(StackedConfig config) {
         return "layers=" + config.layers + ", seedRandomizedOrder=" + config.seedRandomizedOrder
-            + ", worldSizeChunks=" + config.worldSizeChunks + ", reliefBlocks=" + config.reliefBlocks;
+            + ", worldSizeChunks=" + config.worldSizeChunks + ", reliefBlocks=" + config.reliefBlocks
+            + ", forceTopVillage=" + config.forceTopVillage;
     }
 
     private static String foreverNightSummary(ForeverNightConfig config) {

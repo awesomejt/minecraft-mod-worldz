@@ -617,7 +617,7 @@ class WorldzConfigTest {
                 + " minecraft:desert, minecraft:badlands, minecraft:swamp, minecraft:jungle,"
                 + " minecraft:savanna, minecraft:snowy_taiga,"
                 + " minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0],"
-                + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4"
+                + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4, forceTopVillage=false"
                 + ", foreverNight=<disabled>"
                 + ", risingLava=<disabled>"
                 + ", structureDistance=<disabled>"
@@ -1387,6 +1387,7 @@ class WorldzConfigTest {
               seedRandomizedOrder: true
               worldSizeChunks: 8
               reliefBlocks: 2
+              forceTopVillage: true
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(
@@ -1396,6 +1397,7 @@ class WorldzConfigTest {
         assertTrue(config.stacked.seedRandomizedOrder);
         assertEquals(8, config.stacked.worldSizeChunks);
         assertEquals(2, config.stacked.reliefBlocks);
+        assertTrue(config.stacked.forceTopVillage);
     }
 
     @Test
@@ -1407,6 +1409,7 @@ class WorldzConfigTest {
         assertFalse(config.stacked.seedRandomizedOrder);
         assertEquals(4, config.stacked.worldSizeChunks);
         assertEquals(4, config.stacked.reliefBlocks);
+        assertFalse(config.stacked.forceTopVillage);
     }
 
     @Test

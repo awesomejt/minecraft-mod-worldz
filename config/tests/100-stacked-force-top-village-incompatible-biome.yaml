@@ -1,0 +1,25 @@
+# GOAL 35 follow-up (DESIGN §34.9): the negative case for stacked's new forceTopVillage option --
+# confirms the silent-skip path when the top layer's own biome doesn't support any real vanilla
+# village variant. **Select "Worldz: Stacked"**. Same stack as config 99, except the top layer is
+# swapped from plains to swamp (no `minecraft:villages` structure-set entry accepts it).
+#
+# Steps once in-game:
+#  1. Check the server log at world creation for "Stacked top layer's biome
+#     'minecraft:swamp' is not village-compatible; forceTopVillage stays a no-op this world." --
+#     an INFO line, not a warning, and no "Placed the stacked top-layer guaranteed village..."
+#     line anywhere.
+#  2. Confirm no village generates anywhere near spawn on the top (swamp) layer's surface.
+#  3. Confirm the world otherwise generates and plays completely normally -- no crash, no
+#     startup error, everything else matching config 72's own eight-band structure (just with
+#     swamp on top instead of plains).
+stacked:
+  forceTopVillage: true
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
+    - "minecraft:desert;minecraft:sandstone:7,minecraft:sand:3;30"
+    - "minecraft:badlands;minecraft:stone:4,minecraft:terracotta:5,minecraft:red_sand:1;30"
+    - "minecraft:jungle;minecraft:stone:5,minecraft:dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:savanna;minecraft:stone:5,minecraft:coarse_dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:snowy_taiga;minecraft:stone:5,minecraft:dirt:3,minecraft:podzol:1,minecraft:snow_block:1;30"
+    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;30"
+    - "minecraft:swamp;minecraft:stone:5,minecraft:mud:4,minecraft:grass_block:1;0"

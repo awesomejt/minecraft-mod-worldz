@@ -138,6 +138,7 @@
   "jlt_worldz.stacked.layers.hint": "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30\nminecraft:desert\nminecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0",
   "jlt_worldz.stacked.seed_randomized_order": "Shuffle layer order (seeded)",
   "jlt_worldz.stacked.relief_blocks": "Surface relief per layer, in blocks (0 = perfectly flat)",
+  "jlt_worldz.stacked.force_top_village": "Force a village on the top layer (if its biome supports one)",
   "jlt_worldz.customize.title": "Customize Worldz",
   "jlt_worldz.customize.allowed_biomes": "Allowed biomes or #tags (one per line or comma-separated)",
   "jlt_worldz.customize.allowed_biomes.hint": "minecraft:plains\n#minecraft:is_overworld",

@@ -1,0 +1,40 @@
+# GOAL 35 follow-up (DESIGN §34.9): stacked's new forceTopVillage option -- a real vanilla
+# village always force-generated near spawn on the top layer's own surface, since natural
+# random-spread placement isn't reliable to land anywhere reachable in a small, bounded stacked
+# world (the same "guaranteed, not best-effort" posture sky island's own guaranteed village
+# already uses). **Select "Worldz: Stacked"**. Same eight-layer default stack as config 72 --
+# top layer is plains, a real village-compatible biome -- with forceTopVillage: true added.
+#
+# Deliberately keeps config 72's own default bounded worldSizeChunks (4, a 64-block-radius
+# border + VOID exterior) rather than opting out to worldSizeChunks: 0 -- this is the scenario
+# most worth actually observing. DESIGN §34.7 already documents this same 64-block radius as
+# smaller than ProgressionGuarantees.NATURAL_STRUCTURE_MARGIN (128), which is exactly why the
+# fallback End-portal vault always fires here instead of a natural stronghold; a real vanilla
+# village is very commonly wider than 128 blocks too, so this config is also the real test of
+# whether the forced village visibly clips the border/void wall. Report back exactly what you
+# find either way, don't assume it needs fixing before you've actually looked.
+#
+# Steps once in-game:
+#  1. Check the server log at world creation for "Placed the stacked top-layer guaranteed
+#     village (biome 'minecraft:plains') near (X, Z)." -- note the coordinates.
+#  2. Travel to those coordinates. Confirm a real vanilla plains village actually exists there
+#     (houses, paths, villagers, a well) sitting on the stacked plains layer's own surface.
+#  3. Confirm whether the village is fully intact within the 64-block border, or whether part
+#     of it is visibly cut off/floating at the border's void-wall edge -- this is the open risk
+#     DESIGN §34.9 flags, not a known-good check.
+#  4. Confirm the village's foundation doesn't look broken relative to the thin plains layer
+#     (10-block material stack, no air gap) -- e.g. a well or basement piece digging into the
+#     next layer down's different blocks/biome.
+#  5. Confirm everything else matches config 72 otherwise: eight bands, 30-block gaps, spawn on
+#     the plains surface, fallback End portal near the bottom layer's Y -32.
+stacked:
+  forceTopVillage: true
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
+    - "minecraft:desert;minecraft:sandstone:7,minecraft:sand:3;30"
+    - "minecraft:badlands;minecraft:stone:4,minecraft:terracotta:5,minecraft:red_sand:1;30"
+    - "minecraft:swamp;minecraft:stone:5,minecraft:mud:4,minecraft:grass_block:1;30"
+    - "minecraft:jungle;minecraft:stone:5,minecraft:dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:savanna;minecraft:stone:5,minecraft:coarse_dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:snowy_taiga;minecraft:stone:5,minecraft:dirt:3,minecraft:podzol:1,minecraft:snow_block:1;30"
+    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"

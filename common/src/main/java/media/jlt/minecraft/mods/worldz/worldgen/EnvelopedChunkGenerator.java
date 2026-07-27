@@ -2104,9 +2104,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // including its own trailing air gap (that's just open sky above, not headroom to stand
         // in mid-air over) -- mirrors flat's "top of the layer stack" spawn semantic exactly.
         if (this.stacked.enabled()) {
-            List<StackedLayerSpec> resolved = resolvedStackedLayers();
-            int surfaceHeight = StackedPlan.totalHeightBlocks(resolved) - resolved.get(resolved.size() - 1).airGapBlocks();
-            return heightAccessor.getMinY() + Math.min(heightAccessor.getHeight(), surfaceHeight);
+            return StackedPlan.surfaceY(resolvedStackedLayers(), heightAccessor.getMinY(), heightAccessor.getHeight());
         }
         // Deep-flat (GOAL 16, DESIGN §33.4): getSpawnHeight has no x/z of its own (it's a
         // dimension-wide constant, not per-column, verified from the real ChunkGenerator/

@@ -3326,8 +3326,43 @@ composes with.
       changed (the derivation logic itself is correct and intentional,
       documented behavior -- this was a missing field in the test config,
       not a bug in `StackedConfig`). **Confirmed (2026-07-27, Jason's
-      real retest):** config 76 "works as expected." Phase 17 fully
-      closed.
+      real retest):** config 76 "works as expected."
+- [x] 17.7 **New feature (2026-07-27, Jason's ask):** `stacked
+      .forceTopVillage` -- a real vanilla village always force-generated
+      near spawn on the top layer's own surface, provided that layer's
+      biome is village-compatible. Confirmed via clarifying question:
+      always force at a fixed, deterministic site, never a natural-
+      search-first attempt, mirroring sky island's own guaranteed-village
+      posture (GOALS 07) -- natural placement isn't reliable in a small,
+      bounded stacked world. New `StackedVillageDeployment` (`worldgen`
+      package) reuses `FloatingIslandsDeployment`'s exact `Structure
+      .generate`/`placeInChunk` mechanics, but derives biome eligibility
+      live from `minecraft:villages`' own real `structures()`/`biomes()`
+      data (same real-data-driven check `warnUnreachableFlatStructure
+      Overrides` already established) instead of copying `FloatingIslands
+      Plan`'s hardcoded biome-to-structure table a second time -- that
+      table is a documented past bug source when it drifted out of sync
+      with real vanilla data; this can't. New `StackedPlan.surfaceY`
+      helper extracted from `getSpawnHeight`'s existing inline formula
+      (DRY, one source of truth for "top layer's own surface"). Threaded
+      through the full existing config path end to end: `StackedConfig`
+      → codec (`force_top_village`, optional/false-default for save-
+      compat) → `StackedCustomization`/Customize-screen checkbox →
+      `StackedPresetEditor`'s read-back path, since stacked already has
+      full Customize support (unlike some newer "config-only for now"
+      features) and skipping the UI wiring would let opening Customize
+      silently reset the toggle. New configs 99 (default stack, top
+      biome plains, real village-compatible) and 100 (top layer swapped
+      to swamp, confirms the silent-skip negative path with an INFO log,
+      not a warning). DESIGN §34.9 documents the design and flags the
+      one real, likely (not speculative) risk: stacked's own default
+      64-block-radius border is smaller than a real village's typical
+      footprint, so config 99 may well show the village clipping the
+      border/void wall -- shipped as-is to observe empirically rather
+      than guessed at preemptively, same posture as §34.5's own
+      stronghold-fit question. Full multiloader build green. **[Jason]
+      retest outstanding** on configs 99-100. Phase 17 closed again
+      pending that retest.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 

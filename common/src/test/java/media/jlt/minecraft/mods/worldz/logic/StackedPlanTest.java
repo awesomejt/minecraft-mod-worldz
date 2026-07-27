@@ -39,6 +39,7 @@ class StackedPlanTest {
         );
         config.seedRandomizedOrder = true;
         config.reliefBlocks = 4;
+        config.forceTopVillage = true;
 
         StackedPlan plan = StackedPlan.fromConfig(config);
 
@@ -46,6 +47,7 @@ class StackedPlanTest {
         assertEquals(2, plan.layers().size());
         assertTrue(plan.seedRandomizedOrder());
         assertEquals(4, plan.reliefBlocks());
+        assertTrue(plan.forceTopVillage());
     }
 
     @Test
@@ -63,7 +65,7 @@ class StackedPlanTest {
 
     @Test
     void emptyLayerListIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(), false, 0));
+        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(), false, 0, false));
     }
 
     @Test
@@ -71,23 +73,23 @@ class StackedPlanTest {
         StackedLayerSpec tooTall = new StackedLayerSpec(
             "minecraft:plains", List.of(new FlatLayerSpec("minecraft:stone", FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS + 1)), 0
         );
-        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(tooTall), false, 0));
+        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(tooTall), false, 0, false));
     }
 
     @Test
     void negativeReliefIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false, -1));
+        assertThrows(IllegalArgumentException.class, () -> new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false, -1, false));
     }
 
     @Test
     void resolvedLayersKeepsConfiguredOrderWhenNotRandomized() {
-        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false, 0);
+        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), false, 0, false);
         assertSame(plan.layers(), plan.resolvedLayers(12345L));
     }
 
     @Test
     void resolvedLayersIsDeterministicForTheSameSeedWhenRandomized() {
-        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), true, 0);
+        StackedPlan plan = new StackedPlan(true, List.of(TAIGA, DESERT, PLAINS), true, 0, false);
         List<StackedLayerSpec> first = plan.resolvedLayers(42L);
         List<StackedLayerSpec> second = plan.resolvedLayers(42L);
         assertEquals(first, second);
@@ -100,6 +102,19 @@ class StackedPlanTest {
         List<StackedLayerSpec> layers = List.of(TAIGA, DESERT, PLAINS);
         // taiga: 40 + 6 = 46; desert: 20 + 6 = 26; plains: 21 + 0 = 21
         assertEquals(93, StackedPlan.totalHeightBlocks(layers));
+    }
+
+    @Test
+    void surfaceYExcludesTheTopLayersOwnTrailingAirGap() {
+        List<StackedLayerSpec> layers = List.of(TAIGA, DESERT, PLAINS);
+        // total 93, PLAINS (top) has a 0-block air gap, so surfaceY sits at the very top of the stack.
+        assertEquals(FlatConfig.OVERWORLD_MIN_Y + 93, StackedPlan.surfaceY(layers, FlatConfig.OVERWORLD_MIN_Y, 384));
+    }
+
+    @Test
+    void surfaceYClampsToTheAvailableHeight() {
+        List<StackedLayerSpec> layers = List.of(TAIGA, DESERT, PLAINS);
+        assertEquals(FlatConfig.OVERWORLD_MIN_Y + 10, StackedPlan.surfaceY(layers, FlatConfig.OVERWORLD_MIN_Y, 10));
     }
 
     @Test

@@ -15,6 +15,8 @@ import java.util.List;
  * @param layers ordered bottom-to-top layer stack
  * @param seedRandomizedOrder whether the configured order is shuffled, seeded off the real world seed
  * @param reliefBlocks maximum per-column height bump applied to each layer's own surface (DESIGN §34.7)
+ * @param forceTopVillage whether a real vanilla village is always force-generated near spawn on
+ *     the top layer's own surface, provided its biome is village-compatible (DESIGN §34.9)
  * @param overworldBorder Overworld border selection
  * @param netherBorder Nether border selection
  * @param endBorder End border selection (GOALS 17's Overworld-to-End carry-over)
@@ -25,6 +27,7 @@ public record StackedCustomization(
     List<StackedLayerSpec> layers,
     boolean seedRandomizedOrder,
     int reliefBlocks,
+    boolean forceTopVillage,
     WorldzCustomization.BorderSettings overworldBorder,
     WorldzCustomization.BorderSettings netherBorder,
     WorldzCustomization.EndBorderSettings endBorder,
@@ -73,6 +76,7 @@ public record StackedCustomization(
             layers,
             config.stacked.seedRandomizedOrder,
             config.stacked.reliefBlocks,
+            config.stacked.forceTopVillage,
             overworldBorder,
             WorldzCustomization.BorderSettings.fromConfig(config.netherBorder),
             WorldzCustomization.EndBorderSettings.fromConfig(config.endBorder),
@@ -87,6 +91,8 @@ public record StackedCustomization(
      * @param layersText comma/newline-separated {@code biome;blocks;air gap} shorthand
      * @param seedRandomizedOrder whether the configured order is shuffled, seeded off the real world seed
      * @param reliefBlocksText decimal maximum per-column height bump applied to each layer's own surface
+     * @param forceTopVillage whether a real vanilla village is always force-generated near spawn
+     *     on the top layer's own surface, provided its biome is village-compatible
      * @param overworldBorder validated Overworld border values
      * @param netherBorder validated Nether border values
      * @param endBorder validated End border values
@@ -98,6 +104,7 @@ public record StackedCustomization(
         String layersText,
         boolean seedRandomizedOrder,
         String reliefBlocksText,
+        boolean forceTopVillage,
         WorldzCustomization.BorderSettings overworldBorder,
         WorldzCustomization.BorderSettings netherBorder,
         WorldzCustomization.EndBorderSettings endBorder,
@@ -113,7 +120,8 @@ public record StackedCustomization(
         }
         int reliefBlocks = WorldzCustomization.parseInteger(reliefBlocksText, "Relief blocks");
         return new StackedCustomization(
-            layers, seedRandomizedOrder, reliefBlocks, overworldBorder, netherBorder, endBorder, overworldExterior, netherExterior
+            layers, seedRandomizedOrder, reliefBlocks, forceTopVillage,
+            overworldBorder, netherBorder, endBorder, overworldExterior, netherExterior
         );
     }
 
@@ -140,7 +148,7 @@ public record StackedCustomization(
      * @return resolved, enabled plan
      */
     public StackedPlan stackedPlan() {
-        return new StackedPlan(true, layers, seedRandomizedOrder, reliefBlocks);
+        return new StackedPlan(true, layers, seedRandomizedOrder, reliefBlocks, forceTopVillage);
     }
 
     /**
