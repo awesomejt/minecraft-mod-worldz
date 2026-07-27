@@ -3363,6 +3363,30 @@ composes with.
       stronghold-fit question. Full multiloader build green. **[Jason]
       retest outstanding** on configs 99-100. Phase 17 closed again
       pending that retest.
+- [x] 17.8 **Default change (2026-07-27, Jason's ask):** decouple
+      `stacked`'s default Overworld border from its default void
+      exterior (DESIGN §34.10). Since §34.7, a nonzero `stacked
+      .worldSizeChunks` (default 4) forced *both* a real Overworld
+      border *and* a void exterior wall on together; Jason wants the
+      void exterior kept ("like a sky chunk") but the border off by
+      default, only turned on via the shared `overworldBorder` config
+      section like every other typed preset -- matching this project's
+      own border(accessibility)-vs-exterior(terrain extent) philosophy,
+      which §34.7 had temporarily merged for `stacked` alone.
+      `StackedConfig.effectiveOverworldExterior` now sets its own
+      `boundaryRadiusBlocks` explicitly from `worldSizeChunks` instead
+      of relying on an enabled border to supply it;
+      `effectiveOverworldBorder` is now a pure pass-through of the
+      shared config. `worldSizeChunks: 0`'s full-opt-out behavior is
+      unchanged. Updated `StackedConfigTest`/`StackedCustomizationTest`
+      to match. New config 101 (default stack, zero border/exterior
+      overrides -- confirms it now matches config 76's hand-tuned
+      behavior for free). Full `:common:test` green, both Prism
+      instances (Fabric + NeoForge) redeployed at 0.3.20.
+      **[Jason] retest outstanding** on config 101 -- confirm a never-
+      customized default stacked world floats in void at the platform
+      edge with no border, and that adding `overworldBorder.enabled:
+      true` still adds a real border on top.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 
@@ -3708,6 +3732,99 @@ a behavior change gets dropped from this phase and raised as its own item.
 - [ ] 24.6 Re-run the full manual acceptance configs for every preset
       touched, plus the full multiloader build, before closing the phase.
 
+## Phase 25 — Config restructure (engineering, no GOAL) — **PROPOSAL, BLOCKED ON JASON**
+
+Added 2026-07-27 (Jason: "restructure the configuration files… more nested
+structure… should properties be put into their own yaml configuration files…
+better organized documentation"). Research and proposal in
+**`CONFIG-RESTRUCTURE.md`** — read it before touching any item here.
+
+**Blocked:** every item below depends on Jason answering `CONFIG-RESTRUCTURE.md`
+§8 Q1–Q4 (blocking) — unit-suffix naming, whether to split into a directory,
+whether to extract named starter kits, and whether the mod stops rewriting the
+user's config file. Q5–Q9 have recommended defaults that can be taken as-is.
+Do not start 25.2+ without those answers; the file layout they decide changes
+every subsequent item.
+
+**Hard constraint: behavior-preserving**, same as Phase 24. No gameplay,
+generation, Customize-screen, or world-save-codec change. `grep -l Codec` over
+the config package returns zero files, so config renames cannot affect existing
+saves (CONFIG-RESTRUCTURE.md F8) — the blast radius is the parse layer,
+`config/tests/*` (104 files), README, the example file, and the config tests.
+
+- [ ] 25.1 Research and proposal — **done**, `CONFIG-RESTRUCTURE.md`
+      (findings F1–F8 measured against the tree, recommendations R1–R9,
+      open questions Q1–Q10). Awaiting Jason's answers.
+- [ ] 25.2 Documentation-completeness test (R9) — assert every leaf setting
+      reachable from `new WorldzConfig()` appears in the reference config and
+      a README settings table. **Expected to fail on first write**: 12 of 25
+      sections are undocumented in `config/jlt_worldz.example.yaml` today
+      (F6), and `README.md:71` wrongly claims that file "documents every
+      setting". Land the test plus the missing documentation together.
+      *Independent of Q1–Q4 — this one can start as soon as Jason approves
+      the phase at all.*
+- [ ] 25.3 Stop rewriting the user's config file (R1, needs Q4). `loadExisting`
+      unconditionally calls `save()` and SnakeYAML's dump drops comments, so
+      every comment in a user's `jlt_worldz.yaml` — and in every one of the
+      104 commented `config/tests/*.yaml` — is destroyed on first launch (F5).
+      Replace with a generated, fully-commented `jlt_worldz.reference.yaml`
+      written on every launch and never read back.
+- [ ] 25.4 Presence tracking (R2, needs 25.3 first — see F5's second
+      consequence: today's rewrite makes every setting explicit after one
+      launch, which would silently defeat this). Capture the dotted paths the
+      user actually wrote during parse into an immutable `Set<String>` on
+      `WorldzConfig`; keep the POJOs and their inline defaults unchanged.
+- [ ] 25.5 Retire the sentinel-value workarounds (needs 25.4, policy per Q5).
+      Rewrite `StackedConfig.effectiveOverworldBorder`/`effectiveOverworld
+      Exterior` in terms of "user set it explicitly?" instead of
+      `worldSizeChunks == 0`, and delete the `worldSizeChunks: 0` opt-out
+      boilerplate from configs 73/74/75/76 (+2 others). This is the bug that
+      has been fixed three times already (17.4a, 17.5, 17.6) and cost two of
+      Jason's in-game test rounds.
+- [ ] 25.6 Key-path alias layer with one-time deprecation warnings (R3, per
+      Q6), reusing the exact policy Jason already settled for Phase 23.2.
+      **Coordinate with 23.2 — build this once and have whichever phase runs
+      second consume it.**
+- [ ] 25.7 Collapse the flat prefixes (R6, needs Q1) per
+      CONFIG-RESTRUCTURE.md F1's two tables — 14 within-class nests plus 4
+      cross-class shared shapes (`exclusionZone`, `naturalBiomes`,
+      `underground`, `chest`+kits).
+- [ ] 25.8 Extract named starter kits (R5, needs Q3). 145 of the 384 generated
+      config lines (38%) are 12 near-duplicate kit blocks. Ship the current 12
+      pre-named so behavior is byte-identical; keep inline definitions legal.
+      **Fold Phase 24.5 into this** (duplicated `NetherStartPlan`/`EndStartPlan`
+      capsule config fields) rather than doing it twice.
+- [ ] 25.9 Split into `config/jlt_worldz/` by scope (R4, needs Q2) —
+      `runtime.yaml` / `world-defaults.yaml` / `kits.yaml` /
+      `world-types/<preset-id>.yaml`. Biggest single win is moving the 11
+      generic-preset-only top-level keys (`allowedBiomes`, `starterBiome`,
+      `layout`, `strip`, …) into `world-types/worldz.yaml`, where they stop
+      masquerading as global settings (F3). Resolve the `strip`/`stripWorld`
+      split-brain here per Q9.
+- [ ] 25.10 Document the live-vs-baked scope distinction (R7). Hazards
+      (`foreverNight`, `risingLava`, `structureDistance`) are re-read from
+      config at runtime and **change existing worlds**; borders, exteriors and
+      every preset section are baked into the save at world creation and do
+      nothing to an existing world. This is currently invisible in both the
+      config file and README — a real user-facing documentation bug.
+- [ ] 25.11 Migrate `config/tests/*.yaml` mechanically (the 25.6 alias layer
+      means they keep working unmigrated, so this is tidiness, not a blocker),
+      refresh MANUAL_TESTING.md's scenario tables, and re-run **only** the
+      acceptance configs for presets whose config *shape* changed.
+- [ ] 25.12 Full multiloader build green, both Prism instances redeployed,
+      then close the phase. **[Jason] acceptance:** confirm a hand-commented
+      config survives a launch intact (25.3), and that a stacked world with no
+      `worldSizeChunks: 0` opt-out behaves as configured (25.5).
+- [ ] 25.13 **Deferred, evaluate separately after the above lands:**
+      schema-driven config (R8). One declarative descriptor per setting
+      generating parse, validation, the reference file, README tables and the
+      summary line — would take `WorldzConfig.java` from 2400 lines to a schema
+      plus a small engine and make F6-style doc drift structurally impossible.
+      Deliberately **not** bundled with the restructure: it is the largest and
+      riskiest item, and it wants the already-regularised config as its input.
+      Phase 20.1's planned config-reference rewrite is largely subsumed by
+      25.2+25.3 and should shrink to a prose pass.
+
 ---
 
 ## Backlog (approved, not yet scheduled to a phase)
@@ -3737,6 +3854,13 @@ a behavior change gets dropped from this phase and raised as its own item.
   field per-section); revisit as a documentation pass, likely folded into
   Phase 20's planned "full README/config-reference/example rewrite"
   (TODO 20.1) rather than a standalone task.
+  **Superseded 2026-07-27 by Phase 25** (config restructure): re-measured as
+  12 missing sections, not ten, and re-scoped from "write the missing docs
+  once" to "make the drift structurally impossible" — TODO 25.2 adds the
+  completeness test that would have caught it, and 25.3 replaces the
+  hand-maintained example file with a generated reference. Note `README.md:71`
+  additionally tells users the example file "documents every setting with
+  comments", which has never been true. See `CONFIG-RESTRUCTURE.md` F6.
 - **2026-07-18, Jason (from Phase 4.2 acceptance, config 16):** chaos_biomes'
   `allowRivers`/`allowOceans` default to `false`, so out of the box a chaos
   world shows real water bodies relabeled with a land biome (e.g. an ocean
@@ -3810,6 +3934,45 @@ a behavior change gets dropped from this phase and raised as its own item.
 ## Questions for Jason (running list)
 
 (Add here when blocked; don't guess on gameplay/scope questions.)
+
+- **2026-07-27 — Phase 25 config restructure: 10 open questions, 4 blocking.**
+  Full text with rationale and a recommended answer for each in
+  **`CONFIG-RESTRUCTURE.md` §8**; summarized here so this list stays the single
+  index of what needs you. Q1–Q4 block every item past 25.2; Q5–Q9 each carry a
+  recommendation that can be taken as-is if you don't care.
+  - **Q1 (blocking) — naming.** Keep unit suffixes on leaves and drop only the
+    grouping prefix (`ocean.shallowWidthBlocks`), or strip fully
+    (`ocean.shallowWidth`)? *Recommended: keep the suffixes* — in a plain text
+    file it's the only unit hint, and it isn't the part that repeats.
+  - **Q2 (blocking) — split.** Split into `config/jlt_worldz/` with one file per
+    world type, or keep a single better-nested file? *Recommended: split.* The
+    nesting, presence-tracking and kit fixes all work standalone if you'd
+    rather not.
+  - **Q3 (blocking) — kits.** Extract the 12 near-duplicate starter-kit blocks
+    (38% of the generated config) into a shared `kits.yaml` referenced by name?
+    *Recommended: yes,* keeping inline definitions legal for one-offs.
+  - **Q4 (blocking) — stop rewriting the config.** Today the mod rewrites
+    `jlt_worldz.yaml` on every launch and SnakeYAML drops all comments, so your
+    hand-written config comments (and every `config/tests/*.yaml` header) are
+    destroyed on first use. *Recommended: never write that file again;* ship a
+    generated `jlt_worldz.reference.yaml` instead. Prerequisite for the
+    presence-tracking fix.
+  - **Q5 — sentinel policy.** *Recommended: convert only the precedence
+    sentinels that caused real bugs (`worldSizeChunks: 0`), leave cosmetic ones
+    (`undergroundBiome: ""`) alone.*
+  - **Q6 — deprecation window** for old key paths. *Recommended: keep aliases
+    through 1.0.*
+  - **Q7 — sequencing.** *Recommended: after Phase 23, before Phase 20, folding
+    24.5 in.* Phases 21–22 add new settings, so order determines how much gets
+    migrated twice.
+  - **Q8 — landing size.** *Recommended: two units* — "make the config honest"
+    (25.2–25.6) then "restructure the files" (25.7–25.10).
+  - **Q9 — `strip`/`stripWorld`.** The `strip_world` preset reads its corridor
+    width from the shared top-level `strip:` section but its bands from
+    `stripWorld:` — one preset, two unrelated keys. *Recommended: merge,* but
+    the generic preset also reads `strip:`, so confirm whether it keeps a copy.
+  - **Q10 — anything else** you want renamed or moved while the file is open?
+    This is the cheapest it will ever be.
 
 - 2026-07-17 — Phase 2.7 in-game testing (config 10, world `Worldz-04`,
   desert) found what looks like a floating desert village around

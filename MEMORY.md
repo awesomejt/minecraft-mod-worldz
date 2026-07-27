@@ -1636,6 +1636,49 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Full design in DESIGN §29 (TODO 12.1); execution split into TODO
   12.1-12.7 mirroring Phase 10/11's granularity.
 
+- 2026-07-27 -- **Config-system facts, measured for the Phase 25 restructure
+  proposal** (`CONFIG-RESTRUCTURE.md`; proposal is Jason's to approve, but
+  these measurements are settled and shouldn't be re-derived):
+  1. **Config renames cannot break saved worlds.** `grep -l Codec` over
+     `config/` returns zero files -- config POJOs never touch the world-save
+     codecs; the `*Customization` records own that, with their own independent
+     snake_case field names. The blast radius of any config rename/renest is
+     the parse layer, `config/tests/*` (104 files), README, the example file,
+     and the config unit tests. Nothing else.
+  2. **The config file is rewritten on every launch and all comments are
+     destroyed.** `loadExisting` unconditionally calls `save()`, and
+     SnakeYAML's dump drops comments. Every commented `config/tests/*.yaml`
+     loses its header on first use, and a 5-line config becomes the full
+     384-line dump. This traces to the deliberate 2026-07-14 decision above
+     ("Rewrite successfully parsed config atomically after sanitation"), made
+     when the config was one section and never revisited across the 25 added
+     since. Consequence worth remembering: **after one launch every setting is
+     explicit**, so any "was this explicitly set?" scheme is defeated unless
+     the rewrite is fixed first.
+  3. **The root cause of the thrice-fixed stacked border bug** (17.4a, 17.5,
+     17.6) is that `WorldzConfig.parse` gates every field on
+     `object.containsKey(...)` -- it *knows* which keys the user wrote -- and
+     then discards that into a plain POJO, forcing sentinel values like
+     `worldSizeChunks: 0` to stand in for it. `StackedConfig`'s own Javadoc
+     documents the problem. Any future "preset default vs. shared section"
+     precedence question will hit this again until presence tracking exists.
+  4. **Scope taxonomy, currently invisible to users and undocumented in
+     README.** Hazards (`foreverNight`, `risingLava`, `structureDistance`) are
+     re-read live from config via `WorldzCommon.config()` at runtime and
+     **change existing worlds**; borders, exteriors and every preset section
+     are baked into the save at world creation and do **nothing** to an
+     existing world. Same flat top level, opposite behavior.
+  5. `config/jlt_worldz.example.yaml` documents 13 of 25 sections; the 12
+     missing are every typed preset shipped since Phase 6. `README.md:71`
+     claims it "documents every setting with comments" -- it never has.
+     `WorldzConfigTest.documentedExampleParsesToTheSameDefaultsAsCode` cannot
+     catch this (it only compares fields the example *does* specify).
+  6. Scale, if a judgement call needs anchoring: 165 leaf settings / 25
+     sections / 384 generated lines, of which 145 (38%) are 12 near-duplicate
+     starter-kit blocks; `WorldzConfig.java` is 2400 lines because every
+     setting is hand-written into four parallel methods (read/sanitize/map/
+     summary, ~100 methods total).
+
 ## Reference Log
 
 - Phase 0: Fabric project structure and `fabric.mod.json` entrypoints — https://docs.fabricmc.net/develop/getting-started/project-structure
