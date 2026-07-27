@@ -22,7 +22,7 @@
 stacked:
   layers:
     - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
-    - "minecraft:jungle"
+    - "jungle"
     - "minecraft:savanna"
-    - "minecraft:mushroom_fields"
-    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"
+    - "mushroom_fields"
+    - "plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"
