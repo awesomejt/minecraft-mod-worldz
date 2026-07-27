@@ -3421,7 +3421,7 @@ verified there against the real 26.2 artifacts.
       the phase** (`BiomeRoles` is deliberately registry-independent) —
       add `BiomeRolesTest` coverage for the maintained set and unknown/
       modded ids.
-- [ ] 21.3 Split `resolveAllowedBiomes`'s single `allowed` input into
+- [x] 21.3 Split `resolveAllowedBiomes`'s single `allowed` input into
       surface/underground subsets via `BiomeRoles.isUnderground`, each
       with its own filtered `MultiNoiseBiomeSource` — **but if either
       subset is empty, that side's delegate borrows the other side's**

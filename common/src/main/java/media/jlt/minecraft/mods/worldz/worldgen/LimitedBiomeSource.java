@@ -52,6 +52,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /** A multi-noise biome source restricted to configured overworld biomes. */
@@ -605,34 +606,63 @@ public final class LimitedBiomeSource extends BiomeSource {
             biomeGetter
         ).parameters();
         Set<Holder<Biome>> allowedSet = new LinkedHashSet<>(allowed.stream().toList());
-        AllowedEntryFilter.Result<Pair<Climate.ParameterPoint, Holder<Biome>>, Holder<Biome>> filteredResult =
-            AllowedEntryFilter.filter(overworld.values(), Pair::getSecond, allowedSet);
-        List<Pair<Climate.ParameterPoint, Holder<Biome>>> filtered = filteredResult.entries();
-        Set<Holder<Biome>> matched = filteredResult.matchedValues();
 
+        // GOAL 42, DESIGN §37.2: partitioned by depth role (surface vs. underground) rather
+        // than one merged delegate, so a cave biome configured in `allowedBiomes` can never be
+        // the nearest-neighbour match at surface depth no matter how its other six climate
+        // parameters compare -- the actual root cause of cave biomes surfacing. Each side keeps
+        // its own DepthPartition (filtered entries, matched holders, unmatched-warning set).
+        Set<Holder<Biome>> undergroundAllowed = allowedSet.stream()
+            .filter(LimitedBiomeSource::isUndergroundHolder)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Holder<Biome>> surfaceAllowed = allowedSet.stream()
+            .filter(holder -> !isUndergroundHolder(holder))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        DepthPartition surfacePartition = filterByDepthRole(overworld, surfaceAllowed);
+        DepthPartition undergroundPartition = filterByDepthRole(overworld, undergroundAllowed);
+
+        // Symmetric fallback (DESIGN §37.2's pre-work correction): an empty side borrows the
+        // other side's delegate instead of independently falling back to full vanilla -- a
+        // provable no-op for every preset whose own allowed set is naturally one-sided (flat's
+        // single land biome, single_biome's one configured biome, etc.), and a real fix only
+        // where the allowed set genuinely mixes both (legacy's shipped default). Only when
+        // *both* sides are empty does the pre-existing full-vanilla fail-safe apply, unchanged.
+        boolean bothEmpty = surfacePartition.filtered().isEmpty() && undergroundPartition.filtered().isEmpty();
+        if (bothEmpty) {
+            WorldzCommon.LOGGER.warn(
+                "No configured biome matched an overworld climate entry; using the full vanilla overworld biome list as a fail-safe."
+            );
+        }
         allowedSet.stream()
-            .filter(holder -> !matched.contains(holder))
+            .filter(holder -> !surfacePartition.matched().contains(holder) && !undergroundPartition.matched().contains(holder))
             .forEach(holder -> WorldzCommon.LOGGER.warn(
                 "Allowed biome '{}' has no overworld climate entry and will be ignored.",
                 holder.getRegisteredName()
             ));
 
-        boolean usingFallback = filtered.isEmpty();
-        Climate.ParameterList<Holder<Biome>> delegateParameters;
-        if (usingFallback) {
-            WorldzCommon.LOGGER.warn(
-                "No configured biome matched an overworld climate entry; using the full vanilla overworld biome list as a fail-safe."
-            );
-            delegateParameters = overworld;
+        MultiNoiseBiomeSource surfaceDelegate;
+        MultiNoiseBiomeSource undergroundDelegate;
+        if (bothEmpty) {
+            surfaceDelegate = MultiNoiseBiomeSource.createFromList(overworld);
+            undergroundDelegate = surfaceDelegate;
+        } else if (surfacePartition.filtered().isEmpty()) {
+            undergroundDelegate = MultiNoiseBiomeSource.createFromList(new Climate.ParameterList<>(undergroundPartition.filtered()));
+            surfaceDelegate = undergroundDelegate;
+        } else if (undergroundPartition.filtered().isEmpty()) {
+            surfaceDelegate = MultiNoiseBiomeSource.createFromList(new Climate.ParameterList<>(surfacePartition.filtered()));
+            undergroundDelegate = surfaceDelegate;
         } else {
-            delegateParameters = new Climate.ParameterList<>(filtered);
+            surfaceDelegate = MultiNoiseBiomeSource.createFromList(new Climate.ParameterList<>(surfacePartition.filtered()));
+            undergroundDelegate = MultiNoiseBiomeSource.createFromList(new Climate.ParameterList<>(undergroundPartition.filtered()));
         }
-        MultiNoiseBiomeSource delegate = MultiNoiseBiomeSource.createFromList(delegateParameters);
+
         Set<Holder<Biome>> possible = new LinkedHashSet<>();
-        if (usingFallback) {
-            possible.addAll(delegate.possibleBiomes());
+        if (bothEmpty) {
+            possible.addAll(surfaceDelegate.possibleBiomes());
         } else {
-            possible.addAll(matched);
+            possible.addAll(surfacePartition.matched());
+            possible.addAll(undergroundPartition.matched());
         }
         starterBiome.ifPresent(possible::add);
         oceanBiome.ifPresent(possible::add);
@@ -675,9 +705,37 @@ public final class LimitedBiomeSource extends BiomeSource {
         }
 
         return new Resolution(
-            HolderSet.direct(List.copyOf(allowedSet)), delegate, naturalDelegate, Set.copyOf(possible),
-            layoutBiomes, islandBiomes, skyIslandBiomes
+            HolderSet.direct(List.copyOf(allowedSet)), surfaceDelegate, undergroundDelegate, naturalDelegate,
+            Set.copyOf(possible), layoutBiomes, islandBiomes, skyIslandBiomes
         );
+    }
+
+    /**
+     * Reports whether a biome holder is one of {@link BiomeRoles}' maintained underground biomes
+     * (GOAL 42, DESIGN §37.2), resolved by its canonical registry id -- mirrors the id-extraction
+     * shorthand already used for structure sets ({@code structureSetId} in
+     * {@code EnvelopedChunkGenerator}) and stacked-layer biome lookups ({@link #stackedBiomeHolder}).
+     */
+    private static boolean isUndergroundHolder(Holder<Biome> holder) {
+        return holder.unwrapKey()
+            .map(key -> BiomeRoles.isUnderground(key.identifier().toString()))
+            .orElse(false);
+    }
+
+    /**
+     * Filters vanilla's own overworld climate parameter list down to entries whose biome is in
+     * {@code subset}, and reports which of {@code subset}'s own biomes actually matched (GOAL 42,
+     * DESIGN §37.2) -- the same filtering {@code resolveAllowedBiomes} always did, just callable
+     * once per depth-role subset instead of once for the whole allowed set.
+     */
+    private static DepthPartition filterByDepthRole(Climate.ParameterList<Holder<Biome>> overworld, Set<Holder<Biome>> subset) {
+        AllowedEntryFilter.Result<Pair<Climate.ParameterPoint, Holder<Biome>>, Holder<Biome>> result =
+            AllowedEntryFilter.filter(overworld.values(), Pair::getSecond, subset);
+        return new DepthPartition(result.entries(), result.matchedValues());
+    }
+
+    /** One depth role's (surface or underground) filtered climate entries and matched biomes. */
+    private record DepthPartition(List<Pair<Climate.ParameterPoint, Holder<Biome>>> filtered, Set<Holder<Biome>> matched) {
     }
 
     /**
@@ -1329,7 +1387,10 @@ public final class LimitedBiomeSource extends BiomeSource {
                     int centerQuartX = QuartPos.fromBlock((int) Math.round(islandCenterX) + originX);
                     int centerQuartZ = QuartPos.fromBlock((int) Math.round(islandCenterZ) + originZ);
                     int surfaceQuartY = QuartPos.fromBlock(this.skyIsland.surfaceY());
-                    return this.resolution.get().delegate().getNoiseBiome(centerQuartX, surfaceQuartY, centerQuartZ, sampler);
+                    // Explicitly the island's own surface (GOAL 42, DESIGN §37.2) -- always the
+                    // surface delegate, never depth-routed, regardless of what surfaceQuartY's
+                    // own incidental climate depth would otherwise say.
+                    return this.resolution.get().surfaceDelegate().getNoiseBiome(centerQuartX, surfaceQuartY, centerQuartZ, sampler);
                 }
                 Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(biomeId);
                 if (biome != null) {
@@ -1365,7 +1426,21 @@ public final class LimitedBiomeSource extends BiomeSource {
                 return sampled.get();
             }
         }
-        return this.resolution.get().delegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
+        return isUndergroundDepth(quartX, quartY, quartZ, sampler)
+            ? this.resolution.get().undergroundDelegate().getNoiseBiome(quartX, quartY, quartZ, sampler)
+            : this.resolution.get().surfaceDelegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
+    }
+
+    /**
+     * Reports whether a query point's own climate depth falls in vanilla's real underground band
+     * (GOAL 42, DESIGN §37.2) -- mirrors {@code OverworldBiomeBuilder.addUndergroundBiome}'s own
+     * {@code span(0.2, 0.9)} threshold (verified against the real 26.2 sources, DESIGN §37.0):
+     * anything at or above {@code 0.2} is underground/bottom depth, below it is surface.
+     * Compared in quantized space via {@link Climate#quantizeCoord} to match {@code depth()}'s
+     * own quantized {@code long} representation exactly, rather than round-tripping through float.
+     */
+    private static boolean isUndergroundDepth(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
+        return sampler.sample(quartX, quartY, quartZ).depth() >= Climate.quantizeCoord(0.2F);
     }
 
     /**
@@ -1382,7 +1457,8 @@ public final class LimitedBiomeSource extends BiomeSource {
 
     private record Resolution(
         HolderSet<Biome> allowedBiomes,
-        MultiNoiseBiomeSource delegate,
+        MultiNoiseBiomeSource surfaceDelegate,
+        MultiNoiseBiomeSource undergroundDelegate,
         Optional<MultiNoiseBiomeSource> naturalDelegate,
         Set<Holder<Biome>> possibleBiomes,
         Map<String, Holder<Biome>> layoutBiomes,
