@@ -1,0 +1,43 @@
+# GOAL 35/17 (DESIGN §34.10, Jason's 2026-07-27 ask): confirms the *default*
+# stacked world (no `worldSizeChunks`/`overworldBorder`/`overworldExterior`
+# overrides at all -- every field below is omitted on purpose) now behaves
+# exactly like config 76's hand-tuned "void exterior, no border" setup did,
+# without needing any of config 76's manual opt-out (`worldSizeChunks: 0` +
+# explicit `overworldBorder.enabled: false` + explicit `overworldExterior`).
+# Before this change, a never-customized default stacked world forced a real
+# 64-block Overworld border on *together with* the void exterior wall
+# (§34.7's original coupling); now the border stays off unless explicitly
+# enabled in config, matching every other typed preset's own border-is-
+# always-opt-in posture. **Select "Worldz: Stacked"**.
+#
+# Steps once in-game:
+#  1. Confirm there is NO world border at all -- no pause-menu indicator, no
+#     "Approaching the world border" warning, no invisible-wall stop, no
+#     matter how far out you walk or fly. (This is the actual behavior
+#     change from before -- previously this exact config would have shown a
+#     hard wall at 64 blocks.)
+#  2. Confirm real void starts right at the 64-block radius (the simplified
+#     default stack's own implicit `worldSizeChunks: 4`) -- open black
+#     nothing, no terrain, no fallback biome, no floating islands -- same
+#     void appearance as config 76, just reached with zero config overrides.
+#  3. With Elytra (or by bridging out with blocks), confirm you can fly/
+#     stand in the void indefinitely at a normal Y with no damage -- the
+#     same "Sky Chunk" feel Jason asked for.
+#  4. Confirm the fallback End portal is still reachable/guaranteed despite
+#     there being no border (the generic void-exterior objective gate, not
+#     the border, is what guarantees this).
+#  5. Now, separately, confirm the border CAN still be turned on: edit this
+#     file to add `overworldBorder: {enabled: true}`, create a fresh new
+#     world (old-jar/old-config worlds don't retroactively pick up config
+#     changes), and confirm a real 512-block border now appears alongside
+#     the same void exterior.
+stacked:
+  layers:
+    - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
+    - "minecraft:desert;minecraft:sandstone:7,minecraft:sand:3;30"
+    - "minecraft:badlands;minecraft:stone:4,minecraft:terracotta:5,minecraft:red_sand:1;30"
+    - "minecraft:swamp;minecraft:stone:5,minecraft:mud:4,minecraft:grass_block:1;30"
+    - "minecraft:jungle;minecraft:stone:5,minecraft:dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:savanna;minecraft:stone:5,minecraft:coarse_dirt:4,minecraft:grass_block:1;30"
+    - "minecraft:snowy_taiga;minecraft:stone:5,minecraft:dirt:3,minecraft:podzol:1,minecraft:snow_block:1;30"
+    - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"

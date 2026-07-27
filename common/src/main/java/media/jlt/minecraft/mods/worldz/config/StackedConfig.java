@@ -16,17 +16,19 @@ public final class StackedConfig {
     public List<String> layers = defaultLayers();
     /** Whether the configured layer order is shuffled, seeded off the real world seed. */
     public boolean seedRandomizedOrder = false;
-    /** Overworld border/exterior half-width in chunks (DESIGN §34.7): whenever this is nonzero,
-     * it always supersedes the shared {@code overworldBorder}/{@code overworldExterior} sections
-     * for a stacked world -- plain config fields carry no "was this explicitly set" flag, so
+    /** Overworld exterior half-width in chunks (DESIGN §34.10): whenever this is nonzero, it
+     * always supersedes the shared {@code overworldExterior} section for a stacked world with a
+     * void wall at this radius -- plain config fields carry no "was this explicitly set" flag, so
      * there is no way to tell "left at default" apart from "explicitly configured the same shape
      * stacked would have picked anyway". Zero is the deliberate, full opt-out back to the shared
-     * sections, restoring this preset's pre-§34.7 unlimited-by-default behavior. Every resolution
-     * path (Customize screen, direct config-driven world creation, and the codec's own
-     * never-customized-preset fallback) must consult {@link #effectiveOverworldBorder}/
-     * {@link #effectiveOverworldExterior} rather than reading {@code overworldBorder}/
-     * {@code overworldExterior} directly -- see DESIGN §34.7's own note on this being fixed twice,
-     * once per bypassed path. */
+     * section, restoring this preset's pre-§34.7 unlimited-by-default behavior. Deliberately does
+     * *not* also force the Overworld border on (§34.7's original coupling, reverted by §34.10 at
+     * Jason's request): the platform's own void wall is accessibility enough on its own -- a real
+     * border is opt-in via the shared {@code overworldBorder} section, exactly like every other
+     * typed preset. Every resolution path (Customize screen, direct config-driven world creation,
+     * and the codec's own never-customized-preset fallback) must consult {@link
+     * #effectiveOverworldExterior} rather than reading {@code overworldExterior} directly -- see
+     * DESIGN §34.7's own note on this being fixed twice, once per bypassed path. */
     public int worldSizeChunks = 4;
     /** Maximum per-column height bump applied to each layer's own surface, traded out of that
      * layer's own air gap so biome-band boundaries never move (DESIGN §34.7). Zero restores the
@@ -43,32 +45,28 @@ public final class StackedConfig {
     }
 
     /**
-     * Resolves the Overworld border this stacked world should actually use: derived from {@link
-     * #worldSizeChunks} when nonzero, or the passed-in shared config unchanged otherwise (DESIGN
-     * §34.7). Every stacked-aware resolution path must call this instead of reading
-     * {@code WorldzConfig.overworldBorder} directly.
+     * Resolves the Overworld border this stacked world should actually use: always the passed-in
+     * shared config, unchanged (DESIGN §34.10 -- {@link #worldSizeChunks} no longer forces a
+     * border on; it only shapes {@link #effectiveOverworldExterior}). Kept as an explicit
+     * pass-through, rather than having call sites read {@code WorldzConfig.overworldBorder}
+     * directly, so a future preset-specific border default has one obvious place to land.
      *
      * @param configuredOverworldBorder the shared, preset-agnostic Overworld border config
      * @return the border to actually apply for this stacked world
      */
     public BorderConfig effectiveOverworldBorder(BorderConfig configuredOverworldBorder) {
-        if (this.worldSizeChunks <= 0) {
-            return configuredOverworldBorder;
-        }
-        BorderConfig derived = new BorderConfig();
-        derived.enabled = true;
-        derived.initialRadiusBlocks = this.worldSizeChunks * 16;
-        derived.finalRadiusBlocks = derived.initialRadiusBlocks;
-        derived.ensureObjective = true;
-        return derived;
+        return configuredOverworldBorder;
     }
 
     /**
      * Resolves the Overworld exterior this stacked world should actually use: a {@code VOID} wall
      * at {@link #worldSizeChunks}'s own boundary when nonzero (mirrors {@code StripConfig
      * .widthMode}'s own "wall off with void" default precedent), or the passed-in shared config
-     * unchanged otherwise (DESIGN §34.7). Every stacked-aware resolution path must call this
-     * instead of reading {@code WorldzConfig.overworldExterior} directly.
+     * unchanged otherwise (DESIGN §34.7). The boundary is set explicitly here rather than left to
+     * derive from an enabled border (DESIGN §34.10): since §34.7 no longer forces the Overworld
+     * border on, the void wall must carry its own radius so a never-bordered stacked world still
+     * floats in void at the platform's own edge, like a sky chunk. Every stacked-aware resolution
+     * path must call this instead of reading {@code WorldzConfig.overworldExterior} directly.
      *
      * @param configuredOverworldExterior the shared, preset-agnostic Overworld exterior config
      * @return the exterior to actually apply for this stacked world
@@ -79,6 +77,7 @@ public final class StackedConfig {
         }
         ExteriorConfig derived = new ExteriorConfig();
         derived.mode = ExteriorMode.VOID;
+        derived.boundaryRadiusBlocks = this.worldSizeChunks * 16;
         return derived;
     }
 

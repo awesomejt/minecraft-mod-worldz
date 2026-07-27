@@ -5690,6 +5690,41 @@ New test configs 99 (default stack, `forceTopVillage: true`, top biome
 plains — the border-clipping question) and 100 (top layer swapped to
 swamp — confirms the silent-skip negative path).
 
+### 34.10 Decouple the default Overworld border from the default void exterior (Jason's 2026-07-27 ask)
+
+Jason asked for `stacked`'s default posture to change: void exterior
+("like a sky chunk") should stay on by default, but the Overworld
+border should not — a real border is only ever opt-in, via the shared
+`overworldBorder` config section, exactly like every other typed
+preset. This reverts half of §34.7's original coupling (which forced
+both a `BorderConfig` *and* an `ExteriorConfig(VOID)` together off the
+same nonzero `stacked.worldSizeChunks`), while keeping the other half:
+`worldSizeChunks` (still 4 by default) continues to size the void wall
+itself, since the project's own border-vs-exterior philosophy treats
+accessibility (border) and terrain extent (exterior) as always
+independent and optional — §34.7 had temporarily merged them for
+`stacked` alone, and this was the one remaining preset where that
+merge hadn't yet been undone.
+
+`StackedConfig.effectiveOverworldExterior` now sets `ExteriorConfig
+.boundaryRadiusBlocks` explicitly (`worldSizeChunks * 16`) rather than
+leaving it at zero to auto-derive from an enabled border via
+`ExteriorPlan.DimensionEnvelope.fromConfig`'s own fallback — that
+fallback only resolves a boundary when a border is actually enabled,
+and one no longer is by default. `StackedConfig
+.effectiveOverworldBorder` is now a pure pass-through of the shared
+`overworldBorder` config (kept as an explicit method rather than
+deleted, so call sites keep consulting one obvious place and a future
+preset-specific border default has somewhere to land). No changes to
+`WorldLimitManager`/`ProgressionGuarantees`: §34.7 already established
+that `overworldExterior.mode = VOID` alone (independent of any border)
+is what makes the generic `exteriorObjective` gate true, so removing
+the forced border doesn't reopen the progression-guarantee gap the
+original coupling was never actually protecting.
+
+`worldSizeChunks: 0` remains the full opt-out to the shared exterior
+config, unchanged.
+
 ## §35. Phase 18: World-hazard rules module (GOALS 29–30) — design pass (TODO 18.0)
 
 ### 35.0 Verified 26.2 APIs — the original TODO wording's assumed mechanism no longer exists

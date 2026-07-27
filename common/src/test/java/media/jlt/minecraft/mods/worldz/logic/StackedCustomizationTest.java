@@ -16,15 +16,26 @@ class StackedCustomizationTest {
     }
 
     @Test
-    void fromConfigDerivesABoundedBorderAndVoidExteriorFromWorldSizeChunksByDefault() {
+    void fromConfigDerivesAVoidExteriorFromWorldSizeChunksByDefaultWithNoBorder() {
         WorldzConfig config = new WorldzConfig();
 
         StackedCustomization customization = StackedCustomization.fromConfig(config);
 
+        assertFalse(customization.overworldBorder().enabled());
+        assertEquals(ExteriorMode.VOID, customization.overworldExterior().mode());
+        assertEquals(64, customization.overworldExterior().boundaryRadiusBlocks());
+    }
+
+    @Test
+    void fromConfigStillHonorsAnExplicitlyEnabledSharedBorderAlongsideTheDefaultVoidExterior() {
+        WorldzConfig config = new WorldzConfig();
+        config.overworldBorder.enabled = true;
+        config.overworldBorder.finalRadiusBlocks = 2048;
+
+        StackedCustomization customization = StackedCustomization.fromConfig(config);
+
         assertTrue(customization.overworldBorder().enabled());
-        assertEquals(64, customization.overworldBorder().initialRadiusBlocks());
-        assertEquals(64, customization.overworldBorder().finalRadiusBlocks());
-        assertTrue(customization.overworldBorder().ensureObjective());
+        assertEquals(2048, customization.overworldBorder().finalRadiusBlocks());
         assertEquals(ExteriorMode.VOID, customization.overworldExterior().mode());
     }
 
