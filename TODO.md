@@ -3067,8 +3067,13 @@ revisit. Full design: DESIGN §31.9.
       (`RandomState`-driven biome-source sampling instead, same mechanism
       `skyIslandHitAtForTerrain` already established) so the two passes
       can't drift apart. DESIGN §33.4 corrected in place. Full multiloader
-      build green. **[Jason] retest outstanding** on config 71 (delete any
-      pre-0.3.18 save first).
+      build green. **Confirmed (2026-07-26, Jason's real 0.3.18 retest,
+      fresh config 71 world):** a shipwreck that previously sat fully
+      exposed on top of the water now sits properly down near the
+      seafloor, only a small piece breaching the flat surface; a pillager
+      outpost tower generated flush on the flat grass, no floating or
+      clipping. Rivers/oceans still read flat and calm at the capped
+      surface. Phase 16 fully closed.
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 
