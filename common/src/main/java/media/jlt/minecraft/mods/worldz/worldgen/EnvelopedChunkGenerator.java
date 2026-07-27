@@ -1208,16 +1208,13 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         Heightmap worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
         ChunkPos chunkPos = chunk.getPos();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        long exclusionRadiusSq = (long) plan.riverExclusionRadiusBlocks() * plan.riverExclusionRadiusBlocks();
 
         for (int x = chunkPos.getMinBlockX(); x <= chunkPos.getMaxBlockX(); x++) {
             for (int z = chunkPos.getMinBlockZ(); z <= chunkPos.getMaxBlockZ(); z++) {
                 int localX = x - chunkPos.getMinBlockX();
                 int localZ = z - chunkPos.getMinBlockZ();
-                long dx = x - originX();
-                long dz = z - originZ();
                 boolean waterCap = plan.riversEnabled()
-                    && dx * dx + dz * dz > exclusionRadiusSq
+                    && !withinDeepFlatRiverExclusion(x, z, plan)
                     && isRiverOrOceanBiomeAt(level, x, surfaceY, z);
 
                 for (int y = surfaceY; y <= chunk.getMaxY(); y++) {
@@ -1292,6 +1289,101 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
     private static boolean isRiverOrOceanBiomeAt(WorldGenRegion level, int x, int y, int z) {
         Holder<Biome> biome = level.getBiome(new BlockPos(x, y, z));
         return biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_OCEAN);
+    }
+
+    /** Shared by {@link #applyDeepFlatCap} and {@link #deepFlatWaterCapAt} so the two never disagree. */
+    private boolean withinDeepFlatRiverExclusion(int x, int z, DeepFlatPlan plan) {
+        long dx = x - originX();
+        long dz = z - originZ();
+        long exclusionRadiusSq = (long) plan.riverExclusionRadiusBlocks() * plan.riverExclusionRadiusBlocks();
+        return dx * dx + dz * dz <= exclusionRadiusSq;
+    }
+
+    /**
+     * Reimplements {@link #applyDeepFlatCap}'s own water-cap test for {@link #getBaseHeight}/
+     * {@link #getBaseColumn} (GOAL 22 fix, 2026-07-26 Jason's real config 71 test), which only
+     * ever get a {@link RandomState}, not the {@link WorldGenRegion} the paint pass reads the
+     * already-generated biome from. Sampling the delegate's own biome source directly at this
+     * column (same mechanism {@link #skyIslandHitAtForTerrain} already established) gives the same
+     * answer {@code applyDeepFlatCap} will paint later in the pipeline, since {@code createBiomes}
+     * has already run by the time either query lands.
+     */
+    private boolean deepFlatWaterCapAt(int x, int z, DeepFlatPlan plan, RandomState randomState) {
+        if (!plan.riversEnabled() || withinDeepFlatRiverExclusion(x, z, plan)) {
+            return false;
+        }
+        int quartX = QuartPos.fromBlock(x);
+        int quartZ = QuartPos.fromBlock(z);
+        int quartY = QuartPos.fromBlock(plan.surfaceY());
+        Holder<Biome> biome = this.delegate.getBiomeSource().getNoiseBiome(quartX, quartY, quartZ, randomState.sampler());
+        return biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_OCEAN);
+    }
+
+    /**
+     * Mirrors {@link #flatBaseHeight} for deep-flat's own cap band (GOAL 22 fix, 2026-07-26
+     * Jason's real config 71 test): {@code getBaseHeight} previously fell straight through to the
+     * delegate's real, pre-cap terrain height (DESIGN §33.4's original "acceptable first-pass gap"
+     * reasoning) -- harmless for underground structures (their placement never consults surface
+     * height at all), but wrong for any surface-anchored structure (desert pyramid, shipwreck,
+     * etc.), which vanilla places by querying exactly this method. Reading the real, uncapped
+     * height meant that wherever it differed from {@code surfaceY}, the structure generated at the
+     * wrong height entirely -- floating above the flat cap, or sunk through it -- since the cap
+     * itself paints purely by absolute Y afterward with no knowledge of where a structure landed.
+     * A land-capped column's topmost cap block (the last {@code capLayers} entry, ordinarily
+     * grass) is solid under every {@link Heightmap.Types} predicate including {@code OCEAN_FLOOR}'s
+     * opaque-only test, so it always resolves at {@code surfaceY} regardless of {@code type}. A
+     * water-capped column only resolves there for predicates that count a fluid as blocking
+     * ({@code WORLD_SURFACE}, {@code MOTION_BLOCKING}); an opaque-only predicate has to fall
+     * through the whole water band to the real solid ground immediately beneath it, which {@link
+     * #sealBeneathCap} guarantees is solid and fluid-free right at {@code surfaceY - capThickness}.
+     */
+    private static int deepFlatBaseHeight(DeepFlatPlan plan, boolean waterCap, Heightmap.Types type) {
+        int surfaceY = plan.surfaceY();
+        if (!waterCap) {
+            return surfaceY;
+        }
+        if (type.isOpaque().test(Blocks.WATER.defaultBlockState())) {
+            return surfaceY;
+        }
+        int capThickness = flatLayerStates(plan.capLayers()).size();
+        return surfaceY - capThickness;
+    }
+
+    /**
+     * Mirrors {@link #flatBaseColumn} for deep-flat: same reasoning as {@link
+     * #deepFlatBaseHeight}, but for the full-column callers ({@code getBaseColumn}) rather than
+     * just the topmost height. Starts from the delegate's real column (so caves/ores/structures
+     * below the cap still read correctly for any caller that inspects the whole column, not just
+     * its top) and overlays exactly what {@link #applyDeepFlatCap} will later paint: air at and
+     * above {@code surfaceY}, the cap band (land or water) immediately below it. Left deliberately
+     * unaware of {@link #sealBeneathCap}'s own bounded patch beneath the band -- a real cave breach
+     * sitting there is already a documented, accepted gap (DESIGN §33.4's "known, accepted gaps"),
+     * and this method only needs to agree with the *painted* surface, not every runtime patch.
+     */
+    private NoiseColumn deepFlatBaseColumn(DeepFlatPlan plan, int x, int z, LevelHeightAccessor heightAccessor, RandomState randomState) {
+        NoiseColumn natural = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
+        BlockState[] states = copyColumn(natural, heightAccessor);
+        int minY = heightAccessor.getMinY();
+        int surfaceY = plan.surfaceY();
+        boolean waterCap = deepFlatWaterCapAt(x, z, plan, randomState);
+        List<BlockState> capStates = flatLayerStates(plan.capLayers());
+        int capThickness = capStates.size();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        BlockState water = Blocks.WATER.defaultBlockState();
+        for (int y = surfaceY; y <= heightAccessor.getMaxY(); y++) {
+            int index = y - minY;
+            if (index >= 0 && index < states.length) {
+                states[index] = air;
+            }
+        }
+        for (int i = 0; i < capThickness; i++) {
+            int y = surfaceY - capThickness + i;
+            int index = y - minY;
+            if (index >= 0 && index < states.length) {
+                states[index] = waterCap ? water : capStates.get(i);
+            }
+        }
+        return new NoiseColumn(minY, states);
     }
 
     @Override
@@ -2044,6 +2136,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             if (this.stacked.enabled()) {
                 return stackedBaseHeight(resolvedStackedLayers(), type, heightAccessor, stackedSeed(), this.stacked.reliefBlocks(), x, z);
             }
+            if (this.deepFlat.enabled()) {
+                boolean waterCap = deepFlatWaterCapAt(x, z, this.deepFlat, randomState);
+                return deepFlatBaseHeight(this.deepFlat, waterCap, type);
+            }
             int naturalHeight = this.delegate.getBaseHeight(x, z, type, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);
             int layoutFloor = layoutFloorOrNatural(x, z, naturalFloor, randomState);
@@ -2161,6 +2257,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             }
             if (this.stacked.enabled()) {
                 return stackedBaseColumn(resolvedStackedLayers(), heightAccessor, stackedSeed(), this.stacked.reliefBlocks(), x, z);
+            }
+            if (this.deepFlat.enabled()) {
+                return deepFlatBaseColumn(this.deepFlat, x, z, heightAccessor, randomState);
             }
             NoiseColumn naturalColumn = this.delegate.getBaseColumn(x, z, heightAccessor, randomState);
             int naturalFloor = naturalOceanFloorHeight(x, z, heightAccessor, randomState);

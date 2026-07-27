@@ -3046,6 +3046,29 @@ revisit. Full design: DESIGN §31.9.
       places) alongside configs 68/93 (biome mismatches, warning fires),
       new Phase 16 acceptance item 8. Full multiloader build green.
       **[Jason] retest outstanding.**
+- [x] 16.11 **Bug found and fixed (0.3.18, 2026-07-26, Jason's real config
+      71 retest, GOAL 22):** surface-anchored structures (desert pyramid,
+      shipwreck) generated floating above `deep_flat`'s flat cap on land,
+      and floating on top of a capped ocean's water surface instead of
+      resting on the seafloor -- screenshots confirmed against config 71
+      (`Worldz-71` save). Root cause: `getBaseHeight`/`getBaseColumn` had no
+      `deep_flat` branch (DESIGN §33.4's original "acceptable first-pass
+      gap" reasoning), so vanilla's own height lookup for these structures
+      read the delegate's real, pre-cap terrain -- wherever that differed
+      from `surfaceY`, the structure and the cap (painted afterward, purely
+      by absolute Y) simply disagreed. Underground structures (trial
+      chambers, ancient city) were never affected, since their placement
+      doesn't consult surface height at all -- which is why GOAL 22's
+      original text, scoped only to those two, read as satisfied. **Fixed:**
+      `deep_flat` now gets its own `getBaseHeight`/`getBaseColumn` branch
+      mirroring `flat`'s (`deepFlatBaseHeight`/`deepFlatBaseColumn`), backed
+      by a shared `deepFlatWaterCapAt` river/ocean test reimplementing
+      `applyDeepFlatCap`'s own water-cap rule without a `WorldGenRegion`
+      (`RandomState`-driven biome-source sampling instead, same mechanism
+      `skyIslandHitAtForTerrain` already established) so the two passes
+      can't drift apart. DESIGN §33.4 corrected in place. Full multiloader
+      build green. **[Jason] retest outstanding** on config 71 (delete any
+      pre-0.3.18 save first).
 
 ## Phase 17 — Stacked biome layers (GOALS 35)
 

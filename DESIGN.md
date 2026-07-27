@@ -5115,14 +5115,29 @@ section's first draft):**
   safeSpawnNear` reads it directly as the spawn Y with no further height
   lookup — without this override, spawn would land at whatever height the
   real, uncapped delegate terrain happens to be, not the flat surface.
-  `getBaseHeight`/`getBaseColumn` were deliberately *not* given a
-  matching override (unlike classic `flat`'s full override of both) —
-  during generation these mostly drive structure/feature placement
-  decisions against the delegate's real (pre-cap) terrain, and the
-  world's actual persisted blocks (with the cap already applied) are what
-  every post-generation query reads directly; reporting the real height
-  here is an acceptable first-pass gap, not a correctness bug for the
-  player-visible result.
+  `getBaseHeight`/`getBaseColumn` were originally left *without* a
+  matching override (unlike classic `flat`'s full override of both), on
+  the theory that during generation these mostly drive structure/feature
+  placement decisions against the delegate's real (pre-cap) terrain, and
+  the world's actual persisted blocks (with the cap already applied) are
+  what every post-generation query reads directly — reporting the real
+  height here looked like an acceptable first-pass gap, not a correctness
+  bug for the player-visible result.
+  **Correction (2026-07-26, Jason's real config 71 test, GOAL 22):** that
+  theory was wrong for exactly the structure kind GOAL 22 didn't originally
+  test — surface-anchored structures (desert pyramid, shipwreck) place
+  themselves by *querying* `getBaseHeight` against the real, uncapped
+  terrain, not by reading persisted blocks after the fact. Wherever the
+  real terrain height differed from `surfaceY`, the structure generated at
+  the wrong height entirely, then the cap painted straight through it —
+  found floating above the flat grass on land, and floating on top of a
+  capped ocean's water surface instead of resting on the seafloor.
+  Underground structures (trial chambers, ancient city) were never
+  affected, since their placement never consults surface height at all —
+  which is why GOAL 22's original text, scoped only to those two, read as
+  satisfied. Fixed by giving `deep_flat` its own `getBaseHeight`/
+  `getBaseColumn` branch mirroring `flat`'s, so vanilla structure
+  placement sees the capped surface instead of the delegate's real one.
 
 **Known, accepted gaps, not engineered around** (same posture as every
 other "log it, don't chase it" entry in this project, e.g. §31.2's
