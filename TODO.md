@@ -3453,7 +3453,7 @@ verified there against the real 26.2 artifacts.
       fields) — a config-driven world (`FlatPlan.fromConfig`) is the only
       path that reads it today. `FlatPlanTest` covers validation,
       `undergroundEnabled()`, and config resolution.
-- [ ] 21.4b `skyIsland` — same idea as 21.4a, genuinely separate
+- [x] 21.4b `skyIsland` — same idea as 21.4a, genuinely separate
       implementation since `SkyIslandPlan` already has its own
       `LimitedBiomeSource` codec slot (room to nest the two new fields
       directly, no setter needed the way `flat` needed one) but sky

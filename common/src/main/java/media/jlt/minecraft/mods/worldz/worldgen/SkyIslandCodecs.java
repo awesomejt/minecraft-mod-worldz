@@ -45,7 +45,9 @@ final class SkyIslandCodecs {
         Codec.INT.fieldOf("thickness").forGetter(SkyIslandPlan::thicknessBlocks),
         TIER_CODEC.fieldOf("chest_tier").forGetter(SkyIslandPlan::chestTier),
         FLOATING_ISLANDS_CODEC.fieldOf("floating_islands").forGetter(SkyIslandPlan::floatingIslands),
-        EXCLUSION_ZONE_CODEC.fieldOf("biome_exclusion_zone").forGetter(SkyIslandPlan::biomeExclusionZone)
+        EXCLUSION_ZONE_CODEC.fieldOf("biome_exclusion_zone").forGetter(SkyIslandPlan::biomeExclusionZone),
+        Codec.STRING.fieldOf("underground_biome").forGetter(SkyIslandPlan::undergroundBiome),
+        Codec.INT.fieldOf("underground_below_surface_blocks").forGetter(SkyIslandPlan::undergroundBelowSurfaceBlocks)
     ).apply(instance, SkyIslandPlan::new));
 
     private SkyIslandCodecs() {

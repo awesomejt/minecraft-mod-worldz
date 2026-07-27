@@ -25,6 +25,11 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
  *     which stays void either way) stays pinned to {@link #islandBiome} before real-seed biomes
  *     resume beyond it (DESIGN §27.10, reuses {@link IslandPlan.ExclusionZone} directly like
  *     {@link FloatingIslandsPlan#exclusionZone} already does)
+ * @param undergroundBiome biome reported below {@code undergroundBelowSurfaceBlocks} blocks under
+ *     {@code surfaceY}, within the island's own footprint (GOAL 42, DESIGN §37.3); blank disables
+ *     the underground band entirely
+ * @param undergroundBelowSurfaceBlocks how many blocks below {@code surfaceY} the underground band
+ *     starts; the band never applies at {@code 0} even with a biome configured
  */
 public record SkyIslandPlan(
     boolean enabled,
@@ -35,8 +40,43 @@ public record SkyIslandPlan(
     int thicknessBlocks,
     StarterKitTier chestTier,
     FloatingIslandsPlan floatingIslands,
-    IslandPlan.ExclusionZone biomeExclusionZone
+    IslandPlan.ExclusionZone biomeExclusionZone,
+    String undergroundBiome,
+    int undergroundBelowSurfaceBlocks
 ) {
+    /**
+     * Legacy 9-arg construction, predating {@link #undergroundBiome}/
+     * {@link #undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3). Defaults to the band
+     * disabled -- existing callers (mostly test fixtures) get today's real behavior, not a silent
+     * opt-in.
+     *
+     * @param enabled whether the sky island shape applies
+     * @param radiusBlocks configured (unperturbed) island radius
+     * @param shapeAmplitude coastline perturbation strength
+     * @param islandBiome the one biome that fills the island's interior
+     * @param surfaceY the island's walkable surface Y
+     * @param thicknessBlocks how many blocks of solid ground extend below {@code surfaceY}
+     * @param chestTier the necessities-chest difficulty tier
+     * @param floatingIslands scattered small floating islands beyond this island's own footprint
+     * @param biomeExclusionZone buffer beyond the island's own edge where the biome stays pinned
+     */
+    public SkyIslandPlan(
+        boolean enabled,
+        int radiusBlocks,
+        double shapeAmplitude,
+        String islandBiome,
+        int surfaceY,
+        int thicknessBlocks,
+        StarterKitTier chestTier,
+        FloatingIslandsPlan floatingIslands,
+        IslandPlan.ExclusionZone biomeExclusionZone
+    ) {
+        this(
+            enabled, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, chestTier, floatingIslands,
+            biomeExclusionZone, "", 10
+        );
+    }
+
     /**
      * Legacy 8-arg construction, predating {@link #biomeExclusionZone} (DESIGN §27.10). Defaults
      * to the same always-on, 128-block posture {@link media.jlt.minecraft.mods.worldz.config.SkyIslandConfig}
@@ -106,6 +146,10 @@ public record SkyIslandPlan(
         if (biomeExclusionZone == null) {
             throw new IllegalArgumentException("Biome exclusion zone is required.");
         }
+        if (undergroundBelowSurfaceBlocks < 0) {
+            throw new IllegalArgumentException("Sky island undergroundBelowSurfaceBlocks must not be negative.");
+        }
+        undergroundBiome = undergroundBiome == null ? "" : undergroundBiome;
     }
 
     /**
@@ -131,8 +175,20 @@ public record SkyIslandPlan(
         return new SkyIslandPlan(
             true, config.radiusBlocks, config.shapeAmplitude, config.islandBiome, config.surfaceY, config.thicknessBlocks,
             config.chestTier, FloatingIslandsPlan.fromConfig(config.floatingIslands),
-            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks)
+            new IslandPlan.ExclusionZone(config.exclusionZoneEnabled, config.exclusionZoneRadiusBlocks),
+            config.undergroundBiome, config.undergroundBelowSurfaceBlocks
         );
+    }
+
+    /**
+     * Reports whether the underground band is actually active (GOAL 42, DESIGN §37.3) -- both a
+     * non-blank {@link #undergroundBiome} and a positive {@link #undergroundBelowSurfaceBlocks}
+     * are required, matching {@code FlatPlan#undergroundEnabled}'s own identical contract.
+     *
+     * @return {@code true} when the underground band applies
+     */
+    public boolean undergroundEnabled() {
+        return !this.undergroundBiome.isBlank() && this.undergroundBelowSurfaceBlocks > 0;
     }
 
     /**

@@ -519,6 +519,8 @@ skyIsland:
 | `chestTier` | `"medium"` | `easy`, `medium`, or `hard` — which of `easyKit`/`mediumKit`/`hardKit` the starter chest uses. |
 | `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
 | `easyKit`/`mediumKit`/`hardKit` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
+| `undergroundBiome` | `""` (disabled) | Biome reported at/below `undergroundBelowSurfaceBlocks` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical field. Blank disables the band entirely. Note the interaction with `thicknessBlocks`: with the defaults (`thicknessBlocks: 6`, `undergroundBelowSurfaceBlocks: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `undergroundBelowSurfaceBlocks` smaller than `thicknessBlocks`. Config-only for now (not yet on the Customize screen). |
+| `undergroundBelowSurfaceBlocks` | `10` | How many blocks below `surfaceY` the underground band starts. Only takes effect when `undergroundBiome` is also set; `0` disables the band even with a biome configured. |
 
 ### Floating resource islands (GOALS 07-08)
 

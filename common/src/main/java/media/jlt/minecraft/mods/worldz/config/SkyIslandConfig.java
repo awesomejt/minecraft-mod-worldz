@@ -39,6 +39,13 @@ public final class SkyIslandConfig {
     public boolean exclusionZoneEnabled = true;
     /** Buffer radius in blocks beyond the island's own edge, when {@link #exclusionZoneEnabled}. */
     public int exclusionZoneRadiusBlocks = 128;
+    /** Biome reported at/below {@link #undergroundBelowSurfaceBlocks} blocks under {@link
+     * #surfaceY}, within the island's own footprint (GOAL 42, DESIGN §37.3); empty disables the
+     * underground band entirely (default), keeping {@link #islandBiome} reported at every depth. */
+    public String undergroundBiome = "";
+    /** How many blocks below {@link #surfaceY} the underground band starts; only takes effect
+     * when {@link #undergroundBiome} is also set. Ignored (band never applies) at {@code 0}. */
+    public int undergroundBelowSurfaceBlocks = 10;
     /** Generous starter-chest contents (DESIGN §27.8). */
     public StarterKitConfig easyKit = easyDefaults();
     /** Middle-ground starter-chest contents. */

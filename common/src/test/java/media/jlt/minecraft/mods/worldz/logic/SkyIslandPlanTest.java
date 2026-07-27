@@ -129,6 +129,60 @@ class SkyIslandPlanTest {
         assertFalse(disabled.withinBiomeExclusionZone(1.0));
     }
 
+    @Test
+    void legacyConstructorsDefaultUndergroundBandToDisabled() {
+        SkyIslandPlan plan = plan(16, 0.0, "minecraft:plains", 64, 6);
+        assertFalse(plan.undergroundEnabled());
+        assertEquals("", plan.undergroundBiome());
+    }
+
+    @Test
+    void disabledPlanHasUndergroundBandDisabled() {
+        assertFalse(SkyIslandPlan.disabled().undergroundEnabled());
+    }
+
+    @Test
+    void negativeUndergroundBelowSurfaceBlocksIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new SkyIslandPlan(
+            true, 16, 0.3, "minecraft:plains", 64, 6, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(true, 128), "minecraft:dripstone_caves", -1
+        ));
+    }
+
+    @Test
+    void undergroundEnabledRequiresBothABiomeAndAPositiveThreshold() {
+        SkyIslandPlan noBiome = new SkyIslandPlan(
+            true, 16, 0.3, "minecraft:plains", 64, 6, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(true, 128), "", 10
+        );
+        assertFalse(noBiome.undergroundEnabled());
+
+        SkyIslandPlan zeroBlocks = new SkyIslandPlan(
+            true, 16, 0.3, "minecraft:plains", 64, 6, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(true, 128), "minecraft:dripstone_caves", 0
+        );
+        assertFalse(zeroBlocks.undergroundEnabled());
+
+        SkyIslandPlan enabled = new SkyIslandPlan(
+            true, 16, 0.3, "minecraft:plains", 64, 6, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled(),
+            new IslandPlan.ExclusionZone(true, 128), "minecraft:dripstone_caves", 10
+        );
+        assertTrue(enabled.undergroundEnabled());
+    }
+
+    @Test
+    void fromConfigResolvesUndergroundFields() {
+        SkyIslandConfig config = new SkyIslandConfig();
+        config.undergroundBiome = "minecraft:lush_caves";
+        config.undergroundBelowSurfaceBlocks = 15;
+
+        SkyIslandPlan plan = SkyIslandPlan.fromConfig(config);
+
+        assertEquals("minecraft:lush_caves", plan.undergroundBiome());
+        assertEquals(15, plan.undergroundBelowSurfaceBlocks());
+        assertTrue(plan.undergroundEnabled());
+    }
+
     private static SkyIslandPlan plan(int radiusBlocks, double shapeAmplitude, String islandBiome, int surfaceY, int thicknessBlocks) {
         return new SkyIslandPlan(
             true, radiusBlocks, shapeAmplitude, islandBiome, surfaceY, thicknessBlocks, StarterKitTier.MEDIUM, FloatingIslandsPlan.disabled()

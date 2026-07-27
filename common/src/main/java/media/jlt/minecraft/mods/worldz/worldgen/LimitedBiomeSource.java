@@ -624,23 +624,11 @@ public final class LimitedBiomeSource extends BiomeSource {
 
         // GOAL 42, DESIGN §37.3: resolved once here (this method already has biomeGetter in
         // scope) rather than at setFlatUnderground(...) time, which has no registry access at
-        // all. A blank id (every preset except flat with the band configured) resolves to empty,
-        // a harmless no-op. Warns (mirroring 0.3.12's structureOverrides warning style) if the
-        // configured biome isn't itself BiomeRoles.isUnderground-classified -- a hint, not a hard
-        // error, since a player might genuinely want an ordinary biome reported underground.
-        Optional<Holder<Biome>> flatUndergroundBiome = Optional.empty();
-        if (!flatUndergroundBiomeId.isBlank()) {
-            flatUndergroundBiome = biomeGetter.get(ResourceKey.create(Registries.BIOME, Identifier.parse(flatUndergroundBiomeId)))
-                .map(value -> value);
-            if (flatUndergroundBiome.isEmpty()) {
-                WorldzCommon.LOGGER.warn("Unknown flat.undergroundBiome '{}'; the underground band will be disabled.", flatUndergroundBiomeId);
-            } else if (!BiomeRoles.isUnderground(flatUndergroundBiomeId)) {
-                WorldzCommon.LOGGER.warn(
-                    "flat.undergroundBiome '{}' isn't one of the maintained underground biomes -- allowed, but check this is intentional.",
-                    flatUndergroundBiomeId
-                );
-            }
-        }
+        // all. Shared by flat (21.4a) and sky island (21.4b) -- same field shape, same "blank id
+        // means disabled, harmless no-op" contract.
+        Optional<Holder<Biome>> flatUndergroundBiome = resolveUndergroundBiome(flatUndergroundBiomeId, "flat.undergroundBiome", biomeGetter);
+        Optional<Holder<Biome>> skyIslandUndergroundBiome =
+            resolveUndergroundBiome(skyIsland.undergroundBiome(), "skyIsland.undergroundBiome", biomeGetter);
 
         // GOAL 42, DESIGN §37.2: partitioned by depth role (surface vs. underground) rather
         // than one merged delegate, so a cave biome configured in `allowedBiomes` can never be
@@ -702,6 +690,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         starterBiome.ifPresent(possible::add);
         oceanBiome.ifPresent(possible::add);
         flatUndergroundBiome.ifPresent(possible::add);
+        skyIslandUndergroundBiome.ifPresent(possible::add);
 
         Map<String, Holder<Biome>> layoutBiomes = resolveLayoutBiomes(worldLayoutPlan, biomeGetter);
         if (worldLayoutPlan.mode() != LayoutMode.LEGACY) {
@@ -742,8 +731,39 @@ public final class LimitedBiomeSource extends BiomeSource {
 
         return new Resolution(
             HolderSet.direct(List.copyOf(allowedSet)), surfaceDelegate, undergroundDelegate, naturalDelegate,
-            Set.copyOf(possible), layoutBiomes, islandBiomes, skyIslandBiomes, flatUndergroundBiome
+            Set.copyOf(possible), layoutBiomes, islandBiomes, skyIslandBiomes, flatUndergroundBiome, skyIslandUndergroundBiome
         );
+    }
+
+    /**
+     * Resolves a single configured underground-band biome id (GOAL 42, DESIGN §37.3), shared by
+     * {@code flat} (21.4a) and {@code skyIsland} (21.4b) -- a blank id (every preset except the
+     * one with the band actually configured) resolves to empty, a harmless no-op. Warns (mirroring
+     * 0.3.12's {@code structureOverrides} warning style) if the id is unresolvable, or if it
+     * resolves but isn't itself {@link BiomeRoles#isUnderground}-classified -- a hint, not a hard
+     * error, since a player might genuinely want an ordinary biome reported underground.
+     *
+     * @param biomeId configured biome id, blank if the band is unconfigured/disabled
+     * @param configKeyName the config field name to name in a warning (e.g. {@code
+     *     "flat.undergroundBiome"})
+     * @param biomeGetter registry access to resolve the id
+     * @return the resolved holder, or empty if blank/unresolvable
+     */
+    private static Optional<Holder<Biome>> resolveUndergroundBiome(String biomeId, String configKeyName, HolderGetter<Biome> biomeGetter) {
+        if (biomeId.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<Holder<Biome>> resolved = biomeGetter.get(ResourceKey.create(Registries.BIOME, Identifier.parse(biomeId)))
+            .map(value -> value);
+        if (resolved.isEmpty()) {
+            WorldzCommon.LOGGER.warn("Unknown {} '{}'; the underground band will be disabled.", configKeyName, biomeId);
+        } else if (!BiomeRoles.isUnderground(biomeId)) {
+            WorldzCommon.LOGGER.warn(
+                "{} '{}' isn't one of the maintained underground biomes -- allowed, but check this is intentional.",
+                configKeyName, biomeId
+            );
+        }
+        return resolved;
     }
 
     /**
@@ -1445,6 +1465,18 @@ public final class LimitedBiomeSource extends BiomeSource {
                     // own incidental climate depth would otherwise say.
                     return this.resolution.get().surfaceDelegate().getNoiseBiome(centerQuartX, surfaceQuartY, centerQuartZ, sampler);
                 }
+                // GOAL 42, DESIGN §37.3: sky island's own synthetic underground band, same idea
+                // and same "plain Y check against one configured biome" shape as flat's (21.4a),
+                // but checked against the *actual* query Y here (unlike the pinned-surface path
+                // above, this branch is reached once per vertical quart layer for the column, per
+                // the 2026-07-25 fix note above it -- exactly the varying-Y signal this needs).
+                if (this.skyIsland.undergroundEnabled()
+                    && QuartPos.toBlock(quartY) < this.skyIsland.surfaceY() - this.skyIsland.undergroundBelowSurfaceBlocks()) {
+                    Optional<Holder<Biome>> skyIslandUnderground = this.resolution.get().skyIslandUndergroundBiome();
+                    if (skyIslandUnderground.isPresent()) {
+                        return skyIslandUnderground.get();
+                    }
+                }
                 Holder<Biome> biome = this.resolution.get().skyIslandBiomes().get(biomeId);
                 if (biome != null) {
                     return biome;
@@ -1529,7 +1561,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         Map<String, Holder<Biome>> layoutBiomes,
         Map<String, Holder<Biome>> islandBiomes,
         Map<String, Holder<Biome>> skyIslandBiomes,
-        Optional<Holder<Biome>> flatUndergroundBiome
+        Optional<Holder<Biome>> flatUndergroundBiome,
+        Optional<Holder<Biome>> skyIslandUndergroundBiome
     ) {
     }
 }

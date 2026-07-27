@@ -240,7 +240,12 @@ public record SkyIslandCustomization(
     }
 
     /**
-     * Resolves this world's sky island plan.
+     * Resolves this world's sky island plan. The underground-biome band (GOAL 42, DESIGN §37.3)
+     * isn't yet exposed on the Customize screen -- config-only for now, same deferral as {@code
+     * FlatCustomization}'s own identical field -- so a Customize-screen world always gets it
+     * disabled via the legacy 9-arg constructor's own default; only a config-driven world (never
+     * opening Customize) reads {@code skyIsland.undergroundBiome}/
+     * {@code undergroundBelowSurfaceBlocks} via {@link SkyIslandPlan#fromConfig}.
      *
      * @return immutable, always-enabled sky island plan
      */
