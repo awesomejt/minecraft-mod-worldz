@@ -3267,6 +3267,24 @@ composes with.
       `WorldzConfigTest`/`ProjectMetadataTest` updated or added.
       **Configs/docs/tests done (0.2.77), [Jason] in-game acceptance
       outstanding** for both the bugfix and the new shorthand.
+- [x] 17.5 **Bug found and fixed (0.3.19, 2026-07-26, Jason's real config
+      72-75 playtest):** stacked layer surfaces looked "rather blocky" --
+      a hard-edged waffle of flat 4x4 plateaus at uncorrelated heights,
+      clearest from directly above the top plains layer. Root cause:
+      `StackedPlan.reliefBlocksAt` sampled one independent hash per whole
+      cell with zero blending between neighbors, so adjacent cells could
+      jump the full relief range with a sharp 1+-block step -- the
+      opposite of the "gentle undulation" DESIGN §34.7 always claimed.
+      **Fixed:** `reliefBlocksAt` now sums two bilinearly-interpolated
+      (Perlin-faded, continuous slope not just height) value-noise
+      octaves -- a broad 16-block-cell layer for overall rolling shape,
+      a finer 4-block-cell layer for small-scale variation, since one
+      octave alone still reads as a repetitive field of same-size bumps.
+      Same `[0, maxReliefBlocks]` contract and single call site
+      (`stackedColumnStates`), so painted terrain and reported height
+      still can't disagree. DESIGN §34.7 updated in place. Full
+      multiloader build green. **[Jason] retest outstanding** on configs
+      72-75 (delete any pre-0.3.19 save first).
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 

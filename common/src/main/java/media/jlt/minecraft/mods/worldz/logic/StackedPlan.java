@@ -135,11 +135,9 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
     /**
      * Returns a deterministic per-column height bump for one layer's own surface (DESIGN §34.7,
      * GOAL 35's "terrain should not just be flat"), in {@code [0, maxReliefBlocks]}. Bumps only
-     * (never dips), sampled at quart-granularity cells (this codebase's existing biome-quart
-     * resolution) so neighboring columns share the same bump and the surface reads as gentle
-     * undulation rather than per-block noise. Deliberately its own small seeded hash rather than
-     * vanilla's {@code RandomState}-based noise (mirrors {@link ChunkIslandPlan}'s own
-     * {@code hash01}/{@code splitmix64} precedent): both {@link
+     * (never dips). Deliberately its own small seeded hash rather than vanilla's {@code
+     * RandomState}-based noise (mirrors {@link ChunkIslandPlan}'s own {@code hash01}/{@code
+     * splitmix64} precedent): both {@link
      * media.jlt.minecraft.mods.worldz.worldgen.EnvelopedChunkGenerator}'s block-painting side and
      * {@link media.jlt.minecraft.mods.worldz.worldgen.LimitedBiomeSource}'s biome-per-Y lookup
      * need to compute the identical value from just the world seed, but only the former has a
@@ -157,10 +155,63 @@ public record StackedPlan(boolean enabled, List<StackedLayerSpec> layers, boolea
         if (maxReliefBlocks <= 0) {
             return 0;
         }
-        int cellX = Math.floorDiv(blockX, 4);
-        int cellZ = Math.floorDiv(blockZ, 4);
-        double h = hash01(seed, "stacked_relief", (((long) layerIndex) << 32) | (cellX & 0xFFFFFFFFL), cellZ);
-        return (int) Math.round(h * maxReliefBlocks);
+        return (int) Math.round(reliefNoise01(seed, layerIndex, blockX, blockZ) * maxReliefBlocks);
+    }
+
+    /** One lattice cell's own span for {@link #reliefNoise01}'s broad, hill-scale octave. */
+    private static final int RELIEF_BASE_CELL_BLOCKS = 16;
+    /** One lattice cell's own span for {@link #reliefNoise01}'s finer detail octave. */
+    private static final int RELIEF_DETAIL_CELL_BLOCKS = 4;
+    private static final double RELIEF_BASE_WEIGHT = 0.7;
+    private static final double RELIEF_DETAIL_WEIGHT = 0.3;
+
+    /**
+     * Two-octave value noise in {@code [0, 1)} (found and fixed 2026-07-26, Jason's real config
+     * 72-75 playtest): the original single-cell version sampled one independent hash per whole
+     * 4-block cell with no blending between cells at all, producing a hard-edged "waffle" of flat
+     * plateaus rather than the "gentle undulation" this method's own contract always promised.
+     * Each octave now bilinearly interpolates between its own lattice corners (see {@link
+     * #latticeValueAt}), and the two octaves are summed at weights that keep the total in {@code
+     * [0, 1)} (0.7 + 0.3 = 1.0): a broad 16-block-cell octave for the overall rolling shape, plus a
+     * finer 4-block-cell octave layered on top purely for small-scale variation -- one octave alone
+     * still reads as a repetitive field of same-size, same-shape bumps ("egg carton" noise); a
+     * second, smaller-scale layer is what actually breaks that regularity up.
+     */
+    private static double reliefNoise01(long seed, int layerIndex, int blockX, int blockZ) {
+        double base = latticeValueAt(seed, layerIndex, "base", blockX, blockZ, RELIEF_BASE_CELL_BLOCKS);
+        double detail = latticeValueAt(seed, layerIndex, "detail", blockX, blockZ, RELIEF_DETAIL_CELL_BLOCKS);
+        return RELIEF_BASE_WEIGHT * base + RELIEF_DETAIL_WEIGHT * detail;
+    }
+
+    /**
+     * Bilinearly interpolates a hash sampled at the four lattice corners surrounding
+     * {@code (blockX, blockZ)}, spaced {@code cellSizeBlocks} apart -- classic value noise. Faded
+     * with the Perlin ease curve ({@code 6t^5-15t^4+10t^3}) rather than a plain linear blend so the
+     * *slope* is continuous too, not just the height; a linear blend still creases visibly at every
+     * lattice line.
+     */
+    private static double latticeValueAt(long seed, int layerIndex, String octave, int blockX, int blockZ, int cellSizeBlocks) {
+        int cellX = Math.floorDiv(blockX, cellSizeBlocks);
+        int cellZ = Math.floorDiv(blockZ, cellSizeBlocks);
+        double fx = fade((blockX - cellX * (long) cellSizeBlocks) / (double) cellSizeBlocks);
+        double fz = fade((blockZ - cellZ * (long) cellSizeBlocks) / (double) cellSizeBlocks);
+        double h00 = latticeHash01(seed, layerIndex, octave, cellX, cellZ);
+        double h10 = latticeHash01(seed, layerIndex, octave, cellX + 1, cellZ);
+        double h01 = latticeHash01(seed, layerIndex, octave, cellX, cellZ + 1);
+        double h11 = latticeHash01(seed, layerIndex, octave, cellX + 1, cellZ + 1);
+        return lerp(lerp(h00, h10, fx), lerp(h01, h11, fx), fz);
+    }
+
+    private static double fade(double t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * t;
+    }
+
+    private static double latticeHash01(long seed, int layerIndex, String octave, int cellX, int cellZ) {
+        return hash01(seed, "stacked_relief_" + octave, (((long) layerIndex) << 32) | (cellX & 0xFFFFFFFFL), cellZ);
     }
 
     private static double hash01(long seed, String salt, long a, long b) {

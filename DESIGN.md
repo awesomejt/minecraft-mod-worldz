@@ -5520,6 +5520,24 @@ a natural stronghold — unconditionally at this default size, meaning
 the default End portal deterministic, not merely likely, without any
 bespoke guaranteed-structure placement.
 
+**Follow-up, "blocky" relief fixed (0.3.19, 2026-07-26, Jason's real
+config 72-75 playtest):** `reliefBlocksAt`'s original hash sampled one
+independent value per whole 4-block cell with zero blending between
+cells — every layer's surface came out as a hard-edged "waffle" of flat
+plateaus at uncorrelated heights, not the "gentle undulation" this
+section always claimed. **Fixed:** `reliefBlocksAt` now sums two
+bilinearly-interpolated (Perlin-faded, so slope is continuous too, not
+just height) value-noise octaves — a broad 16-block-cell layer for the
+overall rolling shape, plus a finer 4-block-cell layer purely for
+small-scale variation, since one octave alone still reads as a
+repetitive field of same-size bumps. Same `[0, maxReliefBlocks]`
+contract, same seeded-hash-not-vanilla-noise posture, same
+`stackedColumnStates` single-call-site consumption (§34.7's own
+"painted terrain and reported height can never disagree" property is
+untouched, since every caller still goes through `reliefBlocksAt`)  —
+only the internal shape of the noise changed. **[Jason] retest
+outstanding** on configs 72-75 (delete any pre-0.3.19 save first).
+
 ### 34.8 Simplified bare-biome layer shorthand (2026-07-24 follow-up, same request as §34.7)
 
 Jason's second ask alongside §34.7's default overhaul: `stacked.layers`
