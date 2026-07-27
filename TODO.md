@@ -3312,8 +3312,21 @@ composes with.
       gives up entirely when *both* border and exterior are inactive) --
       beatability isn't sacrificed for the open boundary. Rewrote the
       config and its acceptance steps accordingly; `config/tests/README
-      .md`/MANUAL_TESTING.md updated to match. **[Jason] retest
-      outstanding** on the corrected config 76.
+      .md`/MANUAL_TESTING.md updated to match.
+      **Bug found and fixed (2026-07-27, same day, Jason's real retest --
+      the border still showed up, twice, after deleting and recreating
+      the world):** that first correction was still wrong. `stacked
+      .worldSizeChunks` defaults to `4`, and `StackedConfig.
+      effectiveOverworldBorder`/`effectiveOverworldExterior` (DESIGN
+      §34.7) completely ignore the shared `overworldBorder`/
+      `overworldExterior` sections whenever it's nonzero, deriving their
+      own hardcoded `enabled: true` border instead -- exactly the opt-out
+      configs 73/74/75 already needed, which this config forgot the
+      first time. Config-only fix: added `worldSizeChunks: 0`, no code
+      changed (the derivation logic itself is correct and intentional,
+      documented behavior -- this was a missing field in the test config,
+      not a bug in `StackedConfig`). **[Jason] retest outstanding** on
+      the corrected config 76.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 
