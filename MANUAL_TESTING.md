@@ -794,7 +794,7 @@ Uses configs `62`, `86`-`87`, `89` (see
 Nether Start"** for all four; each guarantees the capsule fires for a
 different reason (no need to hunt for a seed where the natural search
 fails) — config 62 via its low `spawnY` alone (the new automatic
-default), configs 86/87 via an explicit `forceCapsule: true` at an
+default), configs 87/88 via an explicit `forceCapsule: true` at an
 ordinary `spawnY` (32).
 
 1. **Default capsule shape, automatic low-spawnY default**,
@@ -814,7 +814,7 @@ ordinary `spawnY` (32).
    centered — chest in the middle, furnace and crafting table on either
    side — not the chest alone underfoot with nothing around it.
 2. **Explicit request at a safe spawnY + `glow_lichen` + custom size**,
-   `86-nether-start-capsule-glow-lichen.yaml` (0.3.4+, `spawnY: 32`,
+   `87-nether-start-capsule-glow-lichen.yaml` (0.3.4+, `spawnY: 32`,
    `forceCapsule: true`). Confirm the server log shows the capsule was
    explicitly requested this time (a different log line from config 62's
    automatic one) — proving `forceCapsule` still works independently of
@@ -825,7 +825,7 @@ ordinary `spawnY` (32).
    it's bright enough to see across the whole room. Confirm the chest,
    furnace, and crafting table still line one wall together here too.
 3. **Hanging lanterns, dense-room floor grid, + hard tier**,
-   `87-nether-start-capsule-hanging-lanterns.yaml` (0.3.4+, `spawnY: 32`,
+   `88-nether-start-capsule-hanging-lanterns.yaml` (0.3.4+, `spawnY: 32`,
    `forceCapsule: true`, `sizeBlocks: 9` — a 7x7 interior, at the 6x6
    "dense room" threshold). Confirm every ceiling lantern is genuinely
    suspended, not floor-standing — this is the one detail most worth
@@ -846,7 +846,7 @@ ordinary `spawnY` (32).
    search still runs and typically succeeds at the ordinary default depth
    (the low-spawnY default from item 1 should *not* have made this always
    skip straight to the capsule).
-6. **Custom kit contents actually apply**, `89-nether-start-custom-kit.yaml`
+6. **Custom kit contents actually apply**, `90-nether-start-custom-kit.yaml`
    (0.3.2+, 2026-07-26 cleanup pass). TODO 15.2a-bugfix logged
    `netherStart.<tier>Kit` YAML overrides as silently ignored, but that
    turned out to already be fixed — this is the real in-game check that
@@ -934,7 +934,7 @@ pickaxe, easy a copper pickaxe.
    so report back whether it felt like a long grind (expected) or
    unreasonably punishing. DESIGN §32.5 flags these defaults as a first
    pass, not signed off.
-4. **Custom capsule shape**, `88-end-start-capsule-custom.yaml` (GOALS 41,
+4. **Custom capsule shape**, `89-end-start-capsule-custom.yaml` (GOALS 41,
    0.3.5+). Custom `endStart.capsule.sizeBlocks: 9`/`heightBlocks: 4`
    (7x7 interior, a full block taller than default) with `lantern`
    lighting. Confirm the room is noticeably bigger than config 63's
@@ -942,24 +942,24 @@ pickaxe, easy a copper pickaxe.
    room is at/above the 6x6 "dense room" threshold, so also a
    floor-standing lantern grid), and the chest still lines one wall with
    real room to walk around.
-5. **Torch lighting, dense room**, `90-end-start-capsule-torch-dense.yaml`
+5. **Torch lighting, dense room**, `91-end-start-capsule-torch-dense.yaml`
    (test-coverage gap closed 2026-07-26, 0.3.11+). `torch` had never
    actually been used by any capsule config for either preset before this
    one. Confirm wall torches line the north/east/west walls (south is the
    chest wall), spaced per `lightSpacingBlocks`, and that a *second*,
    floor-standing set of torches also exists (the dense-room addition, at
    this 7x7-interior size) — scattered, not at the exact spawn center.
-6. **Shroomlight, dense room**, `91-end-start-capsule-shroomlight-dense.yaml`
+6. **Shroomlight, dense room**, `92-end-start-capsule-shroomlight-dense.yaml`
    (test-coverage gap closed 2026-07-26, 0.3.11+). Confirm shroomlight is
    embedded in the north/east/west walls, *and* in a separate floor grid,
    *and* in a separate ceiling grid — unlike torch/lantern, a dense
    embedded-source room (shroomlight or the default glowstone) gets both
    floor and ceiling additions, not just one.
-7. **Glow lichen coating**, `92-end-start-capsule-glow-lichen.yaml`
-   (test-coverage parity with nether_start config 86, 2026-07-26,
+7. **Glow lichen coating**, `93-end-start-capsule-glow-lichen.yaml`
+   (test-coverage parity with nether_start config 87, 2026-07-26,
    0.3.11+). Confirm glow lichen coats every wall, the floor, and the
    ceiling of the default-sized room — not just spaced points — bright
-   enough to see the whole room unaided, same behavior as config 86 but
+   enough to see the whole room unaided, same behavior as config 87 but
    over end-stone instead of nether brick.
 
 **Ideally also attempt a full run** on at least one config: find or fight
@@ -1083,7 +1083,7 @@ affected, since deep-flat has no `decoration` toggle of its own.
    the flat surface above it, GOAL 22 satisfied by construction. **Compare
    directly against #3's classic-flat result** — same structure types,
    completely different (correct) burial here.
-7. **Slime cavity via an air layer**, `93-flat-slime-cavity.yaml` (GOALS
+7. **Slime cavity via an air layer**, `94-flat-slime-cavity.yaml` (GOALS
    15 clarification, 2026-07-26 — no code change, documentation/example
    only). Confirm the surface is at Y 60, and no slimes spawn there. Dig
    down through ~24 blocks of grass/dirt/sand/stone and confirm you break
@@ -1175,10 +1175,18 @@ Uses configs `72`-`77` (see [`config/tests/README.md`](config/tests/README.md)).
    `worldSizeChunks: 0` escape hatch, 0.2.77+). Confirm no world border
    appears at all, and that the same eight-band stack as config 72 still
    generates identically otherwise.
-5. **Relief off**, `76-stacked-relief-off.yaml` (DESIGN §34.7's
+5. **Void exterior**, `76-stacked-void-exterior.yaml` (GOAL 35/17, DESIGN
+   §34.7, 0.3.19+). Spells out explicitly what config 72 only leaves
+   implicit: the bounded-world default's 64-block border pairs with a VOID
+   exterior. Walk/fly to the border and confirm the invisible-wall stop
+   lands right at 64 blocks, then confirm what's actually beyond it is
+   real void (no terrain, no floor, extends the full build height) —
+   config 72's own step 1 never checks this, it only confirms the border
+   indicator exists.
+6. **Relief off**, `77-stacked-relief-off.yaml` (DESIGN §34.7's
    `reliefBlocks: 0`, 0.2.77+). Confirm every layer's surface is perfectly
    flat again (the pre-§34.7 look), with everything else matching config 72.
-6. **Simplified layers**, `77-stacked-simplified-layers.yaml` (DESIGN
+7. **Simplified layers**, `78-stacked-simplified-layers.yaml` (DESIGN
    §34.8, 0.2.77+). Every layer is written as a bare biome id, no
    `;blocks;air gap` at all. Confirm the world still generates five
    distinct, reasonable-looking bands (taiga/jungle/savanna/
@@ -1204,7 +1212,7 @@ of whatever World Type you pick — configs `78`-`81` use plain "Worldz";
 `82` specifically uses **"Worldz: Ocean Island"** to confirm the rule
 still applies under a typed preset.
 
-1. **Forever night, immediate lock**, `78-forever-night-immediate.yaml`
+1. **Forever night, immediate lock**, `79-forever-night-immediate.yaml`
    (0.2.79+). Confirm the world is already permanent night at spawn — no
    ordinary daylight ever. Confirm `/gamerule advance_time` reports
    `false`. Confirm sleeping in a bed doesn't skip time (the sky stays
@@ -1213,15 +1221,15 @@ still applies under a typed preset.
    hold. Confirm ordinary night-time hostile mobs spawn normally — this
    should be real permanent night, not a cosmetic dark filter.
 2. **Forever night, delayed lock + relaxed insomnia**,
-   `79-forever-night-delayed-relaxed.yaml` (0.2.79+). Confirm the world
+   `80-forever-night-delayed-relaxed.yaml` (0.2.79+). Confirm the world
    starts with an ordinary day/night cycle, then locks permanently around
    the 1-day mark (`/tick step 24000` to fast-forward). Confirm phantoms
    do **not** spawn even after a long stretch with no sleeping — the
    `relaxInsomnia` toggle should be actively suppressing them via a
    periodic stat reset, not merely relying on vanilla's own bed-reset
-   (contrast with config 78's default vanilla-rules behavior).
+   (contrast with config 79's default vanilla-rules behavior).
 3. **Forever night + border interaction**,
-   `80-forever-night-border-interaction.yaml` (0.2.79+). This is the
+   `81-forever-night-border-interaction.yaml` (0.2.79+). This is the
    first real in-game confirmation of a **corrected** design claim (DESIGN
    §35.1) — the original assumption (locking night pauses *any* active
    border resize) turned out to be too broad once vanilla's own
@@ -1234,7 +1242,7 @@ still applies under a typed preset.
    contradicts this — it's a corrected claim being tested for the first
    time, not a known-good check.
 4. **Rising lava, plain bordered world**,
-   `81-rising-lava-vanilla-limited.yaml` (0.2.79+, accelerated demo rate,
+   `82-rising-lava-vanilla-limited.yaml` (0.2.79+, accelerated demo rate,
    not the shipped slow default). Confirm no lava exists until `delayDays`
    elapses, then confirm the level rises at the configured rate,
    converting air and water to lava while leaving solid terrain (stone,
@@ -1242,10 +1250,10 @@ still applies under a typed preset.
    time after the level has already risen shows lava caught up throughout
    its whole risen range, not just newly forming at the surface. Confirm
    the level stops exactly at `maxY` and holds there.
-5. **Rising lava, ocean island**, `82-rising-lava-ocean-island.yaml`
+5. **Rising lava, ocean island**, `83-rising-lava-ocean-island.yaml`
    (0.2.79+). Confirm the real ocean water (both near-shore and the
    deeper gradient) converts to lava from the bottom up as the level
-   rises, exactly like config 81's underground demonstration — confirms
+   rises, exactly like config 82's underground demonstration — confirms
    DESIGN §35.2's own "uniform across every world type, no special-casing"
    scope call holds for a real typed preset, not just the plain preset.
 
@@ -1257,7 +1265,7 @@ before their own defaults stabilized), rising lava's behavior under a
 void-based floating preset (sky island/chunk island — no test config
 exists yet; DESIGN §35.2 documents the intended uniform behavior but it
 hasn't been observed in-game), and whether `/time add` bypasses the
-`advance_time` gamerule on this snapshot (config 80's own steps flag this
+`advance_time` gamerule on this snapshot (config 81's own steps flag this
 as unconfirmed — use `/tick step` instead until it's checked).
 
 ## Phase 19 acceptance (Structure options wrap-up, GOALS 21/23/24, TODO 19.1-19.3, DESIGN §36)
@@ -1266,7 +1274,7 @@ Uses configs `83`-`84` (see [`config/tests/README.md`](config/tests/README.md)).
 No acceptance steps for 19.1 (verification-only, no behavior change) or
 19.3 (spiked and parked, no implementation — see DESIGN §36.4).
 
-1. **Structure distance, basic**, `83-structure-distance-basic.yaml`
+1. **Structure distance, basic**, `84-structure-distance-basic.yaml`
    (0.2.82+, 400-block radius — shrunk for testability, shipped default is
    2000). `/locate structure minecraft:village_plains` (or another village
    variant if that one's far away) and note the result. **Important:**
@@ -1277,7 +1285,7 @@ No acceptance steps for 19.1 (verification-only, no behavior change) or
    out past 400 blocks and confirm a real structure generates normally
    once you're clear of the radius.
 2. **Structure distance + exemption, typed preset**,
-   `84-structure-distance-single-biome-exempt-stronghold.yaml` (0.2.82+,
+   `85-structure-distance-single-biome-exempt-stronghold.yaml` (0.2.82+,
    500-block radius, **select "Worldz: Single Biome"**). Confirms the
    module composes with a typed preset (not just plain "Worldz") with no
    extra setup — proof that it lives in the one shared
@@ -1286,7 +1294,7 @@ No acceptance steps for 19.1 (verification-only, no behavior change) or
    regardless of distance — confirm a real stronghold exists there even if
    it falls inside 500 blocks, since `minecraft:strongholds` is exempted.
    Separately confirm an ordinary (non-exempt) structure inside 500 blocks
-   is suppressed exactly like config 83.
+   is suppressed exactly like config 84.
 
 **Not covered by this phase's acceptance:** Customize-screen exposure
 (config-only for this phase, same posture as the Phase 18 world-hazard
@@ -1301,7 +1309,7 @@ Uses configs `95`-`97` (see [`config/tests/README.md`](config/tests/README.md)).
 No acceptance steps for 21.1 (design pass) or 21.2 (`BiomeRolesTest`
 already covers it — pure logic, no game environment needed).
 
-1. **Cave biomes no longer surface**, `95-legacy-cave-biomes-underground-only.yaml`
+1. **Cave biomes no longer surface**, `96-legacy-cave-biomes-underground-only.yaml`
    (0.3.14+, plain "Worldz"). This is the actual bug fix, and the most
    important check in this phase. Explore extensively at the surface (F3
    open) and confirm you never see `dripstone_caves`/`lush_caves`/
@@ -1315,7 +1323,7 @@ already covers it — pure logic, no game environment needed).
    already handles this for free — no special-casing needed or done).
    Confirm ordinary desert surface content (villages, desert pyramids,
    cacti) still generates normally.
-2. **Flat's underground biome band**, `96-flat-underground-biome-band.yaml`
+2. **Flat's underground biome band**, `97-flat-underground-biome-band.yaml`
    (0.3.15+, **select "Worldz: Flat", create the world directly — do NOT
    open Customize and click "Done"**, which would silently disable the
    band). Confirm the surface (Y 64 and down to Y 54) reads as `plains`,
@@ -1324,7 +1332,7 @@ already covers it — pure logic, no game environment needed).
    grass) are identical either way, confirm nothing about the visible
    terrain changed.
 3. **Sky island's underground biome band**,
-   `97-sky-island-underground-biome-band.yaml` (0.3.16+, **select "Worldz:
+   `98-sky-island-underground-biome-band.yaml` (0.3.16+, **select "Worldz:
    Sky Island", create the world directly — same Customize caveat as
    `96`**). Confirm the island's surface (Y 64) reads as `plains`. Dig
    straight down through the slab and confirm the reading switches to

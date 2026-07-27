@@ -2,7 +2,7 @@
 # preset (an ocean island, GOALS 01) rather than the plain "Worldz" preset
 # -- confirms the hazard applies uniformly regardless of world type, per
 # DESIGN §35.2's own "no special-casing" scope call. **Select "Worldz:
-# Ocean Island"**. Same accelerated demo rate as config 81.
+# Ocean Island"**. Same accelerated demo rate as config 82.
 #
 # Steps once in-game:
 #  1. Confirm the island and its surrounding gradient ocean generate
@@ -11,12 +11,12 @@
 #  2. `/tick step 24000` (1 day) then periodically more -- confirm the
 #     real ocean water (both the shallow near-shore band and the deeper
 #     water further out) converts to lava from the bottom up as the level
-#     rises, exactly like config 81's underground demonstration, just
+#     rises, exactly like config 82's underground demonstration, just
 #     through real water instead of underground air/water pockets.
 #  3. Confirm the island's own dry land (above the rising level) is
 #     unaffected until the level actually reaches it.
 #  4. Confirm underground caves/structures beneath the island convert the
-#     same way as config 81 once the rising level reaches their Y.
+#     same way as config 82 once the rising level reaches their Y.
 overworldBorder:
   enabled: false
   ensureEndPortal: true

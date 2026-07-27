@@ -13,7 +13,7 @@
 #     ticks). Confirm phantoms do NOT spawn, even though you're well past
 #     vanilla's own `TIME_SINCE_REST` threshold -- relaxInsomnia is
 #     actively suppressing them (a periodic stat reset, not a spawn-rule
-#     change), unlike config 78's default (vanilla rules) behavior.
+#     change), unlike config 79's default (vanilla rules) behavior.
 foreverNight:
   enabled: true
   lockAfterDays: 1

@@ -2748,9 +2748,9 @@ Durable decisions, verified API notes, and rationale that should survive across 
   terrain-then-structure pipeline order and `FloatingIslandsPlan`'s own
   "island first, force a structure onto it" model), real design cost out
   of proportion for a stretch item per TODO 19.3's own escape hatch.
-  **19.4:** configs `83`-`84`, README's new "Structure options" section,
+  **19.4:** configs `84`-`85`, README's new "Structure options" section,
   MANUAL_TESTING's "Phase 19 acceptance," fresh jar deployed to
-  Worldz-Test. **[Jason] acceptance of configs 83-84 outstanding** --
+  Worldz-Test. **[Jason] acceptance of configs 84-85 outstanding** --
   Phase 20 (final wrap-up/release) not started, per the standing phase-gate
   rule.
 - 2026-07-26 — **Housekeeping backfill (same gap as Phase 17's own note
@@ -2771,7 +2771,7 @@ Durable decisions, verified API notes, and rationale that should survive across 
   special-case a layer's block id and already scan top-down for the
   first opaque block, so a raised slime-free surface (above Y 40) and a
   reachable underground slime-farming cavity were never mutually
-  exclusive. `config/tests/93-flat-slime-cavity.yaml`.
+  exclusive. `config/tests/94-flat-slime-cavity.yaml`.
   **(2) `flat.structureOverrides` biome-mismatch warning (0.3.12).** Some
   vanilla structure sets are biome-gated (`ancient_cities` only in
   `deep_dark`) and `flat` reports one fixed biome everywhere; an explicit
@@ -2895,12 +2895,12 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Customize reads either field today. Noted in README: sky island's default
   `thicknessBlocks` (6) is *shorter* than the default
   `undergroundBelowSurfaceBlocks` (10), so the band falls in the void
-  beneath the slab unless shrunk (config 97 uses `3`).
-  **21.5 (0.3.17):** configs `95` (deliberately adversarial `allowedBiomes`,
-  1 surface vs. 3 cave biomes, proves 21.3's fix), `96` (flat), `97` (sky
-  island) -- both `96`/`97` configs and MANUAL_TESTING explicitly warn not
+  beneath the slab unless shrunk (config 98 uses `3`).
+  **21.5 (0.3.17):** configs `96` (deliberately adversarial `allowedBiomes`,
+  1 surface vs. 3 cave biomes, proves 21.3's fix), `97` (flat), `98` (sky
+  island) -- both `97`/`98` configs and MANUAL_TESTING explicitly warn not
   to open the Customize screen, which would silently re-disable the
   config-only field. New "Phase 21 acceptance" section in MANUAL_TESTING.md.
   Full multiloader build green at every commit. **[Jason] retest of
-  configs 95-97 outstanding** — Phase 22 not started, per the standing
+  configs 96-98 outstanding** — Phase 22 not started, per the standing
   phase-gate rule.

@@ -25,7 +25,7 @@
 #     2026-07-26): confirm a "flat.structureOverrides lists
 #     'minecraft:ancient_cities' ... it will never generate" warning
 #     appears at world creation -- the automatic version of this exact
-#     manual finding. Contrast with config 94, which lists the same
+#     manual finding. Contrast with config 95, which lists the same
 #     structure set over a matching `deep_dark` biome and logs no
 #     warning at all.
 #  3. Confirm the trial chamber looks honestly clipped/cut off where it

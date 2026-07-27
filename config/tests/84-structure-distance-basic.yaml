@@ -24,7 +24,7 @@
 #  4. `/locate structure minecraft:stronghold` and confirm it, too, is
 #     excluded if its reported position falls inside 400 blocks (unlikely
 #     at this radius given vanilla's own stronghold ring distance, but
-#     worth a quick check) -- config 84 exercises the exemption list
+#     worth a quick check) -- config 85 exercises the exemption list
 #     instead, which is the more interesting stronghold case.
 overworldBorder:
   enabled: true

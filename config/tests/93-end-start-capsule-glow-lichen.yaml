@@ -1,5 +1,5 @@
 # GOALS 34/41 (test-coverage parity, 2026-07-26): `glow_lichen` coating
-# already has real coverage for `nether_start` (config 86) but never for
+# already has real coverage for `nether_start` (config 87) but never for
 # `end_start` -- confirms the same "coats every wall/floor/ceiling
 # surface, ignores `lightSpacingBlocks` entirely" behavior holds over
 # end-stone walls, not just nether brick. **Select "Worldz: End Start"**.

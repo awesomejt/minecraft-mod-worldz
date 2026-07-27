@@ -1,5 +1,5 @@
 # GOAL 42 (Phase 21.4b, DESIGN §37.3): sky island's own synthetic
-# underground biome band -- same idea as config 96's flat field, applied
+# underground biome band -- same idea as config 97's flat field, applied
 # to the floating island's own thin slab. **Select "Worldz: Sky
 # Island"**.
 #
@@ -10,7 +10,7 @@
 #
 # `thicknessBlocks: 6` (the default) means solid ground spans Y 58-63
 # (`surfaceY` 64 minus 6 blocks); `undergroundBelowSurfaceBlocks: 3`
-# (deliberately smaller than the default `10` used in config 96) puts
+# (deliberately smaller than the default `10` used in config 97) puts
 # the boundary at Y 61, so the underground band -- Y 58-60, 3 blocks --
 # falls *within* the slab's own diggable ground rather than in the void
 # beneath it. See README's own note on this interaction: with the

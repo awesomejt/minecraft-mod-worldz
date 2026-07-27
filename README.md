@@ -986,7 +986,7 @@ flat:
 This keeps the same 128-block total and Y 64 surface as the default
 above, but hollows out a 10-block-tall cavity between Y 27 and Y 36 —
 entirely below the Y-40 cutoff, and only reachable by digging down to it.
-See `config/tests/93-flat-slime-cavity.yaml` for a ready-to-use example.
+See `config/tests/94-flat-slime-cavity.yaml` for a ready-to-use example.
 
 **Underground biome band (GOAL 42)**: a related but separate idea —
 `undergroundBiome`/`undergroundBelowSurfaceBlocks` report a *different*

@@ -1,5 +1,5 @@
 # GOAL 42 (Phase 21.4a, DESIGN §37.3): flat's own synthetic underground
-# biome band -- a different concept from config 93's air-layer slime
+# biome band -- a different concept from config 94's air-layer slime
 # cavity (that carves a physical hollow; this only changes which biome
 # is *reported*, the layer stack's actual blocks are unaffected).
 # **Select "Worldz: Flat"**.

@@ -38,7 +38,7 @@
 #     will never generate" warning appears at world creation --
 #     `biome` here is `minecraft:plains`, and `ancient_cities` is only
 #     ever eligible in `minecraft:deep_dark` (see config 68's own note).
-#     Contrast with config 94, which matches the biome and logs nothing.
+#     Contrast with config 95, which matches the biome and logs nothing.
 flat:
   layers:
     - "minecraft:bedrock:2"

@@ -12,7 +12,7 @@
 # Steps once in-game:
 #  1. `/locate structure minecraft:village_desert` and confirm the same
 #     "reported coordinate may be inside the radius, but nothing actually
-#     generates there" behavior as config 83 -- travel to any result within
+#     generates there" behavior as config 84 -- travel to any result within
 #     500 blocks and confirm plain desert terrain, no village.
 #  2. `/locate structure minecraft:stronghold` and travel to the reported
 #     coordinate regardless of distance from spawn -- confirm a real

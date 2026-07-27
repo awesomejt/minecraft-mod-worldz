@@ -2379,7 +2379,7 @@ revisit. Full design: DESIGN §31.9.
       `NetherStartPlan.spawnYTooCloseToBoundary` pure-logic method: DESIGN
       §31.9's "Automatic default for a low (or high) spawnY" subsection.
       Config 62 no longer sets `forceCapsule` at all (spawnY 4 alone
-      triggers it); configs 86/87 moved to `spawnY: 32` (an ordinary,
+      triggers it); configs 87/88 moved to `spawnY: 32` (an ordinary,
       non-boundary depth) so they isolate the *explicit* `forceCapsule`
       pathway instead of accidentally relying on the same low-spawnY
       default config 62 now demonstrates. New tests in
@@ -2523,7 +2523,7 @@ revisit. Full design: DESIGN §31.9.
       but never referenced or closed this line. Reverified now: all four
       methods handle `easyKit`/`mediumKit`/`hardKit` correctly, and
       `WorldzConfigTest.netherStartKitsLoadIndependently` passes, covering
-      exactly this. New config 89 (2026-07-26) adds real in-game,
+      exactly this. New config 90 (2026-07-26) adds real in-game,
       config-file-level proof on top of the unit test.
 - [x] 15.2b Starter chest tiers (DESIGN §32.5, reuses `StarterKitTier`/
       `StarterKitConfig`; easy = rockets + blocks + food + bow/armor,
@@ -2616,12 +2616,12 @@ revisit. Full design: DESIGN §31.9.
       `EndStartPlanTest` capsule coverage (bounds, `centeredCapsuleOffsets`)
       and `WorldzConfigTest` `endStart.capsule` read/sanitize/round-trip
       tests, mirroring `NetherStartPlanTest`/the existing `netherStart.
-      capsule` tests. New config 88 (custom 9x9/7x7-interior, 4-tall,
+      capsule` tests. New config 89 (custom 9x9/7x7-interior, 4-tall,
       lantern-lit platform). Docs updated: GOALS 41's own log, README's
       End-start section (capsule table, config-only note), config/tests/
-      README.md (files 63-65 now require 0.3.5+, new row for 88), and a
+      README.md (files 63-65 now require 0.3.5+, new row for 89), and a
       new MANUAL_TESTING.md Phase 15 acceptance item covering the fix and
-      config 88. Full multiloader build green (`common`/`fabric`/
+      config 89. Full multiloader build green (`common`/`fabric`/
       `neoforge` compile, all `common` tests pass). **[Jason] retest
       outstanding** -- delete any pre-0.3.5 End-start world saves first,
       since the spawn-placement fix changes where a new player actually
@@ -2648,7 +2648,7 @@ revisit. Full design: DESIGN §31.9.
       summary assertion and `ProjectMetadataTest`'s version-string
       assertion (bumped to 0.3.6) to match. Corrected every "minable by
       hand" claim found across README.md, MANUAL_TESTING.md, and configs
-      63/65/88's own in-file comments to describe the guaranteed pickaxe
+      63/65/89's own in-file comments to describe the guaranteed pickaxe
       instead (left GOALS 34/TODO 15.1's own historical decision-log
       entries alone -- they record what was believed *at the time*, not
       current behavior). Full multiloader build green. **[Jason] retest
@@ -2657,14 +2657,14 @@ revisit. Full design: DESIGN §31.9.
 - [x] 15.5 **Test-coverage gap pass (2026-07-26 cleanup pass):** auditing
       every capsule config across both `nether_start` and `end_start`
       found `end_start` had no `glow_lichen` coverage (nether_start's own
-      config 86 was never mirrored), and that `torch` and dense-room
+      config 87 was never mirrored), and that `torch` and dense-room
       embedded sources (`glowstone`/`shroomlight`) had *zero* coverage
-      anywhere -- not for either preset. New configs 90 (`torch`, dense
+      anywhere -- not for either preset. New configs 91 (`torch`, dense
       room -- also the previously-untested dense-room floor-torch
-      addition), 91 (`shroomlight`, dense room -- also the previously-
+      addition), 92 (`shroomlight`, dense room -- also the previously-
       untested dense-room floor+ceiling addition embedded sources get,
-      distinct from lantern/torch's floor-only addition), 92
-      (`glow_lichen`, parity with config 86). Docs updated:
+      distinct from lantern/torch's floor-only addition), 93
+      (`glow_lichen`, parity with config 87). Docs updated:
       `config/tests/README.md`, MANUAL_TESTING.md's Phase 15 acceptance.
       No code changes -- test-fixture/doc additions only, no version bump.
 
@@ -3014,7 +3014,7 @@ revisit. Full design: DESIGN §31.9.
       turning the "avoid slimes" and "slime farm" asks into one
       config, not two mutually exclusive ones. **No code change** --
       documented the trick (README's Flat challenge section, GOALS 15
-      clarification) and added `config/tests/93-flat-slime-cavity.yaml`
+      clarification) and added `config/tests/94-flat-slime-cavity.yaml`
       plus its Phase 16 acceptance step. **[Jason] retest outstanding.**
 - [x] 16.10 **Follow-up (2026-07-26, Jason):** asked for cave biomes below
       the surface (see 16.9's sibling ask, resolved separately by adding
@@ -3351,7 +3351,7 @@ pulled earlier if Jason wants a fun quick win.**
       border resize already in progress is unaffected by locking night —
       only a still-delayed or actively-stepped resize freezes. Corrected
       DESIGN §35.1/MEMORY.md/README.md to the narrower, accurate scope
-      before shipping config 80 to test it.
+      before shipping config 81 to test it.
 
 ## Phase 19 — Structure options wrap-up (GOALS 21, 23, 24)
 
@@ -3511,13 +3511,13 @@ verified there against the real 26.2 artifacts.
       logic the check must fit into correctly. **`stacked` stays
       excluded** from both 21.4a/21.4b — it already assigns biomes by Y via
       `StackedPlan.layerAt`, a stronger statement this must not override.
-- [x] 21.5 Test configs + docs: `95-legacy-cave-biomes-underground-only.yaml`,
+- [x] 21.5 Test configs + docs: `96-legacy-cave-biomes-underground-only.yaml`,
       deliberately shaped to make the depth-partition fix's before/after
       obvious (a sparse allowed list weighted toward cave biomes,
       mirroring how config `01`'s own "ocean labeled as river" repro was
       deliberately adversarial, not just the shipped default);
-      `96-flat-underground-biome-band.yaml` and
-      `97-sky-island-underground-biome-band.yaml` (added once 21.4 split
+      `97-flat-underground-biome-band.yaml` and
+      `98-sky-island-underground-biome-band.yaml` (added once 21.4 split
       into 21.4a/21.4b) showing a cave biome below the configured boundary
       and the surface biome above it, for `flat`/`skyIsland` respectively.
       MANUAL_TESTING acceptance section (item 1 confirms ravines/pits still
@@ -4139,7 +4139,7 @@ a behavior change gets dropped from this phase and raised as its own item.
   hardcoded constant. Config-only for now (matching this project's
   precedent for new, not-yet-screen-exposed options): `CaveCustomization`
   and the in-game Customize screen still get the original stone/5-thick
-  defaults, unchanged. New `config/tests/85-cave-sealed-surface-bedrock.yaml`
+  defaults, unchanged. New `config/tests/86-cave-sealed-surface-bedrock.yaml`
   (bedrock, 3 thick). Built (0.2.88), full suite green, redeployed to
   Worldz-Test. **[Jason] review outstanding.**
 - 2026-07-25 (Phase 13, requirements captured — not implemented) —

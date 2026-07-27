@@ -212,7 +212,7 @@ item above as one coordinated config-schema pass.
     verified against `fillFlatColumns`/`flatBaseHeight`'s own top-down
     opaque-block scan, which already handles a non-opaque middle layer
     correctly. See README's Flat challenge section for the worked example
-    and `config/tests/93-flat-slime-cavity.yaml`.
+    and `config/tests/94-flat-slime-cavity.yaml`.
 
 ### Minecraft World Limited Size:
 
@@ -495,10 +495,10 @@ item above as one coordinated config-schema pass.
     no smelting or crafting to begin bridging/hand-mining, so Jason's
     "starter base thing" ask is read here as the shape/lighting mechanism,
     not the furniture. Config-only for now, same Customize-screen
-    deferral as Nether-start's own capsule (GOALS 41.1). New config 88
+    deferral as Nether-start's own capsule (GOALS 41.1). New config 89
     exercises a custom size/height/lantern-lighting combination. Full
     multiloader build green. **[Jason] retest outstanding** (configs
-    63-65, 88 — delete any pre-0.3.5 End-start worlds first, the spawn-
+    63-65, 89 — delete any pre-0.3.5 End-start worlds first, the spawn-
     placement fix changes where a new player actually lands).
     **Follow-up fix (0.3.6, same retest):** Jason confirmed the
     spawn/platform/chest fix above but found none of the chest tiers
