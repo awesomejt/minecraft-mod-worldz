@@ -942,6 +942,8 @@ flat:
 | `biome` | `minecraft:plains` | The single biome reported everywhere. |
 | `decoration` | `false` | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs, matching vanilla flat's own all-or-nothing `features` flag. Structures are unaffected either way (0.3.7 fix, see below) — this only ever toggled tree/flower/ore-vein placement. |
 | `structureOverrides` | `["minecraft:villages", "minecraft:strongholds"]` | Structure sets eligible to place; empty means every registered set is eligible, matching vanilla's own default. |
+| `undergroundBiome` | `""` (disabled) | Biome reported at/below `undergroundBelowSurfaceBlocks` blocks under the surface (GOAL 42) — a single fixed biome, not sampled variety, matching `biome`'s own single-fixed-value design. Blank disables the band entirely; `biome` is then reported at every depth, unchanged from before this field existed. Config-only for now (not yet on the Customize screen). |
+| `undergroundBelowSurfaceBlocks` | `10` | How many blocks below the flat surface the underground band starts. Only takes effect when `undergroundBiome` is also set; `0` disables the band even with a biome configured. |
 
 **Bug fixed (0.3.7):** `decoration: false` (the default) used to silently skip real structure
 placement too, not just ordinary biome decoration — a village or stronghold's *site* would still
@@ -983,6 +985,26 @@ This keeps the same 128-block total and Y 64 surface as the default
 above, but hollows out a 10-block-tall cavity between Y 27 and Y 36 —
 entirely below the Y-40 cutoff, and only reachable by digging down to it.
 See `config/tests/93-flat-slime-cavity.yaml` for a ready-to-use example.
+
+**Underground biome band (GOAL 42)**: a related but separate idea —
+`undergroundBiome`/`undergroundBelowSurfaceBlocks` report a *different*
+biome below a configured depth, rather than carving a physical cavity into
+the layer stack at all. Useful for biome-gated content (e.g. structures or
+mob spawns that only apply underground) without needing an air pocket:
+
+```yaml
+flat:
+  biome: minecraft:plains
+  undergroundBiome: minecraft:dripstone_caves
+  undergroundBelowSurfaceBlocks: 10
+```
+
+With the default 128-block layer stack (Y 64 surface), this reports
+`dripstone_caves` at Y 53 and below, `plains` everywhere from Y 54 up —
+purely a biome-reporting change, not a shape change; the layer stack
+still paints the exact same solid blocks either way. Composes with the
+slime-cavity trick above (an air pocket can sit inside the underground
+band, or outside it) but is independent of it.
 
 **Underground structures aren't automatically buried** — with no real
 terrain to bury into, a structure set like `trial_chambers` or

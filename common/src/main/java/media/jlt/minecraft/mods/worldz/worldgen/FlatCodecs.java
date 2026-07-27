@@ -14,7 +14,9 @@ final class FlatCodecs {
         LAYER_CODEC.listOf().fieldOf("layers").forGetter(FlatPlan::layers),
         Codec.STRING.fieldOf("biome").forGetter(FlatPlan::biome),
         Codec.BOOL.fieldOf("decoration").forGetter(FlatPlan::decoration),
-        Codec.STRING.listOf().fieldOf("structure_overrides").forGetter(FlatPlan::structureOverrides)
+        Codec.STRING.listOf().fieldOf("structure_overrides").forGetter(FlatPlan::structureOverrides),
+        Codec.STRING.fieldOf("underground_biome").forGetter(FlatPlan::undergroundBiome),
+        Codec.INT.fieldOf("underground_below_surface_blocks").forGetter(FlatPlan::undergroundBelowSurfaceBlocks)
     ).apply(instance, FlatPlan::new));
 
     private FlatCodecs() {

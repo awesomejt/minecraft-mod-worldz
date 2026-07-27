@@ -122,6 +122,16 @@ public final class LimitedBiomeSource extends BiomeSource {
      * of its own (layer order resolution reuses {@link #effectiveLayoutPlan}'s own seed).
      */
     private volatile StackedPlan stackedPlan = StackedPlan.disabled();
+    /**
+     * Pushed post-construction from {@code EnvelopedChunkGenerator}'s own constructor (GOAL 42,
+     * DESIGN §37.3), exact same reasoning and precedent as {@link #stackedPlan} above: {@code
+     * FlatPlan} is persisted on the generator's own codec (this class's is already full 14/14),
+     * but the underground-band check can only happen here. Empty id = disabled, the harmless
+     * no-op default for every preset except {@code flat} with the band actually configured.
+     */
+    private volatile String flatUndergroundBiomeId = "";
+    private volatile int flatSurfaceY;
+    private volatile int flatUndergroundBelowSurfaceBlocks;
 
     private LimitedBiomeSource(
         Supplier<HolderSet<Biome>> allowedBiomes,
@@ -162,9 +172,13 @@ public final class LimitedBiomeSource extends BiomeSource {
         // World presets are decoded before dynamic-registry tags are bound in
         // 26.2. Defer tag expansion and climate filtering until Minecraft first
         // asks this biome source for its possible biomes or an actual biome.
+        // Reads this.flatUndergroundBiomeId (not a constructor parameter) so a later
+        // setFlatUnderground(...) call -- guaranteed to happen before this memoized supplier is
+        // ever first evaluated, same timing guarantee setStackedLayers already relies on -- is
+        // picked up correctly rather than an empty/disabled snapshot from construction time.
         this.resolution = Suppliers.memoize(() -> resolveAllowedBiomes(
             allowedBiomes.get(), starterBiome, this.oceanBiome, worldLayoutPlan,
-            allowRivers, allowOceans, allowBeaches, island, skyIsland, biomeGetter
+            allowRivers, allowOceans, allowBeaches, island, skyIsland, this.flatUndergroundBiomeId, biomeGetter
         ));
     }
 
@@ -599,6 +613,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         boolean allowBeaches,
         IslandPlan island,
         SkyIslandPlan skyIsland,
+        String flatUndergroundBiomeId,
         HolderGetter<Biome> biomeGetter
     ) {
         Climate.ParameterList<Holder<Biome>> overworld = new MultiNoiseBiomeSourceParameterList(
@@ -606,6 +621,26 @@ public final class LimitedBiomeSource extends BiomeSource {
             biomeGetter
         ).parameters();
         Set<Holder<Biome>> allowedSet = new LinkedHashSet<>(allowed.stream().toList());
+
+        // GOAL 42, DESIGN §37.3: resolved once here (this method already has biomeGetter in
+        // scope) rather than at setFlatUnderground(...) time, which has no registry access at
+        // all. A blank id (every preset except flat with the band configured) resolves to empty,
+        // a harmless no-op. Warns (mirroring 0.3.12's structureOverrides warning style) if the
+        // configured biome isn't itself BiomeRoles.isUnderground-classified -- a hint, not a hard
+        // error, since a player might genuinely want an ordinary biome reported underground.
+        Optional<Holder<Biome>> flatUndergroundBiome = Optional.empty();
+        if (!flatUndergroundBiomeId.isBlank()) {
+            flatUndergroundBiome = biomeGetter.get(ResourceKey.create(Registries.BIOME, Identifier.parse(flatUndergroundBiomeId)))
+                .map(value -> value);
+            if (flatUndergroundBiome.isEmpty()) {
+                WorldzCommon.LOGGER.warn("Unknown flat.undergroundBiome '{}'; the underground band will be disabled.", flatUndergroundBiomeId);
+            } else if (!BiomeRoles.isUnderground(flatUndergroundBiomeId)) {
+                WorldzCommon.LOGGER.warn(
+                    "flat.undergroundBiome '{}' isn't one of the maintained underground biomes -- allowed, but check this is intentional.",
+                    flatUndergroundBiomeId
+                );
+            }
+        }
 
         // GOAL 42, DESIGN §37.2: partitioned by depth role (surface vs. underground) rather
         // than one merged delegate, so a cave biome configured in `allowedBiomes` can never be
@@ -666,6 +701,7 @@ public final class LimitedBiomeSource extends BiomeSource {
         }
         starterBiome.ifPresent(possible::add);
         oceanBiome.ifPresent(possible::add);
+        flatUndergroundBiome.ifPresent(possible::add);
 
         Map<String, Holder<Biome>> layoutBiomes = resolveLayoutBiomes(worldLayoutPlan, biomeGetter);
         if (worldLayoutPlan.mode() != LayoutMode.LEGACY) {
@@ -706,7 +742,7 @@ public final class LimitedBiomeSource extends BiomeSource {
 
         return new Resolution(
             HolderSet.direct(List.copyOf(allowedSet)), surfaceDelegate, undergroundDelegate, naturalDelegate,
-            Set.copyOf(possible), layoutBiomes, islandBiomes, skyIslandBiomes
+            Set.copyOf(possible), layoutBiomes, islandBiomes, skyIslandBiomes, flatUndergroundBiome
         );
     }
 
@@ -1064,6 +1100,23 @@ public final class LimitedBiomeSource extends BiomeSource {
      */
     public void setStackedLayers(StackedPlan plan) {
         this.stackedPlan = plan;
+    }
+
+    /**
+     * Pushes {@code flat}'s resolved underground-band settings onto this biome source (GOAL 42,
+     * DESIGN §37.3), called once from {@code EnvelopedChunkGenerator}'s own constructor -- exact
+     * same precedent as {@link #setStackedLayers}. Harmless no-op for every preset except
+     * {@code flat} with the band actually configured ({@link #flatUndergroundBiomeId} stays
+     * blank, the disabled default).
+     *
+     * @param undergroundBiomeId biome id reported below the threshold; blank disables the band
+     * @param surfaceY absolute world Y the flat surface sits at ({@code minY + totalHeightBlocks})
+     * @param belowSurfaceBlocks how many blocks below {@code surfaceY} the band starts
+     */
+    public void setFlatUnderground(String undergroundBiomeId, int surfaceY, int belowSurfaceBlocks) {
+        this.flatUndergroundBiomeId = undergroundBiomeId == null ? "" : undergroundBiomeId;
+        this.flatSurfaceY = surfaceY;
+        this.flatUndergroundBelowSurfaceBlocks = belowSurfaceBlocks;
     }
 
     /**
@@ -1426,6 +1479,18 @@ public final class LimitedBiomeSource extends BiomeSource {
                 return sampled.get();
             }
         }
+        // GOAL 42, DESIGN §37.3: flat's own synthetic underground band -- Y-relative to its
+        // known surface, not vanilla's climate depth (which is meaningless for a zero-noise
+        // preset; §37.0/§37.1's fix above is for real terrain only). Deliberately independent of
+        // this method's climate-based routing just above: this is a plain Y check against one
+        // configured biome, per Jason's own decision (single fixed biome, no sampling).
+        if (!this.flatUndergroundBiomeId.isEmpty() && this.flatUndergroundBelowSurfaceBlocks > 0
+            && QuartPos.toBlock(quartY) < this.flatSurfaceY - this.flatUndergroundBelowSurfaceBlocks) {
+            Optional<Holder<Biome>> flatUnderground = this.resolution.get().flatUndergroundBiome();
+            if (flatUnderground.isPresent()) {
+                return flatUnderground.get();
+            }
+        }
         return isUndergroundDepth(quartX, quartY, quartZ, sampler)
             ? this.resolution.get().undergroundDelegate().getNoiseBiome(quartX, quartY, quartZ, sampler)
             : this.resolution.get().surfaceDelegate().getNoiseBiome(quartX, quartY, quartZ, sampler);
@@ -1463,7 +1528,8 @@ public final class LimitedBiomeSource extends BiomeSource {
         Set<Holder<Biome>> possibleBiomes,
         Map<String, Holder<Biome>> layoutBiomes,
         Map<String, Holder<Biome>> islandBiomes,
-        Map<String, Holder<Biome>> skyIslandBiomes
+        Map<String, Holder<Biome>> skyIslandBiomes,
+        Optional<Holder<Biome>> flatUndergroundBiome
     ) {
     }
 }

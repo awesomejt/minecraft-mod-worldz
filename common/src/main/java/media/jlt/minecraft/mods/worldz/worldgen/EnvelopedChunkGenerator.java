@@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import media.jlt.minecraft.mods.worldz.WorldzCommon;
+import media.jlt.minecraft.mods.worldz.config.FlatConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
@@ -326,6 +327,14 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         this.deepFlat = dimension == Dimension.OVERWORLD ? deepFlat : DeepFlatPlan.disabled();
         this.stacked = dimension == Dimension.OVERWORLD ? stacked : StackedPlan.disabled();
         this.originSource.ifPresent(source -> source.setStackedLayers(this.stacked));
+        // GOAL 42, DESIGN §37.3: flat's own underground band, same non-codec setter precedent as
+        // setStackedLayers just above. Harmless no-op (blank id) for every non-flat preset and for
+        // flat with the band left unconfigured, since FlatPlan.disabled()/an unconfigured
+        // FlatConfig both default undergroundBiome to "".
+        this.originSource.ifPresent(source -> source.setFlatUnderground(
+            this.flat.undergroundBiome(), FlatConfig.OVERWORLD_MIN_Y + this.flat.totalHeightBlocks(),
+            this.flat.undergroundBelowSurfaceBlocks()
+        ));
     }
 
     /**

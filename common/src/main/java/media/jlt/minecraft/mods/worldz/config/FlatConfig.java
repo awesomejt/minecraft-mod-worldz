@@ -30,6 +30,14 @@ public final class FlatConfig {
     public boolean decoration = false;
     /** Structure sets eligible to place; empty means every registered set is eligible. */
     public List<String> structureOverrides = defaultStructureOverrides();
+    /** Biome reported at/below {@link #undergroundBelowSurfaceBlocks} blocks under the surface
+     * (GOAL 42, DESIGN §37.3); empty disables the underground band entirely (default), keeping
+     * {@code biome} reported at every depth as before this field existed. */
+    public String undergroundBiome = "";
+    /** How many blocks below the flat surface the underground band starts; only takes effect
+     * when {@link #undergroundBiome} is also set. Ignored (and the band never applies) at
+     * {@code 0} even with a biome configured. */
+    public int undergroundBelowSurfaceBlocks = 10;
 
     /** Creates a config populated with defaults. */
     public FlatConfig() {

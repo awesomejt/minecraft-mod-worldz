@@ -17,6 +17,7 @@ class FlatPlanTest {
         assertFalse(disabled.enabled());
         assertFalse(disabled.layers().isEmpty());
         assertEquals("minecraft:plains", disabled.biome());
+        assertFalse(disabled.undergroundEnabled());
     }
 
     @Test
@@ -39,13 +40,16 @@ class FlatPlanTest {
 
     @Test
     void emptyLayerListIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new FlatPlan(true, List.of(), "minecraft:plains", false, List.of()));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new FlatPlan(true, List.of(), "minecraft:plains", false, List.of(), "", 10)
+        );
     }
 
     @Test
     void blankBiomeIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new FlatPlan(
-            true, List.of(new FlatLayerSpec("minecraft:bedrock", 1)), "", false, List.of()
+            true, List.of(new FlatLayerSpec("minecraft:bedrock", 1)), "", false, List.of(), "", 10
         ));
     }
 
@@ -53,7 +57,48 @@ class FlatPlanTest {
     void tooTallLayerStackIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new FlatPlan(
             true, List.of(new FlatLayerSpec("minecraft:stone", FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS + 1)),
-            "minecraft:plains", false, List.of()
+            "minecraft:plains", false, List.of(), "", 10
         ));
+    }
+
+    @Test
+    void negativeUndergroundBelowSurfaceBlocksIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new FlatPlan(
+            true, List.of(new FlatLayerSpec("minecraft:bedrock", 1)), "minecraft:plains", false, List.of(),
+            "minecraft:dripstone_caves", -1
+        ));
+    }
+
+    @Test
+    void undergroundEnabledRequiresBothABiomeAndAPositiveThreshold() {
+        FlatPlan noBiome = new FlatPlan(
+            true, List.of(new FlatLayerSpec("minecraft:bedrock", 1)), "minecraft:plains", false, List.of(), "", 10
+        );
+        assertFalse(noBiome.undergroundEnabled());
+
+        FlatPlan zeroBlocks = new FlatPlan(
+            true, List.of(new FlatLayerSpec("minecraft:bedrock", 1)), "minecraft:plains", false, List.of(),
+            "minecraft:dripstone_caves", 0
+        );
+        assertFalse(zeroBlocks.undergroundEnabled());
+
+        FlatPlan enabled = new FlatPlan(
+            true, List.of(new FlatLayerSpec("minecraft:bedrock", 1)), "minecraft:plains", false, List.of(),
+            "minecraft:dripstone_caves", 10
+        );
+        assertTrue(enabled.undergroundEnabled());
+    }
+
+    @Test
+    void fromConfigResolvesUndergroundFields() {
+        FlatConfig config = new FlatConfig();
+        config.undergroundBiome = "minecraft:lush_caves";
+        config.undergroundBelowSurfaceBlocks = 15;
+
+        FlatPlan plan = FlatPlan.fromConfig(config);
+
+        assertEquals("minecraft:lush_caves", plan.undergroundBiome());
+        assertEquals(15, plan.undergroundBelowSurfaceBlocks());
+        assertTrue(plan.undergroundEnabled());
     }
 }

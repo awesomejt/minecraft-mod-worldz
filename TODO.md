@@ -3432,25 +3432,35 @@ verified there against the real 26.2 artifacts.
       `getNoiseBiome`'s final fallback picks the matching delegate by the
       query's own depth (vanilla's own `0.2` band start; compare in
       quantized space via `Climate.quantizeCoord`).
-- [ ] 21.4 `flat`/`skyIsland` only (not `deepFlat` — see 21.1's
-      correction): new `undergroundBiome` (single biome id, optional) +
+- [x] 21.4a `flat` only (not `deepFlat` — see 21.1's correction; `skyIsland`
+      split out to 21.4b, same idea but a genuinely separate implementation):
+      new `undergroundBiome` (single biome id, optional) +
       `undergroundBelowSurfaceBlocks` (default `10` per Jason, `0` or
       `undergroundBiome` unset = disabled/today's behavior) fields on
-      `FlatConfig`/`FlatPlan` and `SkyIslandConfig`/`SkyIslandPlan`.
-      `SkyIslandPlan` already has a `LimitedBiomeSource` codec slot of its
-      own (room to nest new fields, no ceiling issue); `FlatPlan` doesn't,
-      so its new fields thread in via a new `LimitedBiomeSource
-      .setFlatUnderground(...)`-shaped setter, mirroring `setStackedLayers`
-      exactly. Surface Y comes from `FlatPlan.totalHeightBlocks()`/
-      `SkyIslandPlan.surfaceY()`. Below the boundary, report
-      `undergroundBiome` outright — a plain Y check, no
+      `FlatConfig`/`FlatPlan`. Threads into `LimitedBiomeSource` via a new
+      `setFlatUnderground(String, int, int)` setter, mirroring
+      `setStackedLayers` exactly (`FlatPlan` still isn't a
+      `LimitedBiomeSource` codec field — the setter is precisely what makes
+      that unnecessary). Surface Y is `FlatConfig.OVERWORLD_MIN_Y +
+      FlatPlan.totalHeightBlocks()`. Below the boundary, reports
+      `undergroundBiome` outright — a plain Y check in `getNoiseBiome`, no
       `MultiNoiseBiomeSource`/climate sampling involved (Jason's decision,
-      21.1). Nice-to-have: warn (mirroring 0.3.12's `structureOverrides`
-      warning style) if a configured `undergroundBiome` isn't actually
-      `BiomeRoles.isUnderground`-classified — not a hard error, just a
-      hint. **`stacked` stays excluded** — it already assigns biomes by Y
-      via `StackedPlan.layerAt`, a stronger statement this must not
-      override.
+      21.1). Warns (mirroring 0.3.12's `structureOverrides` warning style,
+      not a hard error) if a configured `undergroundBiome` isn't itself
+      `BiomeRoles.isUnderground`-classified, or is unresolvable. Config-only
+      for now (`FlatCustomization`/the Customize screen always passes
+      disabled values, same deferral this project uses for other new
+      fields) — a config-driven world (`FlatPlan.fromConfig`) is the only
+      path that reads it today. `FlatPlanTest` covers validation,
+      `undergroundEnabled()`, and config resolution.
+- [ ] 21.4b `skyIsland` — same idea as 21.4a, genuinely separate
+      implementation since `SkyIslandPlan` already has its own
+      `LimitedBiomeSource` codec slot (room to nest the two new fields
+      directly, no setter needed the way `flat` needed one) but sky
+      island's own `getNoiseBiome` block has its own footprint/distance
+      logic the check must fit into correctly. **`stacked` stays
+      excluded** from both 21.4a/21.4b — it already assigns biomes by Y via
+      `StackedPlan.layerAt`, a stronger statement this must not override.
 - [ ] 21.5 Test configs + docs: a `legacy` config deliberately shaped to
       make the depth-partition fix's before/after obvious (a sparse
       allowed list weighted toward cave biomes, mirroring how config `01`'s

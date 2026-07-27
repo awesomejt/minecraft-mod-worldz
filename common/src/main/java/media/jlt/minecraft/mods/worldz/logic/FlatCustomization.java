@@ -128,12 +128,17 @@ public record FlatCustomization(
     }
 
     /**
-     * Resolves this world's flat plan.
+     * Resolves this world's flat plan. The underground-biome band (GOAL 42, DESIGN §37.3) isn't
+     * yet exposed on the Customize screen -- config-only for now, same deferral this project
+     * already uses for other new fields (e.g. the capsule mechanism) -- so a Customize-screen
+     * world always gets it disabled; only a config-driven world (never opening Customize) reads
+     * {@code flat.undergroundBiome}/{@code undergroundBelowSurfaceBlocks} via
+     * {@link FlatPlan#fromConfig}.
      *
      * @return resolved, enabled plan
      */
     public FlatPlan flatPlan() {
-        return new FlatPlan(true, layers, biome, decoration, structureOverrides);
+        return new FlatPlan(true, layers, biome, decoration, structureOverrides, "", 10);
     }
 
     /**
