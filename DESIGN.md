@@ -6030,62 +6030,122 @@ the whole column).
 Add a depth role to the existing, already-`JUnit`-testable classification
 layer rather than inventing a parallel one. `BiomeRoles` is explicitly
 "pure and independent of the Minecraft biome registry so it stays
-JUnit-testable" and already maintains `OCEAN`/`BEACH`/`LAND` sets plus an
-override map (`BiomeRoles.resolve(id, roleOverrides)`). Extend it with an
-underground classification — a maintained `UNDERGROUND_IDS` set
-(`dripstone_caves`, `lush_caves`, `sulfur_caves`, `deep_dark`) and a
-`BiomeRoles.isUnderground(id, overrides)` — keeping the same
-maintained-default-plus-override shape, and inheriting its unit-testability
-(this is the one part of this whole design that *can* be unit-tested, and
-should be).
+JUnit-testable" and already maintains `OCEAN`/`BEACH`/`LAND` sets. Extend it
+with an underground classification — a maintained `UNDERGROUND_IDS` set
+(`dripstone_caves`, `lush_caves`, `sulfur_caves`, `deep_dark`) and
+`BiomeRoles.isUnderground(id)` — **no overrides parameter**, unlike
+`resolve(id, roleOverrides)`: nothing in this codebase would ever populate
+one today, and `BiomeRole`'s own override map is a genuinely different
+concept (which *layout composition role* a biome plays for coordinated
+terrain shaping) that this shouldn't be conflated with just because both
+live in the same file. Inherits `BiomeRoles`' unit-testability — the one
+part of this whole phase that *can* be unit-tested, and should be.
 
-Then, in `resolveAllowedBiomes`, build **two** filtered parameter lists
-instead of one:
+Then, in `resolveAllowedBiomes`, partition the single `allowed` input into
+two subsets by `BiomeRoles.isUnderground` and build **two** filtered
+parameter lists instead of one:
 
-- **surface list** — allowed biomes that are not underground-classified,
-  filtered against vanilla's parameter list as today;
+- **surface list** — allowed biomes that are not underground-classified;
 - **underground list** — allowed biomes that are underground-classified.
 
-`getNoiseBiome`'s final fallback consults whichever list matches the query's
-own depth (`sampler.sample(quartX, quartY, quartZ).depth()` against
-vanilla's own `0.2` band start), rather than one merged list. Each list
-keeps its own `MultiNoiseBiomeSource`; the existing empty-list fail-safe
-(fall back to the full vanilla overworld list, with a warning) applies per
-list, so a configuration with no cave biomes at all keeps real vanilla cave
-biomes underground instead of projecting surface biomes downward.
+**Correction (2026-07-26 pre-work pass, before implementation):** the
+originally-sketched fallback — each list independently falls back to the
+full vanilla overworld list when empty — is wrong. `resolveAllowedBiomes`
+has exactly **one call site**, shared by every preset (`legacy`, `flat`,
+`single_biome`, `chaos_biomes`, `stacked` all route through it, each with a
+different `allowed` input — see the dispatch ternary in `resolve()`). A
+preset like `flat` passes `allowed = {flat.biome}`, which in the ordinary
+case is a single land biome — its own underground subset is empty. Under
+the original per-list fallback, that empty subset would trigger "fall back
+to full vanilla," meaning `flat` would suddenly start reporting **real
+vanilla cave biomes** underground the moment this landed — a regression
+having nothing to do with the actual bug, since `flat` never had this
+problem (it reports one fixed biome at every depth, by design, and depth
+even means something different there — see §37.3).
 
-This is a structural fix, not a heuristic: a cave biome is no longer *in*
-the candidate set consulted at surface depth, so it cannot be selected there
-no matter how the other six parameters fall.
+**Corrected fallback, symmetric:** if either subset is empty, that side's
+delegate *borrows the other side's delegate* rather than falling back to
+full vanilla. Only when **both** subsets are empty does the existing
+full-vanilla fail-safe apply (unchanged from today — a genuinely
+unresolvable configuration either way). Worked through for every real case:
 
-### 37.3 Synthetic surfaces: flat, deep_flat, sky islands, stacked
+| `allowed` shape | surface subset | underground subset | Result |
+|---|---|---|---|
+| `flat`/single land biome | `{biome}` | `{}` | underground delegate = surface delegate → reports `biome` at every depth, **identical to today** |
+| `single_biome` explicitly set to a cave biome (a real, if odd, config) | `{}` | `{biome}` | surface delegate = underground delegate → reports `biome` at every depth, **identical to today** (today's single-candidate delegate already does this regardless of query depth) |
+| `legacy` shipped default (7 surface + 4 cave biomes) | 7 real entries | 4 real entries | **both delegates independently correct** — surface never returns a cave biome, underground gets real cave-biome variety. This is the actual fix. |
+| `legacy` with cave biomes manually removed from `allowedBiomes` | N entries | `{}` | underground delegate = surface delegate → reports a surface biome underground, same behavior as today (no worse) |
+
+This proves the fix is a no-op for every preset/configuration that isn't
+already broken, and a real fix exactly where the defect lives. No new
+parameter needed to distinguish "which preset is this" — the symmetry
+handles it structurally.
+
+`getNoiseBiome`'s final fallback consults whichever delegate matches the
+query's own depth (`sampler.sample(quartX, quartY, quartZ).depth()` against
+vanilla's own `0.2` band start, compared in quantized space via
+`Climate.quantizeCoord`), instead of one merged delegate.
+
+### 37.3 Synthetic surfaces: flat and sky islands (not deep_flat, not stacked)
 
 Where terrain is synthetic, vanilla's depth signal is meaningless (there is
 no real noise terrain being shaped), so the boundary is Jason's own
 proposal: a configured number of blocks below the known surface Y.
 
 - **`flat`** — surface Y is exactly `minY + FlatPlan.totalHeightBlocks()`.
-- **`deep_flat`** — surface Y is `DeepFlatPlan.surfaceY()` outright.
 - **`skyIsland`** — `SkyIslandPlan.surfaceY()` already exists and is already
   used for exactly this kind of vertical pinning in `getNoiseBiome`.
-- **`stacked`** — deliberately excluded. It already assigns biomes by Y via
-  `StackedPlan.layerAt(resolved, QuartPos.toBlock(quartY))`, which is a
-  *stronger* statement than a surface/underground split and would be
-  overridden by it. `stacked` is also the proof that Y-driven biome
-  assignment works in this codebase — this design generalizes its precedent
-  rather than introducing a new idea.
 
-New shared config field, one per applicable preset (mirroring how
-`riversEnabled`/`surfaceY` are per-preset rather than global):
-`undergroundBelowSurfaceBlocks`, default `10` per Jason. `0` disables the
-split for that preset (single-biome behavior as today), which keeps every
-existing world's behavior reachable.
+**`deep_flat` removed from this scope (2026-07-26 pre-work pass) —**
+verified its allowed-biome hint is `resolveFullVanillaOverworldAllowed`
+(the complete, unfiltered `#minecraft:is_overworld` tag). It already
+reports whatever real vanilla biome genuinely exists at a column's true
+depth below the cap, correctly, for free — §33.4's "full vanilla variety
+already falls out for free" already covered this. An artificial
+Y-relative-to-`surfaceY` cutoff here would *fight* real vanilla depth
+instead of complementing it (a real cave biome could exist well above an
+artificial cutoff, or a surface-appropriate biome well below one, depending
+on the seed's actual terrain).
 
-An underground biome for these presets needs a source: reuse the same
-underground list from §37.2 (climate-sampled at the column, so cave-biome
-variety still varies across the world rather than being one fixed cave
-biome everywhere), falling back to the preset's own configured biome when
-no underground biome is allowed at all.
+**`stacked`** stays excluded, unchanged from the original sketch — it
+already assigns biomes by Y via
+`StackedPlan.layerAt(resolved, QuartPos.toBlock(quartY))`, a *stronger*
+statement than a surface/underground split and would be overridden by it.
+
+**Underground biome is one single configured value, not sampled variety —
+Jason's decision (2026-07-26), asked rather than assumed.** New fields
+`undergroundBiome` (a plain biome id, optional) and
+`undergroundBelowSurfaceBlocks` (default `10` per Jason; `0` or an unset
+`undergroundBiome` disables the whole mechanism, preserving today's
+behavior) on `flat`/`skyIsland`. Below the boundary, report
+`undergroundBiome` outright — a plain Y comparison, **no
+`MultiNoiseBiomeSource`/climate sampling involved at all**, and no
+dependency on §37.2's underground list. This was a real design fork (climate-
+sampled variety, reusing §37.2's machinery, was the other option) resolved
+in favor of simplicity: it matches Jason's own "the start of underground
+biomes" phrasing (naming a place, not asking for a mix) and keeps
+`flat`/`skyIsland`'s existing single-fixed-value design language
+(`flat.biome` is already singular) consistent.
+
+**Threading into `LimitedBiomeSource` without a codec field.**
+`LimitedBiomeSource`'s own codec is confirmed full (14/14, §29.7) and
+`FlatPlan` deliberately isn't one of its fields (§33.2 — it never needed
+per-column biome-source consultation before now). This project already has
+the exact precedent needed: `stacked` faces the identical constraint
+(`StackedPlan` lives on `EnvelopedChunkGenerator`'s own codec, not
+`LimitedBiomeSource`'s) and solves it with a mutable setter —
+`LimitedBiomeSource.setStackedLayers(StackedPlan)`, a `private volatile`
+field defaulting to `StackedPlan.disabled()`, called once from
+`EnvelopedChunkGenerator`'s constructor. `flat`'s new fields get the same
+treatment (a new setter, called the same way). `SkyIslandPlan` already has
+its own `LimitedBiomeSource` codec slot (from Phase 10/11), so its new
+fields simply nest inside that existing slot — no setter needed there.
+
+Nice-to-have, not required for the mechanism to work: warn (mirroring
+0.3.12's `structureOverrides` warning style) if a configured
+`undergroundBiome` isn't itself `BiomeRoles.isUnderground`-classified — a
+hint, not a hard error, since a player might have a real reason to want an
+ordinary surface biome reported underground.
 
 ### 37.4 Deliberately out of scope
 

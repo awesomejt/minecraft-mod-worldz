@@ -2753,3 +2753,109 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Worldz-Test. **[Jason] acceptance of configs 83-84 outstanding** --
   Phase 20 (final wrap-up/release) not started, per the standing phase-gate
   rule.
+- 2026-07-26 — **Housekeeping backfill (same gap as Phase 17's own note
+  above): three pieces of out-of-phase work committed this session were
+  never recorded here, only in GOALS.md/DESIGN.md/TODO.md/README.md.
+  Backfilling before starting Phase 21, per this file's own established
+  precedent.**
+  **(1) `minecraft:sulfur_caves` (0.3.11, no version bump — doc/config
+  only) + the flat air-layer slime-cavity trick (also no code change).**
+  MC 26.2 added a new cave biome, `sulfur_caves` (a new `sulfur_cube` mob
+  with 12 archetype variants, `sulfur_spike`/pool/spring features,
+  verified directly against `minecraft_26.2_client.jar` since this
+  postdates training knowledge) — added to `WorldzConfig.allowedBiomes`'s
+  default list alongside the three cave biomes already there. Separately,
+  confirmed `flat.layers` already accepts `minecraft:air` as an entry
+  anywhere in the stack (not just the top) with zero code changes needed
+  -- `fillFlatColumns`/`flatBaseHeight`/`flatBaseColumn` never
+  special-case a layer's block id and already scan top-down for the
+  first opaque block, so a raised slime-free surface (above Y 40) and a
+  reachable underground slime-farming cavity were never mutually
+  exclusive. `config/tests/93-flat-slime-cavity.yaml`.
+  **(2) `flat.structureOverrides` biome-mismatch warning (0.3.12).** Some
+  vanilla structure sets are biome-gated (`ancient_cities` only in
+  `deep_dark`) and `flat` reports one fixed biome everywhere; an explicit
+  `structureOverrides` entry the biome can't satisfy used to fail
+  silently. Fixed with an automatic warning in `EnvelopedChunkGenerator
+  .createState`, checked entirely against real registry data
+  (`StructureSet.structures()` → `Structure.biomes()`), never a hardcoded
+  table -- only for an explicit list (the empty "everything eligible"
+  default mirrors vanilla and stays silent). `ChunkGenerator.createState`
+  confirmed (decompiled `ChunkMap` constructor) called exactly once per
+  dimension load, so no log-spam risk. `config/tests/94-flat-structure-
+  override-biome-match.yaml` (silent/matched case) alongside `68`/`93`
+  (warns/mismatched case).
+  **(3) Design investigation, no code: GOALS 42-44, DESIGN §37-40, TODO
+  Phases 21-24.** Four related asks from Jason: (a) cave biomes must
+  never surface (GOAL 42) -- root-caused to `LimitedBiomeSource`'s
+  climate-parameter-list filtering + nearest-neighbour fallback; vanilla's
+  own separation is the `depth` climate parameter
+  (`OverworldBiomeBuilder.addSurfaceBiome`/`addUndergroundBiome`/
+  `addBottomBiome`), already available via `Climate.Sampler.sample(...)
+  .depth()`, so ravines/pits read as underground for free; (b) multi-biome
+  flat/deep_flat surface with biome-correct top blocks so biome-specific
+  structures can generate (GOAL 43) -- most of the mechanism already
+  exists (`applyDeepFlatCap`'s per-column biome-aware surface painting,
+  `StackedBiomeDefaults`'s biome-to-block table); (c) rename the
+  misleading, badly-named-but-default `legacy` layout mode to
+  `climate_filter`, keeping `legacy` as a parsed alias (GOAL 44); (d)
+  shared/common code extraction, inventoried but deliberately scheduled
+  last since (a)/(b) both touch the same files. Full detail in each
+  DESIGN section; no implementation yet.
+
+- 2026-07-26 — **Phase 21 pre-work: three real corrections to the
+  DESIGN §37 write-up above, found only by verifying against the actual
+  call graph before writing code (AGENTS.md item 2). Recorded before any
+  Phase 21 code lands so the corrected design is what actually gets
+  built, not the original sketch.**
+  **(1) The surface/underground split cannot use "empty list → fall back
+  to full vanilla" independently for each half.** `resolveAllowedBiomes`
+  has exactly one call site, shared by every preset (legacy, flat,
+  single_biome, chaos_biomes, stacked all route through it with
+  different `allowed` inputs). An empty *underground* list under the
+  originally-sketched design would trigger the existing "no configured
+  biome matched, use full vanilla list" fail-safe -- which would make
+  `flat`/`single_biome`/`stacked` start reporting real vanilla cave
+  biomes underground the moment 21.3 landed, a regression, not a fix.
+  **Corrected design:** partition `allowed` into surface/underground
+  subsets by `BiomeRoles.isUnderground`; if either subset is empty, that
+  side's delegate *borrows the other side's delegate* instead of falling
+  back to full vanilla. This is provably a no-op for every existing
+  preset (their own configured biome(s) are never underground-classified
+  in practice, so the underground side always borrows the surface
+  delegate, exactly reproducing today's single-delegate behavior) and
+  only actually diverges when the allowed set genuinely contains both
+  kinds -- today, only `legacy`'s shipped default. Full vanilla fallback
+  is kept only for the case both subsets are empty (a genuinely
+  unresolvable config), matching today's existing behavior for that edge
+  case too.
+  **(2) `deep_flat` doesn't belong in the `undergroundBelowSurfaceBlocks`
+  scope.** Verified `deep_flat`'s allowed-biome hint is
+  `resolveFullVanillaOverworldAllowed` (the complete `#minecraft:is_overworld`
+  tag, unfiltered) -- it already reports whatever real vanilla biome
+  exists at a column's true depth below the cap, correctly, for free
+  (DESIGN §33.4's "full vanilla variety already falls out for free" was
+  already right about this). An artificial Y-relative-to-`surfaceY` cutoff
+  would fight real vanilla depth instead of complementing it. Scope
+  narrowed to `flat`/`skyIsland` only.
+  **(3) Threading a synthetic-surface preset's new field into
+  `LimitedBiomeSource` without a codec slot.** `LimitedBiomeSource`'s own
+  codec is confirmed full (14/14, DESIGN §29.7) and `FlatPlan` is
+  deliberately not one of its fields (DESIGN §33.2). This project already
+  has the exact precedent needed: `stacked` faces the identical problem
+  (`StackedPlan` lives on `EnvelopedChunkGenerator`'s own codec, not
+  `LimitedBiomeSource`'s) and solves it with a mutable setter --
+  `LimitedBiomeSource.setStackedLayers(StackedPlan)`, a `private volatile`
+  field defaulting to `disabled()`, called once from `EnvelopedChunkGenerator`'s
+  constructor. `flat`/`skyIsland`'s new underground field(s) get the same
+  treatment, no codec change needed.
+  **Jason's decision (asked, not guessed):** flat/sky island's underground
+  band reports **one single configured biome** (`flat.undergroundBiome`,
+  analogous to the existing singular `flat.biome`), not climate-sampled
+  variety across multiple cave biomes -- matches his own "the start of
+  underground biomes" phrasing (a place, not a variety ask) and the
+  existing "one fixed thing" design language those two presets already
+  use. This also means flat/sky island's underground mechanism is
+  independent of 21.2/21.3's climate-list machinery entirely -- a plain Y
+  check against a single configured biome, no `MultiNoiseBiomeSource`
+  involvement.

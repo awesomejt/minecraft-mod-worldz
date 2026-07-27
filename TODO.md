@@ -3388,40 +3388,80 @@ reuses. Full design pass in DESIGN §37 — read it before starting; the
 vanilla mechanism (`depth` climate parameter, not a Y cutoff) is already
 verified there against the real 26.2 artifacts.
 
-- [ ] 21.1 Design pass — **done**, DESIGN §37. Root cause confirmed:
+- [x] 21.1 Design pass — **done**, DESIGN §37. Root cause confirmed:
       `resolveAllowedBiomes` filters vanilla's 7-D climate parameter list,
       and nearest-neighbour lookup then returns a cave entry at surface
       depth whenever the surviving surface entries match the other six
       parameters worse. Reachable with the shipped default `allowedBiomes`
       (7 surface vs 4 cave biomes). Verified `Climate.Sampler.sample(...)
       .depth()` is already available at the `getNoiseBiome` call site.
+      **Pre-work correction pass (2026-07-26, before any other task
+      started):** three real issues found verifying the design against the
+      actual call graph, full detail in MEMORY.md's own 2026-07-26 "Phase
+      21 pre-work" entry — (a) the surface/underground split must use a
+      *symmetric* empty-list fallback (each side borrows the other's
+      delegate) instead of each independently falling back to full
+      vanilla, or every other preset (flat/single_biome/stacked) would
+      regress the moment this landed; (b) `deep_flat` removed from 21.4's
+      scope — it already reports real vanilla biomes at real depth,
+      unfiltered, for free; (c) `flat`/`skyIsland`'s new field(s) thread
+      into `LimitedBiomeSource` via a mutable setter (mirroring
+      `setStackedLayers`'s exact precedent), not a new codec field
+      (`LimitedBiomeSource`'s codec is confirmed full, 14/14). **Jason's
+      decision:** flat/sky island's underground band is one single
+      configured biome, not climate-sampled variety — simpler, matches his
+      own phrasing, and decouples 21.4 entirely from 21.2/21.3's
+      climate-list machinery.
 - [ ] 21.2 Extend `BiomeRoles` with an underground classification —
       maintained `UNDERGROUND_IDS` set (`dripstone_caves`, `lush_caves`,
-      `sulfur_caves`, `deep_dark`) plus `isUnderground(id, overrides)`,
-      matching its existing maintained-default-plus-override shape.
-      **This is the unit-testable part of the phase** (`BiomeRoles` is
-      deliberately registry-independent) — add `BiomeRolesTest` coverage
-      for defaults, overrides, and unknown/modded ids.
-- [ ] 21.3 Split `resolveAllowedBiomes` into surface and underground
-      parameter lists, each with its own `MultiNoiseBiomeSource` and its
-      own empty-list fail-safe. Route `getNoiseBiome`'s final fallback to
-      whichever list matches the query's own depth (vanilla's own `0.2`
-      band start; compare in quantized space via `Climate.quantizeCoord`).
-- [ ] 21.4 Synthetic-surface presets (DESIGN §37.3): new
-      `undergroundBelowSurfaceBlocks` config field (default `10` per
-      Jason, `0` = disabled/today's behavior) on `flat`, `deepFlat`, and
-      `skyIsland`. Surface Y comes from
-      `FlatPlan.totalHeightBlocks()`/`DeepFlatPlan.surfaceY()`/
-      `SkyIslandPlan.surfaceY()` respectively. **`stacked` is deliberately
-      excluded** — it already assigns biomes by Y via `StackedPlan.layerAt`,
-      a stronger statement this must not override.
-- [ ] 21.5 Test configs + docs: a `legacy`/`climate_filter` config proving
-      cave biomes no longer surface (the defect Jason reported), and a
-      flat config with `undergroundBelowSurfaceBlocks` showing a cave
-      biome reported below the boundary and a surface biome above it.
+      `sulfur_caves`, `deep_dark`) plus `isUnderground(id)` (no overrides
+      parameter — nothing would populate one today, and `BiomeRole`'s own
+      override map is a different, layout-composition concept this
+      shouldn't be conflated with). **This is the unit-testable part of
+      the phase** (`BiomeRoles` is deliberately registry-independent) —
+      add `BiomeRolesTest` coverage for the maintained set and unknown/
+      modded ids.
+- [ ] 21.3 Split `resolveAllowedBiomes`'s single `allowed` input into
+      surface/underground subsets via `BiomeRoles.isUnderground`, each
+      with its own filtered `MultiNoiseBiomeSource` — **but if either
+      subset is empty, that side's delegate borrows the other side's**
+      instead of the existing "no match → full vanilla" fail-safe (which
+      must be kept, unchanged, only for the case *both* subsets are
+      empty). This is what makes the fix a no-op for every existing
+      preset and a real change only for `legacy`'s own mixed list.
+      `getNoiseBiome`'s final fallback picks the matching delegate by the
+      query's own depth (vanilla's own `0.2` band start; compare in
+      quantized space via `Climate.quantizeCoord`).
+- [ ] 21.4 `flat`/`skyIsland` only (not `deepFlat` — see 21.1's
+      correction): new `undergroundBiome` (single biome id, optional) +
+      `undergroundBelowSurfaceBlocks` (default `10` per Jason, `0` or
+      `undergroundBiome` unset = disabled/today's behavior) fields on
+      `FlatConfig`/`FlatPlan` and `SkyIslandConfig`/`SkyIslandPlan`.
+      `SkyIslandPlan` already has a `LimitedBiomeSource` codec slot of its
+      own (room to nest new fields, no ceiling issue); `FlatPlan` doesn't,
+      so its new fields thread in via a new `LimitedBiomeSource
+      .setFlatUnderground(...)`-shaped setter, mirroring `setStackedLayers`
+      exactly. Surface Y comes from `FlatPlan.totalHeightBlocks()`/
+      `SkyIslandPlan.surfaceY()`. Below the boundary, report
+      `undergroundBiome` outright — a plain Y check, no
+      `MultiNoiseBiomeSource`/climate sampling involved (Jason's decision,
+      21.1). Nice-to-have: warn (mirroring 0.3.12's `structureOverrides`
+      warning style) if a configured `undergroundBiome` isn't actually
+      `BiomeRoles.isUnderground`-classified — not a hard error, just a
+      hint. **`stacked` stays excluded** — it already assigns biomes by Y
+      via `StackedPlan.layerAt`, a stronger statement this must not
+      override.
+- [ ] 21.5 Test configs + docs: a `legacy` config deliberately shaped to
+      make the depth-partition fix's before/after obvious (a sparse
+      allowed list weighted toward cave biomes, mirroring how config `01`'s
+      own "ocean labeled as river" repro was deliberately adversarial, not
+      just the shipped default), and a flat config with
+      `undergroundBiome`/`undergroundBelowSurfaceBlocks` showing a cave
+      biome below the boundary and the configured surface biome above it.
       MANUAL_TESTING acceptance section, `config/tests/README.md` rows,
-      README documentation of the new field. Confirm ravines/pits still
-      read as underground (they should, for free — DESIGN §37.0).
+      README documentation of the new fields. Confirm ravines/pits still
+      read as underground on the `legacy` config (they should, for free —
+      DESIGN §37.0).
 
 ## Phase 22 — Multi-biome surface with biome-correct top blocks (GOAL 43)
 
