@@ -1,0 +1,49 @@
+# GOAL 42 (Phase 21.3, DESIGN §37): the actual fix for cave biomes
+# appearing at the surface in `legacy` layout mode (soon renamed
+# `climate_filter`, Phase 23 -- still `legacy` today). **Plain "Worldz"**
+# (the default preset; don't select any typed preset).
+#
+# Root cause (DESIGN §37.1): `allowedBiomes` is a curated subset of
+# vanilla's own climate-parameter list, and vanilla biome lookup is a
+# nearest-neighbour search in 7-D climate space -- once the list mixes
+# surface and cave biomes, a surface column whose other six parameters
+# don't closely match any surviving *surface* entry can match a *cave*
+# entry instead, since depth is only one dimension of seven. Fixed by
+# partitioning the allowed set into surface/underground subsets
+# (`BiomeRoles.isUnderground`) with separate delegates, so a cave biome
+# is no longer even a candidate at surface depth.
+#
+# This config is deliberately adversarial (mirrors how config `01`'s own
+# "ocean labeled as river" repro was deliberately adversarial, not just
+# the shipped default): only ONE surface biome against THREE cave
+# biomes, maximizing the odds the bug would have shown up before the
+# fix. The shipped default `allowedBiomes` (7 surface vs 4 cave biomes,
+# `WorldzConfig.java`) is reachable too, just less obviously so -- this
+# config makes the before/after unmistakable.
+#
+# Steps once in-game:
+#  1. Explore extensively at the surface (fly around with F3 open) --
+#     confirm you NEVER see `dripstone_caves`, `lush_caves`, or
+#     `deep_dark` reported at the surface. Only `desert` should ever
+#     appear above ground.
+#  2. Dig down into a real cave system. Confirm `dripstone_caves`/
+#     `lush_caves` DO appear underground, with their own real vanilla
+#     decoration (dripstone formations, lush vegetation/moss) --
+#     confirms the underground delegate is genuinely functional, not
+#     just "never surface."
+#  3. Find a ravine or other surface-exposed pit (common in desert
+#     terrain) and check its floor's biome via F3. Confirm it reads as
+#     an underground biome despite being open to the sky -- this is
+#     vanilla's own real climate `depth` value at work (derived from
+#     the terrain-shaping density function, not a Y cutoff), which
+#     treats a ravine floor as genuinely deep for free, no special-casing
+#     needed (DESIGN §37.0).
+#  4. Confirm ordinary desert surface features (villages, desert
+#     pyramids, cacti) still generate normally -- the fix only changes
+#     which biome gets reported, not real terrain shape or decoration
+#     eligibility elsewhere.
+allowedBiomes:
+  - "minecraft:desert"
+  - "minecraft:dripstone_caves"
+  - "minecraft:lush_caves"
+  - "minecraft:deep_dark"

@@ -1295,6 +1295,52 @@ modules), and a true per-structure-family *distinct* minimum distance
 see the Backlog entry in TODO.md if a real per-family number is ever
 needed).
 
+## Phase 21 acceptance (Surface vs. underground biomes, GOAL 42, TODO 21.2-21.4b, DESIGN §37)
+
+Uses configs `95`-`97` (see [`config/tests/README.md`](config/tests/README.md)).
+No acceptance steps for 21.1 (design pass) or 21.2 (`BiomeRolesTest`
+already covers it — pure logic, no game environment needed).
+
+1. **Cave biomes no longer surface**, `95-legacy-cave-biomes-underground-only.yaml`
+   (0.3.14+, plain "Worldz"). This is the actual bug fix, and the most
+   important check in this phase. Explore extensively at the surface (F3
+   open) and confirm you never see `dripstone_caves`/`lush_caves`/
+   `deep_dark` reported there — only `desert`. Dig into a real cave system
+   and confirm those same cave biomes DO appear underground, with their own
+   real decoration (dripstone formations, lush vegetation) — proves the
+   underground delegate is genuinely functional, not just suppressed.
+   Separately, find a ravine or other surface-exposed pit and check its
+   floor's biome via F3 — confirm it reads as underground despite being
+   open to the sky (vanilla's own real climate `depth`, not a Y cutoff,
+   already handles this for free — no special-casing needed or done).
+   Confirm ordinary desert surface content (villages, desert pyramids,
+   cacti) still generates normally.
+2. **Flat's underground biome band**, `96-flat-underground-biome-band.yaml`
+   (0.3.15+, **select "Worldz: Flat", create the world directly — do NOT
+   open Customize and click "Done"**, which would silently disable the
+   band). Confirm the surface (Y 64 and down to Y 54) reads as `plains`,
+   and Y 53 down to bedrock reads as `dripstone_caves` — a pure
+   biome-reporting change; the layer stack's actual blocks (stone/dirt/
+   grass) are identical either way, confirm nothing about the visible
+   terrain changed.
+3. **Sky island's underground biome band**,
+   `97-sky-island-underground-biome-band.yaml` (0.3.16+, **select "Worldz:
+   Sky Island", create the world directly — same Customize caveat as
+   `96`**). Confirm the island's surface (Y 64) reads as `plains`. Dig
+   straight down through the slab and confirm the reading switches to
+   `dripstone_caves` at Y 60 (3 blocks above the slab's own bottom at Y 58,
+   per this config's deliberately-shrunk `undergroundBelowSurfaceBlocks: 3`
+   — the default `10` would put the band entirely in the void beneath the
+   slab instead, see the config's own note). Confirm digging one block
+   past the slab's bottom (Y 57) drops you into the ordinary void.
+
+**Not covered by this phase's acceptance:** Customize-screen exposure for
+either `undergroundBiome` field (config-only for this phase, same posture
+as Phase 19's `structureDistance`); `deep_flat` and `stacked` are
+deliberately unaffected (`deep_flat` already reports real vanilla biomes at
+real depth for free, `stacked` already assigns biomes by Y — see TODO 21.1's
+pre-work correction and 21.4's own scope note).
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

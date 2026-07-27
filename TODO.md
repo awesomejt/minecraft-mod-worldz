@@ -3461,17 +3461,18 @@ verified there against the real 26.2 artifacts.
       logic the check must fit into correctly. **`stacked` stays
       excluded** from both 21.4a/21.4b — it already assigns biomes by Y via
       `StackedPlan.layerAt`, a stronger statement this must not override.
-- [ ] 21.5 Test configs + docs: a `legacy` config deliberately shaped to
-      make the depth-partition fix's before/after obvious (a sparse
-      allowed list weighted toward cave biomes, mirroring how config `01`'s
-      own "ocean labeled as river" repro was deliberately adversarial, not
-      just the shipped default), and a flat config with
-      `undergroundBiome`/`undergroundBelowSurfaceBlocks` showing a cave
-      biome below the boundary and the configured surface biome above it.
-      MANUAL_TESTING acceptance section, `config/tests/README.md` rows,
-      README documentation of the new fields. Confirm ravines/pits still
-      read as underground on the `legacy` config (they should, for free —
-      DESIGN §37.0).
+- [x] 21.5 Test configs + docs: `95-legacy-cave-biomes-underground-only.yaml`,
+      deliberately shaped to make the depth-partition fix's before/after
+      obvious (a sparse allowed list weighted toward cave biomes,
+      mirroring how config `01`'s own "ocean labeled as river" repro was
+      deliberately adversarial, not just the shipped default);
+      `96-flat-underground-biome-band.yaml` and
+      `97-sky-island-underground-biome-band.yaml` (added once 21.4 split
+      into 21.4a/21.4b) showing a cave biome below the configured boundary
+      and the surface biome above it, for `flat`/`skyIsland` respectively.
+      MANUAL_TESTING acceptance section (item 1 confirms ravines/pits still
+      read as underground for free, DESIGN §37.0), `config/tests/README.md`
+      rows, README documentation of both presets' new fields.
 
 ## Phase 22 — Multi-biome surface with biome-correct top blocks (GOAL 43)
 

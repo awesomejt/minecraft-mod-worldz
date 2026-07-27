@@ -1,0 +1,43 @@
+# GOAL 42 (Phase 21.4a, DESIGN §37.3): flat's own synthetic underground
+# biome band -- a different concept from config 93's air-layer slime
+# cavity (that carves a physical hollow; this only changes which biome
+# is *reported*, the layer stack's actual blocks are unaffected).
+# **Select "Worldz: Flat"**.
+#
+# IMPORTANT: this field is config-only for now (not yet on the Customize
+# screen, DESIGN §37.3) -- select "Worldz: Flat" and click **Create
+# World directly**. Do NOT open Customize and click "Done": doing so
+# persists FlatCustomization's own hardcoded disabled band instead of
+# reading this file's `undergroundBiome`/`undergroundBelowSurfaceBlocks`,
+# and the feature will silently appear to do nothing.
+#
+# Same 128-block default layer stack as config 66 (surface at Y 64).
+# `undergroundBelowSurfaceBlocks: 10` puts the boundary at Y 54
+# (64 - 10): `minecraft:dripstone_caves` reported at Y 53 and below,
+# `minecraft:plains` from Y 54 up -- purely a biome-reporting change,
+# the layer stack still paints the exact same solid stone/dirt/grass
+# either way.
+#
+# Steps once in-game:
+#  1. Confirm the world is completely flat, surface at Y 64, biome
+#     `plains` from Y 54 up (F3).
+#  2. Dig straight down. Confirm the F3 biome reading switches to
+#     `dripstone_caves` at Y 53, and stays that way all the way to
+#     bedrock at Y -64.
+#  3. Confirm dripstone-cave-appropriate decoration (dripstone
+#     formations) can appear in the underground band if `decoration:
+#     true` is set -- optional, since this config leaves decoration at
+#     its default (off); the biome-reporting change alone is the point
+#     of this config.
+flat:
+  layers:
+    - "minecraft:bedrock:1"
+    - "minecraft:stone:123"
+    - "minecraft:dirt:3"
+    - "minecraft:grass_block:1"
+  biome: minecraft:plains
+  undergroundBiome: minecraft:dripstone_caves
+  undergroundBelowSurfaceBlocks: 10
+overworldBorder:
+  enabled: false
+  ensureEndPortal: true
