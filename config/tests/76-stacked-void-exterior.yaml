@@ -1,29 +1,45 @@
-# GOAL 35/17 (DESIGN §34.7): stacked's own bounded-world default combo --
-# a 64-block-radius Overworld border with a VOID exterior beyond it -- made
-# explicit here and actually verified, not just implied by config 72
-# (whose own step 1 only confirms the border *indicator* exists, never
-# what's actually beyond it). **Select "Worldz: Stacked"**. Same eight-
-# layer stack as config 72; only the border/exterior are spelled out
-# explicitly instead of left to DESIGN §34.7's own derivation, so this
-# config's whole point -- the void itself -- can't be missed or skipped.
+# GOAL 35/17 (DESIGN §34.7): stacked with an *open*, non-physical void
+# boundary instead of an invisible-wall border -- Jason's own explicit ask
+# (2026-07-27), modeled on sky chunk's own build-past-the-edge feel: no
+# floating islands out there, no wall stopping you, just real void you can
+# fly or bridge into freely, with ordinary vanilla void-fall risk (not
+# instant damage) if you actually fall out of the world. **Select "Worldz:
+# Stacked"**. Same eight-layer stack as config 72; `overworldBorder` is
+# disabled entirely (no invisible wall) while `overworldExterior` still
+# gets an explicit 64-block `boundaryRadiusBlocks` -- verified against
+# `WorldzConfig.sanitizeExterior`, which only rejects a non-NORMAL exterior
+# mode down to NORMAL when *both* the border is disabled *and* no explicit
+# boundary is given; setting the boundary here keeps VOID mode active with
+# the border off. `ObjectiveSite.supportiveRadius` separately confirms the
+# fallback End-portal guarantee still computes off this same 64-block
+# exterior boundary even with `overworldBorder.enabled: false` (it only
+# reports "unlimited, no guarantee" when *both* the border is disabled
+# *and* the exterior mode is NORMAL) -- so beatability isn't given up just
+# because the wall is gone.
 #
 # Steps once in-game:
-#  1. Confirm a world border exists at a 64-block radius (F3 or the
-#     pause-menu border indicator), same as config 72.
-#  2. Walk or fly toward the border until the vanilla invisible-wall
-#     effect stops you -- confirm you're actually blocked right at the
-#     64-block radius, not noticeably before or after it.
-#  3. Ascend above the stack's own topmost (plains) surface near the
-#     border, then look/fly out past the border's edge. Confirm real void
-#     beyond it (open black nothing, no terrain, no fallback biome) -- not
-#     vanilla terrain continuing, and not just a fog/wall illusion hiding
-#     real terrain underneath.
-#  4. From high up, look straight down just past the border's outer edge.
-#     Confirm the void extends the full build-height column -- no floor, no
-#     exterior terrain profile of any kind, all the way down.
-#  5. Confirm everything else matches config 72 otherwise: eight bands,
+#  1. Confirm there is NO world border at all -- no pause-menu indicator,
+#     no "Approaching the world border" warning, no invisible-wall stop,
+#     no matter how far out you walk or fly.
+#  2. Walk straight past where config 72's border would have stopped you
+#     (64 blocks). Confirm you're not blocked -- you keep moving freely
+#     into open air where the stacked terrain ends.
+#  3. Confirm real void starts right at that same 64-block radius (open
+#     black nothing, no terrain, no fallback biome, no floating islands of
+#     any kind) -- same void appearance as config 72's own implicit
+#     default, just without the wall.
+#  4. With Elytra (or by bridging out with blocks), confirm you can fly/
+#     stand in the void indefinitely at a normal Y with no damage of any
+#     kind -- this should feel exactly like flying between islands in a
+#     Sky Chunk world.
+#  5. Now actually fall: drop off a bridge/ledge in the void with no
+#     Elytra and let yourself fall all the way down. Confirm ordinary
+#     vanilla void-fall behavior kicks in near the bottom of the world
+#     (real damage/death), not on first entering the void horizontally.
+#  6. Confirm everything else matches config 72 otherwise: eight bands,
 #     30-block gaps, spawn on the plains surface, fallback End portal near
-#     the bottom layer's Y -32.
+#     the bottom layer's Y -32, still reachable/guaranteed despite the
+#     border being off.
 stacked:
   layers:
     - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
@@ -35,9 +51,8 @@ stacked:
     - "minecraft:snowy_taiga;minecraft:stone:5,minecraft:dirt:3,minecraft:podzol:1,minecraft:snow_block:1;30"
     - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"
 overworldBorder:
-  enabled: true
-  initialRadiusBlocks: 64
-  finalRadiusBlocks: 64
+  enabled: false
   ensureEndPortal: true
 overworldExterior:
   mode: void
+  boundaryRadiusBlocks: 64

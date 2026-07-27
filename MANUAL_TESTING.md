@@ -1175,14 +1175,16 @@ Uses configs `72`-`77` (see [`config/tests/README.md`](config/tests/README.md)).
    `worldSizeChunks: 0` escape hatch, 0.2.77+). Confirm no world border
    appears at all, and that the same eight-band stack as config 72 still
    generates identically otherwise.
-5. **Void exterior**, `76-stacked-void-exterior.yaml` (GOAL 35/17, DESIGN
-   §34.7, 0.3.19+). Spells out explicitly what config 72 only leaves
-   implicit: the bounded-world default's 64-block border pairs with a VOID
-   exterior. Walk/fly to the border and confirm the invisible-wall stop
-   lands right at 64 blocks, then confirm what's actually beyond it is
-   real void (no terrain, no floor, extends the full build height) —
-   config 72's own step 1 never checks this, it only confirms the border
-   indicator exists.
+5. **Open void exterior (no physical border)**, `76-stacked-void-exterior
+   .yaml` (GOAL 35/17, DESIGN §34.7, 0.3.19+, Jason's own 2026-07-27
+   design ask — a Sky-Chunk-like "build past the edge" feel). Confirm no
+   world border exists at all (no indicator, no invisible-wall stop, no
+   matter how far you go), that real void still starts right at the
+   64-block radius (no terrain, no floating islands), that Elytra/
+   bridging lets you occupy that void indefinitely with zero damage, and
+   that only an actual fall to the bottom of the world triggers ordinary
+   vanilla void damage. Also confirm the fallback End portal near Y -32
+   is still guaranteed/reachable despite the border being off.
 6. **Relief off**, `77-stacked-relief-off.yaml` (DESIGN §34.7's
    `reliefBlocks: 0`, 0.2.77+). Confirm every layer's surface is perfectly
    flat again (the pre-§34.7 look), with everything else matching config 72.

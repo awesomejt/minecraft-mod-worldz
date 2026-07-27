@@ -3289,6 +3289,31 @@ composes with.
       layer and an organic-looking mound around a snowy taiga lava
       pool, no more hard-edged plateaus. Configs 73-75 share the same
       fix but weren't separately retested; low risk, same code path.
+- [x] 17.6 New config 76 (`76-stacked-void-exterior.yaml`, GOAL 35/17,
+      inserted between 75/77, cascading every subsequent config 78-97 up
+      to 79-98 across all docs/cross-references): confirms config 72's
+      implicit bounded-64-block-border-plus-VOID-exterior default, which
+      config 72's own acceptance never actually verified beyond the
+      border indicator existing. **Corrected same session (2026-07-27,
+      Jason's retest):** the first version paired VOID exterior with a
+      real invisible-wall border, which Jason confirmed works but was
+      never his actual intent -- he wants stacked's bounded void to feel
+      like Sky Chunk: no physical wall at all, free flight/building into
+      the void past the terrain edge, no floating islands out there, and
+      only ordinary vanilla void-fall risk if you actually fall out of
+      the world, not a hard stop at the edge. Verified against real code
+      (`WorldzConfig.sanitizeExterior`, `ObjectiveSite.supportiveRadius`)
+      that `overworldBorder.enabled: false` plus an explicit
+      `overworldExterior.boundaryRadiusBlocks: 64` gives exactly this:
+      VOID mode stays active (sanitizeExterior only falls back to NORMAL
+      when *both* the border is off *and* no explicit boundary is set),
+      and the fallback End-portal guarantee still computes off that same
+      64-block exterior boundary even with the border disabled (it only
+      gives up entirely when *both* border and exterior are inactive) --
+      beatability isn't sacrificed for the open boundary. Rewrote the
+      config and its acceptance steps accordingly; `config/tests/README
+      .md`/MANUAL_TESTING.md updated to match. **[Jason] retest
+      outstanding** on the corrected config 76.
 
 ## Phase 18 — World-hazard rules module (GOALS 29–30)
 
