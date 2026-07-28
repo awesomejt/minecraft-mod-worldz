@@ -3805,7 +3805,7 @@ tests.
       (104 test configs + example + defaults + error cases + ~40 adversarial
       fragments; compares YAML string, summary string and ordered WARN lines)
       and the captured `reference-defaults.yaml` golden test.
-- [ ] 25.2b Simple leaf sections (needs 25.2a). `EndBorderSchema`,
+- [x] 25.2b Simple leaf sections (needs 25.2a). `EndBorderSchema`,
       `StripSchema`, `ForeverNightSchema`, `RisingLavaSchema` (postValidate
       `maxY >= startY`), `StructureDistanceSchema`, `DeepFlatSchema`,
       `StackedSchema`, `FlatSchema`. Proves int/double/bool/enum codecs, plain

@@ -1,9 +1,17 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.config.schema.DeepFlatSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.EndBorderSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.FlatSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.ForeverNightSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.RisingLavaSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.SectionCodec;
 import media.jlt.minecraft.mods.worldz.config.schema.SpawnSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.StackedSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StarterCapsuleSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StarterKitSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.StripSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.StructureDistanceSchema;
 
 /**
  * Registry of {@link SectionCodec}s used by {@link WorldzConfig}'s four orchestration methods
@@ -12,10 +20,13 @@ import media.jlt.minecraft.mods.worldz.config.schema.StarterKitSchema;
  * gets -- as more sections convert in TODO 25.2b-h, only this class changes; the orchestration
  * methods themselves do not.
  *
- * <p>TODO 25.2a converts three sections: {@link #spawn}, {@link #starterKit} and
- * {@link #starterCapsule}. Everything else below still resolves to a {@link LegacySections}
- * adapter -- present here so the calling convention (and the differential test's "current mix")
- * is already uniform, ready for 25.2b onward to flip entries one at a time.
+ * <p>TODO 25.2a converted three sections: {@link #spawn}, {@link #starterKit} and
+ * {@link #starterCapsule}. TODO 25.2b converted eight more simple leaf sections: {@link
+ * #endBorder}, {@link #strip}, {@link #foreverNight}, {@link #risingLava}, {@link
+ * #structureDistance}, {@link #deepFlat}, {@link #stacked}, {@link #flat}. Everything else below
+ * still resolves to a {@link LegacySections} adapter -- present here so the calling convention
+ * (and the differential test's "current mix") is already uniform, ready for 25.2c onward to flip
+ * entries one at a time.
  */
 public final class SchemaSections {
     private SchemaSections() {
@@ -40,7 +51,7 @@ public final class SchemaSections {
     }
 
     public static SectionCodec<EndBorderConfig> endBorder() {
-        return LegacySections.endBorder();
+        return new EndBorderSchema("endBorder");
     }
 
     public static SectionCodec<ExteriorConfig> exterior(
@@ -50,7 +61,7 @@ public final class SchemaSections {
     }
 
     public static SectionCodec<StripConfig> strip() {
-        return LegacySections.strip();
+        return new StripSchema("strip");
     }
 
     public static SectionCodec<LayoutConfig> layout() {
@@ -94,26 +105,26 @@ public final class SchemaSections {
     }
 
     public static SectionCodec<FlatConfig> flat() {
-        return LegacySections.flat();
+        return new FlatSchema("flat");
     }
 
     public static SectionCodec<DeepFlatConfig> deepFlat() {
-        return LegacySections.deepFlat();
+        return new DeepFlatSchema("deepFlat");
     }
 
     public static SectionCodec<StackedConfig> stacked() {
-        return LegacySections.stacked();
+        return new StackedSchema("stacked");
     }
 
     public static SectionCodec<ForeverNightConfig> foreverNight() {
-        return LegacySections.foreverNight();
+        return new ForeverNightSchema("foreverNight");
     }
 
     public static SectionCodec<RisingLavaConfig> risingLava() {
-        return LegacySections.risingLava();
+        return new RisingLavaSchema("risingLava");
     }
 
     public static SectionCodec<StructureDistanceConfig> structureDistance() {
-        return LegacySections.structureDistance();
+        return new StructureDistanceSchema("structureDistance");
     }
 }

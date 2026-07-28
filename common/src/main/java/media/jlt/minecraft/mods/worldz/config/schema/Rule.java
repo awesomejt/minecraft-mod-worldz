@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
@@ -151,6 +152,52 @@ public sealed interface Rule<S, T> {
         @Override
         public List<String> apply(S owner, List<String> value, String name, SanitizeContext ctx) {
             return new ArrayList<>(value.stream().map(String::trim).filter(entry -> !entry.isEmpty()).toList());
+        }
+    }
+
+    /** Replaces a {@code null} or empty list with a fresh instance from {@code fallback},
+     * warning with a literal message (no format args -- the wording differs per call site, e.g.
+     * {@code "flat.layers was empty; using the default layer stack."} vs {@code "deepFlat
+     * .capLayers was empty; using the default cap layer stack."}). Distinct from
+     * {@link NullFallback}, which never warns and only checks {@code null}, not emptiness. */
+    record EmptyListFallback<S>(Supplier<List<String>> fallback, String warning) implements Rule<S, List<String>> {
+        @Override
+        public List<String> apply(S owner, List<String> value, String name, SanitizeContext ctx) {
+            if (value == null || value.isEmpty()) {
+                ctx.logger().warn(warning);
+                return fallback.get();
+            }
+            return value;
+        }
+    }
+
+    /** Replaces a {@code null} or blank string with a fixed fallback, warning with a literal
+     * message (no format args) -- {@code flat.biome}'s "defaulting to minecraft:plains" wording.
+     * Distinct from {@link BiomeId}, which additionally parses/validates the string as a biome or
+     * tag id; this rule only checks blankness. */
+    record BlankFallback<S>(String fallback, String warning) implements Rule<S, String> {
+        @Override
+        public String apply(S owner, String value, String name, SanitizeContext ctx) {
+            if (value == null || value.isBlank()) {
+                ctx.logger().warn(warning);
+                return fallback;
+            }
+            return value;
+        }
+    }
+
+    /** Replaces one specific value with a fallback, warning with a literal message (no format
+     * args) -- {@code strip.widthMode} cannot be {@code NORMAL} (the corridor's wall is void or
+     * ocean only). Compose with {@link NullFallback} via {@link #of} so a {@code null} is
+     * defaulted first, silently, before this check runs. */
+    record RejectValue<S, T>(T rejected, T fallback, String warning) implements Rule<S, T> {
+        @Override
+        public T apply(S owner, T value, String name, SanitizeContext ctx) {
+            if (Objects.equals(value, rejected)) {
+                ctx.logger().warn(warning);
+                return fallback;
+            }
+            return value;
         }
     }
 

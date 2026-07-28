@@ -1,10 +1,18 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
+import media.jlt.minecraft.mods.worldz.config.DeepFlatConfig;
+import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
+import media.jlt.minecraft.mods.worldz.config.FlatConfig;
+import media.jlt.minecraft.mods.worldz.config.ForeverNightConfig;
 import media.jlt.minecraft.mods.worldz.config.LegacySections;
+import media.jlt.minecraft.mods.worldz.config.RisingLavaConfig;
 import media.jlt.minecraft.mods.worldz.config.SchemaSections;
 import media.jlt.minecraft.mods.worldz.config.SpawnConfig;
+import media.jlt.minecraft.mods.worldz.config.StackedConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterCapsuleConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
+import media.jlt.minecraft.mods.worldz.config.StripConfig;
+import media.jlt.minecraft.mods.worldz.config.StructureDistanceConfig;
 import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import org.junit.jupiter.api.Test;
@@ -22,6 +30,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -238,6 +247,326 @@ class ConfigSchemaDifferentialTest {
         StarterCapsuleConfig schemaResult = runOrNull(() -> schemaCodec.sanitize(
             schemaCodec.read(raw, new ParseContext(schemaLogger)), new SanitizeContext(schemaLogger, null)
         ));
+
+        if (legacyResult == null || schemaResult == null) {
+            assertEquals(legacyResult == null, schemaResult == null, label + ": one side threw and the other didn't");
+            return;
+        }
+
+        assertEquals(DUMPER.dump(legacyCodec.toMap(legacyResult)), DUMPER.dump(schemaCodec.toMap(schemaResult)), label + ": toMap()");
+        assertEquals(legacyCodec.summary(legacyResult), schemaCodec.summary(schemaResult), label + ": summary()");
+        assertEquals(legacyLogger.warnings(), schemaLogger.warnings(), label + ": WARN lines");
+    }
+
+    // ---- TODO 25.2b: eight root-level "simple leaf" sections, all with zero-arg factory methods
+    // on both registries, so one generic helper (below) drives every corpus + adversarial test. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endBorderCorpus")
+    void endBorderSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(
+            label, LegacySections.endBorder(), SchemaSections.endBorder(), EndBorderConfig::new, rawValueOrNull
+        );
+    }
+
+    static Stream<Arguments> endBorderCorpus() throws IOException {
+        return corpusFor("endBorder");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endBorderAdversarialFragments")
+    void endBorderSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.endBorder(), SchemaSections.endBorder(), EndBorderConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> endBorderAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("carryFromOverworld only", "carryFromOverworld: true"),
+            Arguments.of("minimumRadiusBlocks below minimum is clamped up", "carryFromOverworld: true\nminimumRadiusBlocks: 0"),
+            Arguments.of("minimumRadiusBlocks negative is clamped up", "minimumRadiusBlocks: -100"),
+            Arguments.of("minimumRadiusBlocks far above maximum is clamped down", "minimumRadiusBlocks: 99999999999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stripCorpus")
+    void stripSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.strip(), SchemaSections.strip(), StripConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> stripCorpus() throws IOException {
+        return corpusFor("strip");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stripAdversarialFragments")
+    void stripSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(label, LegacySections.strip(), SchemaSections.strip(), StripConfig::new, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> stripAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, widthRadiusBlocks clamped up from 0", """
+                enabled: true
+                widthRadiusBlocks: 0
+                widthMode: ocean
+                applyToNether: true
+                """),
+            Arguments.of("widthMode normal is rejected back to void", "enabled: true\nwidthMode: normal"),
+            Arguments.of("widthRadiusBlocks negative is clamped up", "widthRadiusBlocks: -50"),
+            Arguments.of("invalid widthMode value", "widthMode: not-a-mode"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("foreverNightCorpus")
+    void foreverNightSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(
+            label, LegacySections.foreverNight(), SchemaSections.foreverNight(), ForeverNightConfig::new, rawValueOrNull
+        );
+    }
+
+    static Stream<Arguments> foreverNightCorpus() throws IOException {
+        return corpusFor("foreverNight");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("foreverNightAdversarialFragments")
+    void foreverNightSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.foreverNight(), SchemaSections.foreverNight(), ForeverNightConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> foreverNightAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", "enabled: true\nlockAfterDays: 5\nrelaxInsomnia: true"),
+            Arguments.of("lockAfterDays negative is clamped to 0", "enabled: true\nlockAfterDays: -1"),
+            Arguments.of("lockAfterDays far above maximum is clamped down", "enabled: true\nlockAfterDays: 99999999999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("risingLavaCorpus")
+    void risingLavaSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(
+            label, LegacySections.risingLava(), SchemaSections.risingLava(), RisingLavaConfig::new, rawValueOrNull
+        );
+    }
+
+    static Stream<Arguments> risingLavaCorpus() throws IOException {
+        return corpusFor("risingLava");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("risingLavaAdversarialFragments")
+    void risingLavaSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.risingLava(), SchemaSections.risingLava(), RisingLavaConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> risingLavaAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                enabled: true
+                delayDays: 5
+                startY: -32
+                maxY: 32
+                rateBlocks: 2
+                rateDays: 3
+                """),
+            Arguments.of("maxY below startY is raised to match", "enabled: true\nstartY: 32\nmaxY: -32"),
+            Arguments.of("rateBlocks and rateDays below 1 are clamped up", "enabled: true\nrateBlocks: 0\nrateDays: 0"),
+            Arguments.of("delayDays negative is clamped to 0", "delayDays: -5"),
+            Arguments.of("startY and maxY far outside the Overworld build range are clamped", "startY: -99999\nmaxY: 99999"),
+            Arguments.of(
+                "cross-check and both rate clamps fire together, exercising postValidate's ordering",
+                "enabled: true\nstartY: 50\nmaxY: -100\nrateBlocks: 0\nrateDays: 0"
+            ),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structureDistanceCorpus")
+    void structureDistanceSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(
+            label, LegacySections.structureDistance(), SchemaSections.structureDistance(), StructureDistanceConfig::new, rawValueOrNull
+        );
+    }
+
+    static Stream<Arguments> structureDistanceCorpus() throws IOException {
+        return corpusFor("structureDistance");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structureDistanceAdversarialFragments")
+    void structureDistanceSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.structureDistance(), SchemaSections.structureDistance(), StructureDistanceConfig::new,
+            LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> structureDistanceAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                enabled: true
+                minDistanceBlocks: 3000
+                exemptStructureSets: ["minecraft:strongholds"]
+                """),
+            Arguments.of("minDistanceBlocks negative is clamped to 0", "minDistanceBlocks: -5"),
+            Arguments.of("minDistanceBlocks far above maximum is clamped down", "minDistanceBlocks: 99999999999"),
+            Arguments.of("exemptStructureSets explicitly empty stays empty (not the null-only fallback)", "exemptStructureSets: []"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("deepFlatCorpus")
+    void deepFlatSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.deepFlat(), SchemaSections.deepFlat(), DeepFlatConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> deepFlatCorpus() throws IOException {
+        return corpusFor("deepFlat");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("deepFlatAdversarialFragments")
+    void deepFlatSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(label, LegacySections.deepFlat(), SchemaSections.deepFlat(), DeepFlatConfig::new, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> deepFlatAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                surfaceY: 80
+                capLayers: ["minecraft:dirt:2", "minecraft:grass_block:1"]
+                riversEnabled: false
+                riverExclusionRadiusBlocks: 256
+                """),
+            Arguments.of("surfaceY below minimum is clamped up", "surfaceY: -999"),
+            Arguments.of("surfaceY above maximum is clamped down", "surfaceY: 9999"),
+            Arguments.of("empty capLayers falls back to defaults", "capLayers: []"),
+            Arguments.of("riverExclusionRadiusBlocks negative is clamped to 0", "riverExclusionRadiusBlocks: -10"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stackedCorpus")
+    void stackedSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.stacked(), SchemaSections.stacked(), StackedConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> stackedCorpus() throws IOException {
+        return corpusFor("stacked");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stackedAdversarialFragments")
+    void stackedSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(label, LegacySections.stacked(), SchemaSections.stacked(), StackedConfig::new, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> stackedAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                layers: ["minecraft:taiga;minecraft:stone:40;6", "minecraft:plains;minecraft:stone:20,minecraft:grass_block:1;0"]
+                seedRandomizedOrder: true
+                worldSizeChunks: 8
+                reliefBlocks: 2
+                forceTopVillage: true
+                """),
+            Arguments.of("empty layers falls back to defaults", "layers: []"),
+            Arguments.of("worldSizeChunks negative is clamped to 0", "worldSizeChunks: -1"),
+            Arguments.of("reliefBlocks above the configured maximum is clamped down", "reliefBlocks: 9999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("flatCorpus")
+    void flatSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.flat(), SchemaSections.flat(), FlatConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> flatCorpus() throws IOException {
+        return corpusFor("flat");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("flatAdversarialFragments")
+    void flatSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(label, LegacySections.flat(), SchemaSections.flat(), FlatConfig::new, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> flatAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                layers: ["minecraft:bedrock:1", "minecraft:stone:10", "minecraft:grass_block:1"]
+                biome: minecraft:desert
+                decoration: true
+                structureOverrides: ["minecraft:villages", "minecraft:desert_pyramids"]
+                """),
+            Arguments.of("empty layers falls back to defaults", "layers: []"),
+            Arguments.of("blank biome falls back to minecraft:plains", "biome: ''"),
+            Arguments.of("explicitly empty structureOverrides stays empty (not the null-only fallback)", "structureOverrides: []"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    /** Shared corpus miner for TODO 25.2b's eight root-level sections: every {@code
+     * config/tests/*.yaml} file's top-level {@code key} value, plus the example config, plus
+     * {@code null} for "absent" (defaults). */
+    private static Stream<Arguments> corpusFor(String key) throws IOException {
+        List<Arguments> arguments = new ArrayList<>();
+        for (Path file : testConfigFiles()) {
+            Object loaded = LOADER.load(Files.readString(file));
+            Object value = loaded instanceof Map<?, ?> map ? map.get(key) : null;
+            arguments.add(Arguments.of(file.getFileName().toString(), value));
+        }
+        Object exampleLoaded = LOADER.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
+        Object exampleValue = exampleLoaded instanceof Map<?, ?> map ? map.get(key) : null;
+        arguments.add(Arguments.of("jlt_worldz.example.yaml", exampleValue));
+        arguments.add(Arguments.of("defaults (absent)", null));
+        return arguments.stream();
+    }
+
+    /** Shared comparison for any root-level section whose registry entries are zero-arg factory
+     * methods (DESIGN §41.8): parses (or, for a {@code null} "absent" input, starts from a fresh
+     * default instance -- mirroring {@code WorldzConfig}'s own field-initializer-then-{@code
+     * containsKey} parse shape), sanitizes, then compares {@code toMap()}, {@code summary()} and
+     * the ordered WARN lines between the legacy and schema paths. */
+    private static <T> void assertSectionIdentical(
+        String label, SectionCodec<T> legacyCodec, SectionCodec<T> schemaCodec, Supplier<T> factory, Object rawOrNull
+    ) {
+        RecordingLogger legacyLogger = new RecordingLogger();
+        RecordingLogger schemaLogger = new RecordingLogger();
+
+        T legacyResult = runOrNull(() -> {
+            T parsed = rawOrNull == null ? factory.get() : legacyCodec.read(rawOrNull, new ParseContext(legacyLogger));
+            return legacyCodec.sanitize(parsed, new SanitizeContext(legacyLogger, null));
+        });
+        T schemaResult = runOrNull(() -> {
+            T parsed = rawOrNull == null ? factory.get() : schemaCodec.read(rawOrNull, new ParseContext(schemaLogger));
+            return schemaCodec.sanitize(parsed, new SanitizeContext(schemaLogger, null));
+        });
 
         if (legacyResult == null || schemaResult == null) {
             assertEquals(legacyResult == null, schemaResult == null, label + ": one side threw and the other didn't");
