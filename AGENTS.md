@@ -43,8 +43,9 @@ doing everything in the main session:
   This is separate from the phase-level planning already covered by
   GOALS.md/TODO.md/DESIGN.md and the external review between phases.
 - **`coder`** (Sonnet) — the default for implementing TODO items.
-- **`tool-runner`** (Haiku, low effort) — runs `./gradlew build`, `javap`,
-  and other checks. Delegate these instead of running them inline.
+- **`tester`** (Haiku, low effort) — runs `./gradlew build`, `javap`,
+  and other checks. Delegate these instead of running them inline. (Renamed
+  from `tool-runner` to match the other repos' agent set.)
 - **`committer`** (Haiku, low effort) — stages and commits **per task**
   (step 7 below) once the build is green, following normal git safety
   rules. Never pushes.
