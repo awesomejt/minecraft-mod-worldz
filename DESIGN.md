@@ -6538,3 +6538,443 @@ pure refactor with no config, codec, or generation change, verified by the
 existing suite plus a re-run of the affected presets' manual configs. Any
 extraction that cannot be done without a behavior change should be dropped
 from the phase and raised as its own item instead.
+
+## 41. Config schema layer (D3, TODO 25.2) — design pass
+
+`CONFIG-RESTRUCTURE.md` F7 measured the problem: every setting is hand-written
+into four parallel places — `readXConfig` (YAML→POJO), `sanitizeX`
+(clamp/validate), `xMap` (POJO→YAML), `xSummary` (log line). ~100 methods, and
+the reason `WorldzConfig.java` is 2400 lines. Adding one setting means five code
+edits plus README plus the example file, none compiler-enforced; F6 (12 of 25
+sections undocumented) is the predictable outcome.
+
+This section designs the replacement: **one declarative descriptor per setting,
+from which parse, sanitize, YAML output and the summary line are all derived.**
+
+**Hard constraint for TODO 25.2: nothing moves.** The flat YAML shape, every key
+name, every default, every warning string, every clamp bound and the exact
+`toYaml()` byte output stay identical. 25.2 replaces the *implementation* only.
+Key renaming and file splitting are 25.6/25.7, on top of a proven schema — the
+"two provable steps, never one leap" mitigation in `CONFIG-RESTRUCTURE.md` §7.
+
+### 41.1 Why a schema is possible here at all — the ordering invariant
+
+The refactor is only safe because of a property the current code happens to
+have. Extracting the key order of every `readXConfig` and every `xMap` in
+`WorldzConfig.java` and diffing them shows that **for all 25 sections, the parse
+order and the YAML-emit order are already identical**, including the root's own
+31 keys. `borderMap`'s parameterized `objectiveKey` sits in the same slot in
+both.
+
+That means a *single ordered list of settings per section* can drive parse and
+emit at once with byte-identical output. If those orders had diverged, the
+schema would have needed two orderings and the byte-identity claim would have
+been far weaker. This invariant is load-bearing: **the declaration order of a
+`SchemaSection`'s settings must equal today's `xMap` order**, and the
+differential test in §41.8 is what enforces it.
+
+### 41.2 The descriptor: `Setting<S, T>`
+
+`S` is the owning POJO type (`CaveConfig`), `T` is the value type. A record of
+seven small grouped records, built through a fluent builder so authoring 165
+settings stays terse. **No reflection anywhere** — access is by explicit
+getter/setter lambdas over the existing public fields, so a field rename is a
+compile error (directly fixing F7's "none compiler-enforced").
+
+```java
+public record Setting<S, T>(
+    String key,                    // leaf YAML key, e.g. "sealedSurfaceY"
+    Accessor<S, T> accessor,       // (Function<S,T> get, BiConsumer<S,T> set)
+    ValueCodec<T> codec,           // YAML Object <-> T, both directions
+    Rule<S, T> rule,               // sanitize step; introspectable, not an opaque lambda
+    Docs docs,                     // (String doc, Unit unit, String defaultText, String rangeText)
+    Applicability applies,         // (Scope scope, Set<String> presets, boolean customizeExposed)
+    SummarySpec<S, T> summary      // (String label, Function<T,String> render, Predicate<S> include, boolean shown)
+) { }
+```
+
+| Component | Consumed by | Notes |
+|---|---|---|
+| `key` | parse, emit, presence paths | leaf only; full dotted path is `section.path() + "." + key` |
+| `accessor` | parse, sanitize, emit, summary | lambdas over public fields, e.g. `c -> c.sealedSurfaceY, (c, v) -> c.sealedSurfaceY = v` |
+| `codec` | parse, emit | the *only* place YAML types are touched |
+| `rule` | sanitize | sealed interface, see §41.4 |
+| `docs` | **25.4** reference file, **25.10** README tables | one-line doc, unit, rendered default, rendered range |
+| `applies` | **25.10** docs, F3's live-vs-baked scope | `Scope` ∈ `LIVE`, `WORLD_DEFAULT`, `PRESET`; `presets` holds preset ids matching `data/jlt_worldz/worldgen/world_preset/*.json` |
+| `summary` | `summary()` | label defaults to `key`, render defaults to `String::valueOf` |
+
+`Unit` is an enum (`BLOCKS`, `CHUNKS`, `DAYS`, `Y_LEVEL`, `CHANCE`, `COUNT`,
+`BIOME_ID`, `ITEM_LIST`, `NONE`) so 25.4 can render "Unit: blocks" without
+per-setting prose, and so D7's "documentation carries the unit" is mechanical.
+
+Builder entry points, one per value shape:
+
+```java
+Setting.integer(key, get, set)        Setting.decimal(key, get, set)
+Setting.flag(key, get, set)           Setting.text(key, get, set)
+Setting.stringList(key, get, set)     Setting.stringMap(key, get, set)
+Setting.enumeration(key, get, set, Enum::parse, Enum::serializedName, fallback)
+Setting.section(key, get, set, SchemaSection<T>)
+```
+
+`enumeration` takes explicit method references because the ten config enums
+(`SealedSurfaceBlock`, `StarterKitTier`, `ExteriorMode`, `LayoutMode`,
+`ResizeStyle`, `SpawnStrategy`, `IslandSource`, `IslandFluid`, `LightSource`,
+`BiomeRole`) share the `parse`/`serializedName` *convention* but no interface.
+Method references avoid touching the `logic` package at all, which keeps 25.2's
+blast radius inside `config/`.
+
+### 41.3 The codec: `ValueCodec<T>`
+
+```java
+public interface ValueCodec<T> {
+    T read(Object raw, ParseContext ctx);   // throws IllegalArgumentException, today's messages
+    Object write(T value);                  // the exact Object put into the LinkedHashMap today
+}
+```
+
+`Codecs.INT`, `DOUBLE`, `BOOLEAN`, `STRING`, `STRING_LIST`, `STRING_MAP`,
+`enumeration(...)`, `section(...)`. **`Codecs.INT` and `Codecs.DOUBLE` are
+verbatim moves of `WorldzConfig.readInt` (:1628-1642) and `readDouble`
+(:1644-1655)**, including the six accepted numeric types, `intValueExact`, and
+rethrowing `ArithmeticException` as `IllegalArgumentException`. That leniency is
+load-bearing (`WorldzConfigTest.fractionalRadiusMakesTheFileInvalidWithoutOverwritingIt`,
+:493) and is exactly the kind of detail a rewrite silently loses.
+
+`write` returns the *same Java type* as today — `Integer`, `Double`, `Boolean`,
+`String`, the live `List`/`Map` instance. Any widening (`Integer`→`Long`,
+`Double`→`BigDecimal`) changes SnakeYAML's rendering and breaks byte-identity;
+§41.8's golden-file test is what catches it, because the existing
+`documentedExampleParsesToTheSameDefaultsAsCode` (:88-98) compares *parsed
+trees* and would not.
+
+### 41.4 The rule: introspectable, not a lambda
+
+Validation must be *readable* by 25.4's reference generator ("Range: 64..4096"),
+so it is a sealed interface of data, not a `Consumer`:
+
+```java
+public sealed interface Rule<S, T> {
+    record IntRange<S>(ToIntFunction<S> min, ToIntFunction<S> max, Predicate<S> when) implements Rule<S, Integer> { }
+    record DoubleRange<S>(double min, double max)                                     implements Rule<S, Double>  { }
+    record NullFallback<S, T>(Supplier<T> fallback)                                   implements Rule<S, T>       { }
+    record BiomeId<S>(boolean allowEmpty, Supplier<String> fallback, String warning)  implements Rule<S, String>  { }
+    record BiomeIdList<S>(Mode mode, boolean warnOnTags, Supplier<List<String>> emptyFallback)
+                                                                                      implements Rule<S, List<String>> { }
+    record TrimNonEmpty<S>()                                                          implements Rule<S, List<String>> { }
+    record None<S, T>()                                                              implements Rule<S, T>       { }
+    // Rule.of(a, b) composes in declaration order.
+}
+```
+
+Design points forced by the real code:
+
+- **Bounds are `ToIntFunction<S>`, not constants**, because
+  `sanitizeFloatingIslands` (:687-690) clamps `maxRadiusBlocks` with a *minimum
+  of the sibling* `minRadiusBlocks`. The builder records literal bounds into
+  `Docs.rangeText` when they are constants; dependent bounds supply their range
+  text by hand.
+- **`when` exists** because `sanitizeCave` (:517-522) clamps `sealedSurfaceY`
+  *only when `sealedSurface` is true* — the one conditional clamp in the
+  codebase and the one shape a naive schema would get wrong.
+- **Fallbacks are `Supplier<T>`, never a constant.** `sanitizeChaosBiomes`
+  (:397-400) falls back to `new ChaosBiomesConfig().biomes` — a *fresh* list.
+  A shared constant would introduce aliasing where today there is none.
+- **`BiomeId` carries its own warning text** because the root's `starterBiome`
+  (:307-316) says `"Ignoring invalid starter biome '{}'."` while
+  `sanitizeSingleBiomeId` (:810-821) says `"Ignoring invalid {} '{}'."`. Two
+  wordings for the same operation; both must survive.
+
+Clamping emits `clampWithWarning`'s exact message (`"Clamped {} from {} to
+{}."`). `sanitizeOceanIsland` (:452-479) hand-writes seven one-sided clamps
+whose wording *happens* to be identical, so `IntRange(1, Integer.MAX_VALUE)`
+reproduces them — but that equivalence must be verified per setting by the
+differential test, never assumed.
+
+### 41.5 The section: `SchemaSection<S>`
+
+```java
+public abstract class SchemaSection<S> implements SectionCodec<S> {
+    protected SchemaSection(String path, Supplier<S> factory) { … }
+
+    protected abstract List<Setting<S, ?>> declare();   // ORDER == today's xMap order
+
+    public final S read(Object raw, ParseContext ctx);          // replaces readXConfig
+    public       S sanitize(S value, SanitizeContext ctx);      // replaces sanitizeX
+    public final Map<String, Object> toMap(S value);            // replaces xMap
+    public       String summary(S value);                       // replaces xSummary
+    protected    void postValidate(S value, SanitizeContext ctx) { }  // cross-field hook
+
+    public final String path();                    // dotted, e.g. "skyIsland.floatingIslands"
+    public final List<Setting<S, ?>> settings();   // 25.4 / 25.10 walk this
+    public final S defaults();                     // factory.get(), for the reference generator
+}
+```
+
+Generic implementations:
+
+- **`read`** — mapping check with today's `name + " must be a mapping"` message,
+  then for each setting `if (map.containsKey(key)) { setter.accept(target,
+  codec.read(map.get(key), ctx.child(key))); ctx.markPresent(path + "." + key); }`.
+  Unknown keys are ignored, exactly as today.
+- **`sanitize`** — `value == null ? factory.get() : value`, then each setting's
+  rule in declaration order, then `postValidate`.
+- **`toMap`** — `LinkedHashMap`, `put(key, codec.write(getter.apply(value)))` in
+  declaration order.
+- **`summary`** — `label + "=" + render(value)` joined with `", "`, skipping
+  settings whose `include` predicate is false or whose `shown` is false; a
+  `disabledWhen(predicate, "<disabled>")` gate on the section covers the eight
+  sections that short-circuit today.
+
+**Sections are instances, not static singletons.** Three real cases force this:
+
+| Case | Site | Parameter |
+|---|---|---|
+| One POJO field, two YAML keys | `readBorderConfig` :968, `borderMap` :1874 | `objectiveKey` = `ensureEndPortal` \| `ensureBlazeAccess` |
+| Per-parent bounds | `sanitizeStarterCapsule` :563-581 | `NetherStartPlan.*` vs `EndStartPlan.*` min/max |
+| Per-parent legality | `sanitizeExterior` :1744-1756 | `oceanAllowed` true for Overworld, false for Nether |
+
+Each instance also carries its own dotted `path`, which is exactly the string
+today's warnings hand-build (`"cave.easyKit"`,
+`"skyIsland.floatingIslands.lootKit"`). One value now serves warning prefixes,
+25.3's presence keys and 25.4's reference headings.
+
+`SanitizeContext` is `record SanitizeContext(Logger logger, WorldzConfig root)`.
+The `root` is a deliberate, documented coupling with **exactly one user**:
+`ExteriorSchema`, whose validation reads the sibling border config
+(:1764-1775). It cannot be deferred to a root-level post-pass, because today the
+exterior's own clamps and its cross-section checks *interleave*, and moving them
+apart reorders the warnings.
+
+### 41.6 Worked conversion: `CaveConfig`
+
+Chosen as the proof-of-concept because it exercises every mechanism at once —
+plain ints, two booleans, two enums with *different* null-fallbacks, the one
+conditional clamp, three nested sections — and because its summary is fully
+derivable with no override.
+
+**Today, 109 lines across four sites in the 2400-line file** plus three call
+sites in the orchestration methods:
+
+| Method | Lines | What it does |
+|---|---|---|
+| `readCaveConfig` | :1271-1318 (48) | 13 × `if (map.containsKey("x")) config.x = readY(...)` |
+| `sanitizeCave` | :514-542 (29) | conditional Y clamp, 2 enum null-defaults, 3 range clamps, 3 kit delegations |
+| `caveMap` | :2002-2018 (17) | 13 × `values.put("x", config.x)` |
+| `caveSummary` | :2258-2272 (15) | 13 × `", x=" + config.x` |
+
+**After — one file, `config/schema/CaveSchema.java`, ~60 lines, all declarative:**
+
+```java
+final class CaveSchema extends SchemaSection<CaveConfig> {
+    CaveSchema(String path) { super(path, CaveConfig::new); }
+
+    @Override protected List<Setting<CaveConfig, ?>> declare() {
+        return List.of(
+            Setting.integer("spawnDepthY", c -> c.spawnDepthY, (c, v) -> c.spawnDepthY = v)
+                .unit(Unit.Y_LEVEL).preset("cave").customizeExposed()
+                .doc("Target Y for the underground spawn-cavity search.").build(),
+
+            Setting.flag("sealedSurface", c -> c.sealedSurface, (c, v) -> c.sealedSurface = v)
+                .preset("cave").customizeExposed()
+                .doc("Whether a solid roof seals off sky access everywhere.").build(),
+
+            Setting.integer("sealedSurfaceY", c -> c.sealedSurfaceY, (c, v) -> c.sealedSurfaceY = v)
+                .min(CaveConfig.MIN_SEALED_SURFACE_Y).when(c -> c.sealedSurface)   // :517-522
+                .unit(Unit.Y_LEVEL).preset("cave").customizeExposed()
+                .doc("The roof's Y; only meaningful when sealedSurface is set.").build(),
+
+            Setting.enumeration("sealedSurfaceBlock",
+                    c -> c.sealedSurfaceBlock, (c, v) -> c.sealedSurfaceBlock = v,
+                    SealedSurfaceBlock::parse, SealedSurfaceBlock::serializedName,
+                    CavePlan.DEFAULT_SEALED_SURFACE_BLOCK)                          // :523-524
+                .preset("cave").customizeExposed()
+                .doc("The roof's block: stone, deepslate or bedrock.").build(),
+
+            Setting.integer("sealedSurfaceThicknessBlocks",
+                    c -> c.sealedSurfaceThicknessBlocks, (c, v) -> c.sealedSurfaceThicknessBlocks = v)
+                .range(CavePlan.MIN_SEALED_SURFACE_THICKNESS_BLOCKS,
+                       CavePlan.MAX_SEALED_SURFACE_THICKNESS_BLOCKS)
+                .unit(Unit.BLOCKS).preset("cave").customizeExposed()
+                .doc("The roof's thickness.").build(),
+
+            // cavernEnabled / cavernRadiusBlocks / cavernHeightBlocks / chestEnabled — same shapes
+
+            Setting.enumeration("chestTier", c -> c.chestTier, (c, v) -> c.chestTier = v,
+                    StarterKitTier::parse, StarterKitTier::serializedName,
+                    StarterKitTier.MEDIUM)                                          // :537 — note: NOT a CavePlan constant
+                .preset("cave").customizeExposed()
+                .doc("Which kit the starter chest uses.").build(),
+
+            Setting.section("easyKit",   c -> c.easyKit,   (c, v) -> c.easyKit = v,
+                    new StarterKitSchema(path() + ".easyKit")).build(),
+            Setting.section("mediumKit", c -> c.mediumKit, (c, v) -> c.mediumKit = v,
+                    new StarterKitSchema(path() + ".mediumKit")).build(),
+            Setting.section("hardKit",   c -> c.hardKit,   (c, v) -> c.hardKit = v,
+                    new StarterKitSchema(path() + ".hardKit")).build()
+        );
+    }
+}
+```
+
+No `postValidate`, no `summary` override — `caveSummary`'s labels are its keys
+in map order, and `starterKitSummary`'s output (`"essentials=…, extras=…,
+extrasCount=N"`) is precisely `StarterKitSchema`'s own derived summary.
+`CaveConfig.java` itself is untouched.
+
+Which sections *can* derive their summary and which cannot:
+
+| Derivation | Sections |
+|---|---|
+| Fully derived, no override | `cave`, `netherStart`, `endStart`, `capsule`, `starterKit`, `flat`, `deepFlat`, `stacked`, `endBorder`(*), `spawn`(*) |
+| Derived + `disabledWhen` gate | `strip`, `foreverNight`, `structureDistance`, `stripBands` |
+| Derived + gate + `include` predicate | `chunkIsland` (`topOnlyDepthBlocks` only when `topOnly`, :2192) |
+| Derived + a paired renderer | `singleBiome`, `chaosBiomes`, `stripWorld`, `oceanIsland`, `skyIsland` (`<none>` for empty biome ids; `exclusionZone=` collapses two settings into one segment) |
+| `summary(S)` overridden in the section class | `border` (gate + five relabels + a composite `rate=` segment, :2146-2159), `exterior` (:2167-2174), `layout` (:2372-2380), `floatingIslands` (:2340-2354), `risingLava` |
+
+The five overrides stay hand-written — but each lives in its own ~50-line
+section class, not in the monolith. **Deriving a bespoke log line is not worth
+risking byte-identity for**; `summary()` is a log line, not a contract, and its
+exact text is guarded by a 96-line assertion (`WorldzConfigTest` :533-629).
+
+### 41.7 What stays in `WorldzConfig.java`
+
+The root becomes a `WorldzRootSchema` — itself a `SchemaSection<WorldzConfig>`
+whose ordered settings are the eight top-level scalars plus 25
+`Setting.section(...)` entries in today's exact `toYaml()` order. The four
+orchestration methods collapse to one line each:
+
+| Today | After |
+|---|---|
+| `parse` :193-298 (106 lines, 31 `containsKey` blocks) | root-must-be-mapping check + `ROOT.read(loaded, ctx)` |
+| `sanitize` :300-359 (60 lines) | `ROOT.sanitize(this, new SanitizeContext(logger, this))` |
+| `toYaml` :862-896 (35 lines, 31 `put`s) | `createYaml().dump(ROOT.toMap(this))` |
+| `summary` :828-860 (33 lines) | `ROOT.summary(this)` |
+| ~100 `read*`/`sanitize*`/`*Map`/`*Summary` methods | deleted; ~30 schema classes |
+
+**Legitimately stays hand-written on `WorldzConfig`:** `load` (:173-179),
+`loadExisting` (:181-191), `save` (:898-910), `createYaml` (:2382-2399), the
+public constants block (:42-79 — the bounds the schemas reference), and the
+public fields. Target size: **~200 lines, down from 2400**, directly answering
+Jason's "2400 lines in any one class needs a very compelling reason."
+
+New files, `common/src/main/java/media/jlt/minecraft/mods/worldz/config/schema/`:
+9 framework types + 26 section classes ≈ 35 files, none over ~90 lines.
+
+### 41.8 Proving byte-identity: the differential harness
+
+The mitigation in `CONFIG-RESTRUCTURE.md` §7 — "prove it round-trips the current
+config byte-identically" — is made concrete by running **both implementations
+side by side for the duration of 25.2** and deleting the old one at the end.
+
+**Structure.** A `SectionCodec<S>` interface (`read` / `sanitize` / `toMap` /
+`summary`) has two families of implementations:
+
+- `LegacySections` — thin adapters onto the *existing, unmodified* static
+  methods. Complete on day one, for all 26 sections.
+- `SchemaSections` — `SchemaSection` instances for converted sections, falling
+  back to the legacy adapter for the rest. Also complete on day one; production
+  routes through this registry.
+
+Each sub-step swaps one or more entries from legacy to schema. Sections not yet
+converted compare trivially equal — the test simply gets sharper with each
+commit, and the tree is green at every point.
+
+**`ConfigSchemaDifferentialTest`** — for every input in the corpus, asserts three
+things are equal between the two registries:
+
+1. `parse(x).sanitize().toYaml()` — **string equality, not parsed-tree
+   equality**, so key order, number formatting and quoting are all covered.
+2. `parse(x).sanitize().summary()` — the full 96-line summary string.
+3. The **ordered list of captured WARN lines**, via a `RecordingLogger`
+   extending `org.slf4j.helpers.LegacyAbstractLogger` (verified present in
+   slf4j-api 2.0.17, the version already on the test classpath: implement
+   `getFullyQualifiedCallerName()` and `handleNormalizedLoggingCall(...)`,
+   format with `MessageFormatter.arrayFormat`). ~20 lines.
+
+Warning-order equality is the strictest of the three and the one that catches
+the subtle failures — an interleaving change in `sanitizeExterior`, a lost
+advisory in `sanitizeFloatingIslands`, a rule composed in the wrong order.
+
+**Corpus — data-driven, not per-section fixtures:**
+
+| Source | Count | Covers |
+|---|---|---|
+| `config/tests/*.yaml` | 104 | every shipped scenario, all 25 sections, real user-shaped input |
+| `config/jlt_worldz.example.yaml` | 1 | the documented reference |
+| `new WorldzConfig()` defaults | 1 | every default value |
+| `""` (empty) and a root-level non-mapping | 2 | the error paths |
+| Hand-written adversarial fragments | ~40 | one per clamp bound, null-fallback, empty-list fallback and type error — the branches the 104 test configs never exercise, since they are all *valid* configs |
+
+The adversarial fragments are the only hand-written part, and they are the point:
+104 valid configs prove almost nothing about the sanitize layer. Write them as a
+JUnit `@ParameterizedTest` over a list of `(yamlFragment, label)` pairs; the
+existing `WorldzConfigTest` already contains ~60 such fragments inline, so most
+can be lifted rather than invented.
+
+**Permanent guard after the legacy path is deleted (25.2h):**
+`common/src/test/resources/config/reference-defaults.yaml`, the exact bytes of
+`new WorldzConfig().sanitize(NOP).toYaml()` captured at the start of 25.2 and
+committed unchanged. `defaultConfigMatchesTheCapturedReference()` asserts string
+equality against it. That one file, generated once from the pre-refactor build,
+is the byte-identity anchor for the whole phase, and it is what 25.6/25.7 will
+deliberately regenerate when the keys really do move.
+
+Also permanent: **`ConfigSchemaMetadataTest`**, asserting that every setting has
+a non-blank doc, a unit, an applicability, and that the flattened dotted-key list
+walked from the schema **exactly equals** the key list dumped by `toYaml()`. That
+is the completeness gate F6 asked for, available from 25.2 and reused verbatim by
+25.10.
+
+### 41.9 Hooks left for 25.3 and 25.4
+
+**25.3 (presence tracking).** `ParseContext` already carries
+`markPresent(String dottedPath)` and `child(String key)`; 25.2 supplies a
+discarding sink, so nothing is recorded yet. 25.3 swaps in a recording sink
+stored on `WorldzConfig`, and "did the user write this key?" becomes
+`config.present("stacked.worldSizeChunks")` — no schema change, because the
+paths are already built and already correct.
+
+**25.4 (generated reference).** `Setting.docs()` (doc, unit, rendered default,
+rendered range) and `Setting.applies()` (scope, presets, Customize exposure) are
+populated during 25.2, and `SchemaSection` already exposes `settings()`,
+`path()` and `defaults()`. The reference generator is then a pure walk over the
+same objects that drive parsing, so it cannot drift — no schema change, only a
+new renderer.
+
+Both are additive by construction. Populating `docs`/`applies` *during* 25.2 is
+the single highest-leverage decision here: it is where most of the authoring
+effort goes, and it is what makes 25.4 and 25.10 nearly free.
+
+### 41.10 Risks specific to this sub-task
+
+Found by reading the code, beyond `CONFIG-RESTRUCTURE.md` §7's table:
+
+| # | Risk | Site | Handling |
+|---|---|---|---|
+| R1 | One POJO field, two YAML key names (`ensureObjective` → `ensureEndPortal`/`ensureBlazeAccess`) | :968, :1874, :2158 | Sections are parameterized instances, not singletons (§41.5) |
+| R2 | The only genuinely cross-section rule, with interleaved warnings that forbid a deferred post-pass | `sanitizeExterior` :1744-1777 | `SanitizeContext.root`, one documented user |
+| R3 | Odd-rounding *before* clamping, with per-parent bounds | `sanitizeStarterCapsule` :569-575 | Composed `Rule.of(oddRounding, IntRange)`; convert early (25.2a) |
+| R4 | Two *advisory* warnings that are not validation and change nothing | `sanitizeFloatingIslands` :725-745 | `postValidate` side effects; the WARN-order assertion is what protects them |
+| R5 | Conditional clamp — the only one in the codebase | `sanitizeCave` :517-522 | `IntRange.when(...)` |
+| R6 | Same operation, different warning wording (`"Ignoring invalid starter biome"` vs `"Ignoring invalid {} '{}'"`) | :311 vs :817 | `Rule.BiomeId` carries its own message |
+| R7 | Double warnings on one field: `sanitizeSingleBiomeId` warns, then the caller warns again | :438-442, :488-492 | Rule composition, order-sensitive |
+| R8 | Numeric widening in a generic `write` path silently changes YAML rendering | `toYaml` :862-896 | `ValueCodec.write` returns today's exact types; golden-file test (string, not tree) |
+| R9 | Two-phase list warnings — `readStringList` warns at parse, `sanitizeX` warns at sanitize | :912-926 vs :706-720 | Keep the phases separate; never fuse into one list rule |
+| R10 | Mode-dependent summaries where sanitize can *change* the mode (`layout` → LEGACY fallback) | :1842-1848, :2373-2375 | Summaries render at call time, never cached |
+| R11 | Empty-list fallback returning a shared instance would introduce aliasing | :399, :603, :635 | Fallbacks are `Supplier<T>` |
+| R12 | `spawn` has no `sanitizeSpawn`; its defaults are inlined in **four** places | :339-342, :380-383, :417-420, :426-429 | `SpawnSchema` in 25.2a collapses all four — behavior-identical but a visible diff; call it out in the commit |
+| R13 | The 96-line `summary()` assertion is the single most valuable existing guard | test :533-629 | Never soften it during the refactor; it must pass unmodified at every sub-step |
+| R14 | `unknownKeysAreTolerated` asserts unknown keys are *dropped from the rewritten file* | test :112-127 | `toMap` writes only declared settings, so this holds; note it is 25.4, not 25.2, that makes the test obsolete |
+
+The residual risk is authoring error across ~165 settings — a transposed default,
+a wrong bound. That is precisely what the differential harness is for, and why
+it runs against 104 real configs plus the adversarial fragments rather than
+hand-written per-section fixtures.
+
+### 41.11 Sub-step sequence
+
+Eight independently buildable, testable, committable steps; grouped so shared
+shapes are proven early and so the hardest sanitize logic lands while the
+framework can still bend. Detail and file lists in `TODO.md` Phase 25, tasks
+25.2a-25.2h.

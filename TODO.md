@@ -3784,14 +3784,66 @@ tests.
 - [x] 25.1 Research and decisions — **done**, `CONFIG-RESTRUCTURE.md`
       (findings F1–F8 measured against the tree, decisions D1–D10, strip-width
       design §5, work plan §6).
-- [ ] 25.2 Build the schema layer (D3) **behind the existing config shape**,
-      and prove it round-trips today's config byte-identically before any key
-      moves. Declarative `Setting` descriptors carrying path, type, default,
-      range, unit, one-line doc, applies-to-preset and Customize-screen
-      exposure; one small schema class per section (~30 files) replacing the
-      ~100 hand-written `read*`/`sanitize*`/`*Map`/`*Summary` methods.
+- [x] 25.2 Design pass — **done**, `DESIGN.md` §41 (Setting/SchemaSection API,
+      worked CaveConfig conversion, differential-harness proof strategy,
+      sub-step sequence). Broken into 25.2a-25.2h below, each independently
+      buildable/testable/committable per AGENTS.md's per-task discipline.
       **This is the largest refactor in the project's history — two provable
-      steps (schema first, restructure second), never one leap.**
+      steps (schema first here, restructure in 25.6/25.7, never one leap).**
+- [ ] 25.2a Framework + shared leaf sections + the differential harness
+      (DESIGN §41.2-§41.5, §41.8). Build `config/schema/`: `Setting`,
+      `Accessor`, `ValueCodec`/`Codecs`, `Rule`, `Docs`, `Applicability`,
+      `SummarySpec`, `ParseContext`, `SanitizeContext`, `SchemaSection`,
+      `SectionCodec`. Add `LegacySections` (adapters onto the existing static
+      methods, all 26 sections) and `SchemaSections` (schema where converted,
+      legacy fallback otherwise); rewrite `WorldzConfig.parse`/`sanitize`/
+      `toYaml`/`summary` as four registry loops. Convert the three **shared
+      leaf** sections everything else nests: `SpawnSchema` (also collapsing
+      the four duplicated spawn-default blocks — DESIGN §41.10 R12),
+      `StarterKitSchema`, `StarterCapsuleSchema` (parameterized bounds +
+      odd-rounding, R3). Add `RecordingLogger`, `ConfigSchemaDifferentialTest`
+      (104 test configs + example + defaults + error cases + ~40 adversarial
+      fragments; compares YAML string, summary string and ordered WARN lines)
+      and the captured `reference-defaults.yaml` golden test.
+- [ ] 25.2b Simple leaf sections (needs 25.2a). `EndBorderSchema`,
+      `StripSchema`, `ForeverNightSchema`, `RisingLavaSchema` (postValidate
+      `maxY >= startY`), `StructureDistanceSchema`, `DeepFlatSchema`,
+      `StackedSchema`, `FlatSchema`. Proves int/double/bool/enum codecs, plain
+      string lists, empty-list fallbacks and `disabledWhen` summary gating.
+- [ ] 25.2c Border and exterior (needs 25.2a). `BorderSchema` (parameterized
+      `objectiveKey` — R1, rate-pair + stepped-style `postValidate`,
+      overridden `summary`) and `ExteriorSchema` (`oceanAllowed` + the
+      cross-section border reference — R2, overridden `summary`). The two
+      hardest shapes, alone, early.
+- [ ] 25.2d Biome-list sections (needs 25.2a). `LayoutSchema` (weighted list,
+      `roleOverrides` string map, mode-vs-roles fallback, `<legacy>` summary),
+      `ChaosBiomesSchema`, `SingleBiomeSchema`, `StripBandsSchema`,
+      `StripWorldSchema`. Proves all four list rules plus the `allowRivers`/
+      `allowOceans`/`allowBeaches` trio and the `starterBiome`/
+      `starterRadiusBlocks` pair that 25.6 will hoist into `naturalBiomes:`.
+- [ ] 25.2e Island sections (needs 25.2a). `OceanIslandSchema`,
+      `SkyIslandSchema`, `FloatingIslandsSchema` (dependent `maxRadiusBlocks`
+      bound, two advisory warnings — R4, overridden `summary`),
+      `ChunkIslandSchema` (conditional summary segment). Proves the shared
+      `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` pair 25.6 collapses.
+- [ ] 25.2f Chest/kit presets (needs 25.2a). `CaveSchema` (DESIGN §41.6's
+      worked example), `NetherStartSchema`, `EndStartSchema`. Proves the
+      shared `chestTier` + three-kit shape that D6/25.8 collapses into named
+      kits.
+- [ ] 25.2g The root (needs 25.2a-25.2f). `WorldzRootSchema`: the eight
+      top-level scalars (`allowedBiomes`, `starterBiome` with its own warning
+      wording — R6, `starterRadiusBlocks`, `ensureStarterLand`,
+      `starterLandTransitionBlocks`, `starterLandFoundationDepthBlocks`,
+      `allowRivers`, `allowOceans`) plus the 25 `Setting.section(...)`
+      bindings in today's exact `toYaml()` order. At this point every section
+      is schema-driven and the differential test is at full strength.
+- [ ] 25.2h Retire the legacy path (needs 25.2g). Delete `LegacySections`, the
+      ~100 `read*`/`sanitize*`/`*Map`/`*Summary` methods and
+      `ConfigSchemaDifferentialTest`. `WorldzConfig.java` should land at ~200
+      lines (from 2400). Keep the golden `reference-defaults.yaml` test and add
+      `ConfigSchemaMetadataTest` (every setting has doc + unit + applicability;
+      the schema's flattened key list exactly equals `toYaml()`'s — the
+      completeness gate F6 wanted and 25.10 reuses).
 - [ ] 25.3 Presence tracking (D5, needs 25.2). With the schema owning parse,
       "the user wrote this key" becomes a property of the parse result instead
       of something reconstructed from magic values. Note `WorldzConfig.parse`
