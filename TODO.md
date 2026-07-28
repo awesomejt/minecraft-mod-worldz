@@ -1650,7 +1650,7 @@ tests.
       unwrapped file owns exactly one key, and each world-type filename
       matches its `world_preset/*.json` id (`sky-chunk.yaml`↔`chunkIsland`
       allow-listed by name, DESIGN §43.9 row a). No load-path change yet.
-- [ ] 25.7b `parse(String)` → `parseMap(Map)` refactor; `readSplit`/
+- [x] 25.7b `parse(String)` → `parseMap(Map)` refactor; `readSplit`/
       `readBundle`; `WorldzConfig.load` rewritten per DESIGN §43.4.2-4;
       per-file skip/WARN handling (absent/blank/non-mapping/YAML-syntax,
       each isolated per file; value-level errors still all-defaults, per
@@ -1661,7 +1661,7 @@ tests.
       per-file failure, bundle-wins, and cross-file
       `config.present("overworldBorder")` (25.5's `stacked` gate) cases.
       **`git diff` must not touch `reference-defaults.yaml`** — no key
-      moved in this task, only the file a key is read from.
+      moved in this task, only the file a key is read from. — **done**.
 - [ ] 25.7c `SchemaKeyWalker.findUnknownKeysInFile` (DESIGN §43.5) +
       shallow production misfile WARN via `ConfigLayout.owning`. Proves: a
       stray key in `cave.yaml` reports against `CaveSchema` only (not the

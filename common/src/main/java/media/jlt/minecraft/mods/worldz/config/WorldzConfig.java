@@ -11,9 +11,11 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 import org.yaml.snakeyaml.representer.Representer;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +70,8 @@ public final class WorldzConfig {
         # jlt_worldz reference config -- GENERATED, do not edit.
         # Rewritten from the mod's schema on every launch; the mod never reads this file.
         # Every setting is shown at its built-in default. Copy the parts you want into
-        # jlt_worldz.yaml (which the mod never rewrites -- your comments are preserved).
+        # config/jlt_worldz/ (per-world-type files) or as a single
+        # config/jlt_worldz/all.yaml bundle -- the mod never rewrites what you put there.
         """;
 
     /**
@@ -165,45 +168,135 @@ public final class WorldzConfig {
     }
 
     /**
-     * Loads {@code <configDir>/<modId>.yaml} when present. The mod-level config file is
-     * optional: when absent, code defaults apply directly and no file is created. The user's file
-     * is never rewritten -- comments and omitted settings survive every launch unchanged. See
-     * {@code config/jlt_worldz.example.yaml} for the documented, comment-annotated reference to
-     * copy from when a reusable custom config is wanted; a sibling {@code <modId>.reference.yaml},
-     * regenerated on every load from the mod's own schema, is an equivalent always-current source.
+     * Loads {@code <configDir>/<modId>/} (DESIGN §43.4.2, TODO 25.7b) when present. Two shapes are
+     * accepted: a single {@code all.yaml} bundle (DESIGN §43.4.5), which wins wholesale over every
+     * split file when it exists, or the 15 split files {@link ConfigLayout#FILES} describes, merged
+     * into one root map before the schema ever sees them. Both shapes -- and an absent directory --
+     * are optional: when nothing is found, code defaults apply directly and no file is ever created.
+     * A file the mod did read is never rewritten -- comments and omitted settings survive every
+     * launch unchanged. See {@code config/jlt_worldz.example.yaml} for the documented,
+     * comment-annotated reference to copy from when a reusable custom config is wanted; a sibling
+     * {@code <modId>.reference.yaml}, regenerated on every load from the mod's own schema, is an
+     * equivalent always-current source (and itself a valid {@code all.yaml} bundle).
      *
      * @param configDir loader-provided configuration directory
-     * @param modId stable mod id used as the filename
+     * @param modId stable mod id used as the config subdirectory name
      * @param logger destination for validation diagnostics
-     * @return sanitized configuration, or defaults when the file is absent or unreadable
+     * @return sanitized configuration, or defaults when nothing is found or nothing loads cleanly
      */
     public static WorldzConfig load(Path configDir, String modId, Logger logger) {
-        Path configFile = configDir.resolve(modId + YAML_EXTENSION);
-        WorldzConfig config = Files.exists(configFile)
-            ? loadExisting(configFile, logger)
-            : new WorldzConfig().sanitize(logger);
+        Path dir = configDir.resolve(modId);
+        Path bundle = dir.resolve(ConfigLayout.BUNDLE_FILE);
+        List<String> loadedFiles = new ArrayList<>();
+        WorldzConfig config;
+        try {
+            Map<?, ?> root = Files.exists(bundle) ? readBundle(bundle, dir, loadedFiles, logger) : readSplit(dir, loadedFiles, logger);
+            config = root.isEmpty() ? new WorldzConfig().sanitize(logger) : parseMap(root, logger).sanitize(logger);
+        } catch (Exception exception) {
+            logger.warn("Could not load config from {}: {}. Using defaults.", loadedFiles, exception.getMessage());
+            config = new WorldzConfig().sanitize(logger);
+        }
         writeReference(configDir, modId, logger);
         return config;
     }
 
-    static WorldzConfig loadExisting(Path configFile, Logger logger) {
-        try {
-            return parse(Files.readString(configFile), logger).sanitize(logger);
-        } catch (Exception exception) {
-            logger.warn("Could not load config {}: {}. Using defaults.", configFile, exception.getMessage());
-            return new WorldzConfig().sanitize(logger);
+    /**
+     * Reads {@code all.yaml} exactly like today's single-file load always has: the whole file must
+     * parse to a YAML mapping, or the caller's one catch (DESIGN §43.4.4) falls back to defaults.
+     * Also WARNs, once, if any split file also exists alongside the bundle -- the bundle wins
+     * wholesale (DESIGN §43.4.5), so an also-present split file is silently ignored otherwise.
+     */
+    private static Map<?, ?> readBundle(Path bundle, Path dir, List<String> loadedFiles, Logger logger) throws IOException {
+        warnIfSplitFilesAlsoPresent(dir, bundle, logger);
+        loadedFiles.add(ConfigLayout.BUNDLE_FILE);
+        return loadYamlMap(Files.readString(bundle));
+    }
+
+    private static void warnIfSplitFilesAlsoPresent(Path dir, Path bundle, Logger logger) {
+        List<String> alsoPresent = ConfigLayout.FILES.stream()
+            .map(ConfigFile::relativePath)
+            .filter(relativePath -> Files.exists(dir.resolve(relativePath)))
+            .toList();
+        if (!alsoPresent.isEmpty()) {
+            logger.warn("Using {}, ignoring the following also-present split config files: {}", bundle, alsoPresent);
+        }
+    }
+
+    /**
+     * Reads every {@link ConfigLayout#FILES} entry found under {@code dir} and merges their owned
+     * keys into one root map (DESIGN §43.4.2). Merge order is irrelevant -- each file owns a
+     * disjoint key set ({@code ConfigLayoutTest}) -- so files are simply walked in declaration
+     * order. Each file's own YAML-loading step is isolated (DESIGN §43.4.3-4): an absent file is
+     * skipped silently (15 optional files; a WARN per absent file would be noise), a blank/{@code
+     * null} document is skipped silently (a deliberate per-file refinement -- unlike a blank {@code
+     * all.yaml}, which still throws), and a non-mapping root or YAML syntax error costs only that
+     * file's sections, WARNing and continuing rather than aborting the whole load. Value-level
+     * errors are deliberately <em>not</em> isolated here -- that happens once, later, over the fully
+     * merged map, exactly as today (DESIGN §43.4.4).
+     */
+    private static Map<String, Object> readSplit(Path dir, List<String> loadedFiles, Logger logger) {
+        Map<String, Object> root = new LinkedHashMap<>();
+        for (ConfigFile file : ConfigLayout.FILES) {
+            Path filePath = dir.resolve(file.relativePath());
+            if (!Files.exists(filePath)) {
+                continue;
+            }
+            Map<?, ?> fileMap;
+            try {
+                Object loaded = createYaml().load(Files.readString(filePath));
+                if (loaded == null) {
+                    continue;
+                }
+                if (!(loaded instanceof Map<?, ?> map)) {
+                    logger.warn("Ignoring config file {}: root value must be a YAML mapping.", filePath);
+                    continue;
+                }
+                fileMap = map;
+            } catch (Exception exception) {
+                logger.warn("Ignoring config file {}: {}", filePath, exception.getMessage());
+                continue;
+            }
+            loadedFiles.add(file.relativePath());
+            mergeFile(root, file, fileMap);
+        }
+        return root;
+    }
+
+    /**
+     * Merges one file's already-loaded map into the accumulating root map: an unwrapped file's
+     * entire root mapping becomes its one owned key's body; a wrapped file contributes only the
+     * entries whose key it actually owns, silently ignoring anything else (a misfiled key WARN is
+     * TODO 25.7c's job, not this one's -- just don't let one crash the merge).
+     */
+    private static void mergeFile(Map<String, Object> root, ConfigFile file, Map<?, ?> fileMap) {
+        if (file.unwrapped()) {
+            root.put(file.rootKeys().get(0), fileMap);
+            return;
+        }
+        for (Map.Entry<?, ?> entry : fileMap.entrySet()) {
+            if (file.rootKeys().contains(entry.getKey())) {
+                root.put((String) entry.getKey(), entry.getValue());
+            }
         }
     }
 
     static WorldzConfig parse(String yaml, Logger logger) {
-        Object loaded = createYaml().load(yaml);
-        if (!(loaded instanceof Map<?, ?>)) {
-            throw new IllegalArgumentException("root value must be a YAML mapping");
-        }
+        return parseMap(loadYamlMap(yaml), logger);
+    }
+
+    static WorldzConfig parseMap(Map<?, ?> map, Logger logger) {
         LinkedHashSet<String> presentKeys = new LinkedHashSet<>();
-        WorldzConfig config = ROOT.read(loaded, new ParseContext(logger, presentKeys::add));
+        WorldzConfig config = ROOT.read(map, new ParseContext(logger, presentKeys::add));
         config.presentKeys = Set.copyOf(presentKeys);
         return config;
+    }
+
+    private static Map<?, ?> loadYamlMap(String yaml) {
+        Object loaded = createYaml().load(yaml);
+        if (!(loaded instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException("root value must be a YAML mapping");
+        }
+        return map;
     }
 
     WorldzConfig sanitize(Logger logger) {
@@ -247,7 +340,10 @@ public final class WorldzConfig {
 
     /**
      * Writes {@code <configDir>/<modId>.reference.yaml}, overwriting any previous copy. Never
-     * throws: a failure here must not stop the user's own config from loading.
+     * throws: a failure here must not stop the user's own config from loading. Unchanged by TODO
+     * 25.7b's directory split (DESIGN §43.4.2/§43.7): still one file, sibling to {@code
+     * <configDir>/<modId>/}, not written inside it -- and, since it is whole-root shaped, it still
+     * doubles as a valid {@code all.yaml} bundle to copy in (DESIGN §43.4.5).
      */
     static void writeReference(Path configDir, String modId, Logger logger) {
         Path referenceFile = configDir.resolve(modId + REFERENCE_SUFFIX);

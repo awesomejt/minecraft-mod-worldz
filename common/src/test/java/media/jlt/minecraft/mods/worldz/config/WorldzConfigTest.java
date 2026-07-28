@@ -120,7 +120,8 @@ class WorldzConfigTest {
 
     @Test
     void malformedConfigUsesDefaultsWithoutOverwritingInput() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String malformed = "allowedBiomes: [tru";
         Files.writeString(configFile, malformed);
 
@@ -132,7 +133,8 @@ class WorldzConfigTest {
 
     @Test
     void unknownKeysAreTolerated() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String written = """
             allowedBiomes:
               - desert
@@ -153,7 +155,8 @@ class WorldzConfigTest {
 
     @Test
     void nonStringAndSyntacticallyInvalidBiomeEntriesAreDropped() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String written = """
             allowedBiomes:
               - plains
@@ -181,7 +184,8 @@ class WorldzConfigTest {
      */
     @Test
     void validConfigWithCommentsSurvivesLoadUnchanged() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String written = """
             # My personal Worldz config.
             # Only overriding the two settings I care about.
@@ -543,7 +547,8 @@ class WorldzConfigTest {
 
     @Test
     void invalidSpawnStrategyMakesTheFileInvalidWithoutOverwritingIt() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String invalid = """
             spawn:
               strategy: not-a-strategy
@@ -558,7 +563,8 @@ class WorldzConfigTest {
 
     @Test
     void invalidNestedSpawnTypeMakesFileInvalidWithoutOverwritingIt() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String invalid = "spawn: true";
         Files.writeString(configFile, invalid);
 
@@ -570,7 +576,8 @@ class WorldzConfigTest {
 
     @Test
     void invalidNestedBorderTypeMakesFileInvalidWithoutOverwritingIt() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String invalid = "overworldBorder: true";
         Files.writeString(configFile, invalid);
 
@@ -582,7 +589,8 @@ class WorldzConfigTest {
 
     @Test
     void invalidBorderScalarMakesFileInvalidWithoutOverwritingIt() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String invalid = """
             overworldBorder:
               enabled: 'yes'
@@ -597,7 +605,8 @@ class WorldzConfigTest {
 
     @Test
     void fractionalRadiusMakesTheFileInvalidWithoutOverwritingIt() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String invalid = "starter:\n  radius: 64.5";
         Files.writeString(configFile, invalid);
 
@@ -618,7 +627,8 @@ class WorldzConfigTest {
 
     @Test
     void wrongFieldTypeUsesDefaultsWithoutOverwritingInput() throws IOException {
-        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        Path configFile = temporaryDirectory.resolve("jlt_worldz/all.yaml");
+        Files.createDirectories(configFile.getParent());
         String invalid = "allowedBiomes: {biome: plains}";
         Files.writeString(configFile, invalid);
 
