@@ -65,14 +65,16 @@ world types are untouched.
 
 For singleplayer:
 
-1. (Optional) Create `config/jlt_worldz.yaml` if you want different reusable
-   defaults than the ones built into the mod — copy from
+1. (Optional) Create `config/jlt_worldz/all.yaml` if you want different
+   reusable defaults than the ones built into the mod — copy from
    [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml), which
    documents every setting with comments, then restart Minecraft. No config
-   file at all is a normal, supported setup: the mod's own defaults apply
-   directly and it never creates one for you. The mod never rewrites your
-   `config/jlt_worldz.yaml` either — comments and settings you didn't set are
-   preserved across every launch. Instead, it writes
+   at all is a normal, supported setup: the mod's own defaults apply directly
+   and it never creates any config file for you. You can also split settings
+   across the individual files under `config/jlt_worldz/` instead of one
+   `all.yaml` — see [Configuration](#configuration) below for both shapes.
+   The mod never rewrites a config file it read — comments and settings you
+   didn't set are preserved across every launch. Instead, it writes
    `config/jlt_worldz.reference.yaml` on every launch: a generated, never-read,
    safe-to-delete file showing every setting at its built-in default, handy to
    copy values from.
@@ -118,7 +120,9 @@ automatically (below) and coordinated layout modes are specific to the
 generic preset.
 
 Configure its defaults with a `singleBiome:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/single-biome.yaml` — see
+[Configuration](#configuration) below):
 
 ```yaml
 singleBiome:
@@ -164,7 +168,8 @@ same shared Overworld/Nether Border, End Border, and Overworld/Nether
 Exterior buttons as `single_biome` and the generic preset.
 
 Configure its defaults with a `chaosBiomes:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/chaos-biomes.yaml`):
 
 ```yaml
 chaosBiomes:
@@ -365,7 +370,8 @@ option, since the island unconditionally supplies the entire Overworld
 exterior itself.
 
 Configure its defaults with an `oceanIsland:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/ocean-island.yaml`):
 
 ```yaml
 oceanIsland:
@@ -491,7 +497,8 @@ depth, disconnected from the floating island itself by open void. Reaching
 them means building or digging straight down.
 
 Configure its defaults with a `skyIsland:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/sky-island.yaml`):
 
 ```yaml
 skyIsland:
@@ -695,7 +702,9 @@ qualifying chunk when one is nearby," not a guarantee — a seed with no such
 content nearby simply won't showcase it.
 
 Configure its defaults with a `chunkIsland:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/sky-chunk.yaml` — the one filename that
+doesn't match its section key):
 
 ```yaml
 chunkIsland:
@@ -768,7 +777,8 @@ An optional starter chest (`chest.enabled`/`chest.tier`, easy/medium/hard) is
 set into the floor directly beneath your spawn position — unlike every
 other typed preset's chest, this one defaults to **off**.
 
-Configure its defaults with a `cave:` section in `config/jlt_worldz.yaml`:
+Configure its defaults with a `cave:` section in `config/jlt_worldz/all.yaml`
+(or unwrapped in `config/jlt_worldz/world-types/cave.yaml`):
 
 ```yaml
 cave:
@@ -855,7 +865,8 @@ you land in one:
 | `hard` | No guaranteed obsidian or flint and steel at all, just a wooden pickaxe and bread — leans entirely on Nether exploration (ruined portals, bastion/piglin bartering, a natural lava+water combination) to stay beatable. |
 
 Configure its defaults with a `netherStart:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/nether-start.yaml`):
 
 ```yaml
 netherStart:
@@ -930,7 +941,8 @@ regardless of chest contents: the platform itself is minable end stone
 world can be hand-bridged toward the central island.
 
 Configure its defaults with an `endStart:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/end-start.yaml`):
 
 ```yaml
 endStart:
@@ -966,8 +978,9 @@ the real terrain-noise pipeline never runs at all — only structure
 placement uses the real vanilla mechanism.
 
 Configure the layer stack, biome, decoration, and eligible structure sets
-with a `flat:` section in `config/jlt_worldz.yaml` (the in-game Customize
-screen edits the same fields as plain text):
+with a `flat:` section in `config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/flat.yaml`; the in-game Customize screen edits
+the same fields as plain text):
 
 ```yaml
 flat:
@@ -1104,7 +1117,8 @@ the land band (unless disabled, or within a configurable radius of
 spawn) — real rivers stay visible as rivers, just flattened into the cap
 plane rather than carved as a valley.
 
-Configure it with a `deepFlat:` section in `config/jlt_worldz.yaml`:
+Configure it with a `deepFlat:` section in `config/jlt_worldz/all.yaml` (or
+unwrapped in `config/jlt_worldz/world-types/deep-flat.yaml`):
 
 ```yaml
 deepFlat:
@@ -1157,7 +1171,8 @@ The default bottom layer's stone is deliberately thick (44 blocks) so the
 End portal has real room to generate there — see below.
 
 Configure the layer stack and order with a `stacked:` section in
-`config/jlt_worldz.yaml`:
+`config/jlt_worldz/all.yaml` (or unwrapped in
+`config/jlt_worldz/world-types/stacked.yaml`):
 
 ```yaml
 stacked:
@@ -1223,10 +1238,13 @@ save-compat obligations for worlds created by an older mod version.
 ## World hazards
 
 Unlike every preset above, these are shared runtime rules, not world
-generation — they compose with **any** World Type, configured via their
-own top-level `config/jlt_worldz.yaml` sections (no dedicated Customize
-screen yet; edit the config file, same as border/exterior settings before
-Phase 5.3 exposed those in-screen).
+generation — they compose with **any** World Type, configured via their own
+top-level sections in `config/jlt_worldz/all.yaml` or, wrapped the same way,
+in `config/jlt_worldz/runtime.yaml` (no dedicated Customize screen yet; edit
+the config file, same as border/exterior settings before Phase 5.3 exposed
+those in-screen). Unlike everything else in this mod, these three sections
+are re-read live and affect worlds that already exist — see
+[Live vs. baked](#live-vs-baked) below.
 
 ### Forever night (GOAL 30)
 
@@ -1334,17 +1352,86 @@ structure, exactly like any other suppressed structure set.
 
 ## Configuration
 
-The mod reads `config/jlt_worldz.yaml` at startup if present; it is entirely
-optional and the mod never creates or requires one. These values are the
-defaults for the singleplayer Customize screen and the direct inputs for
-dedicated-server world creation. A complete, comment-documented reference —
-the way to discover every available setting — lives at
-[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml); copy the
-parts you want into your own `config/jlt_worldz.yaml`. The mod never rewrites
-`config/jlt_worldz.yaml` itself, so any comments or settings you leave out
-stay untouched; it writes `config/jlt_worldz.reference.yaml` alongside it on
-every launch instead — generated, never read back, safe to delete, and always
-showing every setting at its current built-in default.
+The mod reads configuration from `config/jlt_worldz/` at startup if present;
+every file in it is entirely optional and the mod never creates or requires
+any of them. These values are the defaults for the singleplayer Customize
+screen and the direct inputs for dedicated-server world creation. A complete,
+comment-documented reference — the way to discover every available setting —
+lives at [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml);
+copy the parts you want into `config/jlt_worldz/` (see
+[Config file layout](#config-file-layout) below for the two shapes it can
+take). The mod never rewrites a config file it read, so any comments or
+settings you leave out stay untouched; it writes
+`config/jlt_worldz.reference.yaml` on every launch instead — a sibling of
+`config/jlt_worldz/`, not a file inside it, generated, never read back, safe
+to delete, and always showing every setting at its current built-in default.
+
+### Config file layout
+
+Settings live under `config/jlt_worldz/`, in either of two shapes:
+
+- **Split, one file per section** — up to 15 files, one per typed preset plus
+  two shared files, each holding only the sections that apply to it:
+
+  ```
+  config/jlt_worldz/
+    runtime.yaml          # foreverNight, risingLava, structureDistance
+    world-defaults.yaml   # overworldBorder, netherBorder, endBorder,
+                           # overworldExterior, netherExterior
+    world-types/
+      worldz.yaml          # allowedBiomes, starter, naturalBiomes, layout, spawn
+      strip-world.yaml     # strip, stripWorld
+      single-biome.yaml    # singleBiome
+      chaos-biomes.yaml    # chaosBiomes
+      ocean-island.yaml    # oceanIsland
+      sky-island.yaml      # skyIsland
+      sky-chunk.yaml       # chunkIsland (the one filename that doesn't match its key)
+      cave.yaml            # cave
+      nether-start.yaml    # netherStart
+      end-start.yaml       # endStart
+      flat.yaml            # flat
+      deep-flat.yaml       # deepFlat
+      stacked.yaml         # stacked
+  ```
+
+  Each of the 15 files is independently optional — write only the ones you
+  actually want to change and leave the rest unwritten; a file the mod
+  doesn't find just leaves its sections at their built-in defaults, and none
+  of the 15 is ever created for you.
+
+- **Single bundle** — `config/jlt_worldz/all.yaml`, the whole config in one
+  file, shaped exactly like `config/jlt_worldz.example.yaml` and the
+  generated reference file below. **This is the recommended, primary way to
+  configure Worldz** — when `all.yaml` exists it wins wholesale over every
+  split file above (logging a warning if any split files are also present),
+  so there's never anything to reconcile between the two shapes, and it's
+  what every `config/tests/*.yaml` fixture in this repo is shaped like.
+
+Most of the split files are **unwrapped**: the eleven single-preset files
+under `world-types/` (every one except `worldz.yaml` and `strip-world.yaml`,
+which each hold more than one section) only ever hold that one section, so
+their root mapping *is* that section's body directly, with no wrapper key at
+all — `world-types/cave.yaml` starts straight at `spawnY: -32`, not
+`cave: {spawnY: -32}`. The remaining four files (`runtime.yaml`,
+`world-defaults.yaml`, `world-types/worldz.yaml`, `world-types/strip-world.yaml`)
+are **wrapped** instead: their root mapping is a slice of the same
+`key: {...}` shape the settings tables below and the single-bundle form use
+(e.g. `runtime.yaml` still starts with a `foreverNight:` block).
+
+### Live vs. baked
+
+Which file a setting lives in also says when it takes effect:
+
+- **`runtime.yaml`** (`foreverNight`, `risingLava`, `structureDistance`) is
+  re-read live: the mod checks these world-hazard rules continuously, so
+  editing one and relaunching changes behavior in worlds that already exist,
+  not just newly created ones. See [World hazards](#world-hazards) above.
+- **Everything else** — `world-defaults.yaml`'s borders/exteriors and every
+  `world-types/*.yaml` preset section — is baked into the save only at world
+  creation, like every other setting this mod has (see the warning at the
+  top of this README). Editing them after a world already exists has no
+  effect on that world; the new values only apply to worlds created
+  afterward.
 
 | Setting | Default | Description |
 |---|---|---|

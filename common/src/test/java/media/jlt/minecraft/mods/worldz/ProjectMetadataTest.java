@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.3.23", properties.getProperty("version"));
+        assertEquals("0.3.24", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -63,9 +63,9 @@ class ProjectMetadataTest {
 
         assertTrue(Files.isRegularFile(ROOT.resolve("config/jlt_worldz.example.yaml")));
         assertFalse(Files.exists(ROOT.resolve("config/jlt_worldz.example.json")));
-        assertTrue(readme.contains("config/jlt_worldz.yaml"));
+        assertTrue(readme.contains("config/jlt_worldz/all.yaml"));
         assertFalse(readme.contains("config/jlt_worldz.example.json"));
-        assertTrue(design.contains("Config `config/jlt_worldz.yaml`"));
+        assertTrue(design.contains("config/jlt_worldz/all.yaml"));
         assertTrue(readme.contains("`resize.rate.blocks: 64` and `resize.rate.days: 5`"));
         assertTrue(readme.contains("`resize.delayDays` holds the initial radius"));
         assertTrue(readme.contains("### Ocean and void exteriors"));

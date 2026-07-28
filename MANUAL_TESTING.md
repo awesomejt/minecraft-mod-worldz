@@ -45,9 +45,10 @@ Launch with:
 ./gradlew :fabric:runServer      # or :neoforge:runServer
 ```
 
-Config file per run directory: `<rundir>/config/jlt_worldz.yaml`. It is
-optional — absent means the mod's built-in defaults apply directly, and the
-mod never creates the file for you (see
+Config lives at `<rundir>/config/jlt_worldz/` per run directory, as either the
+single-file `all.yaml` bundle or the 15 split files (see README.md's
+Configuration section). It is optional — absent means the mod's built-in
+defaults apply directly, and the mod never creates any of it for you (see
 [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for the
 documented reference to copy from). Worlds live in
 `<rundir>/saves/<world-name>/` (client) — delete the folder for a clean
@@ -113,8 +114,8 @@ Worldz world regardless of layout mode.
 
 ### 2. Removed-mode regression + default generation (TODO 1.7)
 
-1. **Default-config world.** No `jlt_worldz.yaml` present (delete it if the
-   instance already has one) — confirms defaults apply without a file at
+1. **Default-config world.** No `config/jlt_worldz/` present (delete it if
+   the instance already has one) — confirms defaults apply without a file at
    all (TODO 1.4). Create a world, confirm normal cave/structure generation,
    and open **Customize → Layout**: confirm the mode cycle button only ever
    shows `legacy` / `ocean` / `single_biome` / `void` — never `land_only` or
@@ -1374,10 +1375,11 @@ No config/gameplay change to verify — this is the concrete scenario TODO
 25.12's `[Jason]` acceptance step ("a hand-commented config survives a launch
 intact") points at.
 
-1. Hand-write a small `config/jlt_worldz.yaml` with a couple of `#` comment
-   lines and only one or two settings overridden (e.g. `starterRadiusBlocks`).
+1. Hand-write a small `config/jlt_worldz/all.yaml` with a couple of `#`
+   comment lines and only one or two settings overridden (e.g.
+   `starterRadiusBlocks`).
 2. Launch the game (either loader) and let it reach the title screen.
-3. Confirm `config/jlt_worldz.yaml` is byte-identical to what you wrote —
+3. Confirm `config/jlt_worldz/all.yaml` is byte-identical to what you wrote —
    comments intact, no other settings appended.
 4. Confirm a new `config/jlt_worldz.reference.yaml` appeared alongside it,
    showing every setting at its built-in default. It's regenerated every

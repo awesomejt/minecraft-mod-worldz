@@ -73,6 +73,28 @@ public final class WorldzConfig {
         # Every setting is shown at its built-in default. Copy the parts you want into
         # config/jlt_worldz/ (per-world-type files) or as a single
         # config/jlt_worldz/all.yaml bundle -- the mod never rewrites what you put there.
+        #
+        # File map: which config/jlt_worldz/ file each setting below belongs in. The first
+        # line is re-read live and affects worlds that already exist; every other line is
+        # baked into the save only at world creation, like the rest of this mod's settings.
+        # foreverNight/risingLava/structureDistance -> config/jlt_worldz/runtime.yaml
+        # overworldBorder/netherBorder/endBorder/overworldExterior/netherExterior ->
+        #   config/jlt_worldz/world-defaults.yaml
+        # allowedBiomes/starter/naturalBiomes/layout/spawn -> config/jlt_worldz/world-types/worldz.yaml
+        # strip/stripWorld -> config/jlt_worldz/world-types/strip-world.yaml
+        # singleBiome -> config/jlt_worldz/world-types/single-biome.yaml
+        # chaosBiomes -> config/jlt_worldz/world-types/chaos-biomes.yaml
+        # oceanIsland -> config/jlt_worldz/world-types/ocean-island.yaml
+        # skyIsland -> config/jlt_worldz/world-types/sky-island.yaml
+        # chunkIsland -> config/jlt_worldz/world-types/sky-chunk.yaml
+        # cave -> config/jlt_worldz/world-types/cave.yaml
+        # netherStart -> config/jlt_worldz/world-types/nether-start.yaml
+        # endStart -> config/jlt_worldz/world-types/end-start.yaml
+        # flat -> config/jlt_worldz/world-types/flat.yaml
+        # deepFlat -> config/jlt_worldz/world-types/deep-flat.yaml
+        # stacked -> config/jlt_worldz/world-types/stacked.yaml
+        # A file's own shape (wrapped vs. unwrapped) and the config/jlt_worldz/all.yaml bundle
+        # are documented in README.md's Configuration section.
         """;
 
     /**

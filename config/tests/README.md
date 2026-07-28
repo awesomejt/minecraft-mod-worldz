@@ -8,11 +8,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
 ## How to use one
 
 1. Copy the file you want over the active config, renaming it to
-   `jlt_worldz.yaml`:
+   `jlt_worldz/all.yaml` (the single-file bundle form — see README.md's
+   Configuration section):
 
    ```bash
    cp config/tests/03-preferred-natural-biome-found.yaml \
-      fabric/runs/client/config/jlt_worldz.yaml
+      fabric/runs/client/config/jlt_worldz/all.yaml
    ```
 
    (Dev client. For the dev server use `fabric/runs/server/config/`. For the
