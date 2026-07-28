@@ -60,6 +60,26 @@ public abstract class SchemaSection<S> implements SectionCodec<S> {
         return factory.get();
     }
 
+    /**
+     * Copies this section's own settings' fields from {@code from} onto {@code to}, leaving every
+     * other field of {@code to} untouched. The mechanism behind {@link Setting#group} (DESIGN
+     * §42.2): a group section declares a subset of the parent POJO's fields, and this is how a
+     * throwaway instance parsed from that subset (or, at sanitize time, {@code to} itself) gets
+     * written back onto the real target.
+     *
+     * @param from the instance to copy this section's fields from
+     * @param to the instance to copy this section's fields onto
+     */
+    public final void copyInto(S from, S to) {
+        for (Setting<S, ?> setting : settings()) {
+            copyOne(setting, from, to);
+        }
+    }
+
+    private <T> void copyOne(Setting<S, T> setting, S from, S to) {
+        setting.accessor().set(to, setting.accessor().get(from));
+    }
+
     @Override
     public final S read(Object raw, ParseContext ctx) {
         if (!(raw instanceof Map<?, ?> map)) {

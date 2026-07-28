@@ -100,6 +100,29 @@ public record Setting<S, T>(
     }
 
     /**
+     * Starts building a group setting -- a {@link SchemaSection} over the parent's own type {@code
+     * S}, whose settings' accessors point at fields that stay on the parent POJO (DESIGN §42.2).
+     * Unlike {@link #section}, there is no nested Java object: {@code group} declares a subset of
+     * {@code S}'s own fields, and reading/sanitizing copies exactly that subset across via {@link
+     * SchemaSection#copyInto}. The getter is the identity function (there is nothing but {@code S}
+     * itself to return); the setter is {@code (owner, parsed) -> group.copyInto(parsed, owner)},
+     * <strong>not</strong> a bare {@code group::copyInto} method reference -- {@link Accessor#set}
+     * calls {@code setter.accept(owner, value)}, and {@code copyInto(from, to)} needs {@code value}
+     * (the freshly parsed group instance) as {@code from} and {@code owner} (the real target) as
+     * {@code to}, the reverse of the argument order {@code accept} would hand a plain method
+     * reference. During sanitize, {@code owner == value} already (the getter is identity), so the
+     * swap is a harmless self-copy no-op.
+     */
+    public static <S> PlainBuilder<S, S> group(String key, SchemaSection<S> group) {
+        return new PlainBuilder<>(
+            key,
+            new Accessor<>(owner -> owner, (owner, value) -> group.copyInto(value, owner)),
+            Codecs.section(group),
+            new Rule.Nested<>(group)
+        );
+    }
+
+    /**
      * Shared fluent state for every setting shape: docs, applicability and summary rendering. Type
      * -specific subclasses ({@link IntBuilder}, {@link DoubleBuilder}, {@link PlainBuilder}) add
      * the methods that build {@link #buildRule()}; call those first, generic methods after, ending

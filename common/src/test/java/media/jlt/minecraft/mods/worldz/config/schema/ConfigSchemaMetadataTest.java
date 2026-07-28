@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,7 +46,7 @@ class ConfigSchemaMetadataTest {
         List<String> keys = new ArrayList<>();
         List<String> problems = new ArrayList<>();
         WorldzConfig defaults = ROOT.defaults();
-        collectKeys(ROOT, defaults, keys, problems);
+        SchemaKeyWalker.collectKeys(ROOT, defaults, keys, problems);
         assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
 
         Set<String> distinctKeys = new LinkedHashSet<>(keys);
@@ -77,42 +76,6 @@ class ConfigSchemaMetadataTest {
         // shapes that genuinely have none (flags, enums, free text, ids, lists) -- DESIGN §41.2.
         if ((setting.codec() == Codecs.INT || setting.codec() == Codecs.DOUBLE) && docs.unit() == Unit.NONE) {
             problems.add(fullPath + ": numeric setting has no Unit");
-        }
-    }
-
-    /**
-     * Walks the same setting tree as {@link #collectMetadataProblems}, but in lockstep with the
-     * real {@link SchemaSection#toMap} output for a fully-populated default config, so a setting
-     * declared in {@link SchemaSection#declare()} that {@code toMap()} doesn't actually emit (or
-     * a map key with no declaring setting) is a hard failure rather than something only a future
-     * rewrite would notice.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void collectKeys(SchemaSection section, Object value, List<String> keys, List<String> problems) {
-        Map<String, Object> map = section.toMap(value);
-        List<Setting> settings = section.settings();
-        for (Object settingObject : settings) {
-            Setting setting = (Setting) settingObject;
-            String key = (String) setting.key();
-            String fullPath = childPath(section, key);
-            if (!map.containsKey(key)) {
-                problems.add(fullPath + ": declared in the schema but toMap() does not emit it");
-                continue;
-            }
-            Object rule = setting.rule();
-            if (rule instanceof Rule.Nested nested && nested.section() instanceof SchemaSection childSchema) {
-                Object childValue = setting.accessor().get(value);
-                collectKeys(childSchema, childValue, keys, problems);
-            } else {
-                keys.add(fullPath);
-            }
-        }
-        for (Object mapKey : map.keySet()) {
-            String key = (String) mapKey;
-            boolean declared = settings.stream().anyMatch(candidate -> ((Setting) candidate).key().equals(key));
-            if (!declared) {
-                problems.add(childPath(section, key) + ": toMap() emits it but no setting declares it");
-            }
         }
     }
 

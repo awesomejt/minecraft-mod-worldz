@@ -1067,16 +1067,60 @@ tests.
       25.6a-25.6h below, each independently buildable/testable/committable.
       **No POJO, `logic/` or `client/` changes** — nesting is done with
       `Setting.group` over the parent's own type (§42.2).
-- [ ] 25.6a Framework + the fixture gate. Add `Setting.group(key,
-      SchemaSection<S>)` and `SchemaSection.copyInto` (§42.2). Add
-      `ConfigFixturesTest`: every `config/tests/*.yaml` parses+sanitizes, the
-      file count is asserted, and **every dotted key in the file is declared by
-      the schema** (promote `ConfigSchemaMetadataTest.collectKeys` to a shared
-      helper). **This gate is what makes 25.11's "must land together" real** —
-      `ConfigSchemaDifferentialTest` was deleted at 25.2h and nothing reads
-      `config/tests/` today, so a stale fixture currently builds green and
-      fails only in-game. No keys move. Expect configs 57/97/98 to go red —
-      resolve per 25.6g / Questions for Jason.
+- [x] 25.6a Framework + the fixture gate — **done**. Added `Setting.group(String
+      key, SchemaSection<S> group)` (`Setting.java`) and
+      `SchemaSection.copyInto(S from, S to)` (`SchemaSection.java`), exactly
+      per DESIGN §42.2's shapes, with one required deviation from its literal
+      sketch: the accessor's setter is the lambda `(owner, value) ->
+      group.copyInto(value, owner)`, **not** the bare `group::copyInto` method
+      reference the design sketch showed. `Accessor.set(owner, value)` calls
+      `setter.accept(owner, value)`, so a direct `group::copyInto` bound
+      reference would call `copyInto(owner, value)` — copying the *real*
+      target's (still-default) fields onto the freshly-parsed throwaway
+      instead of the other way around. Caught by a new `SettingGroupTest`
+      (synthetic two-field POJO exercising read/sanitize/toMap through the
+      mechanism in isolation, since no real `*Schema.java` uses it yet — 25.6b
+      is first); verified the failure mode directly by temporarily reverting
+      to the bare method reference and confirming
+      `readCopiesTheGroupsFieldsOntoTheRealTargetNotTheReverse` goes red, then
+      restoring the fix. Sanitize-time self-assign is unaffected either way
+      (owner and value are the same reference there, per the identity getter).
+      Promoted `ConfigSchemaMetadataTest`'s private `collectKeys`/duplicate
+      logic into a new shared `SchemaKeyWalker` (package-private, `common/src/
+      test`), which now has two methods: `collectKeys` (moved verbatim, used
+      by `ConfigSchemaMetadataTest` as before) and the new `findUnknownKeys`
+      (walks a raw YAML map against the schema tree in lockstep, recursing
+      into a nested section only when the schema itself declares a
+      `Rule.Nested` setting for that key *and* the file's value there is a
+      map — never based on the raw shape alone, since `layout.roleOverrides`
+      is a leaf `stringMap` setting with arbitrary user-defined sub-keys that
+      must not be mistaken for section keys). New `ConfigFixturesTest` reads
+      every `config/tests/*.yaml`, asserts it parses (`WorldzRootSchema.read`)
+      and sanitizes (`.sanitize`) without throwing, asserts the file count,
+      and asserts the exact unknown-key set per file via `findUnknownKeys` —
+      empty for every fixture except three, hardcoded in a
+      `KNOWN_UNKNOWN_KEYS` map keyed by filename with the exact expected keys
+      (not just "some failure"), each pointing at the TODO item that resolves
+      it:
+      - `57-sky-island-biome-exclusion-zone.yaml` →
+        `skyIsland.exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` (25.6d)
+      - `97-flat-underground-biome-band.yaml` →
+        `flat.undergroundBiome`/`undergroundBelowSurfaceBlocks` (25.6g)
+      - `98-sky-island-underground-biome-band.yaml` →
+        `skyIsland.undergroundBiome`/`undergroundBelowSurfaceBlocks` (25.6g)
+      Confirmed these are the *only* 3 red fixtures — the other 100 pass the
+      new gate outright — and confirmed (via `SkyIslandSchema.java`/
+      `FlatSchema.java`) that all 5 keys are genuinely absent from the
+      schema, matching DESIGN §42.1/§42.5's claims exactly.
+      **Found and flagged, not silently fixed: the real `config/tests/*.yaml`
+      count is 103, not 104.** `TODO.md`/`DESIGN.md`/`CONFIG-RESTRUCTURE.md`/
+      `GOALS.md` all say "104"; `ls config/tests/*.yaml` gives 103 (101
+      numbered files, two of which — 27, 29 — also have an "a"-suffixed
+      sibling), and `git log --diff-filter=D` shows no `config/tests/*.yaml`
+      was ever deleted. `EXPECTED_FIXTURE_COUNT` is hardcoded to the verified
+      103, with a comment explaining the discrepancy; see Deviation log. No
+      config keys moved, no POJO/`logic/`/`client/` changes. `./gradlew
+      :common:test` green (full suite, not just the new tests).
 - [ ] 25.6b Root + generic-preset sections (needs 25.6a). `starter: {biome,
       radius, land: {enabled, transition, foundationDepth}}` and
       `naturalBiomes: {rivers, oceans[, beaches]}` as parameterized shared
@@ -1109,13 +1153,13 @@ tests.
 - [ ] 25.6f Flat family (needs 25.6a). `deepFlat.rivers: {enabled,
       exclusionRadius}` (an F1 miss), `stacked.relief`, `flat` suffix drops.
       Fixtures 66-78, 94-96, 99-101.
-- [ ] 25.6g **[Jason-gated]** Wire the dead `underground` pair (needs 25.6d,
-      25.6f + the answer in Questions for Jason). `flat`/`skyIsland`'s
+- [ ] 25.6g Wire the dead `underground` pair (needs 25.6d, 25.6f). Jason
+      confirmed 2026-07-28: wire it up. `flat`/`skyIsland`'s
       `undergroundBiome`/`undergroundBelowSurfaceBlocks` have never been read
       by the parse layer despite README:527-528/952-953 and configs 97/98.
       Declare them as `underground: {biome, belowSurface}` so those two configs
       finally test what they claim. Behavior-affecting — separate commit,
-      separately revertable. Skip if Jason chooses "delete the keys instead".
+      separately revertable.
 - [ ] 25.6h Close-out (needs 25.6b-25.6g). Full `README.md` key-name pass,
       final `config/jlt_worldz.example.yaml` review, tighten
       `ConfigSchemaMetadataTest` (no leaf key may end in `Blocks`), and log the
@@ -1271,20 +1315,18 @@ tests.
 (Add here when blocked; don't guess on gameplay/scope questions.)
 
 - **2026-07-28 — Phase 25.6: five documented settings the mod has never
-  read.** `skyIsland.exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` and
-  `flat`/`skyIsland`'s `undergroundBiome`/`undergroundBelowSurfaceBlocks` are
-  documented in README, set by `config/tests/57`, `97` and `98`, and silently
-  ignored by the parse layer (verified: no `Setting` declares them, no
-  `underground*` key exists in `reference-defaults.yaml`). 25.6a's new
-  unknown-key gate (`ConfigFixturesTest`) turns all three fixtures red the
-  moment it lands. **Wire them up as part of 25.6 (a small behavior change
-  beyond D9; the only way 57/97/98 test what they claim), or delete the keys
-  from the fixtures and README and treat the Customize screen as the only
-  supported path?** Recommendation: wire them, in isolated commits (25.6d for
-  `skyIsland.exclusionZone`, 25.6g for `underground`) so each can be accepted
-  or reverted independently of the rename. Supersedes the 2026-07-27 and
-  2026-07-28 Deviation-log flags on this same gap — one answer closes both.
-  DESIGN §42.7 has the full detail.
+  read. ANSWERED same day: wire them up.** `skyIsland.exclusionZoneEnabled`/
+  `exclusionZoneRadiusBlocks` and `flat`/`skyIsland`'s `undergroundBiome`/
+  `undergroundBelowSurfaceBlocks` are documented in README, set by
+  `config/tests/57`, `97` and `98`, and silently ignored by the parse layer
+  (verified: no `Setting` declares them, no `underground*` key exists in
+  `reference-defaults.yaml`). Jason chose to wire them up as part of 25.6
+  rather than delete the keys — the only way 57/97/98 test what they claim,
+  and it matches what README already promises. Implement in isolated commits
+  (25.6d for `skyIsland.exclusionZone`, 25.6g for `underground`) so each can
+  be accepted or reverted independently of the rename. Supersedes the
+  2026-07-27 and 2026-07-28 Deviation-log flags on this same gap. DESIGN
+  §42.7 has the full detail.
 
 - **2026-07-27 — Phase 25 config restructure: ALL TEN ANSWERED, same day.**
   Recorded as decisions D1–D10 in `CONFIG-RESTRUCTURE.md` §1 — that table is
@@ -1507,6 +1549,22 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-28 (Phase 25.6a, doc count found stale) — **`config/tests/*.yaml`'s
+  real count is 103, not the "104" repeated throughout `TODO.md` (this
+  phase's own 25.6/25.11/25.12), `DESIGN.md` §42, `CONFIG-RESTRUCTURE.md` and
+  `GOALS.md`.** Verified empirically (`ls config/tests/*.yaml`): 101 numbered
+  files, two of which (27, 29) also have an "a"-suffixed sibling (27a, 29a) —
+  103 total, not 104. `git log --diff-filter=D -- config/tests/*.yaml` shows
+  no fixture has ever been deleted, so this looks like a stale prose count
+  rather than a fixture that used to exist and was lost. `ConfigFixturesTest`
+  (25.6a) hardcodes `EXPECTED_FIXTURE_COUNT = 103` — the real, current,
+  verified count — with a comment pointing at this entry. Flagged rather than
+  silently reconciling the doc references (`TODO.md`'s own 25.6/25.11/25.12
+  wording, `DESIGN.md` §42, `GOALS.md`, `CONFIG-RESTRUCTURE.md`): whether "104"
+  should be corrected to "103" everywhere, or whether a 104th fixture was
+  always meant to exist and never got written, is a call for Jason/
+  `project-manager`, not something to guess at mid-task.
 
 - 2026-07-28 (Phase 25.5, scope found narrower than described) — **Only
   `StackedConfig`'s `worldSizeChunks` sentinel was actually convertible to a

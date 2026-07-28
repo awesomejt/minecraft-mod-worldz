@@ -2975,3 +2975,41 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Full multiloader build green at every commit. **[Jason] retest of
   configs 96-98 outstanding** — Phase 22 not started, per the standing
   phase-gate rule.
+
+- 2026-07-28 — **Phase 25.6a (config key restructure's framework step,
+  DESIGN §42.2/§42.5) executed.** `Setting.group`/`SchemaSection.copyInto`
+  landed with one required deviation from DESIGN §42.2's literal sketch: the
+  group setting's setter must be the lambda `(owner, value) ->
+  group.copyInto(value, owner)`, not a bare `group::copyInto` method
+  reference. `Accessor.set(owner, value)` calls `setter.accept(owner, value)`
+  in that argument order, so a direct method reference binds to
+  `copyInto(owner, value)` — copying the real target's still-default fields
+  onto the freshly-parsed throwaway, backwards from what read needs. Caught
+  by deliberately reverting to the bare reference in the new
+  `SettingGroupTest` and confirming it goes red before restoring the fix —
+  worth remembering for 25.6b-h, since every one of those sub-steps will call
+  `Setting.group` for the first time against a real section. Sanitize-time
+  self-assign is unaffected either way (the getter is identity, so owner and
+  value are already the same reference there).
+  **`config/tests/*.yaml`'s real count is 103, not the "104" TODO.md/
+  DESIGN.md/CONFIG-RESTRUCTURE.md/GOALS.md all repeat** (verified via `ls` and
+  `git log --diff-filter=D`: no fixture has ever been deleted, so it reads as
+  a stale prose count, not a lost file). `ConfigFixturesTest` hardcodes 103;
+  flagged in TODO.md's Deviation log for Jason/`project-manager` rather than
+  silently correcting every doc reference to "104".
+  New shared `SchemaKeyWalker` (`common/src/test`, package-private) holds two
+  methods: `collectKeys` (promoted verbatim from `ConfigSchemaMetadataTest`,
+  no behavior change) and the new `findUnknownKeys`, which walks a raw YAML
+  map against the schema tree in lockstep and only recurses into a nested map
+  when the schema's own setting for that key is `Rule.Nested` — deliberately
+  not based on the raw value's shape, since `layout.roleOverrides` is a leaf
+  `stringMap` setting whose own YAML value is a mapping with arbitrary
+  user-defined keys that must never be treated as further schema paths.
+  New `ConfigFixturesTest` gate confirmed exactly 3 of 103 fixtures fail the
+  unknown-key check today — `57` (`skyIsland.exclusionZoneEnabled`/
+  `exclusionZoneRadiusBlocks`), `97` (`flat.undergroundBiome`/
+  `undergroundBelowSurfaceBlocks`), `98` (`skyIsland`'s same underground
+  pair) — matching DESIGN §42.1/§42.5's claims exactly; the test asserts the
+  precise expected key set per file (not just "some failure") so 25.6d/25.6g
+  wiring them up is what turns each green, not an incidental pass. No config
+  keys moved in this step.
