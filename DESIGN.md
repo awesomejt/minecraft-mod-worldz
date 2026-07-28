@@ -7328,3 +7328,432 @@ it once closes both.
 No other genuine question. Everything else in this section — group mechanism,
 naming asymmetries, `strip` deferral, F1's three missing shapes — is an
 engineering call already determined by D1/D7/§2 and recorded above.
+
+## 43. Config file split (D2/D10, TODO 25.7) — design pass
+
+25.2-25.5 built the schema layer behind the existing shape; 25.6 moved the
+*keys*. This section designs the last structural move: the *files*.
+`CONFIG-RESTRUCTURE.md` §3 fixed the target tree (the "what"); everything below
+is the "how", which §3 never specified.
+
+**Hard constraint for 25.7, inherited verbatim from §42's opening: no POJO
+changes, no `logic/`/`client/` changes, no `*Customization`/codec changes, and —
+new here — *no key moves either*.** 25.7 changes only *which file* a key is read
+from. Every dotted path, every default, every warning string, every
+`toYaml()`/`summary()` byte and the golden
+`common/src/test/resources/config/reference-defaults.yaml` stay exactly as
+25.6h left them. That is what keeps all 103 `config/tests/*.yaml` fixtures
+valid through this task (§43.8).
+
+### 43.1 What the load path is today
+
+Re-read end to end before designing the change (not from §41.7's line numbers,
+which predate 25.2h):
+
+| Step | Site | Behavior |
+|---|---|---|
+| entry | `WorldzCommon.java:30-31` | `WorldzConfig.load(configDirectory, MOD_ID, LOGGER)`, once per launch |
+| file choice | `WorldzConfig.java:180-187` | `configDir.resolve(modId + ".yaml")`; present → `loadExisting`, absent → `new WorldzConfig().sanitize(logger)`; then always `writeReference` |
+| read | `WorldzConfig.java:189-196` | `parse(Files.readString(f), logger).sanitize(logger)`, whole thing wrapped in one `catch (Exception)` → WARN + all-defaults |
+| parse | `WorldzConfig.java:198-207` | `createYaml().load(yaml)`; root must be a `Map` or `IllegalArgumentException("root value must be a YAML mapping")`; `ROOT.read(loaded, new ParseContext(logger, presentKeys::add))`; stores `Set.copyOf(presentKeys)` |
+| schema walk | `SchemaSection.java:84-104` | for each declared `Setting`, `map.containsKey(key)` → codec read → `accessor.set` → `markPresent(fullPath)` |
+| sanitize | `WorldzConfig.java:209-211`, `SchemaSection.java:115-122` | one pass over the *whole* merged model, then each section's `postValidate` |
+| emit | `WorldzConfig.java:236-238`, `:244-246`, `:252-261` | `ROOT.toMap(this)` → SnakeYAML; reference file = fixed header + all-defaults dump, written to `<configDir>/<modId>.reference.yaml` every load, never throwing |
+
+Two properties of that path are what make this task cheap:
+
+1. **`ROOT.read` consumes an already-loaded `Map`, not a string.** The
+   file→`Map` step (`createYaml().load`) and the `Map`→model step
+   (`ROOT.read`) are already separate lines in `parse`
+   (`WorldzConfig.java:199-204`). N files can therefore be merged into one root
+   `Map` *before* the schema ever sees them, with the schema untouched.
+2. **Dotted paths are built by the schema, never by the caller.**
+   `SchemaSection.childPath` (`SchemaSection.java:110-112`) and
+   `ParseContext.rescopedTo` (`ParseContext.java:70-72`) derive every path from
+   `section.path()`, so a value's path is independent of which file it came
+   from.
+
+### 43.2 Section-to-file mapping (all 26 root entries)
+
+Axis 1 is F3's live-vs-baked split; axis 2, inside the baked half, is world-type
+identity. `WorldzRootSchema.declare()` (`WorldzRootSchema.java:108-226`) has
+exactly 26 top-level entries — 1 scalar, 2 groups, 23 sections. All 26 are
+assigned; none is left over.
+
+| # | Root key | File | Wrapping | Why (F3 scope, verified call site) |
+|---|---|---|---|---|
+| 1 | `allowedBiomes` | `world-types/worldz.yaml` | wrapped | F3 row 3. `LimitedBiomeSource.java:909` via `resolveConfiguredBiomes`, generic branch only |
+| 2 | `starter` (group) | `world-types/worldz.yaml` | wrapped | F3 row 3 (`starterBiome`/`starterRadiusBlocks`/3 land keys). `LimitedBiomeSource.java:304-310` generic fallback |
+| 3 | `naturalBiomes` (group) | `world-types/worldz.yaml` | wrapped | F3 row 3 (`allowRivers`/`allowOceans`). `LimitedBiomeSource.java:398,402` final `else` branch |
+| 4 | `layout` | `world-types/worldz.yaml` | wrapped | F3 row 3. `LimitedBiomeSource.java:374` `WorldLayoutPlan.fromConfig(config, …)`, generic branch only |
+| 5 | `spawn` | `world-types/worldz.yaml` | wrapped | F3 row 3. `LimitedBiomeSource.java:388` `config.spawn.strategy`, generic branch only; also `WorldzCustomization.java:161` |
+| 6 | `overworldBorder` | `world-defaults.yaml` | wrapped | F3 row 2 |
+| 7 | `netherBorder` | `world-defaults.yaml` | wrapped | F3 row 2 |
+| 8 | `endBorder` | `world-defaults.yaml` | wrapped | F3 row 2 |
+| 9 | `overworldExterior` | `world-defaults.yaml` | wrapped | F3 row 2; also `ExteriorSchema`'s cross-section border read (R2) — same file, see §43.4 |
+| 10 | `netherExterior` | `world-defaults.yaml` | wrapped | F3 row 2 |
+| 11 | `strip` | `world-types/strip-world.yaml` | wrapped (with 12) | **D10.** `StripWorldCustomization.java:101-103` reads it as the corridor width; `EnvelopedChunkGenerator.java:1008-1010` is the fallback. See §43.3 |
+| 12 | `stripWorld` | `world-types/strip-world.yaml` | wrapped (with 11) | D10, the other half of the split brain |
+| 13 | `singleBiome` | `world-types/single-biome.yaml` | **unwrapped** | preset `single_biome` |
+| 14 | `chaosBiomes` | `world-types/chaos-biomes.yaml` | **unwrapped** | preset `chaos_biomes` |
+| 15 | `oceanIsland` | `world-types/ocean-island.yaml` | **unwrapped** | preset `ocean_island` |
+| 16 | `skyIsland` | `world-types/sky-island.yaml` | **unwrapped** | preset `sky_island` |
+| 17 | `chunkIsland` | `world-types/sky-chunk.yaml` | **unwrapped** | preset `sky_chunk` — **filename ≠ section key**, deliberate (§3: "each filename matches its world preset id"); the only such case |
+| 18 | `cave` | `world-types/cave.yaml` | **unwrapped** | preset `cave` |
+| 19 | `netherStart` | `world-types/nether-start.yaml` | **unwrapped** | preset `nether_start` |
+| 20 | `endStart` | `world-types/end-start.yaml` | **unwrapped** | preset `end_start` |
+| 21 | `flat` | `world-types/flat.yaml` | **unwrapped** | preset `flat` |
+| 22 | `deepFlat` | `world-types/deep-flat.yaml` | **unwrapped** | preset `deep_flat` |
+| 23 | `stacked` | `world-types/stacked.yaml` | **unwrapped** | preset `stacked` |
+| 24 | `foreverNight` | `runtime.yaml` | wrapped | F3 row 1, live: `WorldHazardManager.java:64,107` |
+| 25 | `risingLava` | `runtime.yaml` | wrapped | F3 row 1, live: `WorldHazardManager.java:65,87,108,121` |
+| 26 | `structureDistance` | `runtime.yaml` | wrapped | F3 row 1, live (DESIGN §36.4's `WorldzCommon.config()` read) |
+
+**15 files.** (§3's 16, minus `kits.yaml` — §43.6.) All 13
+`world_preset/*.json` ids get exactly one file, and every file's owned key set
+is disjoint from every other's, which is what makes merge order irrelevant
+(§43.4).
+
+**Wrapped vs unwrapped.** A file that owns exactly one root key may be
+*unwrapped*: its root mapping **is** that key's body, so `cave.yaml` starts at
+`spawnY: -32` with no `cave:` line — exactly `CONFIG-RESTRUCTURE.md` §3's two
+worked examples. A file owning several keys is *wrapped*: its root mapping is a
+partial copy of the config root, keyed as today. Three files are wrapped
+(`runtime.yaml`, `world-defaults.yaml`, `world-types/worldz.yaml`) plus
+`strip-world.yaml` until 25.9; twelve are unwrapped.
+
+*Rejected: making every file wrapped.* Uniform and ~10 lines cheaper, but it
+contradicts §3's own examples and re-adds the indentation Jason asked to remove
+("more nested structure with minimal overlap in property names" is served by
+`cave.yaml → sealedSurface.y`, not `cave.yaml → cave.sealedSurface.y`).
+
+*Rejected: globbing `config/jlt_worldz/**.yaml` and deep-merging whole-root
+fragments.* Filenames would carry no meaning, §3's "which file configures the
+world type I picked" property is lost, and F3's masquerade returns (any file
+could declare any key).
+
+### 43.3 Resolving `strip`/`stripWorld` (D10), explicitly
+
+Today one preset reads two unrelated top-level sections:
+`StripWorldCustomization.fromConfig` (`StripWorldCustomization.java:99-118`)
+takes `widthRadiusBlocks`/`widthMode`/`applyToNether` from `config.strip` and
+`bands.*`/`spawn.strategy` from `config.stripWorld`. `README.md:212` vs `:253`
+has to explain that split; F3 calls it the sharpest case.
+
+**25.7 does the file-level merge only:** both sections live in
+`world-types/strip-world.yaml`, which is therefore the one *wrapped* world-type
+file, with a header comment saying the two blocks are one preset and that they
+merge fully at 25.9.
+
+**25.7 does not do the key-level merge.** Folding `strip`'s three keys into the
+`stripWorld` section would mean `StripWorldSchema` (a
+`SchemaSection<StripWorldConfig>`) reaching fields that live on `StripConfig`
+via `WorldzConfig.strip` — impossible without a POJO move, which drags
+`EnvelopedChunkGenerator.java:1008-1010`, `StripWorldCustomization:101-103,190`
+and the strip Customize screen in. That is precisely the surgery 25.9 already
+has to do (`ObjectiveSite.narrowForStrip` returning a centre plus half-extent,
+`CONFIG-RESTRUCTURE.md` §5), so it rides along there for free instead of being
+paid for twice. **Amend TODO 25.9's text** to own the key-level merge and the
+`strip-world.yaml` unwrapping, and log the deferral in the Deviation log — the
+same treatment §42.1 gave `strip.widthRadiusBlocks`.
+
+**Accepted consequence, documentation-only:** `strip` is still read as a
+fallback for *any* world type (`EnvelopedChunkGenerator.java:1008-1010`), so a
+generic-`worldz` corridor is now configured in a file named `strip-world.yaml`.
+No behavior changes (same key → same POJO field → same read path); 25.10
+documents it. The alternative — duplicating `strip` into `worldz.yaml` too —
+would need two sources for one POJO field and is exactly the split brain D10
+exists to kill.
+
+### 43.4 Load mechanics
+
+**Adopted: merge N raw YAML maps into one root map, then run today's schema walk
+unchanged.** Rejected: teaching `SchemaSection`/`Setting`/`ParseContext` about
+file boundaries. The merge approach touches zero framework classes, keeps
+presence tracking and the unknown-key walker working by construction (§43.5),
+keeps `toYaml()`/`summary()`/`reference-defaults.yaml` byte-identical, and —
+decisively — keeps **sanitize a single pass over the complete model**, so every
+cross-section rule (`ExteriorSchema`'s border read, R2; 25.5's
+`config.present("overworldBorder")` gate at `LimitedBiomeSource.java:336` and
+`EnvelopedChunkGenerator.java:997`) sees the same picture it does today even
+when the two sections now live in different files.
+
+#### 43.4.1 New: `ConfigLayout` (main source, `config/` package)
+
+```java
+public record ConfigFile(String relativePath, List<String> rootKeys, boolean unwrapped) { }
+
+public final class ConfigLayout {
+    public static final List<ConfigFile> FILES = List.of(
+        new ConfigFile("runtime.yaml",       List.of("foreverNight", "risingLava", "structureDistance"), false),
+        new ConfigFile("world-defaults.yaml", List.of("overworldBorder", "netherBorder", "endBorder",
+                                                      "overworldExterior", "netherExterior"), false),
+        new ConfigFile("world-types/worldz.yaml", List.of("allowedBiomes", "starter", "naturalBiomes",
+                                                          "layout", "spawn"), false),
+        new ConfigFile("world-types/strip-world.yaml", List.of("strip", "stripWorld"), false), // 25.9 unwraps
+        new ConfigFile("world-types/single-biome.yaml", List.of("singleBiome"), true),
+        …  // 11 more unwrapped world-type files
+    );
+    public static Optional<ConfigFile> owning(String rootKey);   // reverse map, for the misfile WARN
+    public static final String BUNDLE_FILE = "all.yaml";
+}
+```
+
+Declarative and hand-written, **not** derived from `Setting.applies()`:
+`Setting.Builder`'s applicability defaults to `Applicability.worldDefault()`
+(`Setting.java:139`) and only 3 schema classes ever override it, so today's
+metadata cannot carry the mapping. 25.7a instead *corrects* the 26 root-level
+settings' applicability to match their assigned file
+(`Applicability.live()`/`preset(...)`, `Applicability.java:17-29`) and has the
+layout test assert the two agree — nothing consumes `applies()` at runtime
+(only `ConfigSchemaMetadataTest`), so that correction is metadata-only and
+risk-free.
+
+#### 43.4.2 `load`
+
+```
+load(configDir, modId, logger):
+    dir     = configDir.resolve(modId)              // config/jlt_worldz/
+    bundle  = dir.resolve("all.yaml")
+    root    = Files.exists(bundle) ? readBundle(bundle, logger)      // whole-root map
+                                   : readSplit(dir, logger)          // merged map, may be empty
+    config  = root.isEmpty() ? new WorldzConfig().sanitize(logger)
+                             : parseMap(root, logger).sanitize(logger)   // one catch, as today
+    writeReference(configDir, modId, logger)        // unchanged: config/jlt_worldz.reference.yaml
+    return config
+```
+
+- `parse(String)` is refactored into `parse(String)` → `parseMap(Map)`; the
+  root-must-be-mapping check and the `presentKeys` wiring
+  (`WorldzConfig.java:198-207`) move into `parseMap` untouched, so both entry
+  points share them.
+- `readSplit` walks `ConfigLayout.FILES` in declaration order. Order is
+  provably irrelevant (disjoint owned key sets, asserted by
+  `ConfigLayoutTest`), so there are **no precedence rules inside the directory
+  form** — a property worth keeping, because per-key precedence across 15 files
+  is exactly the kind of thing users cannot reason about.
+- For each file: absent → skip silently; blank/`null` document → skip silently
+  (a legitimate "I emptied this file" state; note today's `parse("")` throws,
+  so this is a deliberate per-file refinement); root not a mapping → WARN
+  naming the file, skip; any other exception (YAML syntax) → WARN naming the
+  file, skip. Then: unwrapped → `root.put(ownedKey, fileMap)`; wrapped →
+  copy each entry of `fileMap` whose key the file owns, and WARN on any it does
+  not (§43.5).
+
+#### 43.4.3 Missing files: 25.4's posture holds, per file
+
+`missingConfigUsesDefaultsWithoutCreatingAUserConfigFile`
+(`WorldzConfigTest.java:60-93`) is the standing contract, and it survives
+unchanged per file: **every one of the 15 files is optional, none is ever
+created by the mod, and an absent file simply leaves its sections at code
+defaults.** An absent `config/jlt_worldz/` directory entirely is the normal
+fresh-install state — defaults, plus the one generated
+`config/jlt_worldz.reference.yaml` (which is outside the user's directory, so
+D4 is not weakened). No warning for an absent file: with 15 optional files, 15
+INFO lines about files nobody wrote would be noise.
+
+#### 43.4.4 Error isolation: YAML-level yes, value-level no
+
+- **Isolated:** a file that fails to *load as YAML* (syntax error, non-mapping
+  root) costs only its own sections; the other 14 still apply. This is strictly
+  better than today's all-or-nothing `loadExisting` catch
+  (`WorldzConfig.java:189-196`) and is the main user-visible upside of the
+  split.
+- **Not isolated:** a *value* error inside a file (e.g. `starter: {radius:
+  "abc"}`, which `Codecs.INT` throws on — the leniency §41.3 calls
+  load-bearing, guarded by
+  `fractionalRadiusMakesTheFileInvalidWithoutOverwritingIt`) still aborts
+  `parseMap` and falls back to all-defaults, exactly as today. Isolating it
+  would mean per-section error tolerance, i.e. a config that is half the user's
+  and half defaults — a semantic change nobody asked for, and one that would
+  silently mask typos. **Decided: keep today's semantics; make the diagnostic
+  better instead** — the fallback WARN lists the files that were loaded, so the
+  user knows where to look.
+- The bundle path keeps today's behavior exactly (one file, one catch).
+
+#### 43.4.5 The single-file bundle (`config/jlt_worldz/all.yaml`)
+
+**Optional, first-class, and when present it wins wholesale**: the other files
+in the directory are ignored, with one WARN naming both. Rationale:
+
+1. It is the shape the whole test suite, all 103 `config/tests/*.yaml` fixtures
+   and Jason's entire manual workflow (`config/tests/README.md:10-22` — `cp` a
+   fixture over the active config) already use. Without it, 25.11 becomes 103
+   fixture *directories* and a MANUAL_TESTING rewrite (§43.8).
+2. It is the shape `jlt_worldz.reference.yaml` is generated in
+   (`WorldzConfig.java:244-246`), so the reference file stays directly
+   copyable — the instruction its header already gives.
+3. "Wholesale" rather than layered: a copied fixture must fully determine
+   behavior, or a leftover `world-types/cave.yaml` from a previous test round
+   silently contaminates the next one. No per-key merge semantics to document.
+
+*Not* named `config/jlt_worldz.yaml`: reusing the old path would let a stale
+pre-Phase-25 file silently outrank a correct new directory, and D1 ("old
+configs simply stop loading") is cleanest if that exact path stops being read
+at all. Placing it *inside* `config/jlt_worldz/` keeps everything the mod reads
+in one directory. This is the one decision worth Jason's veto (§43.10).
+
+### 43.5 Presence tracking and the unknown-key gate
+
+**Presence (25.3): no change at all.** `SchemaSection.readOne`
+(`SchemaSection.java:98-104`) marks `childPath(key)`, derived from
+`section.path()`, and `WorldzConfig.parse` installs the sink
+(`WorldzConfig.java:203-205`). Because merging happens before `ROOT.read`, the
+dotted paths are byte-identical whichever file a key came from, and
+`config.present("overworldBorder")` keeps working across the
+`world-defaults.yaml` / `world-types/stacked.yaml` boundary that 25.5 depends on
+(`LimitedBiomeSource.java:336`, `EnvelopedChunkGenerator.java:997`). Add one
+regression test asserting exactly that cross-file case rather than assuming it.
+
+One semantic to write down: for an **unwrapped** file the loader synthesizes the
+wrapper key, so "the file exists and parses to a mapping" ⇒
+`present("cave") == true`, matching today's "the user wrote `cave:`". A blank
+file synthesizes nothing, so it marks nothing present.
+
+**Unknown-key gate: needs a per-file variant.** `SchemaKeyWalker.findUnknownKeys`
+(`SchemaKeyWalker.java:72-90`) walks a whole-root map against the whole root
+schema; run against `cave.yaml`'s unwrapped body it would report every key as
+unknown. Add a sibling:
+
+```java
+static void findUnknownKeysInFile(WorldzRootSchema root, ConfigFile file, Map<?, ?> fileMap,
+                                  List<String> unknown, List<String> misfiled)
+```
+
+- **unwrapped:** resolve the one owned root `Setting`, take its
+  `Rule.Nested.section()`, and delegate to today's `findUnknownKeys` against
+  that child section — so `cave.yaml` is checked against `CaveSchema` only, and
+  a stray key there is never measured against `ocean-island.yaml`'s shape.
+- **wrapped:** for each file key — owned → recurse exactly as
+  `findUnknownKeys` does today (including the `Rule.Nested` + value-is-a-map
+  guard that protects `layout.roleOverrides`, `SchemaKeyWalker.java:84-88`);
+  not owned but owned by another file (`ConfigLayout.owning`) → *misfiled*;
+  otherwise → *unknown*. Splitting misfiled from unknown is what makes the
+  diagnostic useful ("`cave` belongs in `world-types/cave.yaml`").
+
+Existing `ConfigFixturesTest` (`ConfigFixturesTest.java:81-97`) is **unchanged**:
+its fixtures are bundle-shaped, so the whole-root walk stays correct, and
+`EXPECTED_FIXTURE_COUNT = 103` / the empty `KNOWN_UNKNOWN_KEYS` map stay as
+25.6g left them.
+
+**Production gets a shallow version of the same check.** The split introduces
+one genuinely new failure mode — right key, wrong file — that is otherwise
+silent, so `readSplit` WARNs on any *top-level* file key it does not own,
+naming the file that does own it. Top level only; deep unknown-key checking
+stays the test's job, matching R14's "unknown keys are tolerated" posture for
+everything below the root.
+
+### 43.6 `kits.yaml`: not created by 25.7
+
+**Decision: 25.7 does not create, ship or declare `kits.yaml`. 25.8 adds it as
+one more `ConfigFile` entry when it adds the `kits` root section.** Three
+reasons, in order of weight:
+
+1. `ConfigLayout`'s completeness test asserts that the files' owned keys
+   *exactly partition* `WorldzRootSchema.declare()`'s keys. There is no `kits`
+   root key until 25.8, so a `kits.yaml` entry owning nothing would fail the
+   very gate that makes the layout trustworthy. Weakening the gate on day one
+   to accommodate a placeholder is the wrong trade.
+2. D4 forbids the mod writing user config files, so an "empty placeholder"
+   could only be a repo artifact the mod never reads — i.e. documentation, and
+   25.10 owns documentation.
+3. Precedent: 25.6 introduced each shared schema class in the sub-step that
+   first needed it (`ChestSchema` at 25.6d, `UndergroundSchema` at 25.6g), never
+   ahead of a consumer.
+
+`ConfigLayout` carries a one-line comment reserving the name and pointing at
+25.8, so the intended path is discoverable without existing.
+
+### 43.7 The generated reference stays one file
+
+`CONFIG-RESTRUCTURE.md` §3's single top-level
+`config/jlt_worldz.reference.yaml` is **confirmed correct**, even though the
+live config is now 15 files:
+
+- **Writing 15 reference files would mean writing inside
+  `config/jlt_worldz/`** — the user's own directory, next to files with the
+  same names as theirs. That is one rename away from clobbering a user's config
+  and sits badly against D4 (`WorldzConfig.java:249-261` deliberately writes
+  only the sibling `<modId>.reference.yaml`). Decisive on its own.
+- One file is one `grep`. The reference's job is "what is this setting called
+  and what does it do", not "where do I put it" — and the *where* is answered by
+  a per-section annotation, which is cheaper and more legible than 15 sparse
+  files.
+- The reference doubles as a valid `all.yaml` bundle (§43.4.5), which it stops
+  being if split.
+
+25.7's only change to it: extend `REFERENCE_HEADER`
+(`WorldzConfig.java:67-72`) with the file map, so the generated file explains
+the split — e.g. `# foreverNight/risingLava/structureDistance ->
+config/jlt_worldz/runtime.yaml`. Per-key doc comments and per-setting
+"lives in / live-vs-baked" annotations remain 25.10's job (its bespoke renderer
+does not exist yet, per 25.4's own close-out note in §41.9).
+`referenceFileBodyMatchesTheCapturedSchemaDefaults`
+(`WorldzConfigTest.java:213-223`) only requires header lines to start with `#`,
+so the header grows without touching the golden file.
+
+### 43.8 Migration/fixture impact (25.11 preview)
+
+TODO 25.11's "must land with 25.6/25.7 or the suite breaks" was written for a
+25.7 that moved keys. **This design moves no keys**, so nothing in
+`config/tests/` breaks and 25.11 is *not* pulled into 25.7:
+
+| Artifact | 25.7 impact |
+|---|---|
+| 103 `config/tests/*.yaml` | **None.** They stay single, bundle-shaped files; `ConfigFixturesTest` keeps passing unmodified |
+| `config/jlt_worldz.example.yaml` | **None** in 25.7. Still build-coupled via `documentedExampleParsesToTheSameDefaultsAsCode` (`WorldzConfigTest.java:95-105`) and still a valid bundle. 25.10 decides whether the generated reference retires it (F6) |
+| `reference-defaults.yaml` | **None** — no key moved. Unlike every 25.6 sub-step, 25.7 must **not** regenerate it; if a sub-step's diff touches it, that sub-step has a bug |
+| `config/tests/README.md`, `MANUAL_TESTING.md` | Prose only, still 25.11 per §42.5 — plus one new sentence: the `cp` target becomes `config/jlt_worldz/all.yaml` (`config/tests/README.md:10-22`, `MANUAL_TESTING.md:48`) |
+| `README.md` | 25.7d adds the file-tree/two-forms section; the 139 settings rows stay 25.10's |
+
+If Jason vetoes the bundle (§43.10), this table inverts: 103 fixtures become
+103 directories, `MANUAL_TESTING.md` and `config/tests/README.md` need full
+rewrites, and 25.11 must land atomically with the load change. That asymmetry
+is the strongest argument for the bundle.
+
+### 43.9 Sub-step sequence
+
+Five steps, following 25.2a-h / 25.6a-h's discipline: each builds green, each is
+independently committable. **Nothing here is forced to land atomically** —
+precisely because the bundle preserves the existing single-file path, so
+directory loading is purely additive. (Without the bundle, `b`+`d`+25.11 would
+have to be one commit.)
+
+| Step | Scope | What it proves |
+|---|---|---|
+| **a** | `ConfigLayout` + `ConfigFile` (main), applicability corrected on the 26 root settings, new `ConfigLayoutTest`. No load change. | The mapping is *total* and self-checking: owned keys exactly partition `WorldzRootSchema.declare()`; no duplicate ownership; unwrapped ⇒ exactly one key; `runtime.yaml` ⊆ `Scope.LIVE`, `world-defaults.yaml` ⊆ `WORLD_DEFAULT`, `world-types/*` ⊆ `PRESET`; each world-type filename matches a `world_preset/*.json` id (with `sky-chunk`↔`chunkIsland` allow-listed by name, the same "allow-list the one deliberate exception" style as `BLOCKS_SUFFIX_ALLOW_LIST`, `ConfigSchemaMetadataTest.java:40`) |
+| **b** | `parse(String)` → `parseMap(Map)` refactor; `readSplit`/`readBundle`; `load` rewritten per §43.4.2; per-file skip/WARN handling. New `ConfigDirectoryLoadTest`. | End-to-end: **split the golden `reference-defaults.yaml` into the 15 files mechanically via `ConfigLayout`, write to a `@TempDir`, `load`, assert `toYaml()` equals the golden byte-for-byte** — one test that exercises every file, both wrappings and the whole merge. Plus: absent dir → defaults + no files created; absent/blank/broken single file isolated; bundle wins wholesale + WARN; cross-file `present("overworldBorder")` still true for `stacked` |
+| **c** | `SchemaKeyWalker.findUnknownKeysInFile` (test) + the shallow production misfile WARN (`ConfigLayout.owning`). | A stray key in `cave.yaml` is reported against `CaveSchema` only; `cave:` written into `runtime.yaml` is reported as misfiled, naming the right file; `layout.roleOverrides`' arbitrary sub-keys still don't trip it |
+| **d** | Docs: `README.md` config section (the file tree, wrapped-vs-unwrapped, bundle, and the first written statement of F3's live-vs-baked split as it maps to `runtime.yaml` vs the rest); `REFERENCE_HEADER` file map; one-line `config/tests/README.md` note about the new `cp` target. | The tree is never self-contradictory; 25.10 still owns the generated tables |
+| **e** | Close-out: Deviation log (strip file-level-only merge → 25.9; `kits.yaml` deferred → 25.8), TODO amendments (25.9 owns the key-level strip merge and unwrapping `strip-world.yaml`; 25.11's scope shrinks to prose), full `./gradlew build` on all modules, NeoForge brief check (no loader-level code changes expected — `WorldzCommon.java:30-31` keeps its signature). **[Jason]**: redeploy both Prism instances *before* asking him to test (MEMORY: deploy-jar-before-requesting-test) | The phase gate: nothing half-migrated, both loaders green |
+
+**Dependencies.** `a` blocks `b` and `c`; `c` is independent of `b` (it only
+needs the layout); `d` needs `b`; `e` last. `b` is the only step with real
+runtime risk.
+
+**Per-step checklist** (`b`-`d`):
+
+1. change; 2. **confirm `reference-defaults.yaml` is untouched** (`git diff`
+   must not list it — §43.8); 3. run `ConfigFixturesTest` (all 103 must stay
+   green, unmodified); 4. `./gradlew build`; 5. commit.
+
+### 43.10 Single-file bundle (resolved)
+
+**Resolved (Jason, 2026-07-28): keep the bundle.** `config/jlt_worldz/all.yaml`
+stays: optional, ignored unless you create it, and when present it replaces
+the 15 split files wholesale (§43.4.5) — the recommended option, per this
+design's own reasoning above (§43.4.5, §43.8). It exists because it is what
+`config/tests/*.yaml` and `config/tests/README.md:10-22`'s `cp`-a-fixture
+workflow are — without it, 25.11 turns 103 fixture files into 103 fixture
+*directories* and `MANUAL_TESTING.md` needs a full rewrite (§43.8). It is also
+the shape `jlt_worldz.reference.yaml` is generated in, so the reference file
+stays directly copyable. The accepted cost: two config forms exist forever,
+and a user who only ever writes `all.yaml` never sees D2/F3's organized
+layout.
+
+Everything else in this section is an engineering call already determined by
+D1/D2/D4/D10, F3's measured scope table and §41/§42's own precedents, and is
+recorded above rather than asked: the section-to-file mapping, wrapped vs
+unwrapped, merge-before-walk, per-file optionality, YAML-level-only error
+isolation, `kits.yaml` deferral, the single generated reference, and the
+`strip` key-level merge going to 25.9.
