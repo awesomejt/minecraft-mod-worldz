@@ -15,8 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Configuration baked into newly created Worldz worlds. */
 public final class WorldzConfig {
@@ -144,6 +146,12 @@ public final class WorldzConfig {
     /** Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14). */
     public boolean allowOceans = false;
 
+    /**
+     * The dotted paths the user explicitly wrote in the source config (TODO 25.3); empty for any
+     * instance built via {@code new WorldzConfig()}, since no file was ever parsed.
+     */
+    private Set<String> presentKeys = Set.of();
+
     /** Creates a config populated with defaults. */
     public WorldzConfig() {
     }
@@ -184,11 +192,28 @@ public final class WorldzConfig {
         if (!(loaded instanceof Map<?, ?>)) {
             throw new IllegalArgumentException("root value must be a YAML mapping");
         }
-        return ROOT.read(loaded, new ParseContext(logger));
+        LinkedHashSet<String> presentKeys = new LinkedHashSet<>();
+        WorldzConfig config = ROOT.read(loaded, new ParseContext(logger, presentKeys::add));
+        config.presentKeys = Set.copyOf(presentKeys);
+        return config;
     }
 
     WorldzConfig sanitize(Logger logger) {
         return ROOT.sanitize(this, new SanitizeContext(logger, this));
+    }
+
+    /**
+     * Reports whether the user explicitly wrote a given key in the source config, as opposed to
+     * it being left at (or coincidentally set to) its default value. {@code dottedPath} uses the
+     * same dotted-path convention as schema warnings and error messages (e.g. {@code
+     * "stacked.worldSizeChunks"}, {@code "cave.easyKit.essentials"}).
+     *
+     * @param dottedPath the full dotted path of the key to check
+     * @return {@code true} if the key was present in the parsed source, {@code false} otherwise
+     *     (including for any instance never built via {@link #parse})
+     */
+    public boolean present(String dottedPath) {
+        return presentKeys.contains(dottedPath);
     }
 
     /**

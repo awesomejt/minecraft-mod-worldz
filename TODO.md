@@ -3844,12 +3844,26 @@ tests.
       `ConfigSchemaMetadataTest` (every setting has doc + unit + applicability;
       the schema's flattened key list exactly equals `toYaml()`'s — the
       completeness gate F6 wanted and 25.10 reuses).
-- [ ] 25.3 Presence tracking (D5, needs 25.2). With the schema owning parse,
-      "the user wrote this key" becomes a property of the parse result instead
-      of something reconstructed from magic values. Note `WorldzConfig.parse`
-      already gates every field on `containsKey` today and throws that fact
-      away — that discard is the root cause of the thrice-fixed stacked border
-      bug (17.4a, 17.5, 17.6).
+- [x] 25.3 Presence tracking (D5, needs 25.2) — **done**. `ParseContext` gained
+      a `public ParseContext(Logger, Consumer<String>)` constructor recording
+      every `markPresent` call (the one-arg constructor keeps discarding, for
+      callers that don't care). `WorldzConfig.parse` now wires a
+      `LinkedHashSet<String>` into it and stores the result as
+      `presentKeys`; `WorldzConfig.present(String dottedPath)` exposes it. No
+      schema change was needed — the dotted paths `SchemaSection.readOne` was
+      already building were already correct at every nesting depth. Verified
+      `presentKeys` survives `.sanitize()`: the root schema has no
+      `sanitize`/`postValidate` override, so `SchemaSection.sanitize` mutates
+      the same `WorldzConfig` instance in place rather than replacing it.
+      `ConfigPresenceTest` covers defaults-only (nothing present), an empty
+      `{}` parse (nothing present), a value explicitly set to its own default
+      (present anyway — proves this is presence, not value-diffing), nested
+      leaves/containers (`stacked.worldSizeChunks`, `cave.easyKit.essentials`)
+      and survival across `parse(...).sanitize(...)`. `./gradlew build` green.
+      No `config/tests/*.yaml` added — zero in-game-observable effect (no
+      schema/key/gameplay change), same as 25.1/25.2. **Not yet consumed
+      anywhere** — 25.5 (sentinel retirement) is what will call
+      `config.present(...)` for real; this task only proves the capability.
 - [ ] 25.4 Stop rewriting the config file (D4, needs 25.3 — see F5: today's
       rewrite makes every setting explicit after one launch, which would
       silently defeat 25.3). Load becomes parse-validate-log. Emit
