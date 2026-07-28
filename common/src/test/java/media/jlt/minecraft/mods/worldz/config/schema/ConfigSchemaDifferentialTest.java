@@ -1,19 +1,24 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.config.BorderConfig;
+import media.jlt.minecraft.mods.worldz.config.ChaosBiomesConfig;
 import media.jlt.minecraft.mods.worldz.config.DeepFlatConfig;
 import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
 import media.jlt.minecraft.mods.worldz.config.ExteriorConfig;
 import media.jlt.minecraft.mods.worldz.config.FlatConfig;
 import media.jlt.minecraft.mods.worldz.config.ForeverNightConfig;
+import media.jlt.minecraft.mods.worldz.config.LayoutConfig;
 import media.jlt.minecraft.mods.worldz.config.LegacySections;
 import media.jlt.minecraft.mods.worldz.config.RisingLavaConfig;
 import media.jlt.minecraft.mods.worldz.config.SchemaSections;
+import media.jlt.minecraft.mods.worldz.config.SingleBiomeConfig;
 import media.jlt.minecraft.mods.worldz.config.SpawnConfig;
 import media.jlt.minecraft.mods.worldz.config.StackedConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterCapsuleConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
+import media.jlt.minecraft.mods.worldz.config.StripBandsConfig;
 import media.jlt.minecraft.mods.worldz.config.StripConfig;
+import media.jlt.minecraft.mods.worldz.config.StripWorldConfig;
 import media.jlt.minecraft.mods.worldz.config.StructureDistanceConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
@@ -863,6 +868,283 @@ class ConfigSchemaDifferentialTest {
         assertEquals(DUMPER.dump(legacyCodec.toMap(legacyResult)), DUMPER.dump(schemaCodec.toMap(schemaResult)), label + ": toMap()");
         assertEquals(legacyCodec.summary(legacyResult), schemaCodec.summary(schemaResult), label + ": summary()");
         assertEquals(legacyLogger.warnings(), schemaLogger.warnings(), label + ": WARN lines");
+    }
+
+    // ---- TODO 25.2d: biome-list sections. All five have zero-arg factory methods on both
+    // registries (like TODO 25.2b's leaf sections), so they reuse assertSectionIdentical/corpusFor
+    // rather than needing their own comparison helpers. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("layoutCorpus")
+    void layoutSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.layout(), SchemaSections.layout(), LayoutConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> layoutCorpus() throws IOException {
+        return corpusFor("layout");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("layoutAdversarialFragments")
+    void layoutSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(label, LegacySections.layout(), SchemaSections.layout(), LayoutConfig::new, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> layoutAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("weighted biomes and role overrides, no warnings", """
+                layout:
+                  mode: ocean
+                  biomes:
+                    - "minecraft:plains@3"
+                    - "minecraft:desert"
+                    - "minecraft:ocean"
+                    - "minecraft:swamp"
+                  roleOverrides:
+                    "minecraft:swamp": "ocean"
+                  regionScaleBlocks: 300
+                """),
+            Arguments.of("invalid biome entries are dropped, not rejected", """
+                layout:
+                  biomes:
+                    - "minecraft:plains"
+                    - "#minecraft:is_overworld"
+                    - "minecraft:desert@-1"
+                """),
+            Arguments.of("ocean mode with no ocean biome falls back to legacy", """
+                layout:
+                  mode: ocean
+                  biomes:
+                    - "minecraft:plains"
+                """),
+            Arguments.of("single_biome mode with no singleBiome falls back to legacy", "layout:\n  mode: single_biome"),
+            Arguments.of("chaos mode with no land biome falls back to legacy", """
+                layout:
+                  mode: chaos
+                  biomes:
+                    - minecraft:ocean
+                """),
+            Arguments.of("strip_bands mode is never supported here and always falls back", "layout:\n  mode: strip_bands"),
+            Arguments.of("regionScaleBlocks below minimum is clamped up", "layout:\n  regionScaleBlocks: 1"),
+            Arguments.of("regionScaleBlocks above maximum is clamped down", "layout:\n  regionScaleBlocks: 999999"),
+            Arguments.of("singleBiome accepts ids but rejects tags", "layout:\n  singleBiome: \"#minecraft:is_overworld\""),
+            Arguments.of("roleOverrides drop invalid ids and roles", """
+                layout:
+                  roleOverrides:
+                    "Uppercase:plains": "ocean"
+                    "minecraft:desert": "not-a-role"
+                    "minecraft:swamp": "beach"
+                """),
+            Arguments.of(
+                "roleOverrides, regionScaleBlocks and singleBiome warnings all fire together, exercising postValidate's ordering",
+                """
+                layout:
+                  mode: chaos
+                  regionScaleBlocks: 1
+                  singleBiome: "#minecraft:is_overworld"
+                  roleOverrides:
+                    "Uppercase:plains": "ocean"
+                """
+            ),
+            Arguments.of("invalid mode value", "layout:\n  mode: not-a-mode"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("singleBiomeCorpus")
+    void singleBiomeSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.singleBiome(), SchemaSections.singleBiome(), SingleBiomeConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> singleBiomeCorpus() throws IOException {
+        return corpusFor("singleBiome");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("singleBiomeAdversarialFragments")
+    void singleBiomeSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.singleBiome(), SchemaSections.singleBiome(), SingleBiomeConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> singleBiomeAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                landBiome: desert
+                starterBiome: plains
+                starterRadiusBlocks: 512
+                spawn:
+                  strategy: preferred_natural_biome
+                allowRivers: true
+                allowOceans: true
+                allowBeaches: true
+                """),
+            Arguments.of("invalid landBiome falls back to plains", "landBiome: '#minecraft:is_overworld'"),
+            Arguments.of("starterBiome accepts a trimmed id", "starterBiome: ' desert '"),
+            Arguments.of("starterBiome rejects a tag", "starterBiome: '#minecraft:is_overworld'"),
+            Arguments.of("starterRadiusBlocks below minimum is clamped up", "starterRadiusBlocks: 1"),
+            Arguments.of("starterRadiusBlocks above maximum is clamped down", "starterRadiusBlocks: 999999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("chaosBiomesCorpus")
+    void chaosBiomesSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.chaosBiomes(), SchemaSections.chaosBiomes(), ChaosBiomesConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> chaosBiomesCorpus() throws IOException {
+        return corpusFor("chaosBiomes");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("chaosBiomesAdversarialFragments")
+    void chaosBiomesSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.chaosBiomes(), SchemaSections.chaosBiomes(), ChaosBiomesConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> chaosBiomesAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                biomes:
+                  - minecraft:plains@3
+                  - minecraft:desert
+                regionScaleBlocks: 256
+                starterBiome: plains
+                starterRadiusBlocks: 512
+                spawn:
+                  strategy: preferred_natural_biome
+                allowRivers: true
+                allowOceans: true
+                allowBeaches: true
+                """),
+            Arguments.of("empty biomes list falls back to the default biomes", "biomes: []"),
+            Arguments.of("invalid biome entries are dropped individually", """
+                biomes:
+                  - minecraft:desert
+                  - '#minecraft:is_overworld'
+                """),
+            Arguments.of("regionScaleBlocks below minimum is clamped up", "regionScaleBlocks: 1"),
+            Arguments.of("regionScaleBlocks above maximum is clamped down", "regionScaleBlocks: 999999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stripWorldCorpus")
+    void stripWorldSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.stripWorld(), SchemaSections.stripWorld(), StripWorldConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> stripWorldCorpus() throws IOException {
+        return corpusFor("stripWorld");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stripWorldAdversarialFragments")
+    void stripWorldSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.stripWorld(), SchemaSections.stripWorld(), StripWorldConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> stripWorldAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("spawn strategy override", "spawn:\n  strategy: vanilla_spawn"),
+            Arguments.of("bands enabled with usable biomes", """
+                bands:
+                  enabled: true
+                  biomes:
+                    - minecraft:desert
+                    - minecraft:jungle
+                  widthBlocks: 256
+                  seedRandomOrder: true
+                  allowRivers: false
+                  allowOceans: false
+                  allowBeaches: false
+                """),
+            Arguments.of("bands enabled with no usable biomes disables itself", """
+                bands:
+                  enabled: true
+                  biomes:
+                    - '#minecraft:is_overworld'
+                """),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stripBandsCorpus")
+    void stripBandsSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.stripBands(), SchemaSections.stripBands(), StripBandsConfig::new, rawValueOrNull);
+    }
+
+    /** Mined from each corpus file's nested {@code stripWorld.bands} key, since {@code stripBands}
+     * (unlike the other four TODO 25.2d sections) is never a top-level key -- {@link #corpusFor}
+     * only mines top-level keys, so this needs its own two-level miner. */
+    static Stream<Arguments> stripBandsCorpus() throws IOException {
+        List<Arguments> arguments = new ArrayList<>();
+        for (Path file : testConfigFiles()) {
+            Object loaded = LOADER.load(Files.readString(file));
+            arguments.add(Arguments.of(file.getFileName().toString(), stripWorldBandsValue(loaded)));
+        }
+        Object exampleLoaded = LOADER.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
+        arguments.add(Arguments.of("jlt_worldz.example.yaml", stripWorldBandsValue(exampleLoaded)));
+        arguments.add(Arguments.of("defaults (absent)", null));
+        return arguments.stream();
+    }
+
+    private static Object stripWorldBandsValue(Object loaded) {
+        Object stripWorld = loaded instanceof Map<?, ?> map ? map.get("stripWorld") : null;
+        return stripWorld instanceof Map<?, ?> map ? map.get("bands") : null;
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stripBandsAdversarialFragments")
+    void stripBandsSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.stripBands(), SchemaSections.stripBands(), StripBandsConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> stripBandsAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                enabled: true
+                biomes:
+                  - minecraft:desert
+                  - minecraft:jungle
+                widthBlocks: 256
+                seedRandomOrder: true
+                allowRivers: false
+                allowOceans: false
+                allowBeaches: false
+                """),
+            Arguments.of("tags are dropped individually", """
+                enabled: true
+                biomes:
+                  - minecraft:desert
+                  - '#minecraft:is_overworld'
+                """),
+            Arguments.of("enabled with no usable biomes disables itself", """
+                enabled: true
+                biomes:
+                  - '#minecraft:is_overworld'
+                """),
+            Arguments.of("widthBlocks below minimum is clamped up", "widthBlocks: 1"),
+            Arguments.of("widthBlocks above maximum is clamped down", "widthBlocks: 999999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
     }
 
     // ---- error paths: a root-level non-mapping value must reject identically ----

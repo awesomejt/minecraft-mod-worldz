@@ -96,6 +96,21 @@ public final class LegacySections {
         );
     }
 
+    /**
+     * {@code stripWorld.bands} is only reachable through {@link #stripWorld()} in production, but
+     * (like {@link #spawn}/{@link #starterKit}) gets its own adapter so the differential harness
+     * can exercise it directly. {@code sanitizeStripBands} takes no {@code name} parameter -- its
+     * one real call site always means {@code "stripWorld.bands"}, which is hardcoded here to match.
+     */
+    public static SectionCodec<StripBandsConfig> stripBands() {
+        return new Adapter<>(
+            (raw, ctx) -> WorldzConfig.readStripBandsConfig(raw, "stripWorld.bands", ctx.logger()),
+            (value, ctx) -> WorldzConfig.sanitizeStripBands(value, ctx.logger()),
+            WorldzConfig::stripBandsMap,
+            WorldzConfig::stripBandsSummary
+        );
+    }
+
     public static SectionCodec<OceanIslandConfig> oceanIsland() {
         return new Adapter<>(
             (raw, ctx) -> WorldzConfig.readOceanIslandConfig(raw, "oceanIsland", ctx.logger()),

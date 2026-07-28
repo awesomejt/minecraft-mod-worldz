@@ -3815,7 +3815,7 @@ tests.
       overridden `summary`) and `ExteriorSchema` (`oceanAllowed` + the
       cross-section border reference — R2, overridden `summary`). The two
       hardest shapes, alone, early.
-- [ ] 25.2d Biome-list sections (needs 25.2a). `LayoutSchema` (weighted list,
+- [x] 25.2d Biome-list sections (needs 25.2a). `LayoutSchema` (weighted list,
       `roleOverrides` string map, mode-vs-roles fallback, `<legacy>` summary),
       `ChaosBiomesSchema`, `SingleBiomeSchema`, `StripBandsSchema`,
       `StripWorldSchema`. Proves all four list rules plus the `allowRivers`/

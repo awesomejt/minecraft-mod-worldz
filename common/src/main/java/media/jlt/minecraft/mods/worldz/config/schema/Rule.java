@@ -1,6 +1,7 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
+import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -116,26 +117,46 @@ public sealed interface Rule<S, T> {
         }
     }
 
-    /** Sanitizes a list of biome-or-tag ids, dropping invalid entries individually. */
-    record BiomeIdList<S>(Mode mode, boolean warnOnTags, Supplier<List<String>> emptyFallback) implements Rule<S, List<String>> {
+    /**
+     * Sanitizes a list of biome-or-tag ids, dropping invalid entries individually. Every warning
+     * template is supplied by the caller, never built from {@code name} (DESIGN R6's "carries its
+     * own warning text" applied to lists): {@code sanitizeStripBands} (the one current caller,
+     * TODO 25.2d) hardcodes its section name only, without the leaf key, so the generic {@code
+     * name} passed to {@link #apply} -- always the full {@code section.key} dotted path -- would
+     * be the wrong text to interpolate.
+     *
+     * @param invalidWarning one-arg template for a syntactically invalid entry (the raw value)
+     * @param tagWarning one-arg template for a rejected tag entry (the tag id), or {@code null} to
+     *     drop tags silently ({@code REJECT_TAGS} only; ignored for {@code ALLOW_TAGS})
+     * @param emptyFallback replacement for a fully-empty resolved list, or {@code null} to leave it
+     *     empty
+     * @param emptyWarning literal (no format args) warning logged when {@code emptyFallback} fires
+     */
+    record BiomeIdList<S>(
+        Mode mode, String invalidWarning, String tagWarning, Supplier<List<String>> emptyFallback, String emptyWarning
+    ) implements Rule<S, List<String>> {
         @Override
         public List<String> apply(S owner, List<String> value, String name, SanitizeContext ctx) {
             BiomeListSpec spec = BiomeListSpec.parse(value);
             for (String invalid : spec.invalidEntries()) {
-                ctx.logger().warn("Ignoring invalid {} biome '{}'.", name, invalid);
+                ctx.logger().warn(invalidWarning, invalid);
             }
             List<String> resolved;
             if (mode == Mode.REJECT_TAGS) {
                 for (BiomeListSpec.Entry entry : spec.entries()) {
-                    if (entry.tag() && warnOnTags) {
-                        ctx.logger().warn("Ignoring {} biome tag '#{}'; concrete biome ids are required.", name, entry.id());
+                    if (entry.tag() && tagWarning != null) {
+                        ctx.logger().warn(tagWarning, entry.id());
                     }
                 }
                 resolved = new ArrayList<>(spec.entries().stream().filter(entry -> !entry.tag()).map(BiomeListSpec.Entry::id).toList());
             } else {
                 resolved = new ArrayList<>(spec.entries().stream().map(BiomeListSpec.Entry::configValue).toList());
             }
-            return resolved.isEmpty() && emptyFallback != null ? emptyFallback.get() : resolved;
+            if (resolved.isEmpty() && emptyFallback != null) {
+                ctx.logger().warn(emptyWarning);
+                return emptyFallback.get();
+            }
+            return resolved;
         }
 
         /** Whether biome tags ({@code #namespace:tag}) are kept or rejected. */
@@ -144,6 +165,38 @@ public sealed interface Rule<S, T> {
             ALLOW_TAGS,
             /** Tags are dropped (with an optional warning); only concrete ids survive. */
             REJECT_TAGS
+        }
+    }
+
+    /**
+     * Sanitizes a weighted biome list ({@code id} or {@code id@weight}), dropping invalid entries
+     * individually. Distinct from {@link BiomeIdList}: parsing goes through {@link
+     * WeightedBiomeListSpec}, which never accepts tags at all (layout roles are resolved per
+     * concrete id, with no registry to expand a tag against) -- so there is no tag-rejection
+     * warning to configure. Used by {@code layout.biomes} and {@code chaosBiomes.biomes} (TODO
+     * 25.2d).
+     *
+     * @param invalidWarning one-arg template for a syntactically invalid entry (the raw value)
+     * @param emptyFallback replacement for a fully-empty resolved list, or {@code null} to leave it
+     *     empty (e.g. {@code layout.biomes}, which has no empty-list fallback of its own -- the
+     *     mode-vs-roles cross-check handles an empty list instead)
+     * @param emptyWarning literal (no format args) warning logged when {@code emptyFallback} fires
+     */
+    record WeightedBiomeIdList<S>(
+        String invalidWarning, Supplier<List<String>> emptyFallback, String emptyWarning
+    ) implements Rule<S, List<String>> {
+        @Override
+        public List<String> apply(S owner, List<String> value, String name, SanitizeContext ctx) {
+            WeightedBiomeListSpec spec = WeightedBiomeListSpec.parse(value);
+            for (String invalid : spec.invalidEntries()) {
+                ctx.logger().warn(invalidWarning, invalid);
+            }
+            List<String> resolved = new ArrayList<>(spec.entries().stream().map(WeightedBiomeListSpec.Entry::configValue).toList());
+            if (resolved.isEmpty() && emptyFallback != null) {
+                ctx.logger().warn(emptyWarning);
+                return emptyFallback.get();
+            }
+            return resolved;
         }
     }
 
