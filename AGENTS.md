@@ -21,7 +21,9 @@ world hazards). Java 25, Gradle wrapper, base package
    you learn; never re-litigate what's recorded there.
 5. `MANUAL_TESTING.md` — how Jason tests. Keep its scenario tables current.
 
-(`TODO-archive.md` is the completed pre-replan history — reference only.)
+(`TODO-archive.md` is the completed pre-replan history — reference only.
+`TODO-done.md` holds full checklists for this plan's own completed phases;
+`TODO.md` keeps only a one-line stub per finished phase.)
 
 ## Roles
 
