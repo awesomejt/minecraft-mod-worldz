@@ -3790,7 +3790,7 @@ tests.
       buildable/testable/committable per AGENTS.md's per-task discipline.
       **This is the largest refactor in the project's history — two provable
       steps (schema first here, restructure in 25.6/25.7, never one leap).**
-- [ ] 25.2a Framework + shared leaf sections + the differential harness
+- [x] 25.2a Framework + shared leaf sections + the differential harness
       (DESIGN §41.2-§41.5, §41.8). Build `config/schema/`: `Setting`,
       `Accessor`, `ValueCodec`/`Codecs`, `Rule`, `Docs`, `Applicability`,
       `SummarySpec`, `ParseContext`, `SanitizeContext`, `SchemaSection`,

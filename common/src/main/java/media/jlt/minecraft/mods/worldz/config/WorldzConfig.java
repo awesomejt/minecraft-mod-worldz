@@ -1,5 +1,10 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.config.schema.ParseContext;
+import media.jlt.minecraft.mods.worldz.config.schema.SanitizeContext;
+import media.jlt.minecraft.mods.worldz.config.schema.SchemaSection;
+import media.jlt.minecraft.mods.worldz.config.schema.StarterCapsuleSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.StarterKitSchema;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
@@ -20,6 +25,7 @@ import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 import org.slf4j.Logger;
+import org.slf4j.helpers.NOPLogger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -78,7 +84,7 @@ public final class WorldzConfig {
      * (DESIGN §34.7) -- a small fraction of the 30-block minimum default air gap. */
     public static final int MAX_STACKED_RELIEF_BLOCKS = 16;
 
-    private static final String YAML_EXTENSION = ".yaml";
+    static final String YAML_EXTENSION = ".yaml";
 
     /** Biome ids and biome-tag ids allowed in new Worldz worlds. */
     public List<String> allowedBiomes = new ArrayList<>(List.of(
@@ -178,7 +184,7 @@ public final class WorldzConfig {
         return loadExisting(configFile, logger);
     }
 
-    private static WorldzConfig loadExisting(Path configFile, Logger logger) {
+    static WorldzConfig loadExisting(Path configFile, Logger logger) {
         try {
             WorldzConfig config = parse(Files.readString(configFile), logger).sanitize(logger);
             config.save(configFile);
@@ -219,74 +225,79 @@ public final class WorldzConfig {
                 object.get("starterLandFoundationDepthBlocks"), "starterLandFoundationDepthBlocks"
             );
         }
+        ParseContext ctx = new ParseContext(logger);
         if (object.containsKey("overworldBorder")) {
-            config.overworldBorder = readBorderConfig(object.get("overworldBorder"), "overworldBorder", "ensureEndPortal");
+            config.overworldBorder = SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal")
+                .read(object.get("overworldBorder"), ctx);
         }
         if (object.containsKey("netherBorder")) {
-            config.netherBorder = readBorderConfig(object.get("netherBorder"), "netherBorder", "ensureBlazeAccess");
+            config.netherBorder = SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess")
+                .read(object.get("netherBorder"), ctx);
         }
         if (object.containsKey("endBorder")) {
-            config.endBorder = readEndBorderConfig(object.get("endBorder"), "endBorder");
+            config.endBorder = SchemaSections.endBorder().read(object.get("endBorder"), ctx);
         }
         if (object.containsKey("overworldExterior")) {
-            config.overworldExterior = readExteriorConfig(object.get("overworldExterior"), "overworldExterior");
+            config.overworldExterior = SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true)
+                .read(object.get("overworldExterior"), ctx);
         }
         if (object.containsKey("netherExterior")) {
-            config.netherExterior = readExteriorConfig(object.get("netherExterior"), "netherExterior");
+            config.netherExterior = SchemaSections.exterior("netherExterior", c -> c.netherBorder, false)
+                .read(object.get("netherExterior"), ctx);
         }
         if (object.containsKey("strip")) {
-            config.strip = readStripConfig(object.get("strip"), "strip");
+            config.strip = SchemaSections.strip().read(object.get("strip"), ctx);
         }
         if (object.containsKey("layout")) {
-            config.layout = readLayoutConfig(object.get("layout"), "layout", logger);
+            config.layout = SchemaSections.layout().read(object.get("layout"), ctx);
         }
         if (object.containsKey("spawn")) {
-            config.spawn = readSpawnConfig(object.get("spawn"), "spawn");
+            config.spawn = SchemaSections.spawn("spawn").read(object.get("spawn"), ctx);
         }
         if (object.containsKey("singleBiome")) {
-            config.singleBiome = readSingleBiomeConfig(object.get("singleBiome"), "singleBiome");
+            config.singleBiome = SchemaSections.singleBiome().read(object.get("singleBiome"), ctx);
         }
         if (object.containsKey("chaosBiomes")) {
-            config.chaosBiomes = readChaosBiomesConfig(object.get("chaosBiomes"), "chaosBiomes", logger);
+            config.chaosBiomes = SchemaSections.chaosBiomes().read(object.get("chaosBiomes"), ctx);
         }
         if (object.containsKey("stripWorld")) {
-            config.stripWorld = readStripWorldConfig(object.get("stripWorld"), "stripWorld", logger);
+            config.stripWorld = SchemaSections.stripWorld().read(object.get("stripWorld"), ctx);
         }
         if (object.containsKey("oceanIsland")) {
-            config.oceanIsland = readOceanIslandConfig(object.get("oceanIsland"), "oceanIsland", logger);
+            config.oceanIsland = SchemaSections.oceanIsland().read(object.get("oceanIsland"), ctx);
         }
         if (object.containsKey("skyIsland")) {
-            config.skyIsland = readSkyIslandConfig(object.get("skyIsland"), "skyIsland", logger);
+            config.skyIsland = SchemaSections.skyIsland().read(object.get("skyIsland"), ctx);
         }
         if (object.containsKey("chunkIsland")) {
-            config.chunkIsland = readChunkIslandConfig(object.get("chunkIsland"), "chunkIsland", logger);
+            config.chunkIsland = SchemaSections.chunkIsland().read(object.get("chunkIsland"), ctx);
         }
         if (object.containsKey("cave")) {
-            config.cave = readCaveConfig(object.get("cave"), "cave", logger);
+            config.cave = SchemaSections.cave().read(object.get("cave"), ctx);
         }
         if (object.containsKey("netherStart")) {
-            config.netherStart = readNetherStartConfig(object.get("netherStart"), "netherStart", logger);
+            config.netherStart = SchemaSections.netherStart().read(object.get("netherStart"), ctx);
         }
         if (object.containsKey("endStart")) {
-            config.endStart = readEndStartConfig(object.get("endStart"), "endStart", logger);
+            config.endStart = SchemaSections.endStart().read(object.get("endStart"), ctx);
         }
         if (object.containsKey("flat")) {
-            config.flat = readFlatConfig(object.get("flat"), "flat", logger);
+            config.flat = SchemaSections.flat().read(object.get("flat"), ctx);
         }
         if (object.containsKey("deepFlat")) {
-            config.deepFlat = readDeepFlatConfig(object.get("deepFlat"), "deepFlat", logger);
+            config.deepFlat = SchemaSections.deepFlat().read(object.get("deepFlat"), ctx);
         }
         if (object.containsKey("stacked")) {
-            config.stacked = readStackedConfig(object.get("stacked"), "stacked", logger);
+            config.stacked = SchemaSections.stacked().read(object.get("stacked"), ctx);
         }
         if (object.containsKey("foreverNight")) {
-            config.foreverNight = readForeverNightConfig(object.get("foreverNight"), "foreverNight", logger);
+            config.foreverNight = SchemaSections.foreverNight().read(object.get("foreverNight"), ctx);
         }
         if (object.containsKey("risingLava")) {
-            config.risingLava = readRisingLavaConfig(object.get("risingLava"), "risingLava", logger);
+            config.risingLava = SchemaSections.risingLava().read(object.get("risingLava"), ctx);
         }
         if (object.containsKey("structureDistance")) {
-            config.structureDistance = readStructureDistanceConfig(object.get("structureDistance"), "structureDistance", logger);
+            config.structureDistance = SchemaSections.structureDistance().read(object.get("structureDistance"), ctx);
         }
         if (object.containsKey("allowRivers")) {
             config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
@@ -329,36 +340,34 @@ public final class WorldzConfig {
             "starterLandFoundationDepthBlocks", logger
         );
 
-        overworldBorder = sanitizeBorder(overworldBorder, "overworldBorder", logger);
-        netherBorder = sanitizeBorder(netherBorder, "netherBorder", logger);
-        endBorder = sanitizeEndBorder(endBorder, logger);
-        overworldExterior = sanitizeExterior(overworldExterior, overworldBorder, true, "overworldExterior", logger);
-        netherExterior = sanitizeExterior(netherExterior, netherBorder, false, "netherExterior", logger);
-        strip = sanitizeStrip(strip, logger);
-        layout = sanitizeLayout(layout, logger);
-        spawn = spawn == null ? new SpawnConfig() : spawn;
-        if (spawn.strategy == null) {
-            spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
-        }
-        singleBiome = sanitizeSingleBiome(singleBiome, logger);
-        chaosBiomes = sanitizeChaosBiomes(chaosBiomes, logger);
-        stripWorld = sanitizeStripWorld(stripWorld, logger);
-        oceanIsland = sanitizeOceanIsland(oceanIsland, logger);
-        skyIsland = sanitizeSkyIsland(skyIsland, logger);
-        chunkIsland = sanitizeChunkIsland(chunkIsland, logger);
-        cave = sanitizeCave(cave, logger);
-        netherStart = sanitizeNetherStart(netherStart, logger);
-        endStart = sanitizeEndStart(endStart, logger);
-        flat = sanitizeFlat(flat, logger);
-        deepFlat = sanitizeDeepFlat(deepFlat, logger);
-        stacked = sanitizeStacked(stacked, logger);
-        foreverNight = sanitizeForeverNight(foreverNight, logger);
-        risingLava = sanitizeRisingLava(risingLava, logger);
-        structureDistance = sanitizeStructureDistance(structureDistance, logger);
+        SanitizeContext ctx = new SanitizeContext(logger, this);
+        overworldBorder = SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal").sanitize(overworldBorder, ctx);
+        netherBorder = SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess").sanitize(netherBorder, ctx);
+        endBorder = SchemaSections.endBorder().sanitize(endBorder, ctx);
+        overworldExterior = SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true).sanitize(overworldExterior, ctx);
+        netherExterior = SchemaSections.exterior("netherExterior", c -> c.netherBorder, false).sanitize(netherExterior, ctx);
+        strip = SchemaSections.strip().sanitize(strip, ctx);
+        layout = SchemaSections.layout().sanitize(layout, ctx);
+        spawn = SchemaSections.spawn("spawn").sanitize(spawn, ctx);
+        singleBiome = SchemaSections.singleBiome().sanitize(singleBiome, ctx);
+        chaosBiomes = SchemaSections.chaosBiomes().sanitize(chaosBiomes, ctx);
+        stripWorld = SchemaSections.stripWorld().sanitize(stripWorld, ctx);
+        oceanIsland = SchemaSections.oceanIsland().sanitize(oceanIsland, ctx);
+        skyIsland = SchemaSections.skyIsland().sanitize(skyIsland, ctx);
+        chunkIsland = SchemaSections.chunkIsland().sanitize(chunkIsland, ctx);
+        cave = SchemaSections.cave().sanitize(cave, ctx);
+        netherStart = SchemaSections.netherStart().sanitize(netherStart, ctx);
+        endStart = SchemaSections.endStart().sanitize(endStart, ctx);
+        flat = SchemaSections.flat().sanitize(flat, ctx);
+        deepFlat = SchemaSections.deepFlat().sanitize(deepFlat, ctx);
+        stacked = SchemaSections.stacked().sanitize(stacked, ctx);
+        foreverNight = SchemaSections.foreverNight().sanitize(foreverNight, ctx);
+        risingLava = SchemaSections.risingLava().sanitize(risingLava, ctx);
+        structureDistance = SchemaSections.structureDistance().sanitize(structureDistance, ctx);
         return this;
     }
 
-    private static SingleBiomeConfig sanitizeSingleBiome(SingleBiomeConfig config, Logger logger) {
+    static SingleBiomeConfig sanitizeSingleBiome(SingleBiomeConfig config, Logger logger) {
         SingleBiomeConfig sanitized = config == null ? new SingleBiomeConfig() : config;
 
         sanitized.landBiome = sanitizeSingleBiomeId(sanitized.landBiome, "singleBiome.landBiome", logger);
@@ -377,14 +386,11 @@ public final class WorldzConfig {
             logger.warn("Clamped singleBiome.starterRadiusBlocks from {} to {}.", originalRadius, sanitized.starterRadiusBlocks);
         }
 
-        sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
-        if (sanitized.spawn.strategy == null) {
-            sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
-        }
+        sanitized.spawn = SchemaSections.spawn("singleBiome.spawn").sanitize(sanitized.spawn, new SanitizeContext(logger, null));
         return sanitized;
     }
 
-    private static ChaosBiomesConfig sanitizeChaosBiomes(ChaosBiomesConfig config, Logger logger) {
+    static ChaosBiomesConfig sanitizeChaosBiomes(ChaosBiomesConfig config, Logger logger) {
         ChaosBiomesConfig sanitized = config == null ? new ChaosBiomesConfig() : config;
 
         WeightedBiomeListSpec biomeSpec = WeightedBiomeListSpec.parse(sanitized.biomes);
@@ -414,24 +420,18 @@ public final class WorldzConfig {
             logger.warn("Clamped chaosBiomes.starterRadiusBlocks from {} to {}.", originalRadius, sanitized.starterRadiusBlocks);
         }
 
-        sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
-        if (sanitized.spawn.strategy == null) {
-            sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
-        }
+        sanitized.spawn = SchemaSections.spawn("chaosBiomes.spawn").sanitize(sanitized.spawn, new SanitizeContext(logger, null));
         return sanitized;
     }
 
-    private static StripWorldConfig sanitizeStripWorld(StripWorldConfig config, Logger logger) {
+    static StripWorldConfig sanitizeStripWorld(StripWorldConfig config, Logger logger) {
         StripWorldConfig sanitized = config == null ? new StripWorldConfig() : config;
-        sanitized.spawn = sanitized.spawn == null ? new SpawnConfig() : sanitized.spawn;
-        if (sanitized.spawn.strategy == null) {
-            sanitized.spawn.strategy = SpawnStrategy.STARTER_AT_ORIGIN;
-        }
+        sanitized.spawn = SchemaSections.spawn("stripWorld.spawn").sanitize(sanitized.spawn, new SanitizeContext(logger, null));
         sanitized.bands = sanitizeStripBands(sanitized.bands, logger);
         return sanitized;
     }
 
-    private static OceanIslandConfig sanitizeOceanIsland(OceanIslandConfig config, Logger logger) {
+    static OceanIslandConfig sanitizeOceanIsland(OceanIslandConfig config, Logger logger) {
         OceanIslandConfig sanitized = config == null ? new OceanIslandConfig() : config;
 
         String originalBiome = sanitized.islandBiome;
@@ -481,7 +481,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static SkyIslandConfig sanitizeSkyIsland(SkyIslandConfig config, Logger logger) {
+    static SkyIslandConfig sanitizeSkyIsland(SkyIslandConfig config, Logger logger) {
         SkyIslandConfig sanitized = config == null ? new SkyIslandConfig() : config;
 
         String originalBiome = sanitized.islandBiome;
@@ -511,7 +511,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static CaveConfig sanitizeCave(CaveConfig config, Logger logger) {
+    static CaveConfig sanitizeCave(CaveConfig config, Logger logger) {
         CaveConfig sanitized = config == null ? new CaveConfig() : config;
 
         if (sanitized.sealedSurface && sanitized.sealedSurfaceY < CaveConfig.MIN_SEALED_SURFACE_Y) {
@@ -541,7 +541,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static NetherStartConfig sanitizeNetherStart(NetherStartConfig config, Logger logger) {
+    static NetherStartConfig sanitizeNetherStart(NetherStartConfig config, Logger logger) {
         NetherStartConfig sanitized = config == null ? new NetherStartConfig() : config;
         sanitized.spawnY = clampWithWarning(
             sanitized.spawnY, NetherStartPlan.MIN_SPAWN_Y, NetherStartPlan.MAX_SPAWN_Y, "netherStart.spawnY", logger
@@ -560,27 +560,16 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static StarterCapsuleConfig sanitizeStarterCapsule(
+    static StarterCapsuleConfig sanitizeStarterCapsule(
         StarterCapsuleConfig config, String name,
         int minSize, int maxSize, int minHeight, int maxHeight, int minSpacing, int maxSpacing,
         Logger logger
     ) {
-        StarterCapsuleConfig sanitized = config == null ? new StarterCapsuleConfig() : config;
-        if (sanitized.sizeBlocks % 2 == 0) {
-            int oddened = sanitized.sizeBlocks + 1;
-            logger.warn("Rounded {}.sizeBlocks from {} to {} (must be odd).", name, sanitized.sizeBlocks, oddened);
-            sanitized.sizeBlocks = oddened;
-        }
-        sanitized.sizeBlocks = clampWithWarning(sanitized.sizeBlocks, minSize, maxSize, name + ".sizeBlocks", logger);
-        sanitized.heightBlocks = clampWithWarning(sanitized.heightBlocks, minHeight, maxHeight, name + ".heightBlocks", logger);
-        sanitized.lightSource = sanitized.lightSource == null ? LightSource.TORCH : sanitized.lightSource;
-        sanitized.lightSpacingBlocks = clampWithWarning(
-            sanitized.lightSpacingBlocks, minSpacing, maxSpacing, name + ".lightSpacingBlocks", logger
-        );
-        return sanitized;
+        SchemaSection<StarterCapsuleConfig> schema = new StarterCapsuleSchema(name, minSize, maxSize, minHeight, maxHeight, minSpacing, maxSpacing);
+        return schema.sanitize(config, new SanitizeContext(logger, null));
     }
 
-    private static EndStartConfig sanitizeEndStart(EndStartConfig config, Logger logger) {
+    static EndStartConfig sanitizeEndStart(EndStartConfig config, Logger logger) {
         EndStartConfig sanitized = config == null ? new EndStartConfig() : config;
         sanitized.chestTier = sanitized.chestTier == null ? StarterKitTier.MEDIUM : sanitized.chestTier;
         sanitized.easyKit = sanitizeStarterKit(sanitized.easyKit, "endStart.easyKit", logger);
@@ -596,7 +585,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static FlatConfig sanitizeFlat(FlatConfig config, Logger logger) {
+    static FlatConfig sanitizeFlat(FlatConfig config, Logger logger) {
         FlatConfig sanitized = config == null ? new FlatConfig() : config;
         if (sanitized.layers == null || sanitized.layers.isEmpty()) {
             logger.warn("flat.layers was empty; using the default layer stack.");
@@ -612,7 +601,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static DeepFlatConfig sanitizeDeepFlat(DeepFlatConfig config, Logger logger) {
+    static DeepFlatConfig sanitizeDeepFlat(DeepFlatConfig config, Logger logger) {
         DeepFlatConfig sanitized = config == null ? new DeepFlatConfig() : config;
         sanitized.surfaceY = clampWithWarning(
             sanitized.surfaceY, DeepFlatPlan.MIN_SURFACE_Y, DeepFlatPlan.MAX_SURFACE_Y, "deepFlat.surfaceY", logger
@@ -628,7 +617,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static StackedConfig sanitizeStacked(StackedConfig config, Logger logger) {
+    static StackedConfig sanitizeStacked(StackedConfig config, Logger logger) {
         StackedConfig sanitized = config == null ? new StackedConfig() : config;
         if (sanitized.layers == null || sanitized.layers.isEmpty()) {
             logger.warn("stacked.layers was empty; using the default layer stack.");
@@ -643,7 +632,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static ForeverNightConfig sanitizeForeverNight(ForeverNightConfig config, Logger logger) {
+    static ForeverNightConfig sanitizeForeverNight(ForeverNightConfig config, Logger logger) {
         ForeverNightConfig sanitized = config == null ? new ForeverNightConfig() : config;
         sanitized.lockAfterDays = clampWithWarning(
             sanitized.lockAfterDays, 0, MAX_BORDER_RESIZE_DAYS, "foreverNight.lockAfterDays", logger
@@ -651,7 +640,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static RisingLavaConfig sanitizeRisingLava(RisingLavaConfig config, Logger logger) {
+    static RisingLavaConfig sanitizeRisingLava(RisingLavaConfig config, Logger logger) {
         RisingLavaConfig sanitized = config == null ? new RisingLavaConfig() : config;
         int minY = FlatConfig.OVERWORLD_MIN_Y;
         int maxBuildY = FlatConfig.OVERWORLD_MIN_Y + FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS - 1;
@@ -667,7 +656,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static StructureDistanceConfig sanitizeStructureDistance(StructureDistanceConfig config, Logger logger) {
+    static StructureDistanceConfig sanitizeStructureDistance(StructureDistanceConfig config, Logger logger) {
         StructureDistanceConfig sanitized = config == null ? new StructureDistanceConfig() : config;
         sanitized.minDistanceBlocks = clampWithWarning(
             sanitized.minDistanceBlocks, 0, MAX_BORDER_RADIUS_BLOCKS, "structureDistance.minDistanceBlocks", logger
@@ -678,7 +667,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
+    static FloatingIslandsConfig sanitizeFloatingIslands(FloatingIslandsConfig config, Logger logger) {
         FloatingIslandsConfig sanitized = config == null ? new FloatingIslandsConfig() : config;
 
         sanitized.minRadiusBlocks = clampWithWarning(
@@ -758,29 +747,11 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static StarterKitConfig sanitizeStarterKit(StarterKitConfig config, String name, Logger logger) {
-        StarterKitConfig sanitized = config == null ? new StarterKitConfig() : config;
-        if (sanitized.essentials == null) {
-            sanitized.essentials = new StarterKitConfig().essentials;
-        }
-        if (sanitized.extras == null) {
-            sanitized.extras = new StarterKitConfig().extras;
-        }
-        if (sanitized.extrasCount < 0) {
-            logger.warn("Clamped {}.extrasCount from {} to 0.", name, sanitized.extrasCount);
-            sanitized.extrasCount = 0;
-        }
-        if (sanitized.extrasCount > 0 && sanitized.extras.isEmpty()) {
-            logger.warn(
-                "Clamped {}.extrasCount from {} to 0 because the extras pool is empty.",
-                name, sanitized.extrasCount
-            );
-            sanitized.extrasCount = 0;
-        }
-        return sanitized;
+    static StarterKitConfig sanitizeStarterKit(StarterKitConfig config, String name, Logger logger) {
+        return new StarterKitSchema(name).sanitize(config, new SanitizeContext(logger, null));
     }
 
-    private static StripBandsConfig sanitizeStripBands(StripBandsConfig config, Logger logger) {
+    static StripBandsConfig sanitizeStripBands(StripBandsConfig config, Logger logger) {
         StripBandsConfig sanitized = config == null ? new StripBandsConfig() : config;
 
         BiomeListSpec biomeSpec = BiomeListSpec.parse(sanitized.biomes);
@@ -807,7 +778,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static String sanitizeSingleBiomeId(String value, String name, Logger logger) {
+    static String sanitizeSingleBiomeId(String value, String name, Logger logger) {
         String trimmed = value == null ? "" : value.trim();
         if (trimmed.isEmpty()) {
             return "";
@@ -832,29 +803,29 @@ public final class WorldzConfig {
             + ", starterLand=" + (ensureStarterLand
                 ? "transition=" + starterLandTransitionBlocks + ", foundation=" + starterLandFoundationDepthBlocks
                 : "<disabled>")
-            + ", overworldBorder=" + borderSummary(overworldBorder, "endPortal")
-            + ", netherBorder=" + borderSummary(netherBorder, "blazeAccess")
-            + ", endBorder=" + endBorderSummary(endBorder)
-            + ", overworldExterior=" + exteriorSummary(overworldExterior)
-            + ", netherExterior=" + exteriorSummary(netherExterior)
-            + ", strip=" + stripSummary(strip)
-            + ", layout=" + layoutSummary(layout)
-            + ", spawn=" + spawn.strategy.serializedName()
-            + ", singleBiome=" + singleBiomeSummary(singleBiome)
-            + ", chaosBiomes=" + chaosBiomesSummary(chaosBiomes)
-            + ", stripWorld=" + stripWorldSummary(stripWorld)
-            + ", oceanIsland=" + oceanIslandSummary(oceanIsland)
-            + ", skyIsland=" + skyIslandSummary(skyIsland)
-            + ", chunkIsland=" + chunkIslandSummary(chunkIsland)
-            + ", cave=" + caveSummary(cave)
-            + ", netherStart=" + netherStartSummary(netherStart)
-            + ", endStart=" + endStartSummary(endStart)
-            + ", flat=" + flatSummary(flat)
-            + ", deepFlat=" + deepFlatSummary(deepFlat)
-            + ", stacked=" + stackedSummary(stacked)
-            + ", foreverNight=" + foreverNightSummary(foreverNight)
-            + ", risingLava=" + risingLavaSummary(risingLava)
-            + ", structureDistance=" + structureDistanceSummary(structureDistance)
+            + ", overworldBorder=" + SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal").summary(overworldBorder)
+            + ", netherBorder=" + SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess").summary(netherBorder)
+            + ", endBorder=" + SchemaSections.endBorder().summary(endBorder)
+            + ", overworldExterior=" + SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true).summary(overworldExterior)
+            + ", netherExterior=" + SchemaSections.exterior("netherExterior", c -> c.netherBorder, false).summary(netherExterior)
+            + ", strip=" + SchemaSections.strip().summary(strip)
+            + ", layout=" + SchemaSections.layout().summary(layout)
+            + ", spawn=" + SchemaSections.spawn("spawn").summary(spawn)
+            + ", singleBiome=" + SchemaSections.singleBiome().summary(singleBiome)
+            + ", chaosBiomes=" + SchemaSections.chaosBiomes().summary(chaosBiomes)
+            + ", stripWorld=" + SchemaSections.stripWorld().summary(stripWorld)
+            + ", oceanIsland=" + SchemaSections.oceanIsland().summary(oceanIsland)
+            + ", skyIsland=" + SchemaSections.skyIsland().summary(skyIsland)
+            + ", chunkIsland=" + SchemaSections.chunkIsland().summary(chunkIsland)
+            + ", cave=" + SchemaSections.cave().summary(cave)
+            + ", netherStart=" + SchemaSections.netherStart().summary(netherStart)
+            + ", endStart=" + SchemaSections.endStart().summary(endStart)
+            + ", flat=" + SchemaSections.flat().summary(flat)
+            + ", deepFlat=" + SchemaSections.deepFlat().summary(deepFlat)
+            + ", stacked=" + SchemaSections.stacked().summary(stacked)
+            + ", foreverNight=" + SchemaSections.foreverNight().summary(foreverNight)
+            + ", risingLava=" + SchemaSections.risingLava().summary(risingLava)
+            + ", structureDistance=" + SchemaSections.structureDistance().summary(structureDistance)
             + ", allowRivers=" + allowRivers
             + ", allowOceans=" + allowOceans;
     }
@@ -867,29 +838,29 @@ public final class WorldzConfig {
         values.put("ensureStarterLand", ensureStarterLand);
         values.put("starterLandTransitionBlocks", starterLandTransitionBlocks);
         values.put("starterLandFoundationDepthBlocks", starterLandFoundationDepthBlocks);
-        values.put("overworldBorder", borderMap(overworldBorder, "ensureEndPortal"));
-        values.put("netherBorder", borderMap(netherBorder, "ensureBlazeAccess"));
-        values.put("endBorder", endBorderMap(endBorder));
-        values.put("overworldExterior", exteriorMap(overworldExterior));
-        values.put("netherExterior", exteriorMap(netherExterior));
-        values.put("strip", stripMap(strip));
-        values.put("layout", layoutMap(layout));
-        values.put("spawn", spawnMap(spawn));
-        values.put("singleBiome", singleBiomeMap(singleBiome));
-        values.put("chaosBiomes", chaosBiomesMap(chaosBiomes));
-        values.put("stripWorld", stripWorldMap(stripWorld));
-        values.put("oceanIsland", oceanIslandMap(oceanIsland));
-        values.put("skyIsland", skyIslandMap(skyIsland));
-        values.put("chunkIsland", chunkIslandMap(chunkIsland));
-        values.put("cave", caveMap(cave));
-        values.put("netherStart", netherStartMap(netherStart));
-        values.put("endStart", endStartMap(endStart));
-        values.put("flat", flatMap(flat));
-        values.put("deepFlat", deepFlatMap(deepFlat));
-        values.put("stacked", stackedMap(stacked));
-        values.put("foreverNight", foreverNightMap(foreverNight));
-        values.put("risingLava", risingLavaMap(risingLava));
-        values.put("structureDistance", structureDistanceMap(structureDistance));
+        values.put("overworldBorder", SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal").toMap(overworldBorder));
+        values.put("netherBorder", SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess").toMap(netherBorder));
+        values.put("endBorder", SchemaSections.endBorder().toMap(endBorder));
+        values.put("overworldExterior", SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true).toMap(overworldExterior));
+        values.put("netherExterior", SchemaSections.exterior("netherExterior", c -> c.netherBorder, false).toMap(netherExterior));
+        values.put("strip", SchemaSections.strip().toMap(strip));
+        values.put("layout", SchemaSections.layout().toMap(layout));
+        values.put("spawn", SchemaSections.spawn("spawn").toMap(spawn));
+        values.put("singleBiome", SchemaSections.singleBiome().toMap(singleBiome));
+        values.put("chaosBiomes", SchemaSections.chaosBiomes().toMap(chaosBiomes));
+        values.put("stripWorld", SchemaSections.stripWorld().toMap(stripWorld));
+        values.put("oceanIsland", SchemaSections.oceanIsland().toMap(oceanIsland));
+        values.put("skyIsland", SchemaSections.skyIsland().toMap(skyIsland));
+        values.put("chunkIsland", SchemaSections.chunkIsland().toMap(chunkIsland));
+        values.put("cave", SchemaSections.cave().toMap(cave));
+        values.put("netherStart", SchemaSections.netherStart().toMap(netherStart));
+        values.put("endStart", SchemaSections.endStart().toMap(endStart));
+        values.put("flat", SchemaSections.flat().toMap(flat));
+        values.put("deepFlat", SchemaSections.deepFlat().toMap(deepFlat));
+        values.put("stacked", SchemaSections.stacked().toMap(stacked));
+        values.put("foreverNight", SchemaSections.foreverNight().toMap(foreverNight));
+        values.put("risingLava", SchemaSections.risingLava().toMap(risingLava));
+        values.put("structureDistance", SchemaSections.structureDistance().toMap(structureDistance));
         values.put("allowRivers", allowRivers);
         values.put("allowOceans", allowOceans);
         return createYaml().dump(values);
@@ -909,7 +880,7 @@ public final class WorldzConfig {
         }
     }
 
-    private static List<String> readStringList(Object value, String name, Logger logger) {
+    static List<String> readStringList(Object value, String name, Logger logger) {
         if (!(value instanceof List<?> list)) {
             throw new IllegalArgumentException(name + " must be a sequence");
         }
@@ -925,21 +896,21 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static String readString(Object value, String name) {
+    static String readString(Object value, String name) {
         if (!(value instanceof String string)) {
             throw new IllegalArgumentException(name + " must be a string");
         }
         return string;
     }
 
-    private static boolean readBoolean(Object value, String name) {
+    static boolean readBoolean(Object value, String name) {
         if (!(value instanceof Boolean booleanValue)) {
             throw new IllegalArgumentException(name + " must be a boolean");
         }
         return booleanValue;
     }
 
-    private static BorderConfig readBorderConfig(Object value, String name, String objectiveKey) {
+    static BorderConfig readBorderConfig(Object value, String name, String objectiveKey) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -974,7 +945,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static EndBorderConfig readEndBorderConfig(Object value, String name) {
+    static EndBorderConfig readEndBorderConfig(Object value, String name) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -988,7 +959,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static ExteriorConfig readExteriorConfig(Object value, String name) {
+    static ExteriorConfig readExteriorConfig(Object value, String name) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1007,7 +978,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StripConfig readStripConfig(Object value, String name) {
+    static StripConfig readStripConfig(Object value, String name) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1027,7 +998,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static ChunkIslandConfig readChunkIslandConfig(Object value, String name, Logger logger) {
+    static ChunkIslandConfig readChunkIslandConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1068,7 +1039,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static LayoutConfig readLayoutConfig(Object value, String name, Logger logger) {
+    static LayoutConfig readLayoutConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1091,18 +1062,11 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static SpawnConfig readSpawnConfig(Object value, String name) {
-        if (!(value instanceof Map<?, ?> map)) {
-            throw new IllegalArgumentException(name + " must be a mapping");
-        }
-        SpawnConfig config = new SpawnConfig();
-        if (map.containsKey("strategy")) {
-            config.strategy = SpawnStrategy.parse(readString(map.get("strategy"), name + ".strategy"));
-        }
-        return config;
+    static SpawnConfig readSpawnConfig(Object value, String name) {
+        return SchemaSections.spawn(name).read(value, new ParseContext(NOPLogger.NOP_LOGGER));
     }
 
-    private static SingleBiomeConfig readSingleBiomeConfig(Object value, String name) {
+    static SingleBiomeConfig readSingleBiomeConfig(Object value, String name) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1131,7 +1095,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static ChaosBiomesConfig readChaosBiomesConfig(Object value, String name, Logger logger) {
+    static ChaosBiomesConfig readChaosBiomesConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1163,7 +1127,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StripWorldConfig readStripWorldConfig(Object value, String name, Logger logger) {
+    static StripWorldConfig readStripWorldConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1177,7 +1141,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static OceanIslandConfig readOceanIslandConfig(Object value, String name, Logger logger) {
+    static OceanIslandConfig readOceanIslandConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1227,7 +1191,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static SkyIslandConfig readSkyIslandConfig(Object value, String name, Logger logger) {
+    static SkyIslandConfig readSkyIslandConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1268,7 +1232,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static CaveConfig readCaveConfig(Object value, String name, Logger logger) {
+    static CaveConfig readCaveConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1317,7 +1281,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static NetherStartConfig readNetherStartConfig(Object value, String name, Logger logger) {
+    static NetherStartConfig readNetherStartConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1346,27 +1310,16 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StarterCapsuleConfig readStarterCapsuleConfig(Object value, String name) {
-        if (!(value instanceof Map<?, ?> map)) {
-            throw new IllegalArgumentException(name + " must be a mapping");
-        }
-        StarterCapsuleConfig config = new StarterCapsuleConfig();
-        if (map.containsKey("sizeBlocks")) {
-            config.sizeBlocks = readInt(map.get("sizeBlocks"), name + ".sizeBlocks");
-        }
-        if (map.containsKey("heightBlocks")) {
-            config.heightBlocks = readInt(map.get("heightBlocks"), name + ".heightBlocks");
-        }
-        if (map.containsKey("lightSource")) {
-            config.lightSource = LightSource.parse(readString(map.get("lightSource"), name + ".lightSource"));
-        }
-        if (map.containsKey("lightSpacingBlocks")) {
-            config.lightSpacingBlocks = readInt(map.get("lightSpacingBlocks"), name + ".lightSpacingBlocks");
-        }
-        return config;
+    static StarterCapsuleConfig readStarterCapsuleConfig(Object value, String name) {
+        // Bounds are irrelevant to read (only sanitize consults them); a schema instance is
+        // constructed with placeholder bounds purely to reuse the shared read logic.
+        StarterCapsuleSchema schema = new StarterCapsuleSchema(
+            name, 1, Integer.MAX_VALUE, 1, Integer.MAX_VALUE, 1, Integer.MAX_VALUE
+        );
+        return schema.read(value, new ParseContext(NOPLogger.NOP_LOGGER));
     }
 
-    private static EndStartConfig readEndStartConfig(Object value, String name, Logger logger) {
+    static EndStartConfig readEndStartConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1389,7 +1342,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static FlatConfig readFlatConfig(Object value, String name, Logger logger) {
+    static FlatConfig readFlatConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1409,7 +1362,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static DeepFlatConfig readDeepFlatConfig(Object value, String name, Logger logger) {
+    static DeepFlatConfig readDeepFlatConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1429,7 +1382,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StackedConfig readStackedConfig(Object value, String name, Logger logger) {
+    static StackedConfig readStackedConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1452,7 +1405,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static ForeverNightConfig readForeverNightConfig(Object value, String name, Logger logger) {
+    static ForeverNightConfig readForeverNightConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1469,7 +1422,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static RisingLavaConfig readRisingLavaConfig(Object value, String name, Logger logger) {
+    static RisingLavaConfig readRisingLavaConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1495,7 +1448,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StructureDistanceConfig readStructureDistanceConfig(Object value, String name, Logger logger) {
+    static StructureDistanceConfig readStructureDistanceConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1512,7 +1465,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static FloatingIslandsConfig readFloatingIslandsConfig(Object value, String name, Logger logger) {
+    static FloatingIslandsConfig readFloatingIslandsConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1565,24 +1518,11 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static StarterKitConfig readStarterKitConfig(Object value, String name, Logger logger) {
-        if (!(value instanceof Map<?, ?> map)) {
-            throw new IllegalArgumentException(name + " must be a mapping");
-        }
-        StarterKitConfig config = new StarterKitConfig();
-        if (map.containsKey("essentials")) {
-            config.essentials = readStringList(map.get("essentials"), name + ".essentials", logger);
-        }
-        if (map.containsKey("extras")) {
-            config.extras = readStringList(map.get("extras"), name + ".extras", logger);
-        }
-        if (map.containsKey("extrasCount")) {
-            config.extrasCount = readInt(map.get("extrasCount"), name + ".extrasCount");
-        }
-        return config;
+    static StarterKitConfig readStarterKitConfig(Object value, String name, Logger logger) {
+        return new StarterKitSchema(name).read(value, new ParseContext(logger));
     }
 
-    private static StripBandsConfig readStripBandsConfig(Object value, String name, Logger logger) {
+    static StripBandsConfig readStripBandsConfig(Object value, String name, Logger logger) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1611,7 +1551,7 @@ public final class WorldzConfig {
         return config;
     }
 
-    private static Map<String, String> readStringMap(Object value, String name) {
+    static Map<String, String> readStringMap(Object value, String name) {
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(name + " must be a mapping");
         }
@@ -1625,7 +1565,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static int readInt(Object value, String name) {
+    static int readInt(Object value, String name) {
         try {
             return switch (value) {
                 case Integer integer -> integer;
@@ -1641,7 +1581,7 @@ public final class WorldzConfig {
         }
     }
 
-    private static double readDouble(Object value, String name) {
+    static double readDouble(Object value, String name) {
         return switch (value) {
             case Double doubleValue -> doubleValue;
             case Float floatValue -> floatValue.doubleValue();
@@ -1655,7 +1595,7 @@ public final class WorldzConfig {
         };
     }
 
-    private static BorderConfig sanitizeBorder(BorderConfig config, String name, Logger logger) {
+    static BorderConfig sanitizeBorder(BorderConfig config, String name, Logger logger) {
         BorderConfig sanitized = config == null ? new BorderConfig() : config;
         sanitized.initialRadiusBlocks = clampWithWarning(
             sanitized.initialRadiusBlocks, MIN_BORDER_RADIUS_BLOCKS, MAX_BORDER_RADIUS_BLOCKS,
@@ -1690,7 +1630,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static EndBorderConfig sanitizeEndBorder(EndBorderConfig config, Logger logger) {
+    static EndBorderConfig sanitizeEndBorder(EndBorderConfig config, Logger logger) {
         EndBorderConfig sanitized = config == null ? new EndBorderConfig() : config;
         sanitized.minimumRadiusBlocks = clampWithWarning(
             sanitized.minimumRadiusBlocks, MIN_BORDER_RADIUS_BLOCKS, MAX_BORDER_RADIUS_BLOCKS,
@@ -1699,7 +1639,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static StripConfig sanitizeStrip(StripConfig config, Logger logger) {
+    static StripConfig sanitizeStrip(StripConfig config, Logger logger) {
         StripConfig sanitized = config == null ? new StripConfig() : config;
         sanitized.widthRadiusBlocks = clampWithWarning(
             sanitized.widthRadiusBlocks, 1, MAX_BORDER_RADIUS_BLOCKS, "strip.widthRadiusBlocks", logger
@@ -1712,7 +1652,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static ChunkIslandConfig sanitizeChunkIsland(ChunkIslandConfig config, Logger logger) {
+    static ChunkIslandConfig sanitizeChunkIsland(ChunkIslandConfig config, Logger logger) {
         ChunkIslandConfig sanitized = config == null ? new ChunkIslandConfig() : config;
         double originalChance = sanitized.spawnChance;
         sanitized.spawnChance = Math.clamp(sanitized.spawnChance, 0.0, 1.0);
@@ -1741,7 +1681,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static ExteriorConfig sanitizeExterior(
+    static ExteriorConfig sanitizeExterior(
         ExteriorConfig config,
         BorderConfig border,
         boolean oceanAllowed,
@@ -1776,7 +1716,7 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static LayoutConfig sanitizeLayout(LayoutConfig config, Logger logger) {
+    static LayoutConfig sanitizeLayout(LayoutConfig config, Logger logger) {
         LayoutConfig sanitized = config == null ? new LayoutConfig() : config;
         sanitized.mode = sanitized.mode == null ? LayoutMode.LEGACY : sanitized.mode;
 
@@ -1849,12 +1789,12 @@ public final class WorldzConfig {
         return sanitized;
     }
 
-    private static String stripWeight(String configValue) {
+    static String stripWeight(String configValue) {
         int at = configValue.lastIndexOf('@');
         return at < 0 ? configValue : configValue.substring(0, at);
     }
 
-    private static int clampWithWarning(int value, int minimum, int maximum, String name, Logger logger) {
+    static int clampWithWarning(int value, int minimum, int maximum, String name, Logger logger) {
         int clamped = Math.clamp(value, minimum, maximum);
         if (clamped != value) {
             logger.warn("Clamped {} from {} to {}.", name, value, clamped);
@@ -1862,7 +1802,7 @@ public final class WorldzConfig {
         return clamped;
     }
 
-    private static Map<String, Object> borderMap(BorderConfig config, String objectiveKey) {
+    static Map<String, Object> borderMap(BorderConfig config, String objectiveKey) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("initialRadiusBlocks", config.initialRadiusBlocks);
@@ -1876,14 +1816,14 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> endBorderMap(EndBorderConfig config) {
+    static Map<String, Object> endBorderMap(EndBorderConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("carryFromOverworld", config.carryFromOverworld);
         values.put("minimumRadiusBlocks", config.minimumRadiusBlocks);
         return values;
     }
 
-    private static Map<String, Object> exteriorMap(ExteriorConfig config) {
+    static Map<String, Object> exteriorMap(ExteriorConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("mode", config.mode.serializedName());
         values.put("boundaryRadiusBlocks", config.boundaryRadiusBlocks);
@@ -1891,7 +1831,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> stripMap(StripConfig config) {
+    static Map<String, Object> stripMap(StripConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("widthRadiusBlocks", config.widthRadiusBlocks);
@@ -1900,7 +1840,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> chunkIslandMap(ChunkIslandConfig config) {
+    static Map<String, Object> chunkIslandMap(ChunkIslandConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("spawnChance", config.spawnChance);
@@ -1916,7 +1856,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> layoutMap(LayoutConfig config) {
+    static Map<String, Object> layoutMap(LayoutConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("mode", config.mode.serializedName());
         values.put("biomes", config.biomes);
@@ -1926,13 +1866,11 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> spawnMap(SpawnConfig config) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("strategy", config.strategy.serializedName());
-        return values;
+    static Map<String, Object> spawnMap(SpawnConfig config) {
+        return SchemaSections.spawn("spawn").toMap(config);
     }
 
-    private static Map<String, Object> singleBiomeMap(SingleBiomeConfig config) {
+    static Map<String, Object> singleBiomeMap(SingleBiomeConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("landBiome", config.landBiome);
         values.put("starterBiome", config.starterBiome);
@@ -1944,7 +1882,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> chaosBiomesMap(ChaosBiomesConfig config) {
+    static Map<String, Object> chaosBiomesMap(ChaosBiomesConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("biomes", config.biomes);
         values.put("regionScaleBlocks", config.regionScaleBlocks);
@@ -1957,14 +1895,14 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> stripWorldMap(StripWorldConfig config) {
+    static Map<String, Object> stripWorldMap(StripWorldConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("spawn", spawnMap(config.spawn));
         values.put("bands", stripBandsMap(config.bands));
         return values;
     }
 
-    private static Map<String, Object> oceanIslandMap(OceanIslandConfig config) {
+    static Map<String, Object> oceanIslandMap(OceanIslandConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("islandSource", config.islandSource.serializedName());
         values.put("fluid", config.fluid.serializedName());
@@ -1983,7 +1921,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> skyIslandMap(SkyIslandConfig config) {
+    static Map<String, Object> skyIslandMap(SkyIslandConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("islandBiome", config.islandBiome);
         values.put("radiusBlocks", config.radiusBlocks);
@@ -1999,7 +1937,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> caveMap(CaveConfig config) {
+    static Map<String, Object> caveMap(CaveConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("spawnDepthY", config.spawnDepthY);
         values.put("sealedSurface", config.sealedSurface);
@@ -2017,7 +1955,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> netherStartMap(NetherStartConfig config) {
+    static Map<String, Object> netherStartMap(NetherStartConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("spawnY", config.spawnY);
         values.put("chestTier", config.chestTier.serializedName());
@@ -2029,16 +1967,11 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> starterCapsuleMap(StarterCapsuleConfig config) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("sizeBlocks", config.sizeBlocks);
-        values.put("heightBlocks", config.heightBlocks);
-        values.put("lightSource", config.lightSource.serializedName());
-        values.put("lightSpacingBlocks", config.lightSpacingBlocks);
-        return values;
+    static Map<String, Object> starterCapsuleMap(StarterCapsuleConfig config) {
+        return new StarterCapsuleSchema("capsule", 1, Integer.MAX_VALUE, 1, Integer.MAX_VALUE, 1, Integer.MAX_VALUE).toMap(config);
     }
 
-    private static Map<String, Object> endStartMap(EndStartConfig config) {
+    static Map<String, Object> endStartMap(EndStartConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("chestTier", config.chestTier.serializedName());
         values.put("easyKit", starterKitMap(config.easyKit));
@@ -2048,7 +1981,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> flatMap(FlatConfig config) {
+    static Map<String, Object> flatMap(FlatConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("layers", config.layers);
         values.put("biome", config.biome);
@@ -2057,7 +1990,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> deepFlatMap(DeepFlatConfig config) {
+    static Map<String, Object> deepFlatMap(DeepFlatConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("surfaceY", config.surfaceY);
         values.put("capLayers", config.capLayers);
@@ -2066,7 +1999,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> stackedMap(StackedConfig config) {
+    static Map<String, Object> stackedMap(StackedConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("layers", config.layers);
         values.put("seedRandomizedOrder", config.seedRandomizedOrder);
@@ -2076,7 +2009,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> foreverNightMap(ForeverNightConfig config) {
+    static Map<String, Object> foreverNightMap(ForeverNightConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("lockAfterDays", config.lockAfterDays);
@@ -2084,7 +2017,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> risingLavaMap(RisingLavaConfig config) {
+    static Map<String, Object> risingLavaMap(RisingLavaConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("delayDays", config.delayDays);
@@ -2095,7 +2028,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> structureDistanceMap(StructureDistanceConfig config) {
+    static Map<String, Object> structureDistanceMap(StructureDistanceConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("minDistanceBlocks", config.minDistanceBlocks);
@@ -2103,7 +2036,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
+    static Map<String, Object> floatingIslandsMap(FloatingIslandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("minRadiusBlocks", config.minRadiusBlocks);
@@ -2123,15 +2056,11 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static Map<String, Object> starterKitMap(StarterKitConfig config) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("essentials", config.essentials);
-        values.put("extras", config.extras);
-        values.put("extrasCount", config.extrasCount);
-        return values;
+    static Map<String, Object> starterKitMap(StarterKitConfig config) {
+        return new StarterKitSchema("starterKit").toMap(config);
     }
 
-    private static Map<String, Object> stripBandsMap(StripBandsConfig config) {
+    static Map<String, Object> stripBandsMap(StripBandsConfig config) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("enabled", config.enabled);
         values.put("biomes", config.biomes);
@@ -2143,7 +2072,7 @@ public final class WorldzConfig {
         return values;
     }
 
-    private static String borderSummary(BorderConfig config, String objectiveName) {
+    static String borderSummary(BorderConfig config, String objectiveName) {
         if (!config.enabled) {
             return "<disabled>";
         }
@@ -2158,13 +2087,13 @@ public final class WorldzConfig {
             + ", " + objectiveName + "=" + config.ensureObjective;
     }
 
-    private static String endBorderSummary(EndBorderConfig config) {
+    static String endBorderSummary(EndBorderConfig config) {
         return config.carryFromOverworld
             ? "carried, minimum=" + config.minimumRadiusBlocks
             : "<disabled>";
     }
 
-    private static String exteriorSummary(ExteriorConfig config) {
+    static String exteriorSummary(ExteriorConfig config) {
         if (config.mode == ExteriorMode.NORMAL) {
             return "<normal>";
         }
@@ -2173,7 +2102,7 @@ public final class WorldzConfig {
             + (config.mode == ExteriorMode.OCEAN ? ", transition=" + config.oceanTransitionWidthBlocks : "");
     }
 
-    private static String stripSummary(StripConfig config) {
+    static String stripSummary(StripConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
@@ -2182,7 +2111,7 @@ public final class WorldzConfig {
             + ", applyToNether=" + config.applyToNether;
     }
 
-    private static String chunkIslandSummary(ChunkIslandConfig config) {
+    static String chunkIslandSummary(ChunkIslandConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
@@ -2196,7 +2125,7 @@ public final class WorldzConfig {
             + ", geodeFeatureIds=" + config.geodeFeatureIds;
     }
 
-    private static String singleBiomeSummary(SingleBiomeConfig config) {
+    static String singleBiomeSummary(SingleBiomeConfig config) {
         return "landBiome=" + config.landBiome
             + ", starterBiome=" + (config.starterBiome.isEmpty() ? "<none>" : config.starterBiome)
             + ", starterRadiusBlocks=" + config.starterRadiusBlocks
@@ -2206,7 +2135,7 @@ public final class WorldzConfig {
             + ", allowBeaches=" + config.allowBeaches;
     }
 
-    private static String chaosBiomesSummary(ChaosBiomesConfig config) {
+    static String chaosBiomesSummary(ChaosBiomesConfig config) {
         return "biomes=" + config.biomes
             + ", regionScaleBlocks=" + config.regionScaleBlocks
             + ", starterBiome=" + (config.starterBiome.isEmpty() ? "<none>" : config.starterBiome)
@@ -2217,12 +2146,12 @@ public final class WorldzConfig {
             + ", allowBeaches=" + config.allowBeaches;
     }
 
-    private static String stripWorldSummary(StripWorldConfig config) {
+    static String stripWorldSummary(StripWorldConfig config) {
         return "spawn=" + config.spawn.strategy.serializedName()
             + ", bands=" + stripBandsSummary(config.bands);
     }
 
-    private static String oceanIslandSummary(OceanIslandConfig config) {
+    static String oceanIslandSummary(OceanIslandConfig config) {
         return "islandSource=" + config.islandSource.serializedName()
             + ", fluid=" + config.fluid.serializedName()
             + ", islandBiome=" + config.islandBiome
@@ -2240,7 +2169,7 @@ public final class WorldzConfig {
             + ", starterKit=" + starterKitSummary(config.starterKit);
     }
 
-    private static String skyIslandSummary(SkyIslandConfig config) {
+    static String skyIslandSummary(SkyIslandConfig config) {
         return "islandBiome=" + config.islandBiome
             + ", radiusBlocks=" + config.radiusBlocks
             + ", shapeAmplitude=" + config.shapeAmplitude
@@ -2255,7 +2184,7 @@ public final class WorldzConfig {
             + ", floatingIslands=" + floatingIslandsSummary(config.floatingIslands);
     }
 
-    private static String caveSummary(CaveConfig config) {
+    static String caveSummary(CaveConfig config) {
         return "spawnDepthY=" + config.spawnDepthY
             + ", sealedSurface=" + config.sealedSurface
             + ", sealedSurfaceY=" + config.sealedSurfaceY
@@ -2271,7 +2200,7 @@ public final class WorldzConfig {
             + ", hardKit=" + starterKitSummary(config.hardKit);
     }
 
-    private static String netherStartSummary(NetherStartConfig config) {
+    static String netherStartSummary(NetherStartConfig config) {
         return "spawnY=" + config.spawnY + ", chestTier=" + config.chestTier.serializedName()
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
@@ -2280,14 +2209,11 @@ public final class WorldzConfig {
             + ", capsule=" + starterCapsuleSummary(config.capsule);
     }
 
-    private static String starterCapsuleSummary(StarterCapsuleConfig config) {
-        return "sizeBlocks=" + config.sizeBlocks
-            + ", heightBlocks=" + config.heightBlocks
-            + ", lightSource=" + config.lightSource.serializedName()
-            + ", lightSpacingBlocks=" + config.lightSpacingBlocks;
+    static String starterCapsuleSummary(StarterCapsuleConfig config) {
+        return new StarterCapsuleSchema("capsule", 1, Integer.MAX_VALUE, 1, Integer.MAX_VALUE, 1, Integer.MAX_VALUE).summary(config);
     }
 
-    private static String endStartSummary(EndStartConfig config) {
+    static String endStartSummary(EndStartConfig config) {
         return "chestTier=" + config.chestTier.serializedName()
             + ", easyKit=" + starterKitSummary(config.easyKit)
             + ", mediumKit=" + starterKitSummary(config.mediumKit)
@@ -2295,34 +2221,34 @@ public final class WorldzConfig {
             + ", capsule=" + starterCapsuleSummary(config.capsule);
     }
 
-    private static String flatSummary(FlatConfig config) {
+    static String flatSummary(FlatConfig config) {
         return "layers=" + config.layers
             + ", biome=" + config.biome
             + ", decoration=" + config.decoration
             + ", structureOverrides=" + config.structureOverrides;
     }
 
-    private static String deepFlatSummary(DeepFlatConfig config) {
+    static String deepFlatSummary(DeepFlatConfig config) {
         return "surfaceY=" + config.surfaceY
             + ", capLayers=" + config.capLayers
             + ", riversEnabled=" + config.riversEnabled
             + ", riverExclusionRadiusBlocks=" + config.riverExclusionRadiusBlocks;
     }
 
-    private static String stackedSummary(StackedConfig config) {
+    static String stackedSummary(StackedConfig config) {
         return "layers=" + config.layers + ", seedRandomizedOrder=" + config.seedRandomizedOrder
             + ", worldSizeChunks=" + config.worldSizeChunks + ", reliefBlocks=" + config.reliefBlocks
             + ", forceTopVillage=" + config.forceTopVillage;
     }
 
-    private static String foreverNightSummary(ForeverNightConfig config) {
+    static String foreverNightSummary(ForeverNightConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
         return "lockAfterDays=" + config.lockAfterDays + ", relaxInsomnia=" + config.relaxInsomnia;
     }
 
-    private static String risingLavaSummary(RisingLavaConfig config) {
+    static String risingLavaSummary(RisingLavaConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
@@ -2330,14 +2256,14 @@ public final class WorldzConfig {
             + ", rateBlocks=" + config.rateBlocks + ", rateDays=" + config.rateDays;
     }
 
-    private static String structureDistanceSummary(StructureDistanceConfig config) {
+    static String structureDistanceSummary(StructureDistanceConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
         return "minDistanceBlocks=" + config.minDistanceBlocks + ", exemptStructureSets=" + config.exemptStructureSets;
     }
 
-    private static String floatingIslandsSummary(FloatingIslandsConfig config) {
+    static String floatingIslandsSummary(FloatingIslandsConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
@@ -2353,11 +2279,11 @@ public final class WorldzConfig {
             + ", lootChest=" + (config.lootChestEnabled ? starterKitSummary(config.lootKit) : "<disabled>");
     }
 
-    private static String starterKitSummary(StarterKitConfig config) {
-        return "essentials=" + config.essentials + ", extras=" + config.extras + ", extrasCount=" + config.extrasCount;
+    static String starterKitSummary(StarterKitConfig config) {
+        return new StarterKitSchema("starterKit").summary(config);
     }
 
-    private static String stripBandsSummary(StripBandsConfig config) {
+    static String stripBandsSummary(StripBandsConfig config) {
         if (!config.enabled) {
             return "<disabled>";
         }
@@ -2369,7 +2295,7 @@ public final class WorldzConfig {
             + ", allowBeaches=" + config.allowBeaches;
     }
 
-    private static String layoutSummary(LayoutConfig config) {
+    static String layoutSummary(LayoutConfig config) {
         if (config.mode == LayoutMode.LEGACY) {
             return "<legacy>";
         }
@@ -2379,7 +2305,7 @@ public final class WorldzConfig {
             + (config.singleBiome.isEmpty() ? "" : ", singleBiome=" + config.singleBiome);
     }
 
-    private static Yaml createYaml() {
+    static Yaml createYaml() {
         LoaderOptions loaderOptions = new LoaderOptions();
         loaderOptions.setAllowDuplicateKeys(false);
         loaderOptions.setAllowRecursiveKeys(false);

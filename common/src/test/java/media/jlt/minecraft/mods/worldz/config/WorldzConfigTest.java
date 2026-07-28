@@ -97,6 +97,20 @@ class WorldzConfigTest {
         assertEquals(expected, actual);
     }
 
+    /**
+     * Permanent byte-identity anchor for TODO 25.2 (DESIGN §41.8): {@code
+     * reference-defaults.yaml} is the exact {@code toYaml()} output of the pre-refactor code,
+     * captured once at the start of the phase and committed unchanged. This must keep passing,
+     * string-identical, through every sub-step (25.2a-h) -- it is what 25.6/25.7 will
+     * deliberately regenerate when the keys really do move.
+     */
+    @Test
+    void defaultConfigMatchesTheCapturedReferenceDefaults() throws IOException {
+        String reference = Files.readString(Path.of("src/test/resources/config/reference-defaults.yaml"));
+        String actual = new WorldzConfig().sanitize(LOGGER).toYaml();
+        assertEquals(reference, actual);
+    }
+
     @Test
     void malformedConfigUsesDefaultsWithoutOverwritingInput() throws IOException {
         Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
