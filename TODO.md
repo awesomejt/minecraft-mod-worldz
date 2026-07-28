@@ -1058,7 +1058,7 @@ tests.
       99/101 only mention it in prose comments.** All 4 cleaned up (73/74:
       comment reworded, key deleted; 75/76: intro prose updated to describe
       the new mechanism, key deleted). `./gradlew :common:test` green.
-- [ ] 25.6 Restructure the keys (D7) per CONFIG-RESTRUCTURE.md F1's two tables,
+- [x] 25.6 Restructure the keys (D7) per CONFIG-RESTRUCTURE.md F1's two tables,
       as corrected by DESIGN §42.1 — 13 within-class nests (strip deferred to
       25.9), 3 live cross-class shapes (`exclusionZone`, `naturalBiomes`,
       `chest`) plus 3 shapes F1 missed (`starter`, `starter.land`,
@@ -1066,7 +1066,8 @@ tests.
       rule. Design and full old→new key map in **DESIGN §42**. Broken into
       25.6a-25.6h below, each independently buildable/testable/committable.
       **No POJO, `logic/` or `client/` changes** — nesting is done with
-      `Setting.group` over the parent's own type (§42.2).
+      `Setting.group` over the parent's own type (§42.2). **Done** — all
+      8 sub-steps (a-h) complete; see 25.6h for the final close-out note.
 - [x] 25.6a Framework + the fixture gate — **done**. Added `Setting.group(String
       key, SchemaSection<S> group)` (`Setting.java`) and
       `SchemaSection.copyInto(S from, S to)` (`SchemaSection.java`), exactly
@@ -1584,11 +1585,44 @@ tests.
       848 tests, 0 failures (841 + 7 new regression tests); `ConfigFixturesTest`
       still 103 fixtures + 1 count assertion, all green, `KNOWN_UNKNOWN_KEYS`
       now empty.
-- [ ] 25.6h Close-out (needs 25.6b-25.6g). Full `README.md` key-name pass,
-      final `config/jlt_worldz.example.yaml` review, tighten
-      `ConfigSchemaMetadataTest` (no leaf key may end in `Blocks`), and log the
-      Deviation entries: `strip` width deferred to 25.9, and F1's four
-      corrections (§42.1).
+- [x] 25.6h Close-out (needs 25.6b-25.6g) — **done**. Full exhaustive
+      `README.md` grep pass for every old key name in DESIGN §42.3's map (all
+      ~60 old names individually grepped, not just the ones a single
+      sub-step touched): zero stragglers found. Every remaining bare hit
+      (`islandSource`, `chestTier`, `shapeAmplitude`, `applyToNether`,
+      `widthRadiusBlocks`/`widthMode`) is either a correct Customize-screen
+      UI label paired with the right config-key parenthetical, or one of the
+      two deliberate un-renamed cases DESIGN §42.3 itself calls out
+      (`skyIsland`/`strip` both keep a bare `applyToNether`; `strip.width*`
+      untouched per 25.9). `config/jlt_worldz.example.yaml` re-read in full:
+      no stale key names or stale prose (it only ever covered the 13
+      sections F6 named, all already correct from their own sub-steps).
+      Tightened `ConfigSchemaMetadataTest` with a new
+      `noLeafKeyEndsInTheDroppedBlocksSuffix` test — walks the same
+      `SchemaKeyWalker.collectKeys` tree `theSchemasDeclaredKeysExactlyMatchWhatToMapEmits`
+      already does (so it checks every leaf in the whole schema, not just
+      what an individual sub-step touched) and asserts no dotted leaf key
+      ends in `Blocks`, except a one-entry `BLOCKS_SUFFIX_ALLOW_LIST`
+      (`strip.widthRadiusBlocks` — the sole deliberate DESIGN §42.1 holdout,
+      allow-listed by exact key rather than exempting `strip` wholesale so
+      any other stray `Blocks` leaf still fails). Ran green with zero
+      allow-list misses beyond that one entry — confirmed via source grep
+      first that `StripSchema.java` is the only `*Schema.java` with a
+      `"...Blocks"` key-string literal anywhere in the tree. Logged the one
+      missing Deviation-log entry (F1's four corrections — the `strip`
+      deviation was already re-logged at 25.6c); see Deviation log,
+      2026-07-28 (25.6h). `./gradlew build` green (all modules): `common:test`
+      849 tests, 0 failures (848 + 1 new test); `ConfigFixturesTest` still
+      103 fixtures + 1 count assertion, `KNOWN_UNKNOWN_KEYS` confirmed
+      empty. **TODO 25.6 (all of 25.6a-h) is now fully closed**: the
+      framework (`Setting.group`/`SchemaSection.copyInto`, 25.6a) plus 8
+      sub-steps nested 13 within-class shapes, 3 shared cross-class shapes
+      (`exclusionZone`, `naturalBiomes`, `chest`), 3 shapes F1 missed
+      (`starter`, `starter.land`, `deepFlat.rivers`), wired the two
+      previously-dead pairs (`skyIsland.exclusionZone` at 25.6d,
+      `underground` at 25.6g), and dropped every `Blocks` suffix except the
+      one deliberately deferred to 25.9 — with zero POJO/`logic/`/`client/`
+      changes throughout, exactly per DESIGN §42's hard constraint.
 - [ ] 25.7 Split into `config/jlt_worldz/` (D2, D10). Biggest single win is
       moving the 11 generic-preset-only top-level keys (`allowedBiomes`,
       `starterBiome`, `layout`, `strip`, …) into `world-types/worldz.yaml`
@@ -1984,6 +2018,45 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-28 (Phase 25.6h close-out) — **F1's two tables (`CONFIG-RESTRUCTURE.md`)
+  needed four corrections once re-verified against the current tree, all
+  already worked out and applied during 25.6a-25.6g; logged here as 25.6h's
+  own close-out task requires, in one place, per DESIGN §42.1:
+  1. **Within-class table: 13 confirmed, not 14.** All 14 of F1's flat field
+     sets still existed with matching names/emit order, but row 12
+     (`StripConfig.widthRadiusBlocks`/`widthMode`) was deferred whole to
+     TODO 25.9 rather than nested now (see the 25.6c entry above) — so only
+     13 of the 14 rows were actually restructured by 25.6, not 14.
+  2. **Cross-class table: 2 confirmed, 2 materially wrong at measurement
+     time.** `naturalBiomes` (`ChaosBiomes`/`SingleBiome`/`StripBands` + root)
+     and `chest` (`Cave`/`EndStart`/`NetherStart`/`SkyIsland`) were both
+     confirmed exactly as F1 described. `exclusionZone` was **3 live, not
+     4** — `SkyIslandConfig.exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`
+     were unread/unmapped dead config at the time F1 measured, not a fourth
+     real owner (`ChunkIsland`/`FloatingIslands`/`OceanIsland` were the
+     genuine 3). `underground` was **0 live, not 2** — neither `FlatSchema`
+     nor `SkyIslandSchema` declared the pair at measurement time; both were
+     documented in `README.md` and exercised by fixtures 97/98 while being
+     silently ineffective. Both gaps are now fully resolved: `skyIsland
+     .exclusionZone` was wired into the schema at 25.6d, and `underground`
+     (a real, shared `UndergroundSchema<S>`) was wired at 25.6g — both
+     `exclusionZone` and `underground` are genuine 4-owner and 2-owner live
+     shapes respectively as of those sub-steps.
+  3. **Three shapes F1 missed entirely**, cheaper to fix during 25.6 than to
+     defer: the root's 5 `starter`-prefixed keys (`starterBiome`/
+     `starterRadiusBlocks`/`ensureStarterLand`/`starterLandTransitionBlocks`/
+     `starterLandFoundationDepthBlocks` → `starter: {biome, radius, land:
+     {enabled, transition, foundationDepth}}`), the same `starter: {biome,
+     radius}` pair (without `land`) on `SingleBiomeConfig`/`ChaosBiomesConfig`,
+     and `DeepFlatConfig`'s `riversEnabled`/`riverExclusionRadiusBlocks` →
+     `rivers: {enabled, exclusionRadius}`. F1 missed the first two because
+     its inventory walked config *classes* and the root's scalars belong to
+     none; it missed `DeepFlat` outright. All three were nested during
+     25.6b/25.6f as documented additions to F1, not F1 rewrites.
+  Net, as DESIGN §42.1 itself concludes: 13 within-class nests + 3 live
+  cross-class shared shapes + 3 added shapes, plus the §2 suffix sweep, with
+  `strip` the sole deferred exception — all delivered across 25.6a-25.6h.
 
 - 2026-07-28 (Phase 25.6c, F1 deviation re-logged at the point it bites) —
   **`strip.widthRadiusBlocks`/`strip.widthMode` were deliberately left

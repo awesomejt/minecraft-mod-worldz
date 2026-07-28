@@ -3233,3 +3233,33 @@ Durable decisions, verified API notes, and rationale that should survive across 
   `Files.writeString` in the test, run once via `--tests`, diff, revert) —
   confirmed the diff was exactly the two new `underground:` blocks, nothing
   else moved.
+- 2026-07-28 — **TODO 25.6 (config key restructure, D7) is fully closed —
+  all 8 sub-steps (25.6a-h) done, both 25.6h and the parent 25.6 checkbox
+  checked off.** 25.6h's own close-out pass (README.md exhaustive grep for
+  every DESIGN §42.3 old key name, final `config/jlt_worldz.example.yaml`
+  re-read, `ConfigSchemaMetadataTest` tightened) found **zero remaining
+  stragglers** — every prior sub-step's own mechanical README/example-file
+  pass had already been thorough. Added
+  `ConfigSchemaMetadataTest.noLeafKeyEndsInTheDroppedBlocksSuffix`: walks
+  the full schema tree via the existing `SchemaKeyWalker.collectKeys` and
+  fails on any leaf key ending in `Blocks`, except a one-entry allow-list
+  (`strip.widthRadiusBlocks` — the sole deliberate DESIGN §42.1 holdout,
+  deferred whole to TODO 25.9 because its meaning is about to change from
+  radius to absolute width). Logged the one still-missing Deviation-log
+  entry (F1's four corrections: within-class table was 13 confirmed + 1
+  deferred not 14; cross-class table was 2 confirmed + `exclusionZone`
+  actually 3-live-not-4 + `underground` actually 0-live-not-2 at measurement
+  time, both now fully wired as of 25.6d/25.6g; plus 3 shapes F1 missed
+  entirely — `starter`, `starter.land`, `deepFlat.rivers`). Net result of
+  the whole 25.6 arc: the `Setting.group`/`SchemaSection.copyInto`
+  mechanism (§42.2) nested 13 within-class shapes + 3 shared cross-class
+  shapes + 3 added shapes, wired the two previously-dead pairs
+  (`skyIsland.exclusionZone`, `underground`), and dropped every `Blocks`
+  suffix except `strip`'s — with zero POJO/`logic/`/`client/` changes
+  throughout. `common:test` ends at 849 tests, 0 failures;
+  `ConfigFixturesTest` stays at 103 fixtures with `KNOWN_UNKNOWN_KEYS` empty.
+  Full multiloader `./gradlew build` green. **Next up: TODO 25.7** (split
+  the single `jlt_worldz.yaml` into `config/jlt_worldz/` per D2/D10 — move
+  the 11 generic-preset-only top-level keys into `world-types/worldz.yaml`
+  and merge the `strip`/`stripWorld` split-brain into one file), the next
+  unstarted item in Phase 25.
