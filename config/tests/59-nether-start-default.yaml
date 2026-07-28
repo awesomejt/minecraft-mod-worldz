@@ -30,7 +30,8 @@
 #     original site -- ordinary vanilla behavior layering on top cleanly.
 netherStart:
   spawnY: 32
-  chestTier: medium
+  chest:
+    tier: medium
 overworldBorder:
   enabled: false
   ensureEndPortal: true

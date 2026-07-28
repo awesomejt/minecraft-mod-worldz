@@ -19,7 +19,7 @@
 # it exists and the dragon fight is winnable; getting to it requires
 # building/digging straight down.
 #
-# chestTier defaults to medium when omitted; this file leaves it implicit.
+# chest.tier defaults to medium when omitted; this file leaves it implicit.
 #
 # Steps once in-game:
 #  1. Confirm you spawn on top of a small, roughly circular grass-topped

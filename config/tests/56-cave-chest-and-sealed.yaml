@@ -17,9 +17,12 @@
 #  3. Confirm the sealed surface (config 54's check) still holds with the
 #     chest enabled too -- the two options are independent.
 cave:
-  spawnDepthY: -32
-  sealedSurface: true
-  sealedSurfaceY: 128
-  cavernEnabled: false
-  chestEnabled: true
-  chestTier: hard
+  spawnY: -32
+  sealedSurface:
+    enabled: true
+    y: 128
+  cavern:
+    enabled: false
+  chest:
+    enabled: true
+    tier: hard

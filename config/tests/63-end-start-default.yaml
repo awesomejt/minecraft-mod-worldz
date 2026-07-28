@@ -34,7 +34,8 @@
 #     confirm the rockets are usable once you have one. Report back on
 #     how the "reach the dragon" journey felt.
 endStart:
-  chestTier: medium
+  chest:
+    tier: medium
 overworldBorder:
   enabled: false
   ensureEndPortal: true

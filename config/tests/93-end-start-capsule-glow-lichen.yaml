@@ -1,7 +1,7 @@
 # GOALS 34/41 (test-coverage parity, 2026-07-26): `glow_lichen` coating
 # already has real coverage for `nether_start` (config 87) but never for
 # `end_start` -- confirms the same "coats every wall/floor/ceiling
-# surface, ignores `lightSpacingBlocks` entirely" behavior holds over
+# surface, ignores `capsule.light.spacing` entirely" behavior holds over
 # end-stone walls, not just nether brick. **Select "Worldz: End Start"**.
 #
 # Steps once in-game:
@@ -10,15 +10,17 @@
 #     the ceiling -- not just a few spaced points -- bright enough to see
 #     the whole room without a held light source. Corners should show
 #     lichen on both adjoining faces.
-#  2. Confirm `lightSpacingBlocks` had no effect (set to an intentionally
+#  2. Confirm `capsule.light.spacing` had no effect (set to an intentionally
 #     large 99 below) -- glow_lichen always covers everything regardless.
 #  3. Confirm the chest (hard tier) still lines the south wall, centered,
 #     same as every other light source.
 endStart:
-  chestTier: hard
+  chest:
+    tier: hard
   capsule:
-    lightSource: glow_lichen
-    lightSpacingBlocks: 99
+    light:
+      source: glow_lichen
+      spacing: 99
 overworldBorder:
   enabled: false
   ensureEndPortal: true

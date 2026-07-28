@@ -1,9 +1,9 @@
 # GOALS 41 (Phase 14b, DESIGN §31.9): lantern lighting -- unlike torches
 # or embedded glowstone, lanterns always hang from the ceiling (Jason,
 # 2026-07-25: "those can be hung from the ceiling"), never wall-mounted,
-# spaced across the interior in a 2D grid rather than a wall ring. `sizeBlocks: 9`
+# spaced across the interior in a 2D grid rather than a wall ring. `capsule.size: 9`
 # (7x7 interior) is large enough (>= 6x6, the 2026-07-27 "dense room"
-# threshold) to need more than one lantern per axis at `lightSpacingBlocks:
+# threshold) to need more than one lantern per axis at `capsule.light.spacing:
 # 3`, and to also get a second, floor-standing lantern grid in addition to
 # the ceiling one. Also exercises the hard chest tier's guaranteed pickaxe
 # (no other guaranteed tool/obsidian this tier). **Select "Worldz: Nether
@@ -27,13 +27,15 @@
 #     least a pickaxe to break out with) plus bread and a random extra.
 netherStart:
   spawnY: 32
-  chestTier: hard
+  chest:
+    tier: hard
   forceCapsule: true
   capsule:
-    sizeBlocks: 9
-    heightBlocks: 3
-    lightSource: lantern
-    lightSpacingBlocks: 3
+    size: 9
+    height: 3
+    light:
+      source: lantern
+      spacing: 3
 overworldBorder:
   enabled: false
   ensureEndPortal: true

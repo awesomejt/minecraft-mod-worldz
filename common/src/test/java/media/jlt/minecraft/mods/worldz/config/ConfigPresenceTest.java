@@ -29,7 +29,7 @@ class ConfigPresenceTest {
 
         assertFalse(config.present("starter.radius"));
         assertFalse(config.present("stacked"));
-        assertFalse(config.present("cave.easyKit.essentials"));
+        assertFalse(config.present("cave.chest.kits.easy.essentials"));
     }
 
     @Test
@@ -60,15 +60,17 @@ class ConfigPresenceTest {
     void doublyNestedLeafMarksEveryAncestorPresentButNotSiblings() {
         WorldzConfig config = WorldzConfig.parse("""
             cave:
-              easyKit:
-                essentials:
-                  - "minecraft:torch"
+              chest:
+                kits:
+                  easy:
+                    essentials:
+                      - "minecraft:torch"
             """, LOGGER);
 
-        assertTrue(config.present("cave.easyKit.essentials"));
-        assertTrue(config.present("cave.easyKit"));
-        assertFalse(config.present("cave.mediumKit"));
-        assertFalse(config.present("cave.spawnDepthY"));
+        assertTrue(config.present("cave.chest.kits.easy.essentials"));
+        assertTrue(config.present("cave.chest.kits.easy"));
+        assertFalse(config.present("cave.chest.kits.medium"));
+        assertFalse(config.present("cave.spawnY"));
     }
 
     @Test

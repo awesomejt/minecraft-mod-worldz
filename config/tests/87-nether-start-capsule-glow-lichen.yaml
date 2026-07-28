@@ -5,7 +5,7 @@
 # capsule size + glow_lichen lighting, which behaves differently from
 # every other light source -- instead of spaced points, it coats the
 # *entire* interior surface (walls, floor, ceiling). Also exercises
-# `sizeBlocks`/`heightBlocks` directly (9x9 exterior footprint, 7x7
+# `capsule.size`/`capsule.height` directly (9x9 exterior footprint, 7x7
 # interior; 4-tall interior). **Select "Worldz: Nether Start"**.
 #
 # Steps once in-game:
@@ -18,20 +18,22 @@
 #     not just a few spaced points -- and that it's genuinely bright
 #     enough to see across the whole room without a held light source.
 #     Corners should show lichen on both adjoining faces.
-#  4. Confirm `lightSpacingBlocks` had no effect here (glow_lichen always
+#  4. Confirm `capsule.light.spacing` had no effect here (glow_lichen always
 #     covers everything, ignoring spacing) -- it's set to an
 #     intentionally large 99 below specifically to prove that.
 #  5. Confirm the chest (medium tier), furnace, and crafting table all
 #     line one wall together, centered -- not the chest alone underfoot.
 netherStart:
   spawnY: 32
-  chestTier: medium
+  chest:
+    tier: medium
   forceCapsule: true
   capsule:
-    sizeBlocks: 9
-    heightBlocks: 4
-    lightSource: glow_lichen
-    lightSpacingBlocks: 99
+    size: 9
+    height: 4
+    light:
+      source: glow_lichen
+      spacing: 99
 overworldBorder:
   enabled: false
   ensureEndPortal: true

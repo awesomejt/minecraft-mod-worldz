@@ -18,8 +18,11 @@
 #     trigger them) and that light/mob-spawning below the roof behaves like
 #     an ordinary large cave.
 cave:
-  spawnDepthY: -32
-  sealedSurface: true
-  sealedSurfaceY: 128
-  cavernEnabled: false
-  chestEnabled: false
+  spawnY: -32
+  sealedSurface:
+    enabled: true
+    y: 128
+  cavern:
+    enabled: false
+  chest:
+    enabled: false

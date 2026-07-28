@@ -683,37 +683,37 @@ class WorldzConfigTest {
                 + ", exclusionZone=radius=128"
                 + ", floatingIslands=<disabled>"
                 + ", chunkIsland=<disabled>"
-                + ", cave=spawnDepthY=-32, sealedSurface=false, sealedSurfaceY=128, sealedSurfaceBlock=stone,"
-                + " sealedSurfaceThicknessBlocks=5, cavernEnabled=false"
-                + ", cavernRadiusBlocks=48, cavernHeightBlocks=24, chestEnabled=false, chestTier=medium"
-                + ", easyKit=essentials=[minecraft:oak_log:4, minecraft:bread:6, minecraft:wheat_seeds:4,"
+                + ", cave=spawnY=-32, sealedSurface=enabled=false, y=128, block=stone, thickness=5"
+                + ", cavern=enabled=false, radius=48, height=24"
+                + ", chest=enabled=false, tier=medium"
+                + ", kits=easy=essentials=[minecraft:oak_log:4, minecraft:bread:6, minecraft:wheat_seeds:4,"
                 + " minecraft:oak_sapling:3, minecraft:torch:16, minecraft:dirt:8],"
                 + " extras=[minecraft:cobblestone:16, minecraft:coal:8], extrasCount=2"
-                + ", mediumKit=essentials=[minecraft:torch:8, minecraft:oak_log:2, minecraft:dirt:4],"
+                + ", medium=essentials=[minecraft:torch:8, minecraft:oak_log:2, minecraft:dirt:4],"
                 + " extras=[minecraft:coal:4], extrasCount=1"
-                + ", hardKit=essentials=[minecraft:torch:1, minecraft:wooden_pickaxe:1], extras=[], extrasCount=0"
-                + ", netherStart=spawnY=32, chestTier=medium"
-                + ", easyKit=essentials=[minecraft:obsidian:10, minecraft:flint_and_steel:1, minecraft:bread:8,"
+                + ", hard=essentials=[minecraft:torch:1, minecraft:wooden_pickaxe:1], extras=[], extrasCount=0"
+                + ", netherStart=spawnY=32, chest=tier=medium"
+                + ", kits=easy=essentials=[minecraft:obsidian:10, minecraft:flint_and_steel:1, minecraft:bread:8,"
                 + " minecraft:wooden_pickaxe:1],"
                 + " extras=[minecraft:golden_pickaxe:1, minecraft:golden_sword:1, minecraft:gold_ingot:8,"
                 + " minecraft:torch:16], extrasCount=3"
-                + ", mediumKit=essentials=[minecraft:obsidian:10, minecraft:bread:4, minecraft:wooden_pickaxe:1],"
+                + ", medium=essentials=[minecraft:obsidian:10, minecraft:bread:4, minecraft:wooden_pickaxe:1],"
                 + " extras=[minecraft:gold_ingot:4, minecraft:torch:8, minecraft:iron_sword:1], extrasCount=2"
-                + ", hardKit=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
+                + ", hard=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
                 + " extras=[minecraft:gold_ingot:2, minecraft:torch:4], extrasCount=1"
                 + ", forceCapsule=false"
-                + ", capsule=sizeBlocks=7, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
-                + ", endStart=chestTier=medium"
-                + ", easyKit=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
+                + ", capsule=size=7, height=3, light=source=glowstone, spacing=5"
+                + ", endStart=chest=tier=medium"
+                + ", kits=easy=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
                 + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1, minecraft:copper_pickaxe:1],"
                 + " extras=[minecraft:iron_chestplate:1, minecraft:iron_helmet:1, minecraft:golden_apple:2,"
                 + " minecraft:ender_pearl:4], extrasCount=3"
-                + ", mediumKit=essentials=[minecraft:firework_rocket:8, minecraft:cobblestone:32, minecraft:bread:4,"
+                + ", medium=essentials=[minecraft:firework_rocket:8, minecraft:cobblestone:32, minecraft:bread:4,"
                 + " minecraft:iron_sword:1, minecraft:stone_pickaxe:1], extras=[minecraft:arrow:16, minecraft:bow:1,"
                 + " minecraft:ender_pearl:2], extrasCount=2"
-                + ", hardKit=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
+                + ", hard=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
                 + " extras=[minecraft:arrow:8, minecraft:ender_pearl:1], extrasCount=1"
-                + ", capsule=sizeBlocks=7, heightBlocks=3, lightSource=glowstone, lightSpacingBlocks=5"
+                + ", capsule=size=7, height=3, light=source=glowstone, spacing=5"
                 + ", flat=layers=[minecraft:bedrock:1, minecraft:stone:123, minecraft:dirt:3, minecraft:grass_block:1],"
                 + " biome=minecraft:plains, decoration=false,"
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
@@ -1219,14 +1219,17 @@ class WorldzConfigTest {
     void caveSettingsLoadAndSanitizeIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             cave:
-              spawnDepthY: -40
-              sealedSurface: true
-              sealedSurfaceY: 100
-              cavernEnabled: true
-              cavernRadiusBlocks: 64
-              cavernHeightBlocks: 32
-              chestEnabled: true
-              chestTier: hard
+              spawnY: -40
+              sealedSurface:
+                enabled: true
+                y: 100
+              cavern:
+                enabled: true
+                radius: 64
+                height: 32
+              chest:
+                enabled: true
+                tier: hard
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(-40, config.cave.spawnDepthY);
@@ -1254,13 +1257,15 @@ class WorldzConfigTest {
     void caveSealedSurfaceYIsClampedOnlyWhenEnabled() {
         WorldzConfig tooLow = WorldzConfig.parse("""
             cave:
-              sealedSurface: true
-              sealedSurfaceY: -999
+              sealedSurface:
+                enabled: true
+                y: -999
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig ignoredWhenDisabled = WorldzConfig.parse("""
             cave:
-              sealedSurface: false
-              sealedSurfaceY: -999
+              sealedSurface:
+                enabled: false
+                y: -999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(CaveConfig.MIN_SEALED_SURFACE_Y, tooLow.cave.sealedSurfaceY);
@@ -1271,13 +1276,15 @@ class WorldzConfigTest {
     void caveCavernRadiusAndHeightAreClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             cave:
-              cavernRadiusBlocks: 1
-              cavernHeightBlocks: 1
+              cavern:
+                radius: 1
+                height: 1
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             cave:
-              cavernRadiusBlocks: 9999999
-              cavernHeightBlocks: 9999999
+              cavern:
+                radius: 9999999
+                height: 9999999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(CavePlan.MIN_CAVERN_BLOCKS, tooSmall.cave.cavernRadiusBlocks);
@@ -1291,13 +1298,15 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             netherStart:
               spawnY: 64
-              chestTier: hard
+              chest:
+                tier: hard
               forceCapsule: true
               capsule:
-                sizeBlocks: 7
-                heightBlocks: 4
-                lightSource: lantern
-                lightSpacingBlocks: 3
+                size: 7
+                height: 4
+                light:
+                  source: lantern
+                  spacing: 3
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(64, config.netherStart.spawnY);
@@ -1313,14 +1322,16 @@ class WorldzConfigTest {
     void netherStartKitsLoadIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             netherStart:
-              easyKit:
-                essentials:
-                  - minecraft:bread:10
-                extrasCount: 0
-              hardKit:
-                essentials:
-                  - minecraft:oak_sapling:1
-                extrasCount: 0
+              chest:
+                kits:
+                  easy:
+                    essentials:
+                      - minecraft:bread:10
+                    extrasCount: 0
+                  hard:
+                    essentials:
+                      - minecraft:oak_sapling:1
+                    extrasCount: 0
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(List.of("minecraft:bread:10"), config.netherStart.easyKit.essentials);
@@ -1347,17 +1358,17 @@ class WorldzConfigTest {
         WorldzConfig even = WorldzConfig.parse("""
             netherStart:
               capsule:
-                sizeBlocks: 6
+                size: 6
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooSmall = WorldzConfig.parse("""
             netherStart:
               capsule:
-                sizeBlocks: -5
+                size: -5
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             netherStart:
               capsule:
-                sizeBlocks: 9999
+                size: 9999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(7, even.netherStart.capsule.sizeBlocks);
@@ -1384,16 +1395,19 @@ class WorldzConfigTest {
     void endStartSettingsLoadAndSanitizeIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             endStart:
-              chestTier: hard
-              easyKit:
-                essentials: ["minecraft:firework_rocket:99"]
-                extras: []
-                extrasCount: 0
+              chest:
+                tier: hard
+                kits:
+                  easy:
+                    essentials: ["minecraft:firework_rocket:99"]
+                    extras: []
+                    extrasCount: 0
               capsule:
-                sizeBlocks: 7
-                heightBlocks: 4
-                lightSource: lantern
-                lightSpacingBlocks: 3
+                size: 7
+                height: 4
+                light:
+                  source: lantern
+                  spacing: 3
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(StarterKitTier.HARD, config.endStart.chestTier);
@@ -1424,17 +1438,17 @@ class WorldzConfigTest {
         WorldzConfig even = WorldzConfig.parse("""
             endStart:
               capsule:
-                sizeBlocks: 6
+                size: 6
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooSmall = WorldzConfig.parse("""
             endStart:
               capsule:
-                sizeBlocks: -5
+                size: -5
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             endStart:
               capsule:
-                sizeBlocks: 9999
+                size: 9999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(7, even.endStart.capsule.sizeBlocks);
@@ -1446,10 +1460,12 @@ class WorldzConfigTest {
     void endStartKitExtrasCountIsClampedWhenPoolIsEmpty() {
         WorldzConfig config = WorldzConfig.parse("""
             endStart:
-              hardKit:
-                essentials: []
-                extras: []
-                extrasCount: 5
+              chest:
+                kits:
+                  hard:
+                    essentials: []
+                    extras: []
+                    extrasCount: 5
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0, config.endStart.hardKit.extrasCount);

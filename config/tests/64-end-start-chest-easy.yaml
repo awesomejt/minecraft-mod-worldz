@@ -12,7 +12,8 @@
 #     gear (bow, arrows, sword) feels like a genuine fighting chance, not
 #     just flavor.
 endStart:
-  chestTier: easy
+  chest:
+    tier: easy
 overworldBorder:
   enabled: false
   ensureEndPortal: true

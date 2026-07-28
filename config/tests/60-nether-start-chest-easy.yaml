@@ -15,7 +15,8 @@
 #     most generous path out of the Nether this preset offers.
 netherStart:
   spawnY: 32
-  chestTier: easy
+  chest:
+    tier: easy
 overworldBorder:
   enabled: false
   ensureEndPortal: true

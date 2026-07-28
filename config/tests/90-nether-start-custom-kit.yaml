@@ -1,10 +1,11 @@
 # GOALS 27 (TODO 15.2a-bugfix cleanup, 2026-07-26): real in-game proof
-# that `netherStart.<tier>Kit` YAML overrides actually take effect.
+# that `netherStart.chest.kits.<tier>` YAML overrides actually take effect
+# (`netherStart.<tier>Kit` before TODO 25.6e's key restructure).
 # TODO 15.2a-bugfix logged this as a real defect ("any of Jason's own
 # `netherStart.easyKit`/etc. YAML customizations are silently ignored")
 # but turned out to already be fixed as an incidental fix in commit
 # `427f699` (0.3.2) -- the checklist line was simply never closed. This
-# config is the missing real-world check: a custom `hardKit` with
+# config is the missing real-world check: a custom `chest.kits.hard` with
 # obviously-not-default contents, so a silently-ignored override would
 # be unmistakable (you'd see the built-in hard defaults -- 2 bread, a
 # wooden pickaxe, one random extra from gold ingots/torches -- instead).
@@ -25,15 +26,17 @@
 #     "genuinely beatable from a minimal start" spirit as config 61.
 netherStart:
   spawnY: 32
-  chestTier: hard
-  hardKit:
-    essentials:
-      - "minecraft:diamond:5"
-      - "minecraft:emerald:3"
-      - "minecraft:bread:2"
-    extras:
-      - "minecraft:golden_apple:1"
-    extrasCount: 1
+  chest:
+    tier: hard
+    kits:
+      hard:
+        essentials:
+          - "minecraft:diamond:5"
+          - "minecraft:emerald:3"
+          - "minecraft:bread:2"
+        extras:
+          - "minecraft:golden_apple:1"
+        extrasCount: 1
 overworldBorder:
   enabled: false
   ensureEndPortal: true

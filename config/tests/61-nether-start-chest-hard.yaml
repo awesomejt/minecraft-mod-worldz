@@ -21,7 +21,8 @@
 #     real playtesting).
 netherStart:
   spawnY: 32
-  chestTier: hard
+  chest:
+    tier: hard
 overworldBorder:
   enabled: false
   ensureEndPortal: true

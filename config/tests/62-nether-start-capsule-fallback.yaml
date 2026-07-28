@@ -26,7 +26,8 @@
 #     its own footprint.
 netherStart:
   spawnY: 4
-  chestTier: easy
+  chest:
+    tier: easy
 overworldBorder:
   enabled: false
   ensureEndPortal: true

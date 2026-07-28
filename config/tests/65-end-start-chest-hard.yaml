@@ -15,7 +15,8 @@
 #     (expected) or genuinely unreasonable -- DESIGN §32.5 flags this as a
 #     first pass, not signed off.
 endStart:
-  chestTier: hard
+  chest:
+    tier: hard
 overworldBorder:
   enabled: false
   ensureEndPortal: true

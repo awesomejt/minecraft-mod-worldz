@@ -1376,12 +1376,90 @@ tests.
       status`). `./gradlew build` green (all modules): `common:test` 841
       tests, 0 failures (838 + 3 new); `ConfigFixturesTest` 103 fixtures + 1
       count assertion, all green, with `KNOWN_UNKNOWN_KEYS` down to just 97/98.
-- [ ] 25.6e Cave / Nether-start / End-start (needs 25.6d for `ChestSchema`).
-      `cave` (`spawnDepthY`→`spawnY` per CONFIG-RESTRUCTURE.md §3, `sealedSurface`
-      — DESIGN R5's conditional clamp survives verbatim —, `cavern`, `chest`
-      with `enabled`), `netherStart`, `endStart`, and `capsule` (`size`,
-      `height`, `light: {source, spacing}`) on **both** parameterized
-      `StarterCapsuleSchema` instances (DESIGN R3). Fixtures 53-56, 59-65, 86-93.
+- [x] 25.6e Cave / Nether-start / End-start (needs 25.6d for `ChestSchema`) —
+      **done**. `CaveSchema`: `spawnDepthY` → `spawnY` (per
+      CONFIG-RESTRUCTURE.md §3's `cave.yaml` example, matching
+      `netherStart.spawnY`'s existing naming); two new private, non-generic
+      groups over `CaveSchema`'s own `CaveConfig` type (there is only ever one
+      owner shape, unlike `ChestSchema`/`ExclusionZoneSchema`, so no `<S>`
+      parameterization needed — same pattern as `BorderSchema.ResizeSchema`):
+      `SealedSurfaceSchema` (`sealedSurface`/`sealedSurfaceY`/
+      `sealedSurfaceBlock`/`sealedSurfaceThicknessBlocks` → `sealedSurface:
+      {enabled, y, block, thickness}`) and `CavernSchema` (`cavernEnabled`/
+      `cavernRadiusBlocks`/`cavernHeightBlocks` → `cavern: {enabled, radius,
+      height}`). DESIGN R5's one conditional clamp (`.when(c ->
+      c.sealedSurface)` on `y`'s `IntBuilder`) survives verbatim inside the
+      new group — the predicate reads `CaveConfig.sealedSurface` directly,
+      unaffected by the nest — only the key/path string changed
+      (`cave.sealedSurfaceY` → `cave.sealedSurface.y`), confirmed by
+      `caveSealedSurfaceYIsClampedOnlyWhenEnabled` still passing unmodified
+      in its assertions (only the input YAML shape changed).
+      **`chest.enabled` is the first real exercise of `ChestSchema`'s full
+      (`enabled`-leaf) constructor**, TODO 25.6d's Javadoc-flagged gap: `cave`
+      now instantiates it with `chestEnabled`'s accessor as the fifth
+      constructor argument, alongside `chestTier`/three kits →
+      `chest.tier`/`chest.kits.{easy,medium,hard}` exactly as `skyIsland`
+      already does with the no-`enabled` constructor. Confirmed working via
+      `caveSettingsLoadAndSanitizeIndependently` (round-trips `chest.enabled:
+      true`) and the regenerated golden file, which shows `chest.enabled`
+      before `chest.tier` in `cave`'s own emit order but *not* in
+      `netherStart`/`endStart`'s (no `enabled` leaf there) — the parameterized
+      constructor branch is real, not dead code.
+      `NetherStartSchema`/`EndStartSchema`: both switched from three flat
+      `easyKitSchema`/`mediumKitSchema`/`hardKitSchema` fields + hand-written
+      `chestTier` enum setting to a single `ChestSchema<NetherStartConfig>`/
+      `ChestSchema<EndStartConfig>` instance (no-`enabled` constructor, chest
+      unconditional in both) — `chestTier`/three kits → `chest.tier`/
+      `chest.kits.*`, identical to `skyIsland`'s own 25.6d conversion.
+      **`StarterCapsuleSchema` (DESIGN R3): renamed `sizeBlocks`/`heightBlocks`
+      → `size`/`height` (odd-rounding-before-clamp order on `size` untouched)
+      and nested `lightSource`/`lightSpacingBlocks` into a new private
+      `LightSchema` group (`light: {source, spacing}`) — the light-spacing
+      bound stays per-parent, threaded through `LightSchema`'s own
+      constructor exactly like the outer class's size/height bounds.** Both
+      parameterized instantiation sites (`NetherStartSchema`'s and
+      `EndStartSchema`'s constructors, at `NetherStartPlan`'s vs
+      `EndStartPlan`'s own `MIN`/`MAX_CAPSULE_*` bounds) renamed together in
+      this one commit — verified by grepping both call sites before
+      declaring done, per DESIGN R3's own warning that the two must not
+      diverge. Confirmed via `netherStartSettingsLoadAndSanitizeIndependently`/
+      `netherStartCapsuleSizeIsOddenedAndClamped`/`endStartSettingsLoadAnd
+      SanitizeIndependently`/`endStartCapsuleSizeIsOddenedAndClamped`, all
+      updated to the new nested YAML shape and still green.
+      Fixtures actually touched: the TODO line's own list (53-56, 59-65,
+      86-93) plus a stale prose-only `chestTier` comment in
+      `38-sky-island-default.yaml` (a 25.6d leftover, corrected for accuracy —
+      same class of miss 25.6b/c/d's own lessons already flagged; verified by
+      grepping every `config/tests/*.yaml` for the old key strings rather
+      than trusting the TODO line's list alone). `config/tests/README.md`
+      stays untouched, deferred to 25.11 per DESIGN §42.5. `config/
+      jlt_worldz.example.yaml` not touched — confirmed via grep it covers
+      none of these three sections. `reference-defaults.yaml` regenerated
+      (only `cave`/`netherStart`/`endStart` hunks moved, captured by
+      temporarily writing `toYaml()` to a scratch file rather than
+      hand-transcribing). `WorldzConfigTest`: every YAML string containing an
+      old key updated (`caveSettingsLoadAndSanitizeIndependently`,
+      `caveSealedSurfaceYIsClampedOnlyWhenEnabled`,
+      `caveCavernRadiusAndHeightAreClamped`,
+      `netherStartSettingsLoadAndSanitizeIndependently`,
+      `netherStartKitsLoadIndependently`, `netherStartCapsuleSizeIsOddenedAndClamped`,
+      `netherStartSpawnYIsClamped`, `endStartSettingsLoadAndSanitizeIndependently`,
+      `endStartCapsuleSizeIsOddenedAndClamped`,
+      `endStartKitExtrasCountIsClampedWhenPoolIsEmpty` — POJO field accessors
+      like `config.cave.spawnDepthY` left untouched throughout, only the
+      parsed YAML text and R13's 96-line summary assertion (`cave`/
+      `netherStart`/`endStart` segments, captured the same scratch-file way
+      rather than hand-derived, then reviewed) changed. `ConfigPresenceTest`
+      updated (`cave.easyKit.essentials`/`cave.easyKit`/`cave.mediumKit`/
+      `cave.spawnDepthY` → `cave.chest.kits.easy.essentials`/`cave.chest.kits
+      .easy`/`cave.chest.kits.medium`/`cave.spawnY`) — the one presence test
+      DESIGN §42.6's checklist calls out by name. `README.md` mechanical
+      key-name pass for "Cave challenge", "Nether-start challenge" and
+      "End-start challenge". No `logic:`/`client:` files in the diff (verified
+      via `git status`). `./gradlew build` green (all modules): `common:test`
+      841 tests, 0 failures (same count as 25.6d — no tests added, only
+      updated); `ConfigFixturesTest` still 103 fixtures + 1 count assertion,
+      all green.
 - [ ] 25.6f Flat family (needs 25.6a). `deepFlat.rivers: {enabled,
       exclusionRadius}` (an F1 miss), `stacked.relief`, `flat` suffix drops.
       Fixtures 66-78, 94-96, 99-101.

@@ -20,9 +20,12 @@
 #     near the edge, confirm it's left untouched (not overwritten with air
 #     or refilled) rather than looking artificially truncated.
 cave:
-  spawnDepthY: -32
-  sealedSurface: false
-  cavernEnabled: true
-  cavernRadiusBlocks: 64
-  cavernHeightBlocks: 32
-  chestEnabled: false
+  spawnY: -32
+  sealedSurface:
+    enabled: false
+  cavern:
+    enabled: true
+    radius: 64
+    height: 32
+  chest:
+    enabled: false

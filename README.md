@@ -735,7 +735,7 @@ Select **Worldz: Cave** under **World Type** for a cave-only start. Unlike
 every other typed preset, the Overworld generates exactly as vanilla
 would — full biome variety, real seed terrain, no shape or restriction of
 any kind. The only change is where you spawn: a real natural cavity,
-searched out near a configurable depth (`spawnDepthY`), rather than the
+searched out near a configurable depth (`spawnY`), rather than the
 surface. Underground structures (mineshafts, dungeons, trial chambers, a
 stronghold) generate normally so the game stays beatable, and the Nether is
 reached by an ordinary portal built underground.
@@ -747,12 +747,12 @@ happens).
 
 Two independent options layer on top:
 
-- **Sealed surface** (`sealedSurface`/`sealedSurfaceY`): a solid roof caps
-  the entire world at the configured Y, so the whole game is played
-  underground with no sky access anywhere. Terrain above that height —
-  ordinarily just tall mountain peaks — is deliberately clipped flat, not a
-  bug. No sky access also means no phantoms.
-- **Mega-cavern** (`cavernEnabled`/`cavernRadiusBlocks`/`cavernHeightBlocks`):
+- **Sealed surface** (`sealedSurface.enabled`/`sealedSurface.y`): a solid
+  roof caps the entire world at the configured Y, so the whole game is
+  played underground with no sky access anywhere. Terrain above that
+  height — ordinarily just tall mountain peaks — is deliberately clipped
+  flat, not a bug. No sky access also means no phantoms.
+- **Mega-cavern** (`cavern.enabled`/`cavern.radius`/`cavern.height`):
   a large, naturally-edged cavern carved around spawn — a buried "world in
   a cave" with room to build a base. The edge is perturbed (not a perfect
   sphere) using the same coastline-shaping math every other footprint in
@@ -761,7 +761,7 @@ Two independent options layer on top:
   existing air, water, lava, or natural caves already inside the footprint
   are left exactly as vanilla generated them.
 
-An optional starter chest (`chestEnabled`/`chestTier`, easy/medium/hard) is
+An optional starter chest (`chest.enabled`/`chest.tier`, easy/medium/hard) is
 set into the floor directly beneath your spawn position — unlike every
 other typed preset's chest, this one defaults to **off**.
 
@@ -769,26 +769,29 @@ Configure its defaults with a `cave:` section in `config/jlt_worldz.yaml`:
 
 ```yaml
 cave:
-  spawnDepthY: -32
-  sealedSurface: false
-  sealedSurfaceY: 128
-  cavernEnabled: false
-  cavernRadiusBlocks: 48
-  cavernHeightBlocks: 24
-  chestEnabled: false
-  chestTier: medium
+  spawnY: -32
+  sealedSurface:
+    enabled: false
+    y: 128
+  cavern:
+    enabled: false
+    radius: 48
+    height: 24
+  chest:
+    enabled: false
+    tier: medium
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `spawnDepthY` | `-32` | Target Y for the underground spawn-cavity search. |
-| `sealedSurface` | `false` | Whether a solid roof seals off sky access everywhere. |
-| `sealedSurfaceY` | `128` | The roof's Y, meaningful only when `sealedSurface` is set. |
-| `cavernEnabled` | `false` | Whether the mega-cavern is carved around spawn. |
-| `cavernRadiusBlocks` | `48` | The mega-cavern's horizontal half-width in blocks (`8`-`256`). |
-| `cavernHeightBlocks` | `24` | The mega-cavern's vertical half-height in blocks (`8`-`256`). |
-| `chestEnabled` | `false` | Whether a starter chest is placed at spawn. |
-| `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+| `spawnY` | `-32` | Target Y for the underground spawn-cavity search. |
+| `sealedSurface.enabled` | `false` | Whether a solid roof seals off sky access everywhere. |
+| `sealedSurface.y` | `128` | The roof's Y, meaningful only when `sealedSurface.enabled` is set. |
+| `cavern.enabled` | `false` | Whether the mega-cavern is carved around spawn. |
+| `cavern.radius` | `48` | The mega-cavern's horizontal half-width in blocks (`8`-`256`). |
+| `cavern.height` | `24` | The mega-cavern's vertical half-height in blocks (`8`-`256`). |
+| `chest.enabled` | `false` | Whether a starter chest is placed at spawn. |
+| `chest.tier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
@@ -823,10 +826,10 @@ source, and light spacing are all configurable:
 
 | Setting | Default | Description |
 |---|---|---|
-| `capsule.sizeBlocks` | `7` | Total exterior footprint, walls included (must be odd); the room you actually stand in is this minus 2 — the default `7` means a 5x5 interior. |
-| `capsule.heightBlocks` | `3` | Interior height (already "as seen from inside" — no adjustment needed). |
-| `capsule.lightSource` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen`. Torches/glowstone/shroomlight each light the north/east/west walls with one fixture centered on that wall (more, symmetric about the center, if the wall is long enough for the configured spacing); lanterns always hang from the ceiling in a grid instead; `glow_lichen` ignores spacing and coats the entire interior surface. The south wall (where the chest/furnace/crafting table sit) never gets a wall fixture. A room with either interior dimension at 6 or more also gets ceiling/floor lights in addition to the walls (floor-standing only for `torch` — there's no vanilla ceiling-mounted torch). |
-| `capsule.lightSpacingBlocks` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
+| `capsule.size` | `7` | Total exterior footprint, walls included (must be odd); the room you actually stand in is this minus 2 — the default `7` means a 5x5 interior. |
+| `capsule.height` | `3` | Interior height (already "as seen from inside" — no adjustment needed). |
+| `capsule.light.source` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen`. Torches/glowstone/shroomlight each light the north/east/west walls with one fixture centered on that wall (more, symmetric about the center, if the wall is long enough for the configured spacing); lanterns always hang from the ceiling in a grid instead; `glow_lichen` ignores spacing and coats the entire interior surface. The south wall (where the chest/furnace/crafting table sit) never gets a wall fixture. A room with either interior dimension at 6 or more also gets ceiling/floor lights in addition to the walls (floor-standing only for `torch` — there's no vanilla ceiling-mounted torch). |
+| `capsule.light.spacing` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
 
 **Death and respawn work like this:** the world's own default spawn point
 is redirected to the resolved Nether site at world creation, so both your
@@ -836,7 +839,7 @@ normally in the Nether (beds don't — vanilla's own rule); place and charge
 one anywhere you like, and it overrides the default the same way a bed
 would in the Overworld.
 
-A difficulty-tiered starter chest (`chestTier`, easy/medium/hard — always
+A difficulty-tiered starter chest (`chest.tier`, easy/medium/hard — always
 on, unlike Cave's optional one) is set into the floor directly beneath
 your spawn position. Every tier guarantees at least a wooden pickaxe, so
 you can always mine your way out of the capsule's nether-brick walls if
@@ -854,19 +857,21 @@ Configure its defaults with a `netherStart:` section in
 ```yaml
 netherStart:
   spawnY: 32
-  chestTier: medium
+  chest:
+    tier: medium
   forceCapsule: false
   capsule:
-    sizeBlocks: 5
-    heightBlocks: 3
-    lightSource: glowstone
-    lightSpacingBlocks: 5
+    size: 5
+    height: 3
+    light:
+      source: glowstone
+      spacing: 5
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `spawnY` | `32` | Target Y for the safe-site search. |
-| `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+| `chest.tier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
 | `forceCapsule` | `false` | Always build the guaranteed capsule instead of only falling back to it when the natural search fails. |
 
 **Not yet available:** `forceCapsule` and the `capsule:` settings are
@@ -903,7 +908,7 @@ the way Nether-start's respawn anchors work.
 **Reaching the Ender Dragon is part of the challenge.** No guaranteed
 gateway or teleporter is built, and no Elytra is handed over — Elytra
 stays an ordinary End City find, the same way vanilla intends. A
-difficulty-tiered starter chest (`chestTier`, easy/medium/hard) lines the
+difficulty-tiered starter chest (`chest.tier`, easy/medium/hard) lines the
 platform's south wall (or sits underfoot at the smallest platform size,
 where there's no side wall to line). Every tier guarantees a pickaxe —
 End Stone requires one (any tier) to actually drop when mined, so a
@@ -926,21 +931,23 @@ Configure its defaults with an `endStart:` section in
 
 ```yaml
 endStart:
-  chestTier: medium
+  chest:
+    tier: medium
   capsule:
-    sizeBlocks: 7
-    heightBlocks: 3
-    lightSource: glowstone
-    lightSpacingBlocks: 5
+    size: 7
+    height: 3
+    light:
+      source: glowstone
+      spacing: 5
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `chestTier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
-| `capsule.sizeBlocks` | `7` | Total *exterior* footprint width/depth, walls included (must be odd) — `7` means a 5x5 interior. |
-| `capsule.heightBlocks` | `3` | Interior height (already "as seen from inside"). |
-| `capsule.lightSource` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen` — same placement rules as Nether-start's own `netherStart.capsule.lightSource` (see above). The south wall (where the chest sits) never gets a wall fixture. |
-| `capsule.lightSpacingBlocks` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
+| `chest.tier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+| `capsule.size` | `7` | Total *exterior* footprint width/depth, walls included (must be odd) — `7` means a 5x5 interior. |
+| `capsule.height` | `3` | Interior height (already "as seen from inside"). |
+| `capsule.light.source` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen` — same placement rules as Nether-start's own `netherStart.capsule.light.source` (see above). The south wall (where the chest sits) never gets a wall fixture. |
+| `capsule.light.spacing` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.

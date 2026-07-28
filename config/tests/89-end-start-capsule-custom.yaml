@@ -25,12 +25,14 @@
 #     platform's own end stone (drops the block -- a bare hand can't), and
 #     die to confirm you respawn at the same platform, still inside it.
 endStart:
-  chestTier: medium
+  chest:
+    tier: medium
   capsule:
-    sizeBlocks: 9
-    heightBlocks: 4
-    lightSource: lantern
-    lightSpacingBlocks: 3
+    size: 9
+    height: 4
+    light:
+      source: lantern
+      spacing: 3
 overworldBorder:
   enabled: false
   ensureEndPortal: true

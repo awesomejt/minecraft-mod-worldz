@@ -15,10 +15,13 @@
 #  3. Confirm the roof genuinely cannot be broken in survival (try every
 #     tool you have) -- unlike config 54's stone roof.
 cave:
-  spawnDepthY: -32
-  sealedSurface: true
-  sealedSurfaceY: 128
-  sealedSurfaceBlock: bedrock
-  sealedSurfaceThicknessBlocks: 3
-  cavernEnabled: false
-  chestEnabled: false
+  spawnY: -32
+  sealedSurface:
+    enabled: true
+    y: 128
+    block: bedrock
+    thickness: 3
+  cavern:
+    enabled: false
+  chest:
+    enabled: false

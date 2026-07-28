@@ -3152,3 +3152,38 @@ Durable decisions, verified API notes, and rationale that should survive across 
   hand-verified against the new key set rather than trusted just because
   they weren't in the initial red list (the exact trap 25.6b's own lesson
   described, now confirmed to recur every sub-step).
+- 2026-07-28 — **Phase 25.6e (cave/nether-start/end-start + capsule key
+  restructure) executed.** `ChestSchema`'s `enabled`-leaf constructor
+  (designed but unexercised at 25.6d) is now real, proven by `cave`
+  instantiating it with `chestEnabled`'s accessor as its fifth constructor
+  argument, confirmed by the regenerated golden file showing `chest.enabled`
+  appear before `chest.tier` only under `cave`, never under
+  `netherStart`/`endStart` (the no-`enabled` constructor branch, matching
+  `skyIsland`'s own 25.6d usage) — both constructor branches are now real
+  code paths, not just designed-ahead dead weight.
+  **New group-authoring variant**: `StarterCapsuleSchema.LightSchema`
+  (`light: {source, spacing}`) is a *private, non-generic* group nested
+  inside a section that is itself per-instance-parameterized (on
+  size/height/light-spacing bounds, DESIGN R3) — unlike `BorderSchema
+  .ResizeSchema`/`RateSchema` (fixed `WorldzConfig` bounds, no per-instance
+  parameterization needed), `LightSchema`'s own bounds must be threaded
+  through *its* constructor too, since the two `StarterCapsuleSchema`
+  instances (Nether-start/End-start) genuinely differ. Composes cleanly:
+  same `Setting.group("light", light).render(light::summary)` mechanism as
+  every other group, just with constructor-injected bounds one level deeper.
+  **Workflow tip for 25.6f/g/h**: rather than hand-deriving the expected
+  `reference-defaults.yaml` diff or the R13 summary-assertion segment by
+  reasoning through the schema, temporarily add a `Files.writeString(...)`
+  call inside the relevant test (right before the `assertEquals`) to dump
+  the actual `toYaml()`/`summary()` output to a scratch file, run just that
+  one test via `--tests`, read the dump, craft the exact replacement text
+  from it, then revert the temporary write. Confirmed exact-match this way
+  for both the golden file and the summary assertion — no hand-transcription
+  errors, no guessing at emit order.
+  Fixture note: `38-sky-island-default.yaml` (a 25.6d fixture, out of this
+  sub-step's own section list) had a stale prose-only `chestTier` comment
+  left over from before 25.6d's own rename — fixed while grepping all
+  fixtures for 25.6e's old key strings, per 25.6b/c/d's now-standard lesson
+  that the TODO line's fixture list is a floor, not a ceiling, and that
+  stale comments in *other* sections' fixtures can surface during the same
+  grep sweep.

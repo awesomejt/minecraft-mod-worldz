@@ -17,7 +17,10 @@
 #     still generate around you.
 #  4. Build (or find) a Nether portal underground and confirm it works.
 cave:
-  spawnDepthY: -32
-  sealedSurface: false
-  cavernEnabled: false
-  chestEnabled: false
+  spawnY: -32
+  sealedSurface:
+    enabled: false
+  cavern:
+    enabled: false
+  chest:
+    enabled: false
