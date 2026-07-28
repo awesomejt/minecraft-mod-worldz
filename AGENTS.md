@@ -31,6 +31,24 @@ world hazards). Java 25, Gradle wrapper, base package
 - **You (executor):** implement TODO tasks. Planning is settled; a separate
   high-power model reviews the code between phases.
 
+## Subagents
+
+User-level subagents are defined in `~/.claude/agents/` and available in
+every repo on this machine. Prefer delegating to them by role instead of
+doing everything in the main session:
+
+- **`planner`** (Opus, high effort) — research and design *within* a task
+  (e.g. verifying an unfamiliar 26.2 API before use, working out an
+  approach for a fiddly item). Read-only: no edits, no Bash, no commits.
+  This is separate from the phase-level planning already covered by
+  GOALS.md/TODO.md/DESIGN.md and the external review between phases.
+- **`coder`** (Sonnet) — the default for implementing TODO items.
+- **`tool-runner`** (Haiku, low effort) — runs `./gradlew build`, `javap`,
+  and other checks. Delegate these instead of running them inline.
+- **`committer`** (Haiku, low effort) — stages and commits **per task**
+  (step 7 below) once the build is green, following normal git safety
+  rules. Never pushes.
+
 ## The loop (per task)
 
 1. Pick the next unchecked item in the **current phase only**. Skip [Jason]
