@@ -53,10 +53,12 @@ public record StackedCustomization(
 
     /**
      * Creates values from the sanitized YAML configuration. When {@code config.stacked.
-     * worldSizeChunks} is nonzero, it supplies the Overworld border/exterior default (a bounded,
-     * {@code VOID}-walled world) instead of the shared global {@code overworldBorder}/
+     * worldSizeChunks} is nonzero and the user hasn't already written their own {@code
+     * overworldBorder}/{@code overworldExterior}, it supplies the Overworld border/exterior default
+     * (a bounded, {@code VOID}-walled world) instead of the shared global {@code overworldBorder}/
      * {@code overworldExterior} config, which otherwise defaults to an unlimited world (DESIGN
-     * §34.7) -- zero preserves the original pass-through behavior exactly.
+     * §34.7) -- zero preserves the original pass-through behavior exactly, as does an explicitly
+     * configured shared section (TODO 25.5).
      *
      * @param config sanitized startup configuration
      * @return an immutable customization snapshot
@@ -66,11 +68,12 @@ public record StackedCustomization(
         for (String raw : config.stacked.layers) {
             layers.add(StackedLayerSpec.parse(raw));
         }
+        boolean sharedOverworldConfigured = config.present("overworldBorder") || config.present("overworldExterior");
         WorldzCustomization.BorderSettings overworldBorder = WorldzCustomization.BorderSettings.fromConfig(
             config.stacked.effectiveOverworldBorder(config.overworldBorder)
         );
         WorldzCustomization.ExteriorSettings overworldExterior = WorldzCustomization.ExteriorSettings.fromConfig(
-            config.stacked.effectiveOverworldExterior(config.overworldExterior)
+            config.stacked.effectiveOverworldExterior(config.overworldExterior, sharedOverworldConfigured)
         );
         return new StackedCustomization(
             layers,

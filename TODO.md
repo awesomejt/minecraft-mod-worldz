@@ -1025,11 +1025,39 @@ tests.
       covering the reference file and the headline comment-preservation
       regression. No `config/tests/*.yaml` added — zero in-game-observable
       schema/gameplay change, same precedent as 25.1-25.3.
-- [ ] 25.5 Retire every sentinel (D5, needs 25.3). Rewrite `StackedConfig`'s
-      two `effective*` methods in terms of "did the user set it?", and convert
-      `boundaryRadiusBlocks: 0`, `resizeRate*: 0`, `undergroundBiome: ""` and
-      `undergroundBelowSurfaceBlocks: 0`. Delete the `worldSizeChunks: 0`
-      opt-out boilerplate from configs 73/74/75/76 (+2 others).
+- [x] 25.5 Retire every sentinel (D5, needs 25.3) — **partially done, see
+      Deviation log for the rest.** `StackedConfig.effectiveOverworldExterior`
+      now takes a second `boolean sharedOverworldConfigured` parameter
+      (`config.present("overworldBorder") || config.present("overworldExterior")`
+      at every call site: `StackedCustomization.fromConfig`,
+      `LimitedBiomeSource.resolve`, `EnvelopedChunkGenerator.resolve`) instead
+      of gating purely on `worldSizeChunks != 0`. **Verified against real
+      fixtures that gating on `worldSizeChunks`'s own presence (the literal
+      reading of "did the user set it?") would have broken config 72's own
+      acceptance test** — 72 relies on the bounded void wall deriving from
+      `worldSizeChunks`'s nonzero *default* while never mentioning
+      `worldSizeChunks` at all, and TODO.md's own "behavior-preserving except
+      25.9" constraint forbids changing that. The actual bug (F4, TODO
+      17.4a/17.6) was that *any* nonzero `worldSizeChunks` — including the
+      untouched default — silently discarded an already-explicit
+      `overworldBorder`/`overworldExterior`; the fix gates on presence of
+      those sibling sections instead, which reconciles both constraints
+      (config 72/99/101 unchanged, configs 73-76 can drop their opt-out).
+      Literal `worldSizeChunks: 0` still opts out unconditionally, regardless
+      of presence (StackedSchema's own "zero opts out" doc, and because a
+      literal zero-radius void wall would crash `ExteriorPlan
+      .DimensionEnvelope`'s own compact constructor if honored any other
+      way). `effectiveOverworldBorder` needed no change — confirmed it has
+      been a pure pass-through since DESIGN §34.10, no sentinel left. New/
+      updated tests: `StackedConfigTest` (2 new presence-boolean cases + 2
+      renamed existing ones + 2 new end-to-end `WorldzConfig.parse` cases
+      proving the wiring), `ProjectMetadataTest`'s 2 source-string assertions
+      updated for the new call-site shape. **Verified the actual boilerplate
+      count myself (task explicitly said not to trust "+2 others"): only 4
+      configs (73/74/75/76) carry a *live* `worldSizeChunks: 0` key, not 6 —
+      99/101 only mention it in prose comments.** All 4 cleaned up (73/74:
+      comment reworded, key deleted; 75/76: intro prose updated to describe
+      the new mechanism, key deleted). `./gradlew :common:test` green.
 - [ ] 25.6 Restructure the keys (D7) per CONFIG-RESTRUCTURE.md F1's two tables
       — 14 within-class nests plus 4 cross-class shared shapes
       (`exclusionZone`, `naturalBiomes`, `underground`, `chest`), with unit
@@ -1404,6 +1432,49 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-28 (Phase 25.5, scope found narrower than described) — **Only
+  `StackedConfig`'s `worldSizeChunks` sentinel was actually convertible to a
+  presence-based check; the other 4 sentinels D5/F4 named
+  (`ExteriorConfig.boundaryRadiusBlocks`, `BorderConfig.resizeRateBlocks`/
+  `resizeRateDays`, `FlatConfig`/`SkyIslandConfig`'s `undergroundBiome`/
+  `undergroundBelowSurfaceBlocks`) were left untouched, each for a distinct,
+  verified reason — not guessed, checked against real code/tests:
+  1. **`boundaryRadiusBlocks: 0` and `resizeRateBlocks`/`resizeRateDays: 0`
+     both have a default that already equals their own sentinel value** (0),
+     unlike `worldSizeChunks` (default 4, sentinel 0). `value != 0` and
+     "explicitly present" are therefore logically identical for every
+     YAML-parsed config — presence tracking would add nothing. Worse,
+     `ExteriorConfig`/`BorderConfig`/`DimensionEnvelope` are routinely
+     constructed directly in Java (client Customize-screen editors,
+     `StackedConfig`'s own derived `ExteriorConfig`, most of the existing
+     test suite) with no backing `WorldzConfig` to call `.present()` on at
+     all — `ExteriorPlanTest.configAutoBoundaryUsesLargestScheduledBorderRadius`
+     is one such test, and it would break if `DimensionEnvelope.fromConfig`
+     were made presence-gated. Confirmed a literal `boundaryRadiusBlocks: 0`
+     genuinely cannot be "honored" as a real value either way: `ExteriorPlan
+     .DimensionEnvelope`'s own compact constructor throws for any non-`NORMAL`
+     mode paired with a zero boundary, so the derive-from-border fallback is
+     the only safe behavior regardless of presence.
+  2. **`undergroundBiome`/`undergroundBelowSurfaceBlocks` are not wired into
+     the schema at all** — `FlatSchema`/`SkyIslandSchema`'s own class Javadoc
+     already documents this as a pre-existing gap predating 25.2 (`readOne`
+     never runs for these two fields, so `WorldzConfig.present(...)` would
+     always report `false` for them regardless of what a user writes). They
+     are only ever set directly in Java (`FlatCustomization.flatPlan()`
+     hardcodes `"", 10`; `FlatPlan.fromConfig`/`SkyIslandPlan.fromConfig` read
+     the untouched class defaults). TODO 25.6 already plans a real
+     `underground` shared shape (shared by `flat`/`skyIsland`) as part of its
+     own key restructure — that is the right place to wire these fields into
+     the schema for the first time, at which point presence tracking will
+     apply naturally. Converting them now, before that wiring exists, isn't
+     possible without doing 25.6's own work early.
+  Flagged for `project-manager`/Jason: is leaving these 4 as-is acceptable
+  for 25.5, or should the TODO 25.5 item be split so 25.6 explicitly inherits
+  "wire + convert `underground`"? No code or config/tests change needed for
+  `boundaryRadiusBlocks`/`resizeRate*` either way — recommend closing them out
+  of D5's scope rather than deferring, since converting them would only add
+  risk (see point 1) for zero behavioral benefit.
 
 - 2026-07-27 (Phase 25.2e, found not fixed) — **`SkyIslandConfig`'s own
   `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` (defaults `true`/`128`,

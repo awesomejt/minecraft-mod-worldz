@@ -17,17 +17,17 @@
 # *and* the exterior mode is NORMAL) -- so beatability isn't given up just
 # because the wall is gone.
 #
-# **`stacked.worldSizeChunks: 0` is required here** (bug found 2026-07-27,
-# Jason's real retest -- the border still showed up, twice, after deleting
-# and recreating the world): `StackedConfig.effectiveOverworldBorder`/
-# `effectiveOverworldExterior` completely ignore the shared
+# TODO 25.5 update: `stacked.worldSizeChunks: 0` used to be required here
+# (bug found 2026-07-27, Jason's real retest -- the border still showed up,
+# twice, after deleting and recreating the world) because
+# `StackedConfig.effectiveOverworldExterior` ignored the shared
 # `overworldBorder`/`overworldExterior` sections below whenever
-# `worldSizeChunks` is nonzero (default 4) -- they derive their own
-# hardcoded `enabled: true` border instead, exactly like configs 73/74/75
-# already have to opt out of. Forgetting this the first time round meant
-# the shared sections below were silently discarded and the old bounded
-# 64-block *wall* default won anyway. `worldSizeChunks: 0` is the real
-# opt-out back to this file's own explicit sections.
+# `worldSizeChunks` was nonzero (default 4), deriving its own hardcoded
+# void wall instead -- exactly like configs 73/74/75 used to have to opt
+# out of. Since 25.5, an explicitly configured `overworldBorder`/
+# `overworldExterior` (either one, present at all in the parsed config)
+# wins over that derived default on its own, so the `worldSizeChunks: 0`
+# opt-out below is no longer needed.
 #
 # Steps once in-game:
 #  1. Confirm there is NO world border at all -- no pause-menu indicator,
@@ -53,7 +53,6 @@
 #     the bottom layer's Y -32, still reachable/guaranteed despite the
 #     border being off.
 stacked:
-  worldSizeChunks: 0
   layers:
     - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
     - "minecraft:desert;minecraft:sandstone:7,minecraft:sand:3;30"

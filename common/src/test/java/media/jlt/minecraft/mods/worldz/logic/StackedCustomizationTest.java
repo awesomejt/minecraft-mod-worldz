@@ -27,7 +27,14 @@ class StackedCustomizationTest {
     }
 
     @Test
-    void fromConfigStillHonorsAnExplicitlyEnabledSharedBorderAlongsideTheDefaultVoidExterior() {
+    void fromConfigStillHonorsAnExplicitlyEnabledSharedBorderAlongsideTheDefaultVoidExteriorWhenFieldsAreSetDirectly() {
+        // Direct field assignment (not WorldzConfig.parse) never marks anything present (TODO
+        // 25.3/25.5), so this reproduces the pre-25.5 value-only behavior on purpose: worldSizeChunks
+        // alone still decides, exactly like every other test in this class that builds a config by
+        // hand rather than parsing real YAML. Presence-driven coverage (an explicitly *parsed*
+        // overworldBorder/overworldExterior winning over the derived void wall, TODO 25.5's own
+        // fix) lives in config.StackedConfigTest instead, since WorldzConfig.parse/sanitize are
+        // package-private to config.
         WorldzConfig config = new WorldzConfig();
         config.overworldBorder.enabled = true;
         config.overworldBorder.finalRadiusBlocks = 2048;

@@ -984,12 +984,18 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         // LimitedBiomeSource.resolve's identical stackedDefaults fix for that half) needs the
         // same worldSizeChunks-derived override for a never-customized "select preset, Create
         // World" stacked world, or terrain would keep generating normally past the border even
-        // though players can't walk there.
+        // though players can't walk there. TODO 25.5: the override backs off whenever the user
+        // has explicitly written their own overworldBorder/overworldExterior section (see
+        // StackedConfig#effectiveOverworldExterior), so this path's shared-section presence check
+        // must match LimitedBiomeSource.resolve's exactly.
         boolean stackedDefaults = dimension == Dimension.OVERWORLD && worldType.filter("stacked"::equals).isPresent();
         ExteriorPlan.DimensionEnvelope envelope = encodedEnvelope.orElseGet(() -> switch (dimension) {
             case OVERWORLD -> stackedDefaults
                 ? ExteriorPlan.DimensionEnvelope.fromConfig(
-                    sharedConfig.stacked.effectiveOverworldExterior(sharedConfig.overworldExterior),
+                    sharedConfig.stacked.effectiveOverworldExterior(
+                        sharedConfig.overworldExterior,
+                        sharedConfig.present("overworldBorder") || sharedConfig.present("overworldExterior")
+                    ),
                     sharedConfig.stacked.effectiveOverworldBorder(sharedConfig.overworldBorder)
                 )
                 : defaults.overworld();

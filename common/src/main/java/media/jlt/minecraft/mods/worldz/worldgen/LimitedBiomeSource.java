@@ -313,7 +313,10 @@ public final class LimitedBiomeSource extends BiomeSource {
         // *separate* resolution path from StackedCustomization.fromConfig (the Customize-screen
         // one), reached directly by a "select preset, Create World" or config-driven world with
         // no Customize interaction at all; missing this branch left such a world silently
-        // unbounded despite worldSizeChunks's own nonzero default.
+        // unbounded despite worldSizeChunks's own nonzero default. TODO 25.5: that override now
+        // also backs off whenever the user has explicitly written their own overworldBorder/
+        // overworldExterior section, so a config-driven world (this path) that customizes those
+        // sections directly no longer needs the old worldSizeChunks: 0 opt-out to be honored.
         WorldLimitPlan limits = encodedStarterRadius.isPresent()
             ? encodedWorldLimits.orElseGet(WorldLimitPlan::disabled)
             : encodedWorldLimits.orElseGet(() -> stackedDefaults
@@ -328,7 +331,10 @@ public final class LimitedBiomeSource extends BiomeSource {
             : encodedExteriorPlan.orElseGet(() -> stackedDefaults
                 ? new ExteriorPlan(
                     ExteriorPlan.DimensionEnvelope.fromConfig(
-                        config.stacked.effectiveOverworldExterior(config.overworldExterior),
+                        config.stacked.effectiveOverworldExterior(
+                            config.overworldExterior,
+                            config.present("overworldBorder") || config.present("overworldExterior")
+                        ),
                         config.stacked.effectiveOverworldBorder(config.overworldBorder)
                     ),
                     ExteriorPlan.DimensionEnvelope.fromConfig(config.netherExterior, config.netherBorder)

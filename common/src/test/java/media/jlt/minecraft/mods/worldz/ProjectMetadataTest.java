@@ -428,9 +428,17 @@ class ProjectMetadataTest {
         assertTrue(source.contains(
             "WorldLimitPlan.DimensionLimit.fromConfig(config.stacked.effectiveOverworldBorder(config.overworldBorder))"
         ));
+        // TODO 25.5: the derived void wall now also backs off whenever the user has explicitly
+        // written their own overworldBorder/overworldExterior section (WorldzConfig#present),
+        // not just when worldSizeChunks itself is the sentinel zero -- config 72's own
+        // never-customized default has to keep deriving the wall even though it never mentions
+        // worldSizeChunks at all, which rules out gating on that field's own presence.
         assertTrue(source.contains(
             "ExteriorPlan.DimensionEnvelope.fromConfig(\n"
-                + "                        config.stacked.effectiveOverworldExterior(config.overworldExterior),\n"
+                + "                        config.stacked.effectiveOverworldExterior(\n"
+                + "                            config.overworldExterior,\n"
+                + "                            config.present(\"overworldBorder\") || config.present(\"overworldExterior\")\n"
+                + "                        ),\n"
                 + "                        config.stacked.effectiveOverworldBorder(config.overworldBorder)\n"
                 + "                    )"
         ));
@@ -446,7 +454,10 @@ class ProjectMetadataTest {
         // identical override, or terrain would keep generating normally past a border the player
         // still couldn't cross.
         assertTrue(generator.contains(
-            "sharedConfig.stacked.effectiveOverworldExterior(sharedConfig.overworldExterior),\n"
+            "sharedConfig.stacked.effectiveOverworldExterior(\n"
+                + "                        sharedConfig.overworldExterior,\n"
+                + "                        sharedConfig.present(\"overworldBorder\") || sharedConfig.present(\"overworldExterior\")\n"
+                + "                    ),\n"
                 + "                    sharedConfig.stacked.effectiveOverworldBorder(sharedConfig.overworldBorder)"
         ));
     }
