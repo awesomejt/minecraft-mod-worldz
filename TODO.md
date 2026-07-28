@@ -1678,7 +1678,7 @@ tests.
       (`config/jlt_worldz/all.yaml`). 25.10 still owns the generated
       settings tables. — **done**. Note: `config/jlt_worldz.example.yaml`
       header left stale (its first section layout block); will fix in 25.10.
-- [ ] 25.7e Close-out: Deviation log (strip file-level-only merge, key-level
+- [x] 25.7e Close-out: Deviation log (strip file-level-only merge, key-level
       merge moved to 25.9; `kits.yaml` deferred to 25.8); amend 25.9's text
       to explicitly own the `strip`/`stripWorld` key-level merge and
       unwrapping `strip-world.yaml` (DESIGN §43.3); confirm 25.11's scope
@@ -1686,7 +1686,23 @@ tests.
       NeoForge brief check (no loader-level code expected —
       `WorldzCommon.java:30-31`'s `load` signature is unchanged). **[Jason]**
       redeploy both Prism instances before requesting test (per memory:
-      deploy-jar-before-requesting-test).
+      deploy-jar-before-requesting-test). — **bookkeeping half done**
+      (`project-manager`, 2026-07-28): three Deviation log entries added —
+      strip file-level-only merge with the key-level merge deferred to 25.9
+      (DESIGN §43.3), `kits.yaml` deferred whole to 25.8 (DESIGN §43.6), and
+      a minor 25.7a doc-staleness note on DESIGN §43.4.1's Applicability-
+      override count (3 claimed, 6 actual, no behavior impact) — see
+      Deviation log, 2026-07-28 (25.7e close-out / 25.7a). Verified rather
+      than re-amended: 25.9's text already explicitly owns the
+      `strip`/`stripWorld` key-level merge and `strip-world.yaml` unwrapping,
+      and 25.11's text already reflects the reduced prose-only scope — both
+      amended correctly in the 859f51a design pass before implementation
+      started, and both still accurately describe what 25.7a-d actually
+      shipped. **Not covered by this check-off:** the full `./gradlew build`
+      all-modules run, the NeoForge brief check, and the Prism redeploy —
+      that portion of 25.7e is being handled separately by `tester`.
+      **TODO 25.7 (all of 25.7a-25.7e) is now complete**, pending only
+      `tester`'s build/deploy verification.
 - [ ] 25.8 Named shared starter kits (D6). 145 of the 384 generated config
       lines (38%) are 12 near-duplicate kit blocks. Ship the current 12
       pre-named so behavior is byte-identical; keep inline definitions legal.
@@ -2093,6 +2109,58 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-28 (Phase 25.7e close-out) — **`strip`/`stripWorld` merged at file
+  level only by 25.7; the key-level merge is deferred to TODO 25.9** (DESIGN
+  §43.3). `world-types/strip-world.yaml` is now the one *wrapped* world-type
+  file, holding `strip:` and `stripWorld:` as two still-separate sections with
+  a header comment noting they merge fully at 25.9. Folding `strip`'s three
+  keys (`widthRadiusBlocks`, `widthMode`, `applyToNether`) into
+  `StripWorldSchema` and unwrapping the file down to one flat body was
+  deliberately left for 25.9 rather than done now: `StripWorldSchema` (a
+  `SchemaSection<StripWorldConfig>`) reaching fields that live on
+  `StripConfig` requires a POJO move that drags
+  `EnvelopedChunkGenerator.java:1008-1010`, `StripWorldCustomization:101-103,190`
+  and the strip Customize screen in — exactly the surgery 25.9 already has to
+  do for the absolute-width behavior change (D9,
+  `ObjectiveSite.narrowForStrip` returning a centre plus half-extent), so the
+  key move rides along there for free instead of being paid for twice. Same
+  treatment DESIGN §42.1 gave the `strip.widthRadiusBlocks` rename deferral
+  (logged at 25.6c above). **Accepted consequence, documentation-only:**
+  `strip` is still read as a fallback for *any* world type
+  (`EnvelopedChunkGenerator.java:1008-1010`), so a generic-`worldz` corridor
+  is configured out of a file named `strip-world.yaml` until 25.9 lands — no
+  behavior change (same key → same POJO field → same read path).
+
+- 2026-07-28 (Phase 25.7e close-out) — **`kits.yaml` is not created by 25.7;
+  deferred whole to TODO 25.8** (DESIGN §43.6). `ConfigLayout`'s completeness
+  invariant (`ConfigLayoutTest`, 25.7a) requires the files' owned root keys to
+  *exactly partition* `WorldzRootSchema.declare()`'s keys, with no
+  duplicates/gaps. There is no `kits` root key until 25.8 adds the `kits`
+  root section, so a placeholder `kits.yaml` entry owning nothing would fail
+  that very gate on day one — weakening the gate to accommodate a placeholder
+  was the wrong trade. 25.8 adds `kits.yaml` as a new `ConfigFile` entry
+  alongside the `kits` schema it introduces, per the same precedent 25.6 set
+  of introducing each shared schema class in the sub-step that first needed
+  it (`ChestSchema` at 25.6d, `UndergroundSchema` at 25.6g). `ConfigLayout`
+  carries a one-line comment reserving the name and pointing at 25.8 so the
+  intended path is discoverable in the meantime.
+
+- 2026-07-28 (Phase 25.7a, doc-staleness note, not a behavior deviation) —
+  **DESIGN §43.4.1's claim that "only 3 schema classes ever override
+  [`Applicability`]" (i.e. call `.live()`/`.preset(...)` rather than leaving
+  `Setting.Builder`'s default `Applicability.worldDefault()`) was already
+  stale at design time.** Confirmed via `git show 8b932cd` (the commit at the
+  point of the §43 design pass): 6 schema classes already did —
+  `DeepFlatSchema`, `FlatSchema`, `ForeverNightSchema`, `RisingLavaSchema`,
+  `StackedSchema`, `StructureDistanceSchema` — not 3. No behavior impact:
+  §43.4.1's actual conclusion ("today's metadata cannot carry the [26-key
+  file] mapping, so `ConfigLayout` is declarative and hand-written") holds
+  regardless of whether the pre-existing-override count is 3 or 6, and
+  25.7a's correction of the 26 root-level settings' applicability
+  (`WorldzRootSchema.java`) didn't depend on the count either. Logged as a
+  one-line note for a future reader relying on §43.4.1's number, not as a
+  Deviation-log item requiring any follow-up.
 
 - 2026-07-28 (Phase 25.6h close-out) — **F1's two tables (`CONFIG-RESTRUCTURE.md`)
   needed four corrections once re-verified against the current tree, all
