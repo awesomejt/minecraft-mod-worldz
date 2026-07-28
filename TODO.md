@@ -1642,7 +1642,7 @@ tests.
       independently buildable/testable/committable (the bundle path keeps
       today's single-file load alive throughout, so nothing here is forced
       to land atomically).
-- [ ] 25.7a `ConfigLayout`/`ConfigFile` (main, `config/` package): the
+- [x] 25.7a `ConfigLayout`/`ConfigFile` (main, `config/` package): — **done**. The
       26-root-key → 15-file mapping table (DESIGN §43.2/§43.4.1);
       corrected `Applicability` on the 26 root settings to match; new
       `ConfigLayoutTest` proving the mapping totally partitions

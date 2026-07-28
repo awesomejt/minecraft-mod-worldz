@@ -112,14 +112,17 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
                     Rule.BiomeIdList.Mode.ALLOW_TAGS, "Ignoring invalid allowed biome or tag '{}'.", null, null, null
                 ))
                 .unit(Unit.BIOME_ID)
+                .preset()
                 .doc("Biome ids and biome-tag ids allowed in new Worldz worlds.")
                 .build(),
             Setting.group("starter", starter)
                 .render(starter::summary)
+                .preset()
                 .doc("Optional biome forced around the origin, and whether/how low terrain beneath it is reinforced.")
                 .build(),
             Setting.group("naturalBiomes", naturalBiomes)
                 .render(naturalBiomes::summary)
+                .preset()
                 .doc("Let vanilla's own river/ocean biomes generate naturally on the generic preset (GOALS 13/14).")
                 .build(),
             Setting.<WorldzConfig, BorderConfig>section(
@@ -148,79 +151,97 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
                 .doc("Optional Nether terrain outside a central square.")
                 .build(),
             Setting.<WorldzConfig, StripConfig>section("strip", c -> c.strip, (c, v) -> c.strip = v, strip)
+                .preset("strip_world")
                 .doc("Optional narrow strip-world corridor (GOALS 32).")
                 .build(),
             Setting.<WorldzConfig, LayoutConfig>section("layout", c -> c.layout, (c, v) -> c.layout = v, layout)
+                .preset()
                 .doc("Optional coordinated terrain-layout composition.")
                 .build(),
             Setting.<WorldzConfig, SpawnConfig>section("spawn", c -> c.spawn, (c, v) -> c.spawn = v, spawn)
+                .preset()
                 .doc("Layout-origin and initial-spawn strategy.")
                 .build(),
             Setting.<WorldzConfig, SingleBiomeConfig>section(
                     "singleBiome", c -> c.singleBiome, (c, v) -> c.singleBiome = v, singleBiome
                 )
+                .preset("single_biome")
                 .doc("Defaults for the jlt_worldz:single_biome typed preset (DESIGN §20.2).")
                 .build(),
             Setting.<WorldzConfig, ChaosBiomesConfig>section(
                     "chaosBiomes", c -> c.chaosBiomes, (c, v) -> c.chaosBiomes = v, chaosBiomes
                 )
+                .preset("chaos_biomes")
                 .doc("Defaults for the jlt_worldz:chaos_biomes typed preset (DESIGN §20.11).")
                 .build(),
             Setting.<WorldzConfig, StripWorldConfig>section(
                     "stripWorld", c -> c.stripWorld, (c, v) -> c.stripWorld = v, stripWorld
                 )
+                .preset("strip_world")
                 .doc("Defaults for the jlt_worldz:strip_world typed preset (GOALS 32, DESIGN §23).")
                 .build(),
             Setting.<WorldzConfig, OceanIslandConfig>section(
                     "oceanIsland", c -> c.oceanIsland, (c, v) -> c.oceanIsland = v, oceanIsland
                 )
+                .preset("ocean_island")
                 .doc("Defaults for the jlt_worldz:ocean_island typed preset (GOALS 01, 04; DESIGN §24).")
                 .build(),
             Setting.<WorldzConfig, SkyIslandConfig>section(
                     "skyIsland", c -> c.skyIsland, (c, v) -> c.skyIsland = v, skyIsland
                 )
+                .preset("sky_island")
                 .doc("Defaults for the jlt_worldz:sky_island typed preset (GOALS 05; DESIGN §27).")
                 .build(),
             Setting.<WorldzConfig, ChunkIslandConfig>section(
                     "chunkIsland", c -> c.chunkIsland, (c, v) -> c.chunkIsland = v, chunkIsland
                 )
+                .preset("sky_chunk")
                 .doc("Defaults for the jlt_worldz:sky_chunk typed preset (GOALS 09/37; DESIGN §29).")
                 .build(),
             Setting.<WorldzConfig, CaveConfig>section("cave", c -> c.cave, (c, v) -> c.cave = v, cave)
+                .preset("cave")
                 .doc("Defaults for the jlt_worldz:cave typed preset (GOALS 25-26; DESIGN §30).")
                 .build(),
             Setting.<WorldzConfig, NetherStartConfig>section(
                     "netherStart", c -> c.netherStart, (c, v) -> c.netherStart = v, netherStart
                 )
+                .preset("nether_start")
                 .doc("Defaults for the jlt_worldz:nether_start typed preset (GOALS 27; DESIGN §31).")
                 .build(),
             Setting.<WorldzConfig, EndStartConfig>section(
                     "endStart", c -> c.endStart, (c, v) -> c.endStart = v, endStart
                 )
+                .preset("end_start")
                 .doc("Defaults for the jlt_worldz:end_start typed preset (GOALS 34; DESIGN §32).")
                 .build(),
             Setting.<WorldzConfig, FlatConfig>section("flat", c -> c.flat, (c, v) -> c.flat = v, flat)
+                .preset("flat")
                 .doc("Defaults for the jlt_worldz:flat typed preset (GOAL 15; DESIGN §33.2).")
                 .build(),
             Setting.<WorldzConfig, DeepFlatConfig>section("deepFlat", c -> c.deepFlat, (c, v) -> c.deepFlat = v, deepFlat)
+                .preset("deep_flat")
                 .doc("Defaults for the jlt_worldz:deep_flat typed preset (GOAL 16; DESIGN §33.4).")
                 .build(),
             Setting.<WorldzConfig, StackedConfig>section("stacked", c -> c.stacked, (c, v) -> c.stacked = v, stacked)
+                .preset("stacked")
                 .doc("Defaults for the jlt_worldz:stacked typed preset (GOAL 35; DESIGN §34.1).")
                 .build(),
             Setting.<WorldzConfig, ForeverNightConfig>section(
                     "foreverNight", c -> c.foreverNight, (c, v) -> c.foreverNight = v, foreverNight
                 )
+                .live()
                 .doc("World-hazard \"forever night\" module (GOAL 30; DESIGN §35.1) -- composes with any world type.")
                 .build(),
             Setting.<WorldzConfig, RisingLavaConfig>section(
                     "risingLava", c -> c.risingLava, (c, v) -> c.risingLava = v, risingLava
                 )
+                .live()
                 .doc("World-hazard \"rising lava floor\" module (GOAL 29; DESIGN §35.2) -- composes with any world type.")
                 .build(),
             Setting.<WorldzConfig, StructureDistanceConfig>section(
                     "structureDistance", c -> c.structureDistance, (c, v) -> c.structureDistance = v, structureDistance
                 )
+                .live()
                 .doc("\"Structures far from spawn\" module (GOAL 24; DESIGN §36) -- composes with any world type.")
                 .build()
         );
