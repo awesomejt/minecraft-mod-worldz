@@ -10,11 +10,11 @@
 # changes band to band, never the height/shape -- exactly like chaos_biomes
 # (GOALS 33) but ordered along X instead of scattered in a 2D grid.
 #
-# With widthBlocks: 256 and five configured biomes, walking along X should
+# With width: 256 and five configured biomes, walking along X should
 # cross into a new biome roughly every 256 blocks, repeating (wrapping) the
 # five-biome sequence once exhausted.
 #
-# bands.allowRivers/allowOceans/allowBeaches default to true (GOALS 36
+# bands.naturalBiomes.rivers/.oceans/.beaches default to true (GOALS 36
 # follow-up, Jason 2026-07-19) specifically for bands -- none of the five
 # configured biomes are water/beach biomes, so wherever vanilla's own
 # terrain would naturally put a river, ocean, beach, or stony shore, that
@@ -58,5 +58,5 @@ stripWorld:
       - taiga
       - plains
       - forest
-    widthBlocks: 256
+    width: 256
     seedRandomOrder: false

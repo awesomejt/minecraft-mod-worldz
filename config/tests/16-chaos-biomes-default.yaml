@@ -3,7 +3,7 @@
 # region size (512 blocks) and default biome list. Select "Worldz: Chaos
 # Biomes" (NOT plain "Worldz") on the creation screen. Terrain should look
 # exactly like natural vanilla terrain everywhere -- hills, valleys, and
-# (since allowRivers/allowOceans are off here) vanilla water bodies all
+# (since naturalBiomes.rivers/.oceans are off here) vanilla water bodies all
 # just get relabeled with one of the configured land biomes.
 chaosBiomes:
   biomes:
@@ -12,10 +12,12 @@ chaosBiomes:
     - 'minecraft:ice_spikes'
     - 'minecraft:badlands'
     - 'minecraft:taiga'
-  regionScaleBlocks: 512
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  regionScale: 512
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
+  naturalBiomes:
+    rivers: false
+    oceans: false

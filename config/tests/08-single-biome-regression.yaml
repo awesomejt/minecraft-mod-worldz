@@ -2,8 +2,9 @@
 # removal (TODO 1.2) and the real-seed sampling change (TODO 1.3) -- confirms
 # this surviving mode still works: one biome fills the world, terrain raised
 # or capped to match its role, same seed reproduces the same world.
-starterBiome: 'minecraft:plains'
-starterRadiusBlocks: 256
+starter:
+  biome: 'minecraft:plains'
+  radius: 256
 layout:
   mode: single_biome
   singleBiome: 'minecraft:desert'

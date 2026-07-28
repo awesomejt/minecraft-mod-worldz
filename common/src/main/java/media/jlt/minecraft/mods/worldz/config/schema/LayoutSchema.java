@@ -17,7 +17,7 @@ import java.util.Map;
  * {@code layoutMap}/read order (DESIGN §41.1's ordering invariant does not universally hold):
  * {@code sanitizeLayout} validates {@code roleOverrides} <em>third</em> (right after {@code
  * biomes}), but {@code layoutMap} emits it <em>last</em>. Reusing per-setting rules for {@code
- * regionScaleBlocks}/{@code singleBiome}/{@code roleOverrides} in declaration order would silently
+ * regionScale}/{@code singleBiome}/{@code roleOverrides} in declaration order would silently
  * reorder their WARN lines relative to the original for any input that trips more than one of
  * them, so all three -- plus the final mode-vs-roles cross-check -- are pushed into
  * {@link #postValidate}, executed by hand in {@code sanitizeLayout}'s exact original sequence.
@@ -47,7 +47,7 @@ public final class LayoutSchema extends SchemaSection<LayoutConfig> {
                 .unit(Unit.BIOME_ID)
                 .doc("Weighted candidate biome ids, id or id@weight; tags are not accepted.")
                 .build(),
-            Setting.<LayoutConfig>integer("regionScaleBlocks", c -> c.regionScaleBlocks, (c, v) -> c.regionScaleBlocks = v)
+            Setting.<LayoutConfig>integer("regionScale", c -> c.regionScaleBlocks, (c, v) -> c.regionScaleBlocks = v)
                 .unit(Unit.BLOCKS)
                 .rangeText(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS + ".." + WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS)
                 .doc("Grid-cell edge length in blocks.")
@@ -65,7 +65,7 @@ public final class LayoutSchema extends SchemaSection<LayoutConfig> {
     /**
      * Hand-ordered to match {@code sanitizeLayout}'s exact tail (DESIGN R9-style divergence between
      * sanitize order and map order, class Javadoc): {@code roleOverrides} validation, then the
-     * {@code regionScaleBlocks} clamp, then {@code singleBiome}'s id-or-empty check, then the
+     * {@code regionScale} clamp, then {@code singleBiome}'s id-or-empty check, then the
      * mode-vs-roles fallback -- in that order, so any input tripping more than one produces the
      * same WARN sequence as today.
      */
@@ -93,7 +93,7 @@ public final class LayoutSchema extends SchemaSection<LayoutConfig> {
             value.regionScaleBlocks, WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS
         );
         if (clampedScale != value.regionScaleBlocks) {
-            ctx.logger().warn("Clamped {}.regionScaleBlocks from {} to {}.", path(), value.regionScaleBlocks, clampedScale);
+            ctx.logger().warn("Clamped {}.regionScale from {} to {}.", path(), value.regionScaleBlocks, clampedScale);
         }
         value.regionScaleBlocks = clampedScale;
 
@@ -149,7 +149,7 @@ public final class LayoutSchema extends SchemaSection<LayoutConfig> {
         }
         return value.mode.serializedName()
             + ", biomes=" + value.biomes
-            + ", regionScaleBlocks=" + value.regionScaleBlocks
+            + ", regionScale=" + value.regionScaleBlocks
             + (value.singleBiome.isEmpty() ? "" : ", singleBiome=" + value.singleBiome);
     }
 }

@@ -5,6 +5,7 @@
 # and re-test).
 # Expect: a "search found no biome within N blocks" WARN in latest.log,
 # then the same starter_at_origin fallback as file 04: spawn at (0,0).
-starterBiome: 'minecraft:mushroom_fields'
+starter:
+  biome: 'minecraft:mushroom_fields'
 spawn:
   strategy: preferred_natural_biome

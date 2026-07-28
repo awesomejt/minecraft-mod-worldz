@@ -184,7 +184,8 @@ class WorldzConfigTest {
         String written = """
             # My personal Worldz config.
             # Only overriding the two settings I care about.
-            starterRadiusBlocks: 512  # bigger starter zone
+            starter:
+              radius: 512  # bigger starter zone
             allowedBiomes:
               - minecraft:desert
               - minecraft:badlands
@@ -243,8 +244,8 @@ class WorldzConfigTest {
 
     @Test
     void radiusIsClampedAtBothBounds() {
-        WorldzConfig below = WorldzConfig.parse("starterRadiusBlocks: -1", LOGGER).sanitize(LOGGER);
-        WorldzConfig above = WorldzConfig.parse("starterRadiusBlocks: 999999", LOGGER).sanitize(LOGGER);
+        WorldzConfig below = WorldzConfig.parse("starter:\n  radius: -1", LOGGER).sanitize(LOGGER);
+        WorldzConfig above = WorldzConfig.parse("starter:\n  radius: 999999", LOGGER).sanitize(LOGGER);
 
         assertEquals(64, below.starterRadiusBlocks);
         assertEquals(4096, above.starterRadiusBlocks);
@@ -253,9 +254,11 @@ class WorldzConfigTest {
     @Test
     void starterLandSettingsLoadAndClampIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
-            ensureStarterLand: false
-            starterLandTransitionBlocks: 5000
-            starterLandFoundationDepthBlocks: -4
+            starter:
+              land:
+                enabled: false
+                transition: 5000
+                foundationDepth: -4
             """, LOGGER).sanitize(LOGGER);
 
         assertFalse(config.ensureStarterLand);
@@ -438,7 +441,7 @@ class WorldzConfigTest {
                 - "minecraft:swamp"
               roleOverrides:
                 "minecraft:swamp": "ocean"
-              regionScaleBlocks: 300
+              regionScale: 300
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(LayoutMode.OCEAN, config.layout.mode);
@@ -484,7 +487,7 @@ class WorldzConfigTest {
     void layoutRegionScaleIsClamped() {
         WorldzConfig config = WorldzConfig.parse("""
             layout:
-              regionScaleBlocks: 1
+              regionScale: 1
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(16, config.layout.regionScaleBlocks);
@@ -515,7 +518,7 @@ class WorldzConfigTest {
 
     @Test
     void spawnStrategyDefaultsToStarterAtOrigin() {
-        WorldzConfig config = WorldzConfig.parse("starterBiome: minecraft:plains", LOGGER).sanitize(LOGGER);
+        WorldzConfig config = WorldzConfig.parse("starter:\n  biome: minecraft:plains", LOGGER).sanitize(LOGGER);
 
         assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, config.spawn.strategy);
     }
@@ -587,7 +590,7 @@ class WorldzConfigTest {
     @Test
     void fractionalRadiusMakesTheFileInvalidWithoutOverwritingIt() throws IOException {
         Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
-        String invalid = "starterRadiusBlocks: 64.5";
+        String invalid = "starter:\n  radius: 64.5";
         Files.writeString(configFile, invalid);
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
@@ -598,8 +601,8 @@ class WorldzConfigTest {
 
     @Test
     void starterBiomeAcceptsIdsButRejectsTags() {
-        WorldzConfig id = WorldzConfig.parse("starterBiome: ' plains '", LOGGER).sanitize(LOGGER);
-        WorldzConfig tag = WorldzConfig.parse("starterBiome: '#minecraft:is_overworld'", LOGGER).sanitize(LOGGER);
+        WorldzConfig id = WorldzConfig.parse("starter:\n  biome: ' plains '", LOGGER).sanitize(LOGGER);
+        WorldzConfig tag = WorldzConfig.parse("starter:\n  biome: '#minecraft:is_overworld'", LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", id.starterBiome);
         assertEquals("", tag.starterBiome);
@@ -630,25 +633,26 @@ class WorldzConfigTest {
             allowedBiomes:
               - plains
               - '#is_overworld'
-            starterBiome: ''
-            starterRadiusBlocks: 256
+            starter:
+              biome: ''
+              radius: 256
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(
-            "allowedBiomes=[minecraft:plains, #minecraft:is_overworld], starterBiome=<none>, starterRadiusBlocks=256"
-                + ", starterLand=transition=128, foundation=48"
+            "allowedBiomes=[minecraft:plains, #minecraft:is_overworld]"
+                + ", starter=biome=<none>, radius=256, land=transition=128, foundation=48"
+                + ", naturalBiomes=rivers=false, oceans=false"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>, endBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
                 + ", strip=<disabled>"
                 + ", layout=<legacy>"
                 + ", spawn=starter_at_origin"
-                + ", singleBiome=landBiome=minecraft:plains, starterBiome=<none>"
-                + ", starterRadiusBlocks=256, spawn=starter_at_origin"
-                + ", allowRivers=false, allowOceans=false, allowBeaches=false"
+                + ", singleBiome=biome=minecraft:plains, starter=biome=<none>, radius=256"
+                + ", spawn=starter_at_origin"
+                + ", naturalBiomes=rivers=false, oceans=false, beaches=false"
                 + ", chaosBiomes=biomes=[minecraft:desert, minecraft:jungle, minecraft:ice_spikes,"
-                + " minecraft:badlands, minecraft:taiga], regionScaleBlocks=512, starterBiome=<none>"
-                + ", starterRadiusBlocks=256, spawn=starter_at_origin, allowRivers=false, allowOceans=false"
-                + ", allowBeaches=false"
+                + " minecraft:badlands, minecraft:taiga], regionScale=512, starter=biome=<none>, radius=256"
+                + ", spawn=starter_at_origin, naturalBiomes=rivers=false, oceans=false, beaches=false"
                 + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
                 + ", oceanIsland=islandSource=artificial, fluid=water, islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
                 + ", shoreWidthBlocks=12, oceanShallowWidthBlocks=64, oceanDeepenWidthBlocks=128"
@@ -715,8 +719,7 @@ class WorldzConfigTest {
                 + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4, forceTopVillage=false"
                 + ", foreverNight=<disabled>"
                 + ", risingLava=<disabled>"
-                + ", structureDistance=<disabled>"
-                + ", allowRivers=false, allowOceans=false",
+                + ", structureDistance=<disabled>",
             config.summary()
         );
     }
@@ -725,14 +728,16 @@ class WorldzConfigTest {
     void singleBiomeSettingsLoadAndSanitizeIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             singleBiome:
-              landBiome: desert
-              starterBiome: plains
-              starterRadiusBlocks: 512
+              biome: desert
+              starter:
+                biome: plains
+                radius: 512
               spawn:
                 strategy: preferred_natural_biome
-              allowRivers: true
-              allowOceans: true
-              allowBeaches: true
+              naturalBiomes:
+                rivers: true
+                oceans: true
+                beaches: true
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:desert", config.singleBiome.landBiome);
@@ -757,7 +762,7 @@ class WorldzConfigTest {
     void singleBiomeInvalidLandBiomeFallsBackToPlains() {
         WorldzConfig config = WorldzConfig.parse("""
             singleBiome:
-              landBiome: '#minecraft:is_overworld'
+              biome: '#minecraft:is_overworld'
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.singleBiome.landBiome);
@@ -767,11 +772,13 @@ class WorldzConfigTest {
     void singleBiomeStarterBiomeAcceptsIdsButRejectsTags() {
         WorldzConfig id = WorldzConfig.parse("""
             singleBiome:
-              starterBiome: ' desert '
+              starter:
+                biome: ' desert '
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tag = WorldzConfig.parse("""
             singleBiome:
-              starterBiome: '#minecraft:is_overworld'
+              starter:
+                biome: '#minecraft:is_overworld'
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:desert", id.singleBiome.starterBiome);
@@ -782,11 +789,13 @@ class WorldzConfigTest {
     void singleBiomeRadiusIsClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             singleBiome:
-              starterRadiusBlocks: 1
+              starter:
+                radius: 1
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             singleBiome:
-              starterRadiusBlocks: 999999
+              starter:
+                radius: 999999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MIN_STARTER_RADIUS_BLOCKS, tooSmall.singleBiome.starterRadiusBlocks);
@@ -800,14 +809,16 @@ class WorldzConfigTest {
               biomes:
                 - minecraft:plains@3
                 - minecraft:desert
-              regionScaleBlocks: 256
-              starterBiome: plains
-              starterRadiusBlocks: 512
+              regionScale: 256
+              starter:
+                biome: plains
+                radius: 512
               spawn:
                 strategy: preferred_natural_biome
-              allowRivers: true
-              allowOceans: true
-              allowBeaches: true
+              naturalBiomes:
+                rivers: true
+                oceans: true
+                beaches: true
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(List.of("minecraft:plains@3.0", "minecraft:desert"), config.chaosBiomes.biomes);
@@ -846,11 +857,11 @@ class WorldzConfigTest {
     void chaosBiomesRegionScaleIsClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             chaosBiomes:
-              regionScaleBlocks: 1
+              regionScale: 1
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             chaosBiomes:
-              regionScaleBlocks: 999999
+              regionScale: 999999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, tooSmall.chaosBiomes.regionScaleBlocks);
@@ -866,11 +877,12 @@ class WorldzConfigTest {
                 biomes:
                   - minecraft:desert
                   - minecraft:jungle
-                widthBlocks: 256
+                width: 256
                 seedRandomOrder: true
-                allowRivers: false
-                allowOceans: false
-                allowBeaches: false
+                naturalBiomes:
+                  rivers: false
+                  oceans: false
+                  beaches: false
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.stripWorld.bands.enabled);
@@ -923,12 +935,12 @@ class WorldzConfigTest {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             stripWorld:
               bands:
-                widthBlocks: 1
+                width: 1
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             stripWorld:
               bands:
-                widthBlocks: 999999
+                width: 999999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, tooSmall.stripWorld.bands.widthBlocks);
@@ -1886,8 +1898,9 @@ class WorldzConfigTest {
     @Test
     void genericPresetAllowRiversAndOceansLoadIndependentlyOfSingleBiomeAndChaosBiomes() {
         WorldzConfig config = WorldzConfig.parse("""
-            allowRivers: true
-            allowOceans: true
+            naturalBiomes:
+              rivers: true
+              oceans: true
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.allowRivers);

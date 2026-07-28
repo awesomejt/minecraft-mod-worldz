@@ -12,8 +12,9 @@
 #     measured from the found origin, not (0,0).
 #  5. /locate structure minecraft:stronghold (or explore) -- the End portal
 #     guarantee should be reachable inside the recentered border.
-starterBiome: 'minecraft:plains'
-starterRadiusBlocks: 256
+starter:
+  biome: 'minecraft:plains'
+  radius: 256
 overworldBorder:
   enabled: true
   initialRadiusBlocks: 1024

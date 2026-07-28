@@ -1,6 +1,7 @@
 # Baseline spawn strategy: everything forced at/around (0,0).
 # Expect: spawn lands inside the plains starter zone, at or very near (0,0).
-starterBiome: 'minecraft:plains'
-starterRadiusBlocks: 256
+starter:
+  biome: 'minecraft:plains'
+  radius: 256
 spawn:
   strategy: starter_at_origin

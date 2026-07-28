@@ -3,7 +3,8 @@
 # Expect: spawn lands in a natural (unmodified) plains biome away from
 # (0,0); note the coordinates, then confirm the starter zone/land guarantee
 # is centered THERE, not at (0,0).
-starterBiome: 'minecraft:plains'
-starterRadiusBlocks: 256
+starter:
+  biome: 'minecraft:plains'
+  radius: 256
 spawn:
   strategy: preferred_natural_biome

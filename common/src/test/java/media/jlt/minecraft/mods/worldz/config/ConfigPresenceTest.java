@@ -19,7 +19,7 @@ class ConfigPresenceTest {
     void neverParsedConfigReportsNothingPresent() {
         WorldzConfig config = new WorldzConfig();
 
-        assertFalse(config.present("starterRadiusBlocks"));
+        assertFalse(config.present("starter.radius"));
         assertFalse(config.present("stacked.worldSizeChunks"));
     }
 
@@ -27,17 +27,21 @@ class ConfigPresenceTest {
     void emptyMappingReportsNothingPresent() {
         WorldzConfig config = WorldzConfig.parse("{}", LOGGER);
 
-        assertFalse(config.present("starterRadiusBlocks"));
+        assertFalse(config.present("starter.radius"));
         assertFalse(config.present("stacked"));
         assertFalse(config.present("cave.easyKit.essentials"));
     }
 
     @Test
-    void topLevelScalarSetToItsOwnDefaultValueIsStillReportedPresent() {
-        WorldzConfig config = WorldzConfig.parse("starterRadiusBlocks: 256", LOGGER);
+    void nestedGroupLeafSetToItsOwnDefaultValueIsStillReportedPresent() {
+        WorldzConfig config = WorldzConfig.parse("""
+            starter:
+              radius: 256
+            """, LOGGER);
 
-        assertTrue(config.present("starterRadiusBlocks"));
-        assertFalse(config.present("starterBiome"));
+        assertTrue(config.present("starter.radius"));
+        assertTrue(config.present("starter"));
+        assertFalse(config.present("starter.biome"));
     }
 
     @Test

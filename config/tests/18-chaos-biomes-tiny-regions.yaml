@@ -1,4 +1,4 @@
-# GOALS 33: same as 16, but a small regionScaleBlocks (64, near the
+# GOALS 33: same as 16, but a small regionScale (64, near the
 # supported minimum of 16) -- biome regions should change noticeably more
 # often when walking/flying across the world than the default config.
 chaosBiomes:
@@ -8,10 +8,12 @@ chaosBiomes:
     - 'minecraft:ice_spikes'
     - 'minecraft:badlands'
     - 'minecraft:taiga'
-  regionScaleBlocks: 64
-  starterBiome: ''
-  starterRadiusBlocks: 128
+  regionScale: 64
+  starter:
+    biome: ''
+    radius: 128
   spawn:
     strategy: starter_at_origin
-  allowRivers: true
-  allowOceans: true
+  naturalBiomes:
+    rivers: true
+    oceans: true

@@ -19,23 +19,30 @@ allowedBiomes:
   - 'minecraft:deep_dark'
   - 'minecraft:sulfur_caves'
 
-# Biome id forced around origin in newly created worlds. Default:
-# minecraft:plains. Empty disables the starter zone. Tags are not accepted.
-starterBiome: 'minecraft:plains'
+# Biome forced around origin in newly created worlds, and whether/how low
+# terrain beneath it is reinforced into usable land. biome empty disables
+# the starter zone; tags are not accepted. radius is the circular starter-
+# zone radius in blocks (default 256, range 64..4096). land.enabled raises
+# insufficient natural terrain beneath a selected starter biome (default
+# true; no effect without a starter biome); land.transition smooths the
+# outward blend from guaranteed starter land to natural terrain (default
+# 128, range 0..4096); land.foundationDepth is the solid repair depth below
+# the natural ocean floor (default 48, range 0..384).
+starter:
+  biome: 'minecraft:plains'
+  radius: 256
+  land:
+    enabled: true
+    transition: 128
+    foundationDepth: 48
 
-# Circular starter-zone radius in blocks. Default: 256. Range: 64..4096.
-starterRadiusBlocks: 256
-
-# Raise insufficient natural terrain beneath a selected starter biome.
-# Default: true; no effect without a starter biome.
-ensureStarterLand: true
-
-# Smooth outward blend from guaranteed starter land to natural terrain.
-# Default: 128. Range: 0..4096.
-starterLandTransitionBlocks: 128
-
-# Solid repair depth below the natural ocean floor. Default: 48. Range: 0..384.
-starterLandFoundationDepthBlocks: 48
+# Vanilla river/ocean pass-through for the generic Worldz preset's own
+# single_biome/chaos layout modes below (the dedicated singleBiome:/
+# chaosBiomes: typed presets have their own copies of these two settings
+# instead). Default: both false. See singleBiome: below for what they do.
+naturalBiomes:
+  rivers: false
+  oceans: false
 
 # Optional square border centered at 0,0. Radius is center-to-side distance;
 # resizeDelayDays waits at the initial radius. End portal is reachable by
@@ -87,62 +94,57 @@ netherExterior:
 
 # Coordinated terrain layout: mode (legacy/ocean/single_biome/void/chaos),
 # weighted biomes list (id or id@weight, roles resolved via maintained
-# defaults plus roleOverrides), regionScaleBlocks, singleBiome. Default:
+# defaults plus roleOverrides), regionScale, singleBiome. Default:
 # legacy (today's climate-filter-only behavior).
 layout:
   mode: legacy
   biomes: []
-  regionScaleBlocks: 512
+  regionScale: 512
   singleBiome: ''
   roleOverrides: {}
 
-# Vanilla river/ocean pass-through for the generic Worldz preset's own
-# single_biome/chaos layout modes above (the dedicated singleBiome:/
-# chaosBiomes: typed presets below have their own copies of these two
-# settings instead). Default: both false. See singleBiome: below for what
-# they do.
-allowRivers: false
-allowOceans: false
-
 # How the layout origin and initial spawn are chosen: strategy is
 # starter_at_origin (default, today's behavior), preferred_natural_biome
-# (search near the origin for starterBiome using the real seed, moving the
+# (search near the origin for starter.biome using the real seed, moving the
 # layout origin there; falls back to starter_at_origin if not found or
-# starterBiome is empty), or vanilla_spawn (unmodified vanilla spawn
+# starter.biome is empty), or vanilla_spawn (unmodified vanilla spawn
 # selection).
 spawn:
   strategy: starter_at_origin
 
 # Defaults for the jlt_worldz:single_biome typed preset (its own small
-# Customize screen, separate from the fields above). landBiome fills the
-# whole world; starterBiome empty means no forced zone (same as landBiome
-# everywhere already, via layout mode single_biome); starterRadiusBlocks
-# only matters when starterBiome is set; spawn.strategy accepts the same
-# values as the shared spawn section above (preferred_natural_biome
-# searches for starterBiome using the real seed). allowRivers/allowOceans
-# let vanilla's own river/ocean biomes generate naturally wherever vanilla
-# would place one, instead of the single biome applying everywhere;
-# allowOceans is additive over allowRivers (both stay on together).
-# Terrain is untouched either way -- coastlines/channels are exactly
-# vanilla's, outside the guaranteed-land starter zone.
+# Customize screen, separate from the fields above). biome fills the whole
+# world; starter.biome empty means no forced zone (same as biome everywhere
+# already, via layout mode single_biome); starter.radius only matters when
+# starter.biome is set; spawn.strategy accepts the same values as the
+# shared spawn section above (preferred_natural_biome searches for
+# starter.biome using the real seed). naturalBiomes.rivers/.oceans/.beaches
+# let vanilla's own river/ocean/beach biomes generate naturally wherever
+# vanilla would place one, instead of the single biome applying everywhere;
+# oceans is additive over rivers (both stay on together), independent of
+# beaches. Terrain is untouched either way -- coastlines/channels are
+# exactly vanilla's, outside the guaranteed-land starter zone.
 singleBiome:
-  landBiome: 'minecraft:plains'
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  biome: 'minecraft:plains'
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
+  naturalBiomes:
+    rivers: false
+    oceans: false
+    beaches: false
 
 # Defaults for the jlt_worldz:chaos_biomes typed preset (GOALS 33; its own
 # small Customize screen). biomes is a weighted list (id or id@weight) of
 # land biomes shuffled per region -- deserts beside ice spikes beside
-# jungles; regionScaleBlocks controls how big each region is (smaller means
-# more frequent biome changes). starterBiome empty means chaos starts right
-# at spawn; setting one gives a safe, guaranteed-land starting patch like
-# singleBiome's. Terrain is always exactly vanilla -- this only ever
-# changes biome identity, never height. allowRivers/allowOceans work
-# exactly like singleBiome's.
+# jungles; regionScale controls how big each region is (smaller means
+# more frequent biome changes). starter.biome empty means chaos starts
+# right at spawn; setting one gives a safe, guaranteed-land starting patch
+# like singleBiome's. Terrain is always exactly vanilla -- this only ever
+# changes biome identity, never height. naturalBiomes.rivers/.oceans/
+# .beaches work exactly like singleBiome's.
 chaosBiomes:
   biomes:
     - 'minecraft:desert'
@@ -150,13 +152,16 @@ chaosBiomes:
     - 'minecraft:ice_spikes'
     - 'minecraft:badlands'
     - 'minecraft:taiga'
-  regionScaleBlocks: 512
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  regionScale: 512
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
+  naturalBiomes:
+    rivers: false
+    oceans: false
+    beaches: false
 
 # World-hazard "forever night" module (GOAL 30, DESIGN §35.1) -- a shared
 # runtime rule, not a typed preset, composable with any world type.

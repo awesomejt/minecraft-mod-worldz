@@ -3013,3 +3013,40 @@ Durable decisions, verified API notes, and rationale that should survive across 
   precise expected key set per file (not just "some failure") so 25.6d/25.6g
   wiring them up is what turns each green, not an incidental pass. No config
   keys moved in this step.
+
+- 2026-07-28 — **Phase 25.6b (root + generic-preset key restructure)
+  executed.** Two new shared, generic group classes in `config/schema/`:
+  `StarterSchema<S>` (`biome`/`radius`, optional `land` sub-group typed
+  `SchemaSection<S>`, non-null only for the config root) and
+  `NaturalBiomesSchema<S>` (`rivers`/`oceans`, optional `beaches` — a `null`
+  accessor omits the leaf, since the root has no `allowBeaches`). Both take
+  the already-public `Accessor<S, T>` record per leaf plus a `Supplier<S>
+  factory`, instantiated once per call site (root, `singleBiome`,
+  `chaosBiomes`, and `naturalBiomes` alone again for `stripWorld.bands`) —
+  never singletons, extending DESIGN R1's `objectiveKey` pattern
+  (`BorderSchema`) to a case where the *owner type itself* varies across
+  call sites, not just a string parameter.
+  **Non-obvious pitfall worth remembering for 25.6c-g:** a first `./gradlew
+  :common:test` run right after the schema/fixture changes is *not* a
+  reliable complete list of `WorldzConfigTest` methods needing updates.
+  Several methods that parse a YAML string containing a now-renamed key
+  (e.g. `starterBiome: ' plains '`, `starterRadiusBlocks: 64.5`) stayed
+  green even though the key is now silently unrecognized, because either
+  (a) the assertion checks a POJO field default that coincidentally equals
+  what the stale test meant to verify (an unrecognized key is simply never
+  written, so the field keeps its factory default), or (b) the test only
+  checks that the source file wasn't rewritten, which is trivially true
+  since the mod never rewrites `jlt_worldz.yaml` regardless of whether
+  parsing found anything wrong. Caught by grepping the whole test file for
+  every old key's literal string after the "red" list came back clean, not
+  by trusting the red list alone. Fixed in 25.6b:
+  `spawnStrategyDefaultsToStarterAtOrigin`,
+  `fractionalRadiusMakesTheFileInvalidWithoutOverwritingIt`,
+  `starterBiomeAcceptsIdsButRejectsTags`,
+  `singleBiomeInvalidLandBiomeFallsBackToPlains`.
+  `reference-defaults.yaml` regeneration recipe (no gradle task for this
+  exists): run `WorldzConfigTest.defaultConfigMatchesTheCapturedReference
+  Defaults`, pull the `<failure message="expected: <...> but was: <...>">`
+  text out of `common/build/test-results/test/TEST-...WorldzConfigTest.xml`
+  (HTML-unescape it), take the "but was" half, and write that as the new
+  golden file — then diff old vs. new by hand before trusting it.

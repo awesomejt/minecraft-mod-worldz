@@ -3,6 +3,7 @@
 # Expect: a "needs a starter biome" WARN in latest.log, then behavior falls
 # back to starter_at_origin: spawn at (0,0), no starter zone forced (since
 # starterBiome is empty).
-starterBiome: ''
+starter:
+  biome: ''
 spawn:
   strategy: preferred_natural_biome

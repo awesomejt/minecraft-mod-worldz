@@ -7,10 +7,12 @@
 # 256-block starter zone, which always stays desert) to make this practical
 # to check in-game.
 singleBiome:
-  landBiome: 'minecraft:desert'
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  biome: 'minecraft:desert'
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: true
-  allowOceans: false
+  naturalBiomes:
+    rivers: true
+    oceans: false

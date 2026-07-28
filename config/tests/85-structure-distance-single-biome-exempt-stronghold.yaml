@@ -21,9 +21,10 @@
 #  3. Fly out past 500 blocks and confirm ordinary structures (desert
 #     pyramids, ruined portals, etc.) generate normally again.
 singleBiome:
-  landBiome: 'minecraft:desert'
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  biome: 'minecraft:desert'
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
 structureDistance:

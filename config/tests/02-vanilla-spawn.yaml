@@ -3,7 +3,8 @@
 # (likely NOT plains); the plains starter zone still exists at (0,0)
 # regardless — walk there to confirm it's still forced, just not where you
 # started.
-starterBiome: 'minecraft:plains'
-starterRadiusBlocks: 256
+starter:
+  biome: 'minecraft:plains'
+  radius: 256
 spawn:
   strategy: vanilla_spawn

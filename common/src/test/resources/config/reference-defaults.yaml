@@ -10,11 +10,16 @@ allowedBiomes:
 - minecraft:lush_caves
 - minecraft:deep_dark
 - minecraft:sulfur_caves
-starterBiome: minecraft:plains
-starterRadiusBlocks: 256
-ensureStarterLand: true
-starterLandTransitionBlocks: 128
-starterLandFoundationDepthBlocks: 48
+starter:
+  biome: minecraft:plains
+  radius: 256
+  land:
+    enabled: true
+    transition: 128
+    foundationDepth: 48
+naturalBiomes:
+  rivers: false
+  oceans: false
 overworldBorder:
   enabled: false
   initialRadiusBlocks: 512
@@ -55,21 +60,23 @@ layout:
   mode: legacy
   biomes: [
     ]
-  regionScaleBlocks: 512
+  regionScale: 512
   singleBiome: ''
   roleOverrides: {
     }
 spawn:
   strategy: starter_at_origin
 singleBiome:
-  landBiome: minecraft:plains
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  biome: minecraft:plains
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
-  allowBeaches: false
+  naturalBiomes:
+    rivers: false
+    oceans: false
+    beaches: false
 chaosBiomes:
   biomes:
   - minecraft:desert
@@ -77,14 +84,16 @@ chaosBiomes:
   - minecraft:ice_spikes
   - minecraft:badlands
   - minecraft:taiga
-  regionScaleBlocks: 512
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  regionScale: 512
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
-  allowBeaches: false
+  naturalBiomes:
+    rivers: false
+    oceans: false
+    beaches: false
 stripWorld:
   spawn:
     strategy: starter_at_origin
@@ -92,11 +101,12 @@ stripWorld:
     enabled: false
     biomes: [
       ]
-    widthBlocks: 128
+    width: 128
     seedRandomOrder: false
-    allowRivers: true
-    allowOceans: true
-    allowBeaches: true
+    naturalBiomes:
+      rivers: true
+      oceans: true
+      beaches: true
 oceanIsland:
   islandSource: artificial
   fluid: water
@@ -379,5 +389,3 @@ structureDistance:
   minDistanceBlocks: 2000
   exemptStructureSets: [
     ]
-allowRivers: false
-allowOceans: false

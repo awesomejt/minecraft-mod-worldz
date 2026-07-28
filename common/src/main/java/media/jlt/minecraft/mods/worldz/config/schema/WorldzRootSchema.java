@@ -27,12 +27,14 @@ import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import java.util.List;
 
 /**
- * Root schema for {@link WorldzConfig} itself (DESIGN §41.7; TODO 25.2g). Declares the eight
- * top-level scalars, then a {@code Setting.section(...)} entry for each of the 25
- * already-converted sections, in today's exact {@code toYaml()} emit order (DESIGN §41.1's
- * ordering invariant) -- the same order {@code WorldzConfig.parse} checked {@code containsKey} in
- * and {@code WorldzConfig.sanitize} processed fields in (re-verified against the current code, not
- * DESIGN's line numbers, which predate 25.2a-f).
+ * Root schema for {@link WorldzConfig} itself (DESIGN §41.7; TODO 25.2g). Declares one top-level
+ * scalar ({@code allowedBiomes}), the {@code starter}/{@code naturalBiomes} groups (TODO 25.6b),
+ * then a {@code Setting.section(...)} entry for each of the 23 already-converted sections, in
+ * today's exact {@code toYaml()} emit order (DESIGN §41.1's ordering invariant) -- the same order
+ * {@code WorldzConfig.parse} checked {@code containsKey} in and {@code WorldzConfig.sanitize}
+ * processed fields in (re-verified against the current code, not DESIGN's line numbers, which
+ * predate 25.2a-f). {@code naturalBiomes} moved up next to {@code starter} at 25.6b (DESIGN §42.3),
+ * out of its pre-25.6 position after {@code structureDistance}.
  *
  * <p>Every nested section comes from {@link SchemaSections}, the same registry {@code
  * WorldzConfig}'s four orchestration methods called directly before this refactor -- so this
@@ -44,17 +46,32 @@ import java.util.List;
  *
  * <p>This section's own {@link #path()} is {@code ""}: a root-level key has no dotted prefix.
  * {@link SchemaSection} was adjusted (TODO 25.2g) to omit the leading {@code "."} that implies, so
- * warning/exception text for the eight scalars (e.g. {@code "Clamped starterRadiusBlocks from ..
- * .to .."}) matches today's exactly; every other (non-root) section already had a non-empty path,
- * so that change is behavior-identical for them.
+ * warning/exception text for the one remaining scalar (e.g. {@code "Ignoring invalid allowed
+ * biome or tag '{}'."}) matches today's exactly; every other (non-root) section already had a
+ * non-empty path, so that change is behavior-identical for them.
  *
- * <p>{@code summary()} is overridden rather than derived: {@code starterLand=} folds three separate
- * fields ({@code ensureStarterLand}, {@code starterLandTransitionBlocks}, {@code
- * starterLandFoundationDepthBlocks}) into one segment, which no single {@link Setting}'s renderer
- * can express -- the same "not mechanically derivable" shape as {@code BorderSchema}, {@code
- * ExteriorSchema} and {@code SkyIslandSchema} (DESIGN §41.6's table).
+ * <p>{@code summary()} is overridden rather than derived: the {@code starter=}/{@code
+ * naturalBiomes=} segments delegate to the {@link #starter}/{@link #naturalBiomes} group instances'
+ * own summaries (TODO 25.6b), and {@code starter}'s nested {@code land=} sub-segment still folds
+ * three separate fields ({@code ensureStarterLand}, {@code starterLandTransitionBlocks}, {@code
+ * starterLandFoundationDepthBlocks}) into one segment via {@link StarterLandSchema}'s own override,
+ * which no single {@link Setting}'s renderer can express -- the same "not mechanically derivable"
+ * shape as {@code BorderSchema}, {@code ExteriorSchema} and {@code SkyIslandSchema} (DESIGN §41.6's
+ * table).
  */
 public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
+    private final StarterLandSchema starterLand = new StarterLandSchema("starter.land");
+    private final StarterSchema<WorldzConfig> starter = new StarterSchema<>(
+        "starter", WorldzConfig::new,
+        new Accessor<>(c -> c.starterBiome, (c, v) -> c.starterBiome = v),
+        new Accessor<>(c -> c.starterRadiusBlocks, (c, v) -> c.starterRadiusBlocks = v),
+        starterLand
+    );
+    private final NaturalBiomesSchema<WorldzConfig> naturalBiomes = new NaturalBiomesSchema<>(
+        "naturalBiomes", WorldzConfig::new,
+        new Accessor<>(c -> c.allowRivers, (c, v) -> c.allowRivers = v),
+        new Accessor<>(c -> c.allowOceans, (c, v) -> c.allowOceans = v)
+    );
     private final SectionCodec<BorderConfig> overworldBorder =
         SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal");
     private final SectionCodec<BorderConfig> netherBorder =
@@ -97,33 +114,13 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
                 .unit(Unit.BIOME_ID)
                 .doc("Biome ids and biome-tag ids allowed in new Worldz worlds.")
                 .build(),
-            Setting.<WorldzConfig>text("starterBiome", c -> c.starterBiome, (c, v) -> c.starterBiome = v)
-                .rule(new Rule.BiomeId<>(true, () -> "", "Ignoring invalid starter biome '{}'."))
-                .unit(Unit.BIOME_ID)
-                .doc("Optional biome id forced around the origin.")
+            Setting.group("starter", starter)
+                .render(starter::summary)
+                .doc("Optional biome forced around the origin, and whether/how low terrain beneath it is reinforced.")
                 .build(),
-            Setting.<WorldzConfig>integer("starterRadiusBlocks", c -> c.starterRadiusBlocks, (c, v) -> c.starterRadiusBlocks = v)
-                .range(WorldzConfig.MIN_STARTER_RADIUS_BLOCKS, WorldzConfig.MAX_STARTER_RADIUS_BLOCKS)
-                .unit(Unit.BLOCKS)
-                .doc("Starter-zone radius measured in blocks.")
-                .build(),
-            Setting.<WorldzConfig>flag("ensureStarterLand", c -> c.ensureStarterLand, (c, v) -> c.ensureStarterLand = v)
-                .doc("Whether low terrain beneath a starter biome is raised into usable land.")
-                .build(),
-            Setting.<WorldzConfig>integer(
-                    "starterLandTransitionBlocks", c -> c.starterLandTransitionBlocks, (c, v) -> c.starterLandTransitionBlocks = v
-                )
-                .range(0, WorldzConfig.MAX_STARTER_LAND_TRANSITION_BLOCKS)
-                .unit(Unit.BLOCKS)
-                .doc("Outward distance used to blend reinforced land into natural terrain.")
-                .build(),
-            Setting.<WorldzConfig>integer(
-                    "starterLandFoundationDepthBlocks",
-                    c -> c.starterLandFoundationDepthBlocks, (c, v) -> c.starterLandFoundationDepthBlocks = v
-                )
-                .range(0, WorldzConfig.MAX_STARTER_LAND_FOUNDATION_DEPTH_BLOCKS)
-                .unit(Unit.BLOCKS)
-                .doc("Depth below the natural ocean floor repaired as solid foundation.")
+            Setting.group("naturalBiomes", naturalBiomes)
+                .render(naturalBiomes::summary)
+                .doc("Let vanilla's own river/ocean biomes generate naturally on the generic preset (GOALS 13/14).")
                 .build(),
             Setting.<WorldzConfig, BorderConfig>section(
                     "overworldBorder", c -> c.overworldBorder, (c, v) -> c.overworldBorder = v, overworldBorder
@@ -225,30 +222,23 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
                     "structureDistance", c -> c.structureDistance, (c, v) -> c.structureDistance = v, structureDistance
                 )
                 .doc("\"Structures far from spawn\" module (GOAL 24; DESIGN §36) -- composes with any world type.")
-                .build(),
-            Setting.<WorldzConfig>flag("allowRivers", c -> c.allowRivers, (c, v) -> c.allowRivers = v)
-                .doc("Let vanilla's own river biomes generate naturally on the generic preset (GOALS 13).")
-                .build(),
-            Setting.<WorldzConfig>flag("allowOceans", c -> c.allowOceans, (c, v) -> c.allowOceans = v)
-                .doc("Let vanilla's own river/ocean-family biomes generate naturally on the generic preset (GOALS 14).")
                 .build()
         );
     }
 
     /**
-     * Overridden verbatim against today's {@code WorldzConfig.summary()} (class Javadoc): {@code
-     * starterLand=} folds three fields into one segment, which no single {@link Setting}'s renderer
-     * can express, so the whole line is hand-assembled here rather than derived from {@link
-     * #declare()}.
+     * Overridden verbatim against today's {@code WorldzConfig.summary()} (class Javadoc, updated
+     * TODO 25.6b): {@code starter=} and {@code naturalBiomes=} delegate to {@link #starter} and
+     * {@link #naturalBiomes}'s own group summaries (the {@code land=} sub-segment inside {@code
+     * starter=} still folds three fields into one, via {@link StarterLandSchema}'s own override,
+     * matching pre-rename's {@code starterLand=} exactly except for the renamed labels), so the
+     * whole line is hand-assembled here rather than derived from {@link #declare()}.
      */
     @Override
     public String summary(WorldzConfig value) {
         return "allowedBiomes=" + value.allowedBiomes
-            + ", starterBiome=" + (value.starterBiome.isEmpty() ? "<none>" : value.starterBiome)
-            + ", starterRadiusBlocks=" + value.starterRadiusBlocks
-            + ", starterLand=" + (value.ensureStarterLand
-                ? "transition=" + value.starterLandTransitionBlocks + ", foundation=" + value.starterLandFoundationDepthBlocks
-                : "<disabled>")
+            + ", starter=" + starter.summary(value)
+            + ", naturalBiomes=" + naturalBiomes.summary(value)
             + ", overworldBorder=" + overworldBorder.summary(value.overworldBorder)
             + ", netherBorder=" + netherBorder.summary(value.netherBorder)
             + ", endBorder=" + endBorder.summary(value.endBorder)
@@ -271,8 +261,55 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
             + ", stacked=" + stacked.summary(value.stacked)
             + ", foreverNight=" + foreverNight.summary(value.foreverNight)
             + ", risingLava=" + risingLava.summary(value.risingLava)
-            + ", structureDistance=" + structureDistance.summary(value.structureDistance)
-            + ", allowRivers=" + value.allowRivers
-            + ", allowOceans=" + value.allowOceans;
+            + ", structureDistance=" + structureDistance.summary(value.structureDistance);
+    }
+
+    /**
+     * The root's {@code starter.land} sub-group (TODO 25.6b): only the config root has {@code
+     * ensureStarterLand}/{@code starterLandTransitionBlocks}/{@code
+     * starterLandFoundationDepthBlocks} fields (DESIGN §42.1), so this is a private implementation
+     * detail of {@link WorldzRootSchema} rather than a shared class like {@link StarterSchema}/
+     * {@link NaturalBiomesSchema}.
+     */
+    private static final class StarterLandSchema extends SchemaSection<WorldzConfig> {
+        StarterLandSchema(String path) {
+            super(path, WorldzConfig::new);
+        }
+
+        @Override
+        protected List<Setting<WorldzConfig, ?>> declare() {
+            return List.of(
+                Setting.<WorldzConfig>flag("enabled", c -> c.ensureStarterLand, (c, v) -> c.ensureStarterLand = v)
+                    .doc("Whether low terrain beneath a starter biome is raised into usable land.")
+                    .build(),
+                Setting.<WorldzConfig>integer(
+                        "transition", c -> c.starterLandTransitionBlocks, (c, v) -> c.starterLandTransitionBlocks = v
+                    )
+                    .range(0, WorldzConfig.MAX_STARTER_LAND_TRANSITION_BLOCKS)
+                    .unit(Unit.BLOCKS)
+                    .doc("Outward distance used to blend reinforced land into natural terrain.")
+                    .build(),
+                Setting.<WorldzConfig>integer(
+                        "foundationDepth", c -> c.starterLandFoundationDepthBlocks, (c, v) -> c.starterLandFoundationDepthBlocks = v
+                    )
+                    .range(0, WorldzConfig.MAX_STARTER_LAND_FOUNDATION_DEPTH_BLOCKS)
+                    .unit(Unit.BLOCKS)
+                    .doc("Depth below the natural ocean floor repaired as solid foundation.")
+                    .build()
+            );
+        }
+
+        /**
+         * Overridden: {@code enabled} gates the whole line and is itself excluded from the
+         * surviving segments -- matching pre-rename {@code WorldzRootSchema.summary()}'s
+         * {@code starterLand=} segment exactly (transition/foundation labels unchanged), not
+         * mechanically derivable.
+         */
+        @Override
+        public String summary(WorldzConfig value) {
+            return value.ensureStarterLand
+                ? "transition=" + value.starterLandTransitionBlocks + ", foundation=" + value.starterLandFoundationDepthBlocks
+                : "<disabled>";
+        }
     }
 }

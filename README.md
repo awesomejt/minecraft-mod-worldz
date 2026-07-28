@@ -122,30 +122,32 @@ Configure its defaults with a `singleBiome:` section in
 
 ```yaml
 singleBiome:
-  landBiome: 'minecraft:desert'
-  starterBiome: 'minecraft:plains'
-  starterRadiusBlocks: 256
+  biome: 'minecraft:desert'
+  starter:
+    biome: 'minecraft:plains'
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
-  allowBeaches: false
+  naturalBiomes:
+    rivers: false
+    oceans: false
+    beaches: false
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `landBiome` | `"minecraft:plains"` | The one biome that fills the entire world. |
-| `starterBiome` | `""` | Optional different biome forced in a circular zone around spawn; empty means no forced zone (the whole world is already `landBiome`). |
-| `starterRadiusBlocks` | `256` | Starter-zone radius, only meaningful when `starterBiome` is set; clamped to `64..4096`. |
-| `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. `preferred_natural_biome` searches for a *natural* occurrence of `starterBiome` using the real seed and moves spawn there instead of forcing a zone at `(0, 0)` — the way to get a starter biome whose location (and, incidentally, whatever natural shape it has) comes from the seed rather than being placed arbitrarily. |
-| `allowRivers` | `false` | Let vanilla's own river biomes generate wherever vanilla would naturally place one, instead of `landBiome` applying there too. Terrain is untouched — the river channel is exactly vanilla's shape. Never overrides the starter zone, which always stays guaranteed land. |
-| `allowOceans` | `false` | Same idea for vanilla's own ocean biomes (every temperature and depth variant) — additive over `allowRivers`, so turning this on keeps rivers passing through too. Coastlines are exactly vanilla's: no straight edges, no height blending. |
-| `allowBeaches` | `false` | Same idea for vanilla's own `beach`/`snowy_beach` biomes plus `stony_shore` (which has no dedicated vanilla tag, so it's checked directly) — independent of `allowRivers`/`allowOceans`. |
+| `biome` | `"minecraft:plains"` | The one biome that fills the entire world. |
+| `starter.biome` | `""` | Optional different biome forced in a circular zone around spawn; empty means no forced zone (the whole world is already `biome`). |
+| `starter.radius` | `256` | Starter-zone radius, only meaningful when `starter.biome` is set; clamped to `64..4096`. |
+| `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. `preferred_natural_biome` searches for a *natural* occurrence of `starter.biome` using the real seed and moves spawn there instead of forcing a zone at `(0, 0)` — the way to get a starter biome whose location (and, incidentally, whatever natural shape it has) comes from the seed rather than being placed arbitrarily. |
+| `naturalBiomes.rivers` | `false` | Let vanilla's own river biomes generate wherever vanilla would naturally place one, instead of `biome` applying there too. Terrain is untouched — the river channel is exactly vanilla's shape. Never overrides the starter zone, which always stays guaranteed land. |
+| `naturalBiomes.oceans` | `false` | Same idea for vanilla's own ocean biomes (every temperature and depth variant) — additive over `naturalBiomes.rivers`, so turning this on keeps rivers passing through too. Coastlines are exactly vanilla's: no straight edges, no height blending. |
+| `naturalBiomes.beaches` | `false` | Same idea for vanilla's own `beach`/`snowy_beach` biomes plus `stony_shore` (which has no dedicated vanilla tag, so it's checked directly) — independent of `naturalBiomes.rivers`/`.oceans`. |
 
 `allowedBiomes` (what structures/features see as possible biomes) is derived
-automatically from `landBiome` and `starterBiome` — there is nothing to keep
-in sync by hand for this type. When `allowRivers`/`allowOceans`/`allowBeaches`
-are on, the matching vanilla biomes (`#minecraft:is_river`,
+automatically from `biome` and `starter.biome` — there is nothing to keep
+in sync by hand for this type. When `naturalBiomes.rivers`/`.oceans`/
+`.beaches` are on, the matching vanilla biomes (`#minecraft:is_river`,
 `#minecraft:is_ocean`, `#minecraft:is_beach` plus `stony_shore`) are folded
 in too, so structure/feature placement knows those biomes can occur.
 
@@ -153,7 +155,7 @@ in too, so structure/feature placement knows those biomes can occur.
 
 Select **Worldz: Chaos Biomes** under **World Type** for a world where a
 list of land biomes is shuffled, seed-based, across regions of the map —
-desert beside ice spikes beside jungle, changing every `regionScaleBlocks`
+desert beside ice spikes beside jungle, changing every `regionScale`
 or so. Unlike **Worldz: Single Biome**, terrain shape is *always* completely
 untouched vanilla terrain everywhere (hills, mountains, ravines, natural
 water bodies stand exactly as the seed generated them) — chaos only ever
@@ -172,28 +174,30 @@ chaosBiomes:
     - 'minecraft:ice_spikes'
     - 'minecraft:badlands'
     - 'minecraft:taiga'
-  regionScaleBlocks: 512
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  regionScale: 512
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: false
-  allowOceans: false
-  allowBeaches: false
+  naturalBiomes:
+    rivers: false
+    oceans: false
+    beaches: false
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `biomes` | desert/jungle/ice_spikes/badlands/taiga | Weighted land biome entries (`id` or `id@weight`, same syntax as the generic preset's `layout.biomes`), shuffled per region. At least one is required. |
-| `regionScaleBlocks` | `512` | Grid-cell edge length in blocks; smaller means more frequent biome changes. Clamped to `16..8192`. |
-| `starterBiome` | `""` | Optional biome forced in a circular zone around spawn; empty means chaos starts immediately at spawn (GOALS 33's literal reading). Setting one gives a safe, guaranteed-land starting patch, exactly like `single_biome`'s. |
-| `starterRadiusBlocks` | `256` | Starter-zone radius, only meaningful when `starterBiome` is set; clamped to `64..4096`. |
+| `regionScale` | `512` | Grid-cell edge length in blocks; smaller means more frequent biome changes. Clamped to `16..8192`. |
+| `starter.biome` | `""` | Optional biome forced in a circular zone around spawn; empty means chaos starts immediately at spawn (GOALS 33's literal reading). Setting one gives a safe, guaranteed-land starting patch, exactly like `single_biome`'s. |
+| `starter.radius` | `256` | Starter-zone radius, only meaningful when `starter.biome` is set; clamped to `64..4096`. |
 | `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
-| `allowRivers` | `false` | Same mechanism as `single_biome`'s `allowRivers` — vanilla's own river biomes pass through, terrain untouched. |
-| `allowOceans` | `false` | Same mechanism as `single_biome`'s `allowOceans` — additive over `allowRivers`. |
-| `allowBeaches` | `false` | Same mechanism as `single_biome`'s `allowBeaches` — vanilla's own beach/stony-shore biomes pass through, independent of `allowRivers`/`allowOceans`. |
+| `naturalBiomes.rivers` | `false` | Same mechanism as `single_biome`'s `naturalBiomes.rivers` — vanilla's own river biomes pass through, terrain untouched. |
+| `naturalBiomes.oceans` | `false` | Same mechanism as `single_biome`'s `naturalBiomes.oceans` — additive over `naturalBiomes.rivers`. |
+| `naturalBiomes.beaches` | `false` | Same mechanism as `single_biome`'s `naturalBiomes.beaches` — vanilla's own beach/stony-shore biomes pass through, independent of `naturalBiomes.rivers`/`.oceans`. |
 
-`allowedBiomes` derives automatically from `biomes` plus `starterBiome`, the
+`allowedBiomes` derives automatically from `biomes` plus `starter.biome`, the
 same way `single_biome`'s does.
 
 ## Strip world challenge
@@ -248,7 +252,7 @@ available on this preset's Customize screen.
 
 Optionally, instead of full vanilla biome variety, the corridor can walk an
 ordered sequence of biomes along its length — desert, then jungle, then ice
-spikes, and so on, changing every `bands.widthBlocks` — the same
+spikes, and so on, changing every `bands.width` — the same
 "terrain stays vanilla, only the biome relabels" philosophy as [Chaos
 biomes](#chaos-biomes-challenge), but ordered along one axis instead of
 scattered in a 2D grid. The sequence repeats (wraps) once exhausted, so it
@@ -267,22 +271,23 @@ stripWorld:
       - 'minecraft:ice_spikes'
       - 'minecraft:badlands'
       - 'minecraft:taiga'
-    widthBlocks: 128
+    width: 128
     seedRandomOrder: false
-    allowRivers: true
-    allowOceans: true
-    allowBeaches: true
+    naturalBiomes:
+      rivers: true
+      oceans: true
+      beaches: true
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `bands.enabled` | `false` | Whether the corridor passes through biome bands instead of ordinary vanilla terrain. |
 | `bands.biomes` | desert/jungle/ice_spikes/badlands/taiga | Ordered, unweighted biome ids walked along the strip's length. Concrete ids only, no `#tags`. At least one is required when `enabled` is set. |
-| `bands.widthBlocks` | `128` | Band width in blocks along the strip's length axis. Clamped to `16..8192`. |
+| `bands.width` | `128` | Band width in blocks along the strip's length axis. Clamped to `16..8192`. |
 | `bands.seedRandomOrder` | `false` | Shuffle `biomes` once — a fixed permutation baked in at world creation, not per-band randomness — instead of using the list in the order given. |
-| `bands.allowRivers` | `true` | Let vanilla's own river biomes pass through the band sequence wherever vanilla would naturally place one, same mechanism as `single_biome`'s `allowRivers`. Defaults **on** here — unlike `single_biome`/`chaos_biomes`, a band sequence is already a curated, restricted list, so without this a player would need to remember to add water biomes to every band configuration just to get them at all. |
-| `bands.allowOceans` | `true` | Same idea for vanilla's own ocean biomes — additive over `allowRivers`. Also defaults **on** for the same reason. |
-| `bands.allowBeaches` | `true` | Same idea for vanilla's own beach/stony-shore biomes, independent of `allowRivers`/`allowOceans`. Also defaults **on** for the same reason. |
+| `bands.naturalBiomes.rivers` | `true` | Let vanilla's own river biomes pass through the band sequence wherever vanilla would naturally place one, same mechanism as `single_biome`'s `naturalBiomes.rivers`. Defaults **on** here — unlike `single_biome`/`chaos_biomes`, a band sequence is already a curated, restricted list, so without this a player would need to remember to add water biomes to every band configuration just to get them at all. |
+| `bands.naturalBiomes.oceans` | `true` | Same idea for vanilla's own ocean biomes — additive over `naturalBiomes.rivers`. Also defaults **on** for the same reason. |
+| `bands.naturalBiomes.beaches` | `true` | Same idea for vanilla's own beach/stony-shore biomes, independent of `naturalBiomes.rivers`/`.oceans`. Also defaults **on** for the same reason. |
 
 These three only matter when `bands.enabled` is set — the plain, band-free
 strip world already shows full vanilla biome variety (including rivers,
@@ -1303,18 +1308,18 @@ showing every setting at its current built-in default.
 | Setting | Default | Description |
 |---|---|---|
 | `allowedBiomes` | desert/badlands/cave mix | Biome ids and/or `#` biome-tag ids. A single biome produces a single-biome overworld. See [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for the exact default list. |
-| `starterBiome` | `"minecraft:plains"` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
-| `starterRadiusBlocks` | `256` | Inclusive circular radius, clamped to `64..4096` blocks. |
-| `ensureStarterLand` | `true` | Raise low natural terrain beneath a selected starter biome; has no effect when the starter biome is empty. |
-| `starterLandTransitionBlocks` | `128` | Smooth blend beyond the starter radius back to natural terrain, clamped to `0..4096`. |
-| `starterLandFoundationDepthBlocks` | `48` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
+| `starter.biome` | `"minecraft:plains"` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
+| `starter.radius` | `256` | Inclusive circular radius, clamped to `64..4096` blocks. |
+| `starter.land.enabled` | `true` | Raise low natural terrain beneath a selected starter biome; has no effect when the starter biome is empty. |
+| `starter.land.transition` | `128` | Smooth blend beyond the starter radius back to natural terrain, clamped to `0..4096`. |
+| `starter.land.foundationDepth` | `48` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
 | `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
 | `endBorder` | disabled | Option to carry the Overworld's eventual radius into the End, clamped up to `minimumRadiusBlocks` so the dragon fight stays winnable. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
 | `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
 | `layout` | `legacy` | Coordinated land/ocean/beach terrain layout; `legacy` keeps today's climate-filter-only behavior. See [Coordinated world layouts](#coordinated-world-layouts). |
-| `spawn` | `strategy: starter_at_origin` | How the layout origin and initial spawn are chosen: `starter_at_origin` (today's behavior), `preferred_natural_biome` (search near the origin for `starterBiome` using the real seed and move the layout origin there), or `vanilla_spawn` (unmodified vanilla spawn selection). See [Seed-informed spawn](#seed-informed-spawn). |
+| `spawn` | `strategy: starter_at_origin` | How the layout origin and initial spawn are chosen: `starter_at_origin` (today's behavior), `preferred_natural_biome` (search near the origin for `starter.biome` using the real seed and move the layout origin there), or `vanilla_spawn` (unmodified vanilla spawn selection). See [Seed-informed spawn](#seed-informed-spawn). |
 
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:
@@ -1324,18 +1329,21 @@ allowedBiomes:
   - 'minecraft:plains'
   - 'minecraft:desert'
   - 'minecraft:snowy_plains'
-starterBiome: 'minecraft:cherry_grove'
-starterRadiusBlocks: 512
-ensureStarterLand: true
-starterLandTransitionBlocks: 128
-starterLandFoundationDepthBlocks: 32
+starter:
+  biome: 'minecraft:cherry_grove'
+  radius: 512
+  land:
+    enabled: true
+    transition: 128
+    foundationDepth: 32
 ```
 
 ```yaml
 allowedBiomes:
   - '#minecraft:is_overworld'
-starterBiome: ''
-starterRadiusBlocks: 512
+starter:
+  biome: ''
+  radius: 512
 ```
 
 Quote biome tags in YAML because an unquoted `#` begins a comment.
@@ -1344,21 +1352,21 @@ Quote biome tags in YAML because an unquoted `#` begins a comment.
 
 A starter biome changes biome selection, but vanilla terrain noise can still
 place that biome over deep ocean, aquifers, or extensive caves. With
-`ensureStarterLand: true`, Worldz keeps natural high ground unchanged and raises
-only insufficient columns above a baseline two blocks over sea level. It adds
-rolling elevation derived from the original seabed and broad seed-dependent
-vanilla noise, avoiding a uniformly flat starter shelf. Raised land starts at
-the original ocean floor, so it is connected to the terrain below instead of
-becoming a thin floating platform.
+`starter.land.enabled: true`, Worldz keeps natural high ground unchanged and
+raises only insufficient columns above a baseline two blocks over sea level.
+It adds rolling elevation derived from the original seabed and broad
+seed-dependent vanilla noise, avoiding a uniformly flat starter shelf. Raised
+land starts at the original ocean floor, so it is connected to the terrain
+below instead of becoming a thin floating platform.
 
-The full guarantee covers `starterRadiusBlocks`. Beyond it,
-`starterLandTransitionBlocks` uses a smooth circular blend back to the original
+The full guarantee covers `starter.radius`. Beyond it,
+`starter.land.transition` uses a smooth circular blend back to the original
 terrain height. The blend applies to vertical lift, and tiny lifts round to zero
 near its outer edge instead of producing a one-block ring. Vanilla surface
 rules still add the starter biome's normal grass, dirt, sand, or other
-materials. `starterLandFoundationDepthBlocks`
+materials. `starter.land.foundationDepth`
 repairs deep air or water gaps below the original floor while leaving a surface
-shell available for natural cave openings. Set `ensureStarterLand: false` to
+shell available for natural cave openings. Set `starter.land.enabled: false` to
 retain completely vanilla terrain shapes beneath the forced biome.
 
 These settings are available from the **Starter Land** button in Customize.
@@ -1527,7 +1535,7 @@ together instead (see below).
 
 ### Coordinated world layouts
 
-A `layout` section (`mode`, weighted `biomes`, `regionScaleBlocks`,
+A `layout` section (`mode`, weighted `biomes`, `regionScale`,
 `singleBiome`, `roleOverrides`) selects one of three modes: `ocean`,
 `single_biome`, or `void`, plus the `legacy` default described above.
 Non-legacy modes classify every column into a role from a deterministic
@@ -1555,7 +1563,7 @@ its terrain to match that biome's role. See TODO.md for the region-composed
 ocean-island replacement.
 
 Non-legacy `layout.biomes` picks **one** biome for an entire region cell (up
-to `regionScaleBlocks` — 512 blocks by default — on a side), which suits
+to `regionScale` — 512 blocks by default — on a side), which suits
 broad biomes like `plains`/`forest`/`ocean` but not a biome vanilla only ever
 generates as a narrow, winding, noise-carved channel, like `river`. Don't add
 `river` (or similarly linear/thin biomes) to `layout.biomes`.
@@ -1570,12 +1578,12 @@ newly created world:
   starter biome and starter land, if configured, are forced there and
   vanilla's own surface-height spawn search runs inside that guaranteed area.
 - `preferred_natural_biome` — searches outward from `(0, 0)` using the real
-  world seed for a natural, unmodified occurrence of `starterBiome`, in
+  world seed for a natural, unmodified occurrence of `starter.biome`, in
   concentric rings up to 2048 blocks out. If found, that location becomes the
   new layout origin: the starter zone, guaranteed land, world border,
   exterior terrain, and progression objectives (End portal / blaze access)
   all move there together, not just the player's spawn point. If nothing
-  matches within range, or `starterBiome` is empty, the world falls back to
+  matches within range, or `starter.biome` is empty, the world falls back to
   `starter_at_origin` automatically.
 - `vanilla_spawn` — the layout origin stays `(0, 0)`, and Worldz leaves
   Minecraft's ordinary spawn selection untouched.

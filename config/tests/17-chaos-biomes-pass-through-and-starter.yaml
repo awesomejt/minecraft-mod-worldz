@@ -1,6 +1,6 @@
 # GOALS 33's "option to keep natural rivers/oceans where vanilla put them",
 # reusing the same Phase 3.1 vanilla pass-through mechanism as
-# singleBiome's allowRivers/allowOceans -- confirms it generalizes
+# singleBiome's naturalBiomes.rivers/.oceans -- confirms it generalizes
 # correctly to chaos_biomes too. Also exercises the optional starter zone
 # (a safe plains patch at spawn instead of chaos starting immediately),
 # since 16, 18, and 19 all leave it disabled.
@@ -11,10 +11,12 @@ chaosBiomes:
     - 'minecraft:ice_spikes'
     - 'minecraft:badlands'
     - 'minecraft:taiga'
-  regionScaleBlocks: 512
-  starterBiome: 'minecraft:plains'
-  starterRadiusBlocks: 256
+  regionScale: 512
+  starter:
+    biome: 'minecraft:plains'
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: true
-  allowOceans: true
+  naturalBiomes:
+    rivers: true
+    oceans: true

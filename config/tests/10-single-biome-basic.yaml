@@ -3,8 +3,9 @@
 # on the creation screen -- only that preset reads this singleBiome: section
 # fieldless; the plain Worldz preset ignores it entirely.
 singleBiome:
-  landBiome: 'minecraft:desert'
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  biome: 'minecraft:desert'
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin

@@ -1,4 +1,4 @@
-# GOALS 33: same as 16, but a large regionScaleBlocks (4096, near the
+# GOALS 33: same as 16, but a large regionScale (4096, near the
 # supported maximum of 8192) -- expect long, uninterrupted stretches of one
 # biome, changing only after traveling very far.
 chaosBiomes:
@@ -8,10 +8,12 @@ chaosBiomes:
     - 'minecraft:ice_spikes'
     - 'minecraft:badlands'
     - 'minecraft:taiga'
-  regionScaleBlocks: 4096
-  starterBiome: ''
-  starterRadiusBlocks: 256
+  regionScale: 4096
+  starter:
+    biome: ''
+    radius: 256
   spawn:
     strategy: starter_at_origin
-  allowRivers: true
-  allowOceans: true
+  naturalBiomes:
+    rivers: true
+    oceans: true

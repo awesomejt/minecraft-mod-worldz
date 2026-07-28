@@ -1121,13 +1121,74 @@ tests.
       103, with a comment explaining the discrepancy; see Deviation log. No
       config keys moved, no POJO/`logic/`/`client/` changes. `./gradlew
       :common:test` green (full suite, not just the new tests).
-- [ ] 25.6b Root + generic-preset sections (needs 25.6a). `starter: {biome,
-      radius, land: {enabled, transition, foundationDepth}}` and
-      `naturalBiomes: {rivers, oceans[, beaches]}` as parameterized shared
-      instances (DESIGN R1's mechanism); `layout.regionScale`;
-      `singleBiome` (`landBiome`→`biome`); `chaosBiomes`;
-      `stripWorld.bands.width`. Simplest group shapes first — proves the
-      framework before 25.6d's multi-group sections. Fixtures 01-19, 29, 29a, 85.
+- [x] 25.6b Root + generic-preset sections (needs 25.6a) — **done**. Two new
+      shared, generic (`<S>`) group classes in `config/schema/`:
+      `StarterSchema<S>` (`biome`, `radius`, optional `land` sub-group typed
+      `SchemaSection<S>`, non-null only for the root) and
+      `NaturalBiomesSchema<S>` (`rivers`, `oceans`, optional `beaches` —
+      `null` accessor omits the leaf). Both take an `Accessor<S, T>` per leaf
+      (already-public getter/setter record) plus a `Supplier<S> factory`,
+      instantiated once per call site with lambdas onto that owner's own
+      flat fields — never singletons, per DESIGN R1/§42.2. `WorldzRootSchema`
+      gained a private static nested `StarterLandSchema` (root-only, not
+      shared, since only the root has `ensureStarterLand`/
+      `starterLandTransitionBlocks`/`starterLandFoundationDepthBlocks`) and
+      moved `naturalBiomes` up next to `starter` in `declare()`/emit order
+      (was stranded after `structureDistance`), per DESIGN §42.3. Root's
+      `summary()` now delegates to `starter.summary(value)`/
+      `naturalBiomes.summary(value)` instead of hand-folding; `StarterSchema`
+      itself is derived (no override) except `biome`'s render (`<none>` for
+      empty, ported from `SingleBiomeSchema`/`ChaosBiomesSchema`'s old
+      per-setting renderers, now shared); `StarterLandSchema.summary()` keeps
+      the exact `transition=X, foundation=Y`/`<disabled>` folding.
+      `SingleBiomeSchema`/`ChaosBiomesSchema`/`StripBandsSchema` all changed
+      from field renames to one `starter`(+`spawn`)/`naturalBiomes` group
+      pair each (`StripBandsSchema` has no `starter`, matching DESIGN); their
+      `declare()` order is unchanged since the groups simply replace the
+      fields they absorbed in place. `landBiome`→`biome` in
+      `SingleBiomeSchema`; `regionScaleBlocks`→`regionScale` in
+      `ChaosBiomesSchema` and separately in `LayoutSchema` (`layout
+      .regionScale`, including its hand-written `postValidate` clamp message
+      and `summary()` label); `widthBlocks`→`width` in `StripBandsSchema`.
+      Fixtures migrated (all 22 in scope, `git diff --stat` confirms no
+      others touched): `01`-`09` (root `starter`(+`.land` in `09`)),
+      `10`-`12`/`14`/`15`/`85` (`singleBiome`), `16`-`19` (`chaosBiomes`),
+      `29`/`29a` (`stripWorld.bands.width`); `13` needed no change (grepped
+      empty for every old key). `config/jlt_worldz.example.yaml` migrated
+      (root `starter`/`naturalBiomes`, `layout.regionScale`, `singleBiome`,
+      `chaosBiomes` — `stripWorld` isn't in the example file, confirmed by
+      grep before editing). `reference-defaults.yaml` **regenerated**: ran
+      `WorldzConfigTest.defaultConfigMatchesTheCapturedReferenceDefaults`,
+      extracted the actual `toYaml()` output from the assertion failure's
+      XML report, diffed it against the old file by hand (`diff` output
+      reviewed line-by-line — only the expected `starter`/`naturalBiomes`/
+      `regionScale`/`biome`/`width` hunks moved, root's trailing
+      `allowRivers: false` / `allowOceans: false` two lines are gone since
+      `naturalBiomes` now emits near the top), then wrote it as the new
+      golden file and confirmed the test goes green. `WorldzConfigTest`
+      (~20 methods touched, each reviewed individually, not bulk-replaced)
+      and `ConfigPresenceTest` (`topLevelScalarSetToItsOwnDefaultValueIs
+      StillReportedPresent` renamed to `nestedGroupLeafSetToItsOwnDefault
+      ValueIsStillReportedPresent` since `starter.radius` is no longer a
+      top-level scalar; two `assertFalse` probes changed from the
+      no-longer-real `starterRadiusBlocks` to `starter.radius`) updated.
+      R13's summary assertion (`summaryUsesCanonicalValuesAndReadable
+      DisabledStarter`) changed deliberately, segment by segment: root's
+      `starterBiome=`/`starterRadiusBlocks=`/`starterLand=` trio collapsed
+      into one `starter=biome=<none>, radius=256, land=transition=128,
+      foundation=48` segment placed right after `allowedBiomes=`, a new
+      `naturalBiomes=rivers=false, oceans=false` segment follows it
+      immediately (matching the moved emit order), the trailing root
+      `allowRivers=false, allowOceans=false` is deleted, and `singleBiome=`/
+      `chaosBiomes=` each get the same `starter=`/`naturalBiomes=`
+      restructuring inline. `README.md` mechanical key-name pass for the
+      single-biome/chaos-biomes/strip-bands tables+examples, the root
+      settings table+examples, "Guaranteed starter land", and "Coordinated
+      world layouts"/"Seed-informed spawn" prose (`islandBiome`/
+      `islandBiomes` left untouched — out of scope, 25.6d). No `logic/`/
+      `client/` files in the diff (verified via `git diff --name-only`); no
+      POJO field renames. `./gradlew build` green (`common:test` 839 tests,
+      0 failures; fabric/neoforge assemble clean).
 - [ ] 25.6c Borders, exteriors, hazards (needs 25.6a). `resize: {days,
       delayDays, style, rate: {blocks, days}}` (nested group; `resizeStyle`
       joins the group, changing emit order — legal per §41.1),

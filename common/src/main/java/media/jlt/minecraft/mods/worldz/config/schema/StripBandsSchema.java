@@ -19,10 +19,23 @@ import java.util.List;
  * one call site. That happens to equal this section's own {@link #path()} (never the leaf-key
  * {@code fullPath} the framework would otherwise interpolate), so the warning templates below are
  * built from {@code path()} rather than relying on {@link Rule}'s generic {@code name} argument.
+ *
+ * <p>{@code widthBlocks} dropped its {@code Blocks} suffix and {@code allowRivers}/{@code
+ * allowOceans}/{@code allowBeaches} folded into the shared {@code naturalBiomes} group at TODO
+ * 25.6b ({@link NaturalBiomesSchema}) -- this section has no {@code starter} group of its own
+ * (only the config root, {@code singleBiome} and {@code chaosBiomes} do).
  */
 public final class StripBandsSchema extends SchemaSection<StripBandsConfig> {
+    private final NaturalBiomesSchema<StripBandsConfig> naturalBiomes;
+
     public StripBandsSchema(String path) {
         super(path, StripBandsConfig::new);
+        this.naturalBiomes = new NaturalBiomesSchema<>(
+            path() + ".naturalBiomes", StripBandsConfig::new,
+            new Accessor<>(c -> c.allowRivers, (c, v) -> c.allowRivers = v),
+            new Accessor<>(c -> c.allowOceans, (c, v) -> c.allowOceans = v),
+            new Accessor<>(c -> c.allowBeaches, (c, v) -> c.allowBeaches = v)
+        );
     }
 
     @Override
@@ -41,7 +54,7 @@ public final class StripBandsSchema extends SchemaSection<StripBandsConfig> {
                 .unit(Unit.BIOME_ID)
                 .doc("Ordered land biome ids walked along the strip's length; repeats once exhausted.")
                 .build(),
-            Setting.<StripBandsConfig>integer("widthBlocks", c -> c.widthBlocks, (c, v) -> c.widthBlocks = v)
+            Setting.<StripBandsConfig>integer("width", c -> c.widthBlocks, (c, v) -> c.widthBlocks = v)
                 .range(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS)
                 .unit(Unit.BLOCKS)
                 .doc("Band width in blocks along the strip's length axis.")
@@ -49,14 +62,9 @@ public final class StripBandsSchema extends SchemaSection<StripBandsConfig> {
             Setting.<StripBandsConfig>flag("seedRandomOrder", c -> c.seedRandomOrder, (c, v) -> c.seedRandomOrder = v)
                 .doc("Shuffle the sequence once (a fixed permutation) instead of using it as given.")
                 .build(),
-            Setting.<StripBandsConfig>flag("allowRivers", c -> c.allowRivers, (c, v) -> c.allowRivers = v)
-                .doc("Let vanilla's own river biomes generate where vanilla would place one.")
-                .build(),
-            Setting.<StripBandsConfig>flag("allowOceans", c -> c.allowOceans, (c, v) -> c.allowOceans = v)
-                .doc("Let vanilla's own river/ocean-family biomes generate naturally, additive over allowRivers.")
-                .build(),
-            Setting.<StripBandsConfig>flag("allowBeaches", c -> c.allowBeaches, (c, v) -> c.allowBeaches = v)
-                .doc("Let vanilla's own beach/stony-shore biomes generate where vanilla would place one.")
+            Setting.group("naturalBiomes", naturalBiomes)
+                .render(naturalBiomes::summary)
+                .doc("Let vanilla's own river/ocean/beach biomes generate where vanilla would place one.")
                 .build()
         );
     }
@@ -83,10 +91,8 @@ public final class StripBandsSchema extends SchemaSection<StripBandsConfig> {
             return "<disabled>";
         }
         return "biomes=" + value.biomes
-            + ", widthBlocks=" + value.widthBlocks
+            + ", width=" + value.widthBlocks
             + ", seedRandomOrder=" + value.seedRandomOrder
-            + ", allowRivers=" + value.allowRivers
-            + ", allowOceans=" + value.allowOceans
-            + ", allowBeaches=" + value.allowBeaches;
+            + ", naturalBiomes=" + naturalBiomes.summary(value);
     }
 }
