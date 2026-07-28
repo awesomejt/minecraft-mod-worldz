@@ -184,6 +184,59 @@ class ConfigDirectoryLoadTest {
     }
 
     /**
+     * The 25.7c misfile WARN (DESIGN §43.5/§43.9 row c): a user writes {@code cave:} straight into
+     * {@code runtime.yaml} instead of {@code world-types/cave.yaml}. {@code runtime.yaml} still
+     * loads its own owned keys normally -- the merge only drops the misfiled top-level key, naming
+     * where it belongs, rather than aborting the whole file the way a YAML-syntax error does.
+     */
+    @Test
+    void wrappedFileTopLevelKeyOwnedByAnotherFileWarnsNamingTheRightFileAndIsDropped() throws IOException {
+        CapturingLogger logger = new CapturingLogger();
+        Files.createDirectories(modDir());
+        Files.writeString(modDir().resolve("runtime.yaml"), """
+            foreverNight:
+              enabled: true
+            cave:
+              spawnY: -40
+            """);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", logger);
+
+        assertTrue(config.foreverNight.enabled, "runtime.yaml's own owned key must still apply");
+        assertEquals(-32, config.cave.spawnDepthY, "the misfiled cave key must not be merged in");
+        assertEquals(1, logger.warnings().size(), () -> "unexpected warnings: " + logger.warnings());
+        String warning = logger.warnings().get(0);
+        assertTrue(warning.contains("cave"));
+        assertTrue(warning.contains("world-types/cave.yaml"));
+    }
+
+    /**
+     * Same WARN, but for a key {@link ConfigLayout} does not recognize at all -- distinguishing
+     * "unknown key" from "misfiled key" is the whole point of splitting the two in {@link
+     * media.jlt.minecraft.mods.worldz.config.schema.SchemaKeyWalker#findUnknownKeysInFile}, and
+     * production's shallow WARN mirrors that same split.
+     */
+    @Test
+    void wrappedFileTopLevelKeyOwnedByNoFileAtAllWarnsAsUnknown() throws IOException {
+        CapturingLogger logger = new CapturingLogger();
+        Files.createDirectories(modDir());
+        Files.writeString(modDir().resolve("runtime.yaml"), """
+            foreverNight:
+              enabled: true
+            notARealRootKeyAtAll:
+              whatever: true
+            """);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", logger);
+
+        assertTrue(config.foreverNight.enabled);
+        assertEquals(1, logger.warnings().size(), () -> "unexpected warnings: " + logger.warnings());
+        String warning = logger.warnings().get(0);
+        assertTrue(warning.contains("notARealRootKeyAtAll"));
+        assertTrue(warning.contains("unknown"));
+    }
+
+    /**
      * 25.5's {@code stacked} gate ({@code LimitedBiomeSource.java:336}, {@code
      * EnvelopedChunkGenerator.java:997}) reads {@code config.present("overworldBorder")}, which now
      * has to survive {@code overworldBorder} living in {@code world-defaults.yaml} while {@code

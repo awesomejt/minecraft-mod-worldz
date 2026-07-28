@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /** Configuration baked into newly created Worldz worlds. */
@@ -257,18 +258,22 @@ public final class WorldzConfig {
                 continue;
             }
             loadedFiles.add(file.relativePath());
-            mergeFile(root, file, fileMap);
+            mergeFile(root, file, fileMap, filePath, logger);
         }
         return root;
     }
 
     /**
      * Merges one file's already-loaded map into the accumulating root map: an unwrapped file's
-     * entire root mapping becomes its one owned key's body; a wrapped file contributes only the
-     * entries whose key it actually owns, silently ignoring anything else (a misfiled key WARN is
-     * TODO 25.7c's job, not this one's -- just don't let one crash the merge).
+     * entire root mapping becomes its one owned key's body (its whole shape is that one key's body,
+     * so a stray unrelated key inside it is a deep unknown-key case -- test-only, per R14 and DESIGN
+     * §43.5 -- not a misfile this method can shallowly detect); a wrapped file contributes only the
+     * entries whose key it actually owns, WARNing on any other top-level key it finds (DESIGN §43.5,
+     * TODO 25.7c) rather than silently dropping it -- naming the file that does own it when {@link
+     * ConfigLayout#owning} resolves one, an "unknown key" otherwise. Deep/recursive unknown-key
+     * checking stays {@code SchemaKeyWalker.findUnknownKeysInFile}'s test-only job.
      */
-    private static void mergeFile(Map<String, Object> root, ConfigFile file, Map<?, ?> fileMap) {
+    private static void mergeFile(Map<String, Object> root, ConfigFile file, Map<?, ?> fileMap, Path filePath, Logger logger) {
         if (file.unwrapped()) {
             root.put(file.rootKeys().get(0), fileMap);
             return;
@@ -276,7 +281,18 @@ public final class WorldzConfig {
         for (Map.Entry<?, ?> entry : fileMap.entrySet()) {
             if (file.rootKeys().contains(entry.getKey())) {
                 root.put((String) entry.getKey(), entry.getValue());
+            } else {
+                warnMisfiledTopLevelKey(filePath, String.valueOf(entry.getKey()), logger);
             }
+        }
+    }
+
+    private static void warnMisfiledTopLevelKey(Path filePath, String key, Logger logger) {
+        Optional<ConfigFile> owner = ConfigLayout.owning(key);
+        if (owner.isPresent()) {
+            logger.warn("Ignoring key '{}' in {}: it belongs in {}.", key, filePath, owner.get().relativePath());
+        } else {
+            logger.warn("Ignoring unknown key '{}' in {}.", key, filePath);
         }
     }
 

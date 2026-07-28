@@ -1662,13 +1662,13 @@ tests.
       `config.present("overworldBorder")` (25.5's `stacked` gate) cases.
       **`git diff` must not touch `reference-defaults.yaml`** — no key
       moved in this task, only the file a key is read from. — **done**.
-- [ ] 25.7c `SchemaKeyWalker.findUnknownKeysInFile` (DESIGN §43.5) +
+- [x] 25.7c `SchemaKeyWalker.findUnknownKeysInFile` (DESIGN §43.5) +
       shallow production misfile WARN via `ConfigLayout.owning`. Proves: a
       stray key in `cave.yaml` reports against `CaveSchema` only (not the
       whole root); a `cave:` key written into `runtime.yaml` reports as
       misfiled, naming `world-types/cave.yaml`; `layout.roleOverrides`'
       arbitrary sub-keys still don't trip it. `ConfigFixturesTest` itself
-      is unchanged (fixtures stay bundle-shaped).
+      is unchanged (fixtures stay bundle-shaped). — **done**.
 - [ ] 25.7d Docs: README.md config section (file tree, wrapped-vs-unwrapped,
       the bundle, first written statement of F3's live-vs-baked split as
       it maps to `runtime.yaml` vs. everything else); `REFERENCE_HEADER`
