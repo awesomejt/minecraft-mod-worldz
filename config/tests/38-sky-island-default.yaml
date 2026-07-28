@@ -26,7 +26,7 @@
 #     island (plains default) at Y 64, with a filled chest nearby.
 #  2. Confirm the chest's necessities-chest contents are the medium tier's
 #     (saplings, bread, a wooden pickaxe, torches, cobblestone -- see
-#     skyIsland.mediumKit in the example config) plus one cauldron (plains
+#     skyIsland.chest.kits.medium in the example config) plus one cauldron (plains
 #     is not a dry/desert-family biome, so this is the "rain will fill it"
 #     case, not a guaranteed bucket -- see 41/42 for the desert case).
 #  3. Confirm the slab is exactly as thick as configured: dig straight down
@@ -39,11 +39,11 @@
 #  6. Confirm the Nether is completely ordinary, unrestricted vanilla
 #     Nether generation (applyToNether is off by default).
 skyIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 16
+  biome: 'minecraft:plains'
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
+  thickness: 6
 overworldBorder:
   enabled: false
   ensureEndPortal: true

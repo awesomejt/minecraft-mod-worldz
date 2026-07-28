@@ -1,18 +1,18 @@
 # GOALS 02: a natural island found in the seed's own unmodified terrain
 # (DESIGN §25.4, TODO 8.2). **Select "Worldz: Ocean Island"** and, if
 # opening Customize, choose "Natural (found in the seed)" for Island
-# source -- this file sets it directly via `oceanIsland.islandSource:
+# source -- this file sets it directly via `oceanIsland.island.source:
 # natural`.
 #
 # Unlike the artificial island (config 30), nothing about the land is
 # synthesized: `IslandPlan.syntheticLand` is false, so there is no
 # interior biome override, no shore ring, and no terrain raise -- the
 # real seed's own biome and terrain show through completely unmodified
-# within `radiusBlocks` of wherever the search finds an isolated
+# within `island.radius` of wherever the search finds an isolated
 # landmass. Beyond that radius, the same ocean gradient as every other
 # ocean_island source applies.
 #
-# radiusBlocks is smaller than the artificial default (48, not 128) --
+# island.radius is smaller than the artificial default (48, not 128) --
 # real terrain features are usually smaller-scale than a large synthetic
 # island, so a tighter search radius is more likely to actually find a
 # qualifying isolated landmass within the search range.
@@ -40,8 +40,9 @@
 #  5. Confirm the Nether is completely ordinary, unrestricted vanilla
 #     Nether generation.
 oceanIsland:
-  islandSource: natural
-  radiusBlocks: 48
+  island:
+    source: natural
+    radius: 48
 overworldBorder:
   enabled: false
   ensureEndPortal: true

@@ -29,11 +29,14 @@ chunkIsland:
   enabled: true
   spawnChance: 0.4
   cellSizeChunks: 1
-  topOnly: false
-  exclusionZoneEnabled: true
-  exclusionZoneRadiusBlocks: 256
-  applyToNether: true
-  applyToEnd: true
+  topOnly:
+    enabled: false
+  exclusionZone:
+    enabled: true
+    radius: 256
+  applyTo:
+    nether: true
+    end: true
 overworldBorder:
   enabled: false
   ensureEndPortal: true

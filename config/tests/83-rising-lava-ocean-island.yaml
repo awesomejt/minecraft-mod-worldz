@@ -21,16 +21,19 @@ overworldBorder:
   enabled: false
   ensureEndPortal: true
 oceanIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 128
-  shapeAmplitude: 0.3
-  shoreWidthBlocks: 12
-  oceanShallowWidthBlocks: 64
-  oceanDeepenWidthBlocks: 128
-  oceanShallowDepthBlocks: 8
-  oceanDeepDepthBlocks: 32
-  oceanRegionScaleBlocks: 128
-  exclusionZoneEnabled: false
+  island:
+    biome: 'minecraft:plains'
+    radius: 128
+    shapeAmplitude: 0.3
+  shoreWidth: 12
+  ocean:
+    shallowWidth: 64
+    deepenWidth: 128
+    shallowDepth: 8
+    deepDepth: 32
+    regionScale: 128
+  exclusionZone:
+    enabled: false
 risingLava:
   enabled: true
   delayDays: 1

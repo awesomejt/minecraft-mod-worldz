@@ -22,16 +22,19 @@
 #     largest island size in this test suite, worth flagging if chunk
 #     generation feels unusually slow near the coastline.
 oceanIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 4096
-  shapeAmplitude: 0.3
-  shoreWidthBlocks: 24
-  oceanShallowWidthBlocks: 128
-  oceanDeepenWidthBlocks: 256
-  oceanShallowDepthBlocks: 8
-  oceanDeepDepthBlocks: 32
-  oceanRegionScaleBlocks: 256
-  exclusionZoneEnabled: false
+  island:
+    biome: 'minecraft:plains'
+    radius: 4096
+    shapeAmplitude: 0.3
+  shoreWidth: 24
+  ocean:
+    shallowWidth: 128
+    deepenWidth: 256
+    shallowDepth: 8
+    deepDepth: 32
+    regionScale: 256
+  exclusionZone:
+    enabled: false
 overworldBorder:
   enabled: false
   ensureEndPortal: true

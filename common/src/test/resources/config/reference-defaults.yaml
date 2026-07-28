@@ -112,19 +112,22 @@ stripWorld:
       oceans: true
       beaches: true
 oceanIsland:
-  islandSource: artificial
+  island:
+    source: artificial
+    biome: minecraft:plains
+    radius: 128
+    shapeAmplitude: 0.3
   fluid: water
-  islandBiome: minecraft:plains
-  radiusBlocks: 128
-  shapeAmplitude: 0.3
-  shoreWidthBlocks: 12
-  oceanShallowWidthBlocks: 64
-  oceanDeepenWidthBlocks: 128
-  oceanShallowDepthBlocks: 8
-  oceanDeepDepthBlocks: 32
-  oceanRegionScaleBlocks: 128
-  exclusionZoneEnabled: false
-  exclusionZoneRadiusBlocks: 2000
+  shoreWidth: 12
+  ocean:
+    shallowWidth: 64
+    deepenWidth: 128
+    shallowDepth: 8
+    deepDepth: 32
+    regionScale: 128
+  exclusionZone:
+    enabled: false
+    radius: 2000
   starterKit:
     essentials:
     - minecraft:lily_pad:1
@@ -139,91 +142,103 @@ oceanIsland:
     - minecraft:water_bucket:1
     extrasCount: 2
 skyIsland:
-  islandBiome: minecraft:plains
-  radiusBlocks: 16
+  biome: minecraft:plains
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
-  chestTier: medium
-  easyKit:
-    essentials:
-    - minecraft:oak_sapling:4
-    - minecraft:bread:8
-    - minecraft:crafting_table:1
-    - minecraft:lava_bucket:1
-    extras:
-    - minecraft:wooden_pickaxe:1
-    - minecraft:wooden_axe:1
-    - minecraft:torch:16
-    - minecraft:cobblestone:32
-    extrasCount: 3
-  mediumKit:
-    essentials:
-    - minecraft:oak_sapling:3
-    - minecraft:bread:4
-    - minecraft:lava_bucket:1
-    extras:
-    - minecraft:wooden_pickaxe:1
-    - minecraft:torch:8
-    - minecraft:cobblestone:16
-    extrasCount: 2
-  hardKit:
-    essentials:
-    - minecraft:oak_sapling:2
-    - minecraft:lava_bucket:1
-    extras:
-    - minecraft:bread:2
-    - minecraft:torch:4
-    extrasCount: 1
+  thickness: 6
+  chest:
+    tier: medium
+    kits:
+      easy:
+        essentials:
+        - minecraft:oak_sapling:4
+        - minecraft:bread:8
+        - minecraft:crafting_table:1
+        - minecraft:lava_bucket:1
+        extras:
+        - minecraft:wooden_pickaxe:1
+        - minecraft:wooden_axe:1
+        - minecraft:torch:16
+        - minecraft:cobblestone:32
+        extrasCount: 3
+      medium:
+        essentials:
+        - minecraft:oak_sapling:3
+        - minecraft:bread:4
+        - minecraft:lava_bucket:1
+        extras:
+        - minecraft:wooden_pickaxe:1
+        - minecraft:torch:8
+        - minecraft:cobblestone:16
+        extrasCount: 2
+      hard:
+        essentials:
+        - minecraft:oak_sapling:2
+        - minecraft:lava_bucket:1
+        extras:
+        - minecraft:bread:2
+        - minecraft:torch:4
+        extrasCount: 1
   applyToNether: false
+  exclusionZone:
+    enabled: true
+    radius: 128
   floatingIslands:
     enabled: false
-    minRadiusBlocks: 12
-    maxRadiusBlocks: 32
+    radius:
+      min: 12
+      max: 32
     shapeAmplitude: 0.3
-    cellSizeBlocks: 256
+    cellSize: 256
     spawnChance: 0.6
     biomeVariety: true
-    islandBiomes:
+    biomes:
     - minecraft:plains
     - minecraft:forest
     - minecraft:desert
     - minecraft:taiga
     - minecraft:savanna
-    exclusionZoneEnabled: true
-    exclusionZoneRadiusBlocks: 256
-    oreDepositsEnabled: false
-    oreFeatureIds:
-    - minecraft:ore_coal
-    - minecraft:ore_iron_small
-    - minecraft:ore_gold_buried
-    - minecraft:ore_redstone
-    - minecraft:ore_lapis
-    - minecraft:ore_diamond_small
-    - minecraft:ore_emerald
-    lootChestEnabled: false
-    lootKit:
-      essentials:
-      - minecraft:bread:2
-      extras:
-      - minecraft:iron_ingot:2
-      - minecraft:emerald:1
-      - minecraft:arrow:8
-      - minecraft:golden_apple:1
-      - minecraft:ender_pearl:1
-      extrasCount: 2
+    exclusionZone:
+      enabled: true
+      radius: 256
+    oreDeposits:
+      enabled: false
+      featureIds:
+      - minecraft:ore_coal
+      - minecraft:ore_iron_small
+      - minecraft:ore_gold_buried
+      - minecraft:ore_redstone
+      - minecraft:ore_lapis
+      - minecraft:ore_diamond_small
+      - minecraft:ore_emerald
+    lootChest:
+      enabled: false
+      kit:
+        essentials:
+        - minecraft:bread:2
+        extras:
+        - minecraft:iron_ingot:2
+        - minecraft:emerald:1
+        - minecraft:arrow:8
+        - minecraft:golden_apple:1
+        - minecraft:ender_pearl:1
+        extrasCount: 2
     naturalBiome: false
 chunkIsland:
   enabled: false
   spawnChance: 0.35
   cellSizeChunks: 1
-  topOnly: false
-  topOnlyDepthBlocks: 5
-  exclusionZoneEnabled: false
-  exclusionZoneRadiusBlocks: 256
-  scatteredTopOnlyChance: 0.0
-  applyToNether: false
-  applyToEnd: false
+  topOnly:
+    enabled: false
+    depth: 5
+    scatteredChance: 0.0
+  exclusionZone:
+    enabled: false
+    radius: 256
+  applyTo:
+    nether: false
+    end: false
   geodeFeatureIds:
   - minecraft:amethyst_geode
 cave:

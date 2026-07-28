@@ -1,7 +1,7 @@
 # GOALS 03: no-land ocean world (DESIGN §25.2, §25.3, TODO 8.1). **Select
 # "Worldz: Ocean Island"** and, if opening Customize, choose "Chest boat
 # (no land)" for Island source -- this file sets it directly via
-# `oceanIsland.islandSource: chest_boat` so a config-only "Create World"
+# `oceanIsland.island.source: chest_boat` so a config-only "Create World"
 # with no Customize visit works too.
 #
 # There is no land anywhere: `IslandPlan.hasLand` is false, so the
@@ -30,7 +30,8 @@
 #  6. Confirm the Nether is completely ordinary, unrestricted vanilla
 #     Nether generation.
 oceanIsland:
-  islandSource: chest_boat
+  island:
+    source: chest_boat
   starterKit:
     essentials:
       - 'minecraft:lily_pad:2'

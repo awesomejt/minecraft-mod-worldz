@@ -28,16 +28,19 @@
 #     correctly at this scale (F3 to check biomes a few blocks out).
 #  4. Confirm the dragon fight is winnable.
 oceanIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 8
-  shapeAmplitude: 0.3
-  shoreWidthBlocks: 4
-  oceanShallowWidthBlocks: 32
-  oceanDeepenWidthBlocks: 64
-  oceanShallowDepthBlocks: 8
-  oceanDeepDepthBlocks: 32
-  oceanRegionScaleBlocks: 64
-  exclusionZoneEnabled: false
+  island:
+    biome: 'minecraft:plains'
+    radius: 8
+    shapeAmplitude: 0.3
+  shoreWidth: 4
+  ocean:
+    shallowWidth: 32
+    deepenWidth: 64
+    shallowDepth: 8
+    deepDepth: 32
+    regionScale: 64
+  exclusionZone:
+    enabled: false
 overworldBorder:
   enabled: false
   ensureEndPortal: true

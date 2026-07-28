@@ -26,13 +26,14 @@
 #     confirm nothing about the biome buffer changes what's actually
 #     placed underfoot.
 skyIsland:
-  islandBiome: 'minecraft:desert'
-  radiusBlocks: 16
+  biome: 'minecraft:desert'
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
-  exclusionZoneEnabled: true
-  exclusionZoneRadiusBlocks: 64
+  thickness: 6
+  exclusionZone:
+    enabled: true
+    radius: 64
 overworldBorder:
   enabled: false
   ensureEndPortal: true

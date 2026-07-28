@@ -1261,13 +1261,121 @@ tests.
       no test was silently dropped); `ConfigFixturesTest` still reports the
       full 104 (103 fixtures + 1 count assertion), all green, including the
       21 migrated fixtures' unknown-key gate.
-- [ ] 25.6d Islands (needs 25.6a). `oceanIsland` (`island`, `ocean`,
-      `exclusionZone`), `skyIsland` (prefix drop, `chest`), `floatingIslands`
-      (`radius`, `oreDeposits`, `lootChest`, `exclusionZone` — DESIGN R4: keep
-      every clamp in `postValidate`, group leaves get `Rule.None`),
-      `chunkIsland` (`topOnly`+`scatteredChance`, `applyTo`, `exclusionZone`).
-      Introduces the shared `ExclusionZoneSchema` and `ChestSchema`
-      (parameterized on `enabled`). Fixtures 30-52, 57, 58, 83.
+- [x] 25.6d Islands (needs 25.6a) — **done**.
+      Two new shared, generic group classes: `ExclusionZoneSchema<S>`
+      (`enabled`/`radius`, parameterized on the radius bound — `[1,
+      MAX_VALUE]` for `oceanIsland`/`skyIsland`/`floatingIslands`, `[0,
+      MAX_BORDER_RADIUS_BLOCKS]` for `chunkIsland`) and `ChestSchema<S>`
+      (`tier`/`kits: {easy, medium, hard}`, optional `enabled` leaf — not
+      exercised yet, only `cave` needs it at 25.6e — with a private nested
+      `KitsSchema<S>` group proving "groups nest" a third time). Both
+      instantiated per call site, never singletons (DESIGN R1).
+      `oceanIsland`: new `island: {source, biome, radius, shapeAmplitude}`
+      group (contiguous — `fluid` moved out from between `islandSource`/
+      `islandBiome` per DESIGN §42.3's own example) and `ocean: {shallowWidth,
+      deepenWidth, shallowDepth, deepDepth, regionScale}`; `shoreWidthBlocks`
+      → `shoreWidth`; `exclusionZone` reuses the shared class at `[1, MAX]`.
+      No `summary()` override needed — was already fully derived pre-25.6d,
+      stays that way (every group Setting got its own `.render(...)`).
+      `skyIsland`: prefix drop (`islandBiome`/`radiusBlocks`/`thicknessBlocks`
+      → `biome`/`radius`/`thickness`, no `island:` wrapper — the section name
+      already supplies it, DESIGN §42.3's noted asymmetry); `chestTier`/
+      `easyKit`/`mediumKit`/`hardKit` → `chest.tier`/`chest.kits.easy`/
+      `.medium`/`.hard`; `applyToNether` stays bare (one-member group would
+      be noise, matching `strip`'s own precedent).
+      **`skyIsland.exclusionZone` wired up as a real, working group — a
+      confirmed behavior change, not a pure rename** (DESIGN §42.1/§42.7's
+      answered open question): `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`
+      were real `SkyIslandConfig` fields, already consumed by world-gen logic
+      (verified directly — `SkyIslandCustomization`/the Customize-screen path
+      reads them independently of this config path), but never threaded
+      through read/sanitize at all before this commit; `skyIslandSummary`
+      rendered their untouched constructor defaults (`true`/`128`), which
+      happen to be what the new derived summary also renders, so the
+      summary text is unchanged even though the mechanism underneath it is
+      now real. Wired via the same shared `ExclusionZoneSchema` at `[1, MAX]`
+      (closest conceptual precedent: `oceanIsland`'s own bound). Because
+      `SkyIslandSchema` no longer has any dead/unmapped field left (the
+      `undergroundBiome` pair is the sole remaining gap, deferred to 25.6g),
+      its previously-mandatory hand-written `summary()` override — needed
+      solely to fake-render the dead pair — is gone; the inherited default
+      now produces the identical segment mechanically. **Verified the wire-up
+      actually threads values, not just that the keys parse**: 3 new
+      `WorldzConfigTest` methods (`skyIslandExclusionZoneLoadsAndSanitizes
+      Independently`, `...DefaultsToEnabledWithA128BlockRadius`, `...
+      RadiusIsClamped`) assert `config.skyIsland.exclusionZoneEnabled`/
+      `exclusionZoneRadiusBlocks` after parsing non-default YAML values,
+      the same regression shape that would have caught this gap originally.
+      `config/tests/57-sky-island-biome-exclusion-zone.yaml` (its own
+      dedicated in-game test for exactly this feature) is migrated to
+      `exclusionZone: {enabled, radius}` and moved off `ConfigFixturesTest
+      .KNOWN_UNKNOWN_KEYS` — it was there specifically because these two keys
+      were unrecognized; now they're real, declared settings, so the
+      unknown-key gate no longer flags it (confirmed by running
+      `ConfigFixturesTest` green with the entry removed, not merely deleting
+      the map entry and assuming).
+      `skyIsland.floatingIslands`: `minRadiusBlocks`/`maxRadiusBlocks` →
+      `radius: {min, max}` (kept automatic per-setting sanitize — not part of
+      the divergent tail, unlike the three below); `cellSizeBlocks`/
+      `islandBiomes` → `cellSize`/`biomes`; `exclusionZone` (shared class,
+      `[1, MAX]`), `oreDeposits: {enabled, featureIds}` and
+      `lootChest: {enabled, kit}` are private, non-shared groups, each with
+      `Rule.None` on the *outer* group Setting and a manual
+      `<group>.sanitize(value, ctx)` call in `postValidate` at the exact
+      original imperative position (DESIGN R4 — the same treatment `lootKit`
+      already had pre-25.6d); `oreFeatureIds`' manual trim became a real
+      `Rule.TrimNonEmpty` on the inner leaf (still runs before the
+      enabled+empty cross-check, since the group's own per-setting sanitize
+      always precedes its own `postValidate`). Every advisory-warning
+      ordering/wording preserved verbatim; only path strings changed.
+      `chunkIsland`: `topOnly`/`topOnlyDepthBlocks`/`scatteredTopOnlyChance`
+      → `topOnly: {enabled, depth, scatteredChance}` — required pulling
+      `scatteredTopOnlyChance` out of its old position (after
+      `exclusionZoneRadiusBlocks`) to sit contiguously with `topOnly`/
+      `topOnlyDepthBlocks`, the same kind of emit-order change DESIGN §42.3
+      documents for `oceanIsland.fluid`; confirmed no cross-field dependency
+      exists between the three, so the reorder is behavior-neutral.
+      `exclusionZone` reuses the shared class at its own pre-existing
+      `[0, MAX_BORDER_RADIUS_BLOCKS]` bound (the one call site floored at
+      `0`, not `1`) and stays `hiddenFromSummary` (moot — `summary()` is
+      still fully hand-overridden and never delegates through it).
+      `applyToNether`/`applyToEnd` → `applyTo: {nether, end}`.
+      Fixtures migrated: 30-37 (`oceanIsland`), 38-43 (`skyIsland` prefix
+      drop), 44-48 (`floatingIslands`), 49-52 (`chunkIsland`), 57
+      (`skyIsland.exclusionZone`, the behavior-change fixture), 58
+      (`floatingIslands`, `skyIsland` scope), 83 (`oceanIsland` keys inside a
+      `risingLava` fixture, left untouched by 25.6c per its own deviation
+      note) — matching the TODO line's own list exactly, plus 98's
+      `islandBiome`/`radiusBlocks` → `biome`/`radius` (its own
+      `undergroundBiome`/`undergroundBelowSurfaceBlocks` pair correctly left
+      alone, still deferred to 25.6g) — found by grepping every
+      `config/tests/*.yaml` for the old key strings rather than trusting the
+      TODO line's list alone (25.6b/c's own documented lesson). Prose-only
+      mentions of old keys inside fixture header comments (34, 35, 38, 98)
+      also corrected for accuracy, even though `config/tests/README.md`
+      itself stays deferred to 25.11 per DESIGN §42.5.
+      `config/jlt_worldz.example.yaml` not touched — confirmed via grep it
+      covers none of these four sections. `reference-defaults.yaml`
+      regenerated and diffed by hand (only `oceanIsland`/`skyIsland`/
+      `chunkIsland` hunks moved; `skyIsland.exclusionZone` newly appears in
+      the golden file at all, which *is* the behavior change made visible).
+      `WorldzConfigTest`: every YAML string containing an old key was
+      updated (found several that would have silently kept passing on stale
+      keys — e.g. `oceanIslandInvalidIslandBiomeFallsBackToDefault` — because
+      the asserted value coincidentally equals the untouched POJO default,
+      the same false-positive trap 25.6b's lesson warned about; fixed
+      regardless of whether the test was in the initial red list). R13's
+      96-line summary assertion updated for the `oceanIsland`/`skyIsland`
+      segments only, reviewed deliberately, one section at a time.
+      `ConfigPresenceTest` needed no change (grepped empty for every affected
+      key). `README.md` mechanical key-name pass for "Ocean island
+      challenge", "Sky island challenge" (+ floating resource islands), and
+      "Sky chunk challenge", including a new prose paragraph + table row for
+      `skyIsland.exclusionZone` (previously undocumented since it wasn't
+      real). No `logic/`/`client/` files in the diff (verified via `git
+      status`). `./gradlew build` green (all modules): `common:test` 841
+      tests, 0 failures (838 + 3 new); `ConfigFixturesTest` 103 fixtures + 1
+      count assertion, all green, with `KNOWN_UNKNOWN_KEYS` down to just 97/98.
 - [ ] 25.6e Cave / Nether-start / End-start (needs 25.6d for `ChestSchema`).
       `cave` (`spawnDepthY`→`spawnY` per CONFIG-RESTRUCTURE.md §3, `sealedSurface`
       — DESIGN R5's conditional clamp survives verbatim —, `cavern`, `chest`
@@ -1451,6 +1559,12 @@ tests.
   be accepted or reverted independently of the rename. Supersedes the
   2026-07-27 and 2026-07-28 Deviation-log flags on this same gap. DESIGN
   §42.7 has the full detail.
+  **`skyIsland.exclusionZone` half done at 25.6d** — wired into
+  `SkyIslandSchema` via the shared `ExclusionZoneSchema`, config 57 migrated
+  and moved off `ConfigFixturesTest.KNOWN_UNKNOWN_KEYS`, 3 new
+  `WorldzConfigTest` regression tests confirm real values thread through
+  (not just that the keys parse). `underground` (`flat`/`skyIsland`) remains
+  open, scheduled for 25.6g.
 
 - **2026-07-27 — Phase 25 config restructure: ALL TEN ANSWERED, same day.**
   Recorded as decisions D1–D10 in `CONFIG-RESTRUCTURE.md` §1 — that table is

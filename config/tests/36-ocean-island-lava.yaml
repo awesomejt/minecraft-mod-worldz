@@ -40,8 +40,9 @@
 #     lava (if any) should still be possible.
 oceanIsland:
   fluid: lava
-  radiusBlocks: 128
-  shapeAmplitude: 0.3
+  island:
+    radius: 128
+    shapeAmplitude: 0.3
 overworldBorder:
   enabled: false
   ensureEndPortal: true

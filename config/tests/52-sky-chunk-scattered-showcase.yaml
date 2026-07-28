@@ -30,10 +30,12 @@ chunkIsland:
   enabled: true
   spawnChance: 0.5
   cellSizeChunks: 1
-  topOnly: false
-  exclusionZoneEnabled: true
-  exclusionZoneRadiusBlocks: 128
-  scatteredTopOnlyChance: 0.5
+  topOnly:
+    enabled: false
+    scatteredChance: 0.5
+  exclusionZone:
+    enabled: true
+    radius: 128
 overworldBorder:
   enabled: false
   ensureEndPortal: true

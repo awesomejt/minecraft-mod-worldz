@@ -10,38 +10,58 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Schema for {@link FloatingIslandsConfig} (GOALS 07-08, DESIGN §28; TODO 25.2e). Only
+ * Schema for {@link FloatingIslandsConfig} (GOALS 07-08, DESIGN §28; TODO 25.2e, 25.6d). Only
  * {@code enabled} through {@code spawnChance} (the first six declared settings) sanitize in the
  * same order they read/emit; from {@code biomeVariety} onward, {@code sanitizeFloatingIslands}
  * (WorldzConfig :670-747) processes fields in an order that diverges hard from {@code
  * floatingIslandsMap}'s emit order -- most sharply, {@code naturalBiome} is declared/emitted
  * <em>last</em> but its two advisory warnings fire right after {@code biomeVariety}'s own
- * cross-check, long before {@code exclusionZoneRadiusBlocks}/{@code oreFeatureIds}/{@code
- * oreDepositsEnabled}/{@code lootKit}. Reusing per-setting rules for that whole tail would
- * silently reorder WARN lines for any input tripping more than one of them (the same risk
- * {@link LayoutSchema} documents), so everything from {@code biomeVariety} onward is pushed into
- * {@link #postValidate}, executed by hand in {@code sanitizeFloatingIslands}'s exact original
- * sequence -- including {@code lootKit}'s nested sanitize, called manually there rather than via
- * the usual automatic {@code Setting.section} recursion (its {@code Rule} is overridden to
- * {@link Rule.None} so it isn't sanitized twice).
+ * cross-check, long before {@code exclusionZone}/{@code oreDeposits}/{@code lootChest}. Reusing
+ * per-setting rules for that whole tail would silently reorder WARN lines for any input tripping
+ * more than one of them (the same risk {@link LayoutSchema} documents), so everything from {@code
+ * biomeVariety} onward is pushed into {@link #postValidate}, executed by hand in {@code
+ * sanitizeFloatingIslands}'s exact original sequence -- including {@code exclusionZone}/{@code
+ * oreDeposits}/{@code lootChest}'s own nested sanitize, called manually there rather than via the
+ * usual automatic {@code Setting.group}/{@code Setting.section} recursion (each one's own {@code
+ * Rule} is overridden to {@link Rule.None} on the outer setting so it isn't sanitized twice, at the
+ * wrong position -- DESIGN R4, the same treatment {@code lootKit} already got pre-25.6d).
  *
- * <p>{@code maxRadiusBlocks}'s lower bound is the sibling {@code minRadiusBlocks}, already clamped
- * by the time this setting's own rule runs (DESIGN R4): an ordinary per-setting {@code
- * IntBuilder.range(ToIntFunction, ToIntFunction)}, since this one pair does <em>not</em> diverge
- * from map order. The two advisory warnings ({@code naturalBiome}+{@code biomeVariety} both set;
- * {@code naturalBiome} alone) change no value at all (DESIGN R4) -- pure {@link #postValidate}
- * side effects, protected only by the WARN-order assertion.
+ * <p>{@code radius: {min, max}} is <em>not</em> part of that divergent tail (TODO 25.6d): {@code
+ * minRadiusBlocks}/{@code maxRadiusBlocks} were always among the first six settings that already
+ * sanitize automatically in declare/map order, so nesting them changes nothing about when they
+ * clamp -- {@code max}'s lower bound is the sibling {@code min}, already clamped by the time this
+ * setting's own rule runs (DESIGN R4): an ordinary per-setting {@code
+ * IntBuilder.range(ToIntFunction, ToIntFunction)}, unchanged in shape, just renamed and grouped.
+ *
+ * <p>{@code exclusionZone} reuses the shared {@link ExclusionZoneSchema} (floored at {@code 1},
+ * matching the pre-25.6d {@code exclusionZoneRadiusBlocks}' own bound); {@code oreDeposits} and
+ * {@code lootChest} are private, non-shared groups (only this section owns them). The two advisory
+ * warnings ({@code naturalBiome}+{@code biomeVariety} both set; {@code naturalBiome} alone) change
+ * no value at all (DESIGN R4) -- pure {@link #postValidate} side effects, protected only by the
+ * WARN-order assertion.
  *
  * <p>Summary is overridden (DESIGN §41.6's table): gated on {@code enabled}, with {@code
  * radius=min..max} merging two settings and two more conditional segments for ore deposits and
- * the loot chest -- not mechanically derivable.
+ * the loot chest -- not mechanically derivable. Unchanged by TODO 25.6d beyond path strings, since
+ * it reads {@link FloatingIslandsConfig}'s own (unrenamed) POJO fields directly.
  */
 public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsConfig> {
-    private final StarterKitSchema lootKitSchema;
+    private final RadiusSchema radius;
+    private final ExclusionZoneSchema<FloatingIslandsConfig> exclusionZone;
+    private final OreDepositsSchema oreDeposits;
+    private final LootChestSchema lootChest;
 
     public FloatingIslandsSchema(String path) {
         super(path, FloatingIslandsConfig::new);
-        this.lootKitSchema = new StarterKitSchema(path() + ".lootKit");
+        this.radius = new RadiusSchema(path() + ".radius");
+        this.exclusionZone = new ExclusionZoneSchema<>(
+            path() + ".exclusionZone", FloatingIslandsConfig::new,
+            new Accessor<>(c -> c.exclusionZoneEnabled, (c, v) -> c.exclusionZoneEnabled = v),
+            new Accessor<>(c -> c.exclusionZoneRadiusBlocks, (c, v) -> c.exclusionZoneRadiusBlocks = v),
+            1, Integer.MAX_VALUE
+        );
+        this.oreDeposits = new OreDepositsSchema(path() + ".oreDeposits");
+        this.lootChest = new LootChestSchema(path() + ".lootChest");
     }
 
     @Override
@@ -50,23 +70,16 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
             Setting.<FloatingIslandsConfig>flag("enabled", c -> c.enabled, (c, v) -> c.enabled = v)
                 .doc("Whether scattered islands generate at all.")
                 .build(),
-            Setting.<FloatingIslandsConfig>integer("minRadiusBlocks", c -> c.minRadiusBlocks, (c, v) -> c.minRadiusBlocks = v)
-                .range(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
-                .unit(Unit.BLOCKS)
-                .doc("Smallest hash-picked island radius.")
-                .build(),
-            Setting.<FloatingIslandsConfig>integer("maxRadiusBlocks", c -> c.maxRadiusBlocks, (c, v) -> c.maxRadiusBlocks = v)
-                .range(c -> c.minRadiusBlocks, c -> WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
-                .rangeText("minRadiusBlocks.." + WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
-                .unit(Unit.BLOCKS)
-                .doc("Largest hash-picked island radius; floored at minRadiusBlocks (DESIGN R4).")
+            Setting.group("radius", radius)
+                .render(radius::summary)
+                .doc("The range a scattered island's radius is hash-picked from.")
                 .build(),
             Setting.<FloatingIslandsConfig>decimal("shapeAmplitude", c -> c.shapeAmplitude, (c, v) -> c.shapeAmplitude = v)
                 .range(0.0, IslandShapeProfile.MAX_AMPLITUDE)
                 .unit(Unit.FACTOR)
                 .doc("Coastline perturbation strength.")
                 .build(),
-            Setting.<FloatingIslandsConfig>integer("cellSizeBlocks", c -> c.cellSizeBlocks, (c, v) -> c.cellSizeBlocks = v)
+            Setting.<FloatingIslandsConfig>integer("cellSize", c -> c.cellSizeBlocks, (c, v) -> c.cellSizeBlocks = v)
                 .range(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS)
                 .unit(Unit.BLOCKS)
                 .doc("Grid-cell edge length -- the primary \"how far apart\" knob.")
@@ -80,37 +93,26 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
             // remaining setting stays a plain, rule-less declaration and the real logic -- in the
             // original imperative sequence -- lives in postValidate below.
             Setting.<FloatingIslandsConfig>flag("biomeVariety", c -> c.biomeVariety, (c, v) -> c.biomeVariety = v)
-                .doc("Whether each island hash-picks its own biome from islandBiomes.")
+                .doc("Whether each island hash-picks its own biome from biomes.")
                 .build(),
-            Setting.<FloatingIslandsConfig>stringList("islandBiomes", c -> c.islandBiomes, (c, v) -> c.islandBiomes = v)
+            Setting.<FloatingIslandsConfig>stringList("biomes", c -> c.islandBiomes, (c, v) -> c.islandBiomes = v)
                 .unit(Unit.BIOME_ID)
                 .doc("Candidate biome pool when biomeVariety is true.")
                 .build(),
-            Setting.<FloatingIslandsConfig>flag(
-                    "exclusionZoneEnabled", c -> c.exclusionZoneEnabled, (c, v) -> c.exclusionZoneEnabled = v
-                )
+            Setting.group("exclusionZone", exclusionZone)
+                .rule(new Rule.None<>())
+                .render(exclusionZone::summary)
                 .doc("Whether a void buffer surrounds the starter island before scattered islands begin.")
                 .build(),
-            Setting.<FloatingIslandsConfig>integer(
-                    "exclusionZoneRadiusBlocks", c -> c.exclusionZoneRadiusBlocks, (c, v) -> c.exclusionZoneRadiusBlocks = v
-                )
-                .unit(Unit.BLOCKS)
-                .doc("Radius of the exclusion-zone buffer, when enabled.")
-                .build(),
-            Setting.<FloatingIslandsConfig>flag("oreDepositsEnabled", c -> c.oreDepositsEnabled, (c, v) -> c.oreDepositsEnabled = v)
+            Setting.group("oreDeposits", oreDeposits)
+                .rule(new Rule.None<>())
+                .render(oreDeposits::summary)
                 .doc("Whether each island gets one embedded vanilla ore-vein feature.")
                 .build(),
-            Setting.<FloatingIslandsConfig>stringList("oreFeatureIds", c -> c.oreFeatureIds, (c, v) -> c.oreFeatureIds = v)
-                .doc("Candidate vanilla ore ConfiguredFeature ids one island's deposit is hash-picked from.")
-                .build(),
-            Setting.<FloatingIslandsConfig>flag("lootChestEnabled", c -> c.lootChestEnabled, (c, v) -> c.lootChestEnabled = v)
-                .doc("Whether each island gets one placed loot chest.")
-                .build(),
-            Setting.<FloatingIslandsConfig, StarterKitConfig>section(
-                    "lootKit", c -> c.lootKit, (c, v) -> c.lootKit = v, lootKitSchema
-                )
+            Setting.group("lootChest", lootChest)
                 .rule(new Rule.None<>())
-                .doc("The loot chest's contents.")
+                .render(lootChest::summary)
+                .doc("Whether each island gets one placed loot chest.")
                 .build(),
             Setting.<FloatingIslandsConfig>flag("naturalBiome", c -> c.naturalBiome, (c, v) -> c.naturalBiome = v)
                 .doc("Whether each island reads the real underlying seed's own biome instead of biomeVariety's pool.")
@@ -120,22 +122,22 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
 
     /**
      * Hand-ordered to match {@code sanitizeFloatingIslands}'s exact tail (class Javadoc):
-     * {@code islandBiomes} validation and filtering, then {@code biomeVariety}'s cross-check, then
-     * the two advisory warnings (value-preserving, DESIGN R4), then {@code exclusionZoneRadiusBlocks}
-     * 's clamp, then {@code oreFeatureIds}' silent trim, then {@code oreDepositsEnabled}'s
-     * cross-check, then {@code lootKit}'s nested sanitize -- in that order, so any input tripping
-     * more than one produces the same WARN sequence as today.
+     * {@code biomes} validation and filtering, then {@code biomeVariety}'s cross-check, then
+     * the two advisory warnings (value-preserving, DESIGN R4), then {@code exclusionZone}'s
+     * clamp, then {@code oreDeposits}' silent trim and cross-check, then {@code lootChest}'s
+     * nested sanitize -- in that order, so any input tripping more than one produces the same
+     * WARN sequence as today.
      */
     @Override
     protected void postValidate(FloatingIslandsConfig value, SanitizeContext ctx) {
         BiomeListSpec biomeSpec = BiomeListSpec.parse(value.islandBiomes);
         for (String invalid : biomeSpec.invalidEntries()) {
-            ctx.logger().warn("Ignoring invalid " + path() + ".islandBiomes biome '{}'.", invalid);
+            ctx.logger().warn("Ignoring invalid " + path() + ".biomes biome '{}'.", invalid);
         }
         for (BiomeListSpec.Entry entry : biomeSpec.entries()) {
             if (entry.tag()) {
                 ctx.logger().warn(
-                    "Ignoring " + path() + ".islandBiomes biome tag '#{}'; floating islands require concrete biome ids.", entry.id()
+                    "Ignoring " + path() + ".biomes biome tag '#{}'; floating islands require concrete biome ids.", entry.id()
                 );
             }
         }
@@ -153,7 +155,7 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
             // limitation instead of just picking a winner quietly.
             ctx.logger().warn(
                 path() + ".naturalBiome and biomeVariety are both enabled; "
-                    + "naturalBiome takes precedence and the islandBiomes pool will be unused."
+                    + "naturalBiome takes precedence and the biomes pool will be unused."
             );
         }
         if (value.naturalBiome) {
@@ -167,15 +169,9 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
                     + "real vanilla village structure requires it."
             );
         }
-        value.exclusionZoneRadiusBlocks = new Rule.IntRange<FloatingIslandsConfig>(owner -> 1, owner -> Integer.MAX_VALUE)
-            .apply(value, value.exclusionZoneRadiusBlocks, path() + ".exclusionZoneRadiusBlocks", ctx);
-
-        value.oreFeatureIds = new ArrayList<>(value.oreFeatureIds.stream().map(String::trim).filter(id -> !id.isEmpty()).toList());
-        if (value.oreDepositsEnabled && value.oreFeatureIds.isEmpty()) {
-            ctx.logger().warn(path() + ".oreDepositsEnabled is set but has no usable feature ids; disabling ore deposits.");
-            value.oreDepositsEnabled = false;
-        }
-        value.lootKit = lootKitSchema.sanitize(value.lootKit, ctx);
+        value = exclusionZone.sanitize(value, ctx);
+        value = oreDeposits.sanitize(value, ctx);
+        value = lootChest.sanitize(value, ctx);
     }
 
     /**
@@ -198,6 +194,121 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
             + ", islandBiomes=" + value.islandBiomes
             + ", exclusionZone=" + (value.exclusionZoneEnabled ? "radius=" + value.exclusionZoneRadiusBlocks : "<disabled>")
             + ", oreDeposits=" + (value.oreDepositsEnabled ? "features=" + value.oreFeatureIds : "<disabled>")
-            + ", lootChest=" + (value.lootChestEnabled ? lootKitSchema.summary(value.lootKit) : "<disabled>");
+            + ", lootChest=" + (value.lootChestEnabled ? lootChest.summary(value) : "<disabled>");
+    }
+
+    /**
+     * {@code floatingIslands.radius} (TODO 25.6d): {@code min}/{@code max}, a group over this
+     * section's own {@link FloatingIslandsConfig} type. Unlike {@code exclusionZone}/{@code
+     * oreDeposits}/{@code lootChest} below, this group is <em>not</em> part of the divergent
+     * postValidate tail (class Javadoc) -- it keeps the default automatic {@code Setting.group}
+     * sanitize, at the same declare-order position {@code minRadiusBlocks} always had.
+     */
+    private static final class RadiusSchema extends SchemaSection<FloatingIslandsConfig> {
+        RadiusSchema(String path) {
+            super(path, FloatingIslandsConfig::new);
+        }
+
+        @Override
+        protected List<Setting<FloatingIslandsConfig, ?>> declare() {
+            return List.of(
+                Setting.<FloatingIslandsConfig>integer("min", c -> c.minRadiusBlocks, (c, v) -> c.minRadiusBlocks = v)
+                    .range(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
+                    .unit(Unit.BLOCKS)
+                    .doc("Smallest hash-picked island radius.")
+                    .build(),
+                Setting.<FloatingIslandsConfig>integer("max", c -> c.maxRadiusBlocks, (c, v) -> c.maxRadiusBlocks = v)
+                    .range(c -> c.minRadiusBlocks, c -> WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
+                    .rangeText("min.." + WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
+                    .unit(Unit.BLOCKS)
+                    .doc("Largest hash-picked island radius; floored at min (DESIGN R4).")
+                    .build()
+            );
+        }
+
+        @Override
+        public String summary(FloatingIslandsConfig value) {
+            return value.minRadiusBlocks + ".." + value.maxRadiusBlocks;
+        }
+    }
+
+    /**
+     * {@code floatingIslands.oreDeposits} (TODO 25.6d): {@code enabled}/{@code featureIds}, a
+     * private (non-shared) group over this section's own {@link FloatingIslandsConfig} type. Both
+     * leaves keep {@link Rule.None} at the per-setting level (DESIGN R4) except {@code featureIds}'
+     * own silent trim, which -- unlike the manual trim it replaces -- is an ordinary {@link
+     * Rule.TrimNonEmpty}, matching {@code chunkIsland.geodeFeatureIds}' own precedent; the
+     * enabled+empty cross-check stays in this group's own {@link #postValidate}, invoked by the
+     * parent section's manual {@code oreDeposits.sanitize(value, ctx)} call at the original
+     * imperative position.
+     */
+    private static final class OreDepositsSchema extends SchemaSection<FloatingIslandsConfig> {
+        OreDepositsSchema(String path) {
+            super(path, FloatingIslandsConfig::new);
+        }
+
+        @Override
+        protected List<Setting<FloatingIslandsConfig, ?>> declare() {
+            return List.of(
+                Setting.<FloatingIslandsConfig>flag("enabled", c -> c.oreDepositsEnabled, (c, v) -> c.oreDepositsEnabled = v)
+                    .doc("Whether each island gets one embedded vanilla ore-vein feature.")
+                    .build(),
+                Setting.<FloatingIslandsConfig>stringList("featureIds", c -> c.oreFeatureIds, (c, v) -> c.oreFeatureIds = v)
+                    .rule(new Rule.TrimNonEmpty<>())
+                    .doc("Candidate vanilla ore ConfiguredFeature ids one island's deposit is hash-picked from.")
+                    .build()
+            );
+        }
+
+        @Override
+        protected void postValidate(FloatingIslandsConfig value, SanitizeContext ctx) {
+            if (value.oreDepositsEnabled && value.oreFeatureIds.isEmpty()) {
+                ctx.logger().warn(path() + ".enabled is set but has no usable feature ids; disabling ore deposits.");
+                value.oreDepositsEnabled = false;
+            }
+        }
+
+        @Override
+        public String summary(FloatingIslandsConfig value) {
+            return value.oreDepositsEnabled ? "features=" + value.oreFeatureIds : "<disabled>";
+        }
+    }
+
+    /**
+     * {@code floatingIslands.lootChest} (TODO 25.6d): {@code enabled}/{@code kit}, a private
+     * (non-shared) group over this section's own {@link FloatingIslandsConfig} type. {@code kit}
+     * keeps its default automatic {@code Setting.section} sanitize (unconditional, regardless of
+     * {@code enabled}, matching the pre-25.6d {@code lootKit} setting's own unconditional sanitize)
+     * -- no {@link #postValidate} override needed, since there is no cross-field check here at all,
+     * only the parent section's manual {@code lootChest.sanitize(value, ctx)} call to place it at
+     * the original imperative position rather than this group's own declare-order position.
+     */
+    private static final class LootChestSchema extends SchemaSection<FloatingIslandsConfig> {
+        private final StarterKitSchema kitSchema;
+
+        LootChestSchema(String path) {
+            super(path, FloatingIslandsConfig::new);
+            this.kitSchema = new StarterKitSchema(path() + ".kit");
+        }
+
+        @Override
+        protected List<Setting<FloatingIslandsConfig, ?>> declare() {
+            return List.of(
+                Setting.<FloatingIslandsConfig>flag("enabled", c -> c.lootChestEnabled, (c, v) -> c.lootChestEnabled = v)
+                    .doc("Whether each island gets one placed loot chest.")
+                    .build(),
+                Setting.<FloatingIslandsConfig, StarterKitConfig>section(
+                        "kit", c -> c.lootKit, (c, v) -> c.lootKit = v, kitSchema
+                    )
+                    .render(kitSchema::summary)
+                    .doc("The loot chest's contents.")
+                    .build()
+            );
+        }
+
+        @Override
+        public String summary(FloatingIslandsConfig value) {
+            return value.lootChestEnabled ? kitSchema.summary(value.lootKit) : "<disabled>";
+        }
     }
 }

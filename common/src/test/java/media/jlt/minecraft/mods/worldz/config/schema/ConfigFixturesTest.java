@@ -41,16 +41,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *       silently dropped later without this test noticing.
  * </ul>
  *
- * <p><strong>Configs 57, 97 and 98 are known, pre-existing failures, not something this task
- * introduces</strong> (DESIGN §42.1/§42.5/§42.7): they set five keys the mod has never read --
- * {@code skyIsland.exclusionZoneEnabled}/{@code exclusionZoneRadiusBlocks}, and {@code flat}/{@code
- * skyIsland}'s {@code undergroundBiome}/{@code undergroundBelowSurfaceBlocks} -- despite being
- * documented in {@code README.md} and shipped in these three files. Jason has already decided
- * (TODO.md's "Questions for Jason", 2026-07-28 entry) to wire them up in TODO 25.6d ({@code
- * skyIsland.exclusionZone}) and 25.6g ({@code underground}), not in this framework-only step.
- * {@link #KNOWN_UNKNOWN_KEYS} asserts the exact expected set for each of the three, rather than
- * merely allowing any unknown key, so the gate is provably working (it does catch real drift) and
- * so 25.6d/25.6g's own wiring changes -- and only those changes -- turn each entry green.
+ * <p><strong>Configs 97 and 98 are known, pre-existing failures, not something this task
+ * introduces</strong> (DESIGN §42.1/§42.5/§42.7): they set {@code flat}/{@code skyIsland}'s
+ * {@code undergroundBiome}/{@code undergroundBelowSurfaceBlocks} -- despite being documented in
+ * {@code README.md} and shipped in these two files. Jason has already decided (TODO.md's
+ * "Questions for Jason", 2026-07-28 entry) to wire them up in TODO 25.6g ({@code underground}), not
+ * in this framework-only step. {@link #KNOWN_UNKNOWN_KEYS} asserts the exact expected set for each
+ * of the two, rather than merely allowing any unknown key, so the gate is provably working (it does
+ * catch real drift) and so 25.6g's own wiring change -- and only that change -- turns each entry
+ * green.
+ *
+ * <p>Config 57 ({@code skyIsland.exclusionZoneEnabled}/{@code exclusionZoneRadiusBlocks}) was the
+ * third member of this set until TODO 25.6d wired {@code skyIsland}'s own {@code exclusionZone}
+ * into the schema for real (DESIGN §42.7's answered open question) -- it is no longer in {@link
+ * #KNOWN_UNKNOWN_KEYS} because its renamed keys ({@code skyIsland.exclusionZone.enabled}/{@code
+ * .radius}) are now genuinely declared and honored, not merely unrecognized-but-tolerated.
  */
 class ConfigFixturesTest {
     private static final Logger LOGGER = NOPLogger.NOP_LOGGER;
@@ -69,8 +74,6 @@ class ConfigFixturesTest {
     private static final int EXPECTED_FIXTURE_COUNT = 103;
 
     private static final Map<String, Set<String>> KNOWN_UNKNOWN_KEYS = Map.of(
-        "57-sky-island-biome-exclusion-zone.yaml",
-        Set.of("skyIsland.exclusionZoneEnabled", "skyIsland.exclusionZoneRadiusBlocks"),
         "97-flat-underground-biome-band.yaml",
         Set.of("flat.undergroundBiome", "flat.undergroundBelowSurfaceBlocks"),
         "98-sky-island-underground-biome-band.yaml",

@@ -24,12 +24,13 @@
 #     seed-based crop plot, and that the lava bucket (poured onto/next to
 #     the water) can produce obsidian for a Nether portal frame.
 skyIsland:
-  islandBiome: 'minecraft:desert'
-  radiusBlocks: 16
+  biome: 'minecraft:desert'
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
-  chestTier: easy
+  thickness: 6
+  chest:
+    tier: easy
 overworldBorder:
   enabled: false
   ensureEndPortal: true

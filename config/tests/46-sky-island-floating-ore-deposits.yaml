@@ -22,15 +22,18 @@
 skyIsland:
   floatingIslands:
     enabled: true
-    minRadiusBlocks: 14
-    maxRadiusBlocks: 28
+    radius:
+      min: 14
+      max: 28
     shapeAmplitude: 0.3
-    cellSizeBlocks: 160
+    cellSize: 160
     spawnChance: 0.7
     biomeVariety: false
-    exclusionZoneEnabled: true
-    exclusionZoneRadiusBlocks: 128
-    oreDepositsEnabled: true
+    exclusionZone:
+      enabled: true
+      radius: 128
+    oreDeposits:
+      enabled: true
 overworldBorder:
   enabled: false
   ensureEndPortal: true

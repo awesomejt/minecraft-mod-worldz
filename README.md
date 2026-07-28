@@ -299,7 +299,7 @@ Select **Worldz: Ocean Island** under **World Type** for a small island
 surrounded by an endless generated ocean. Unlike every other typed preset,
 there is no spawn-strategy option — the island only ever exists at the
 origin, so spawn is always the island's own safe surface point near
-`(0, 0)`. `islandSource` (in Customize, or `oceanIsland.islandSource` in
+`(0, 0)`. `islandSource` (in Customize, or `oceanIsland.island.source` in
 config) picks between three ways of sourcing the land itself:
 
 - **`artificial`** (default, GOALS 01) — a natural-looking synthetic island
@@ -307,7 +307,7 @@ config) picks between three ways of sourcing the land itself:
 - **`natural`** (GOALS 02) — searches the seed's own unmodified terrain for
   a small, isolated real landmass and centers the world there instead;
   nothing about the land itself is synthesized — the real biome and terrain
-  show through completely unmodified within `radiusBlocks`, and the same
+  show through completely unmodified within `island.radius`, and the same
   ocean gradient begins immediately past it. Not guaranteed to find a
   candidate on every seed; falls back to a plain world origin (real terrain
   used as-is) if the search comes up empty.
@@ -369,19 +369,22 @@ Configure its defaults with an `oceanIsland:` section in
 
 ```yaml
 oceanIsland:
-  islandSource: artificial
+  island:
+    source: artificial
+    biome: 'minecraft:plains'
+    radius: 128
+    shapeAmplitude: 0.3
   fluid: water
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 128
-  shapeAmplitude: 0.3
-  shoreWidthBlocks: 12
-  oceanShallowWidthBlocks: 64
-  oceanDeepenWidthBlocks: 128
-  oceanShallowDepthBlocks: 8
-  oceanDeepDepthBlocks: 32
-  oceanRegionScaleBlocks: 128
-  exclusionZoneEnabled: false
-  exclusionZoneRadiusBlocks: 2000
+  shoreWidth: 12
+  ocean:
+    shallowWidth: 64
+    deepenWidth: 128
+    shallowDepth: 8
+    deepDepth: 32
+    regionScale: 128
+  exclusionZone:
+    enabled: false
+    radius: 2000
   starterKit:
     essentials:
       - 'minecraft:lily_pad:1'
@@ -399,19 +402,19 @@ oceanIsland:
 
 | Setting | Default | Description |
 |---|---|---|
-| `islandSource` | `"artificial"` | `artificial`, `natural`, or `chest_boat` — see above. |
-| `fluid` | `"water"` | `water`, `lava`, or `none` — see above. Independent of `islandSource`. |
-| `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior (`artificial` only). |
-| `radiusBlocks` | `128` | Configured (unperturbed) island radius (`artificial`), or the search-isolation/land radius around whatever the search finds (`natural`). Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
-| `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius (`artificial` only). `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |
-| `shoreWidthBlocks` | `12` | Width of the beach/stony-shore ring measured from the true coastline; also the terrain-height taper width from the island's full guaranteed height down to sea level. |
-| `oceanShallowWidthBlocks` | `64` | Width of the shallow ocean band immediately beyond the shore ring. |
-| `oceanDeepenWidthBlocks` | `128` | Width over which the seabed smoothly ramps from shallow to deep. |
-| `oceanShallowDepthBlocks` | `8` | Seabed depth below sea level in the shallow band. |
-| `oceanDeepDepthBlocks` | `32` | Seabed depth below sea level once fully deep — the ocean stays this deep forever beyond the deepening band ("endless ocean"). |
-| `oceanRegionScaleBlocks` | `128` | Grid-cell edge length for the ocean biome's per-region pick, so the ocean reads as patches of variety rather than per-block dithering. |
-| `exclusionZoneEnabled` | `false` | GOALS 04: when set, island/ocean shaping releases entirely beyond `exclusionZoneRadiusBlocks`, letting the seed's own natural terrain resume — small natural islands then occur wherever the seed's terrain noise happens to poke above sea level, far from the artificial island. Off by default, matching GOALS 01's core "endless ocean, no natural land ever" behavior. |
-| `exclusionZoneRadiusBlocks` | `2000` | Radius beyond which shaping releases, when enabled. |
+| `island.source` | `"artificial"` | `artificial`, `natural`, or `chest_boat` — see above. |
+| `fluid` | `"water"` | `water`, `lava`, or `none` — see above. Independent of `island.source`. |
+| `island.biome` | `"minecraft:plains"` | The one biome that fills the island's interior (`artificial` only). |
+| `island.radius` | `128` | Configured (unperturbed) island radius (`artificial`), or the search-isolation/land radius around whatever the search finds (`natural`). Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
+| `island.shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius (`artificial` only). `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |
+| `shoreWidth` | `12` | Width of the beach/stony-shore ring measured from the true coastline; also the terrain-height taper width from the island's full guaranteed height down to sea level. |
+| `ocean.shallowWidth` | `64` | Width of the shallow ocean band immediately beyond the shore ring. |
+| `ocean.deepenWidth` | `128` | Width over which the seabed smoothly ramps from shallow to deep. |
+| `ocean.shallowDepth` | `8` | Seabed depth below sea level in the shallow band. |
+| `ocean.deepDepth` | `32` | Seabed depth below sea level once fully deep — the ocean stays this deep forever beyond the deepening band ("endless ocean"). |
+| `ocean.regionScale` | `128` | Grid-cell edge length for the ocean biome's per-region pick, so the ocean reads as patches of variety rather than per-block dithering. |
+| `exclusionZone.enabled` | `false` | GOALS 04: when set, island/ocean shaping releases entirely beyond `exclusionZone.radius`, letting the seed's own natural terrain resume — small natural islands then occur wherever the seed's terrain noise happens to poke above sea level, far from the artificial island. Off by default, matching GOALS 01's core "endless ocean, no natural land ever" behavior. |
+| `exclusionZone.radius` | `2000` | Radius beyond which shaping releases, when enabled. |
 | `starterKit.essentials` | lily pad, dirt x4, grass block x2, oak sapling x3 | Always-included chest-boat items (`chest_boat` only). Each entry is `"<item id>"` (count 1) or `"<item id>:<count>"`. |
 | `starterKit.extras` | bread x3, wooden axe, wooden pickaxe, torch x8, water bucket | Candidate items the random picks draw from (`chest_boat` only, same shorthand format). |
 | `starterKit.extrasCount` | `2` | How many extras to pick, with replacement, deterministically from the world seed. |
@@ -442,31 +445,40 @@ and spawn is always its own safe surface point at `(0, 0)`.
 The footprint's edge is deliberately not a perfect circle — it reuses the
 exact same seed-derived coastline perturbation ocean island's shore uses,
 so it reads as a natural "lumpy" shape rather than a disc. Within the
-footprint, the slab runs from `surfaceY` down `thicknessBlocks` deep: solid
+footprint, the slab runs from `surfaceY` down `thickness` deep: solid
 ground (grass/dirt over stone, or a biome-appropriate variant — sand over
 sandstone for desert-family biomes, snow over dirt for snowy ones, mycelium
 for mushroom fields), then open void below. Dig straight down through the
 slab and you fall out the bottom; walk off the edge and you fall forever.
+Beyond the footprint (and its `exclusionZone` buffer, below), the biome
+reading changes to whatever the real seed's own noise reports there —
+terrain stays void either way, since only the biome buffer is affected.
 Nothing generates naturally anywhere else in the Overworld — no trees, no
 mobs, no structures — since the whole point is starting with only what's
 in the chest.
 
 A necessities chest appears on the island at world creation, stocked
 according to `chestTier` (`easy`, `medium`, or `hard` — in Customize, or
-`skyIsland.chestTier` in config): each tier has its own configurable
-essentials/extras list (see `easyKit`/`mediumKit`/`hardKit` below), and
+`skyIsland.chest.tier` in config): each tier has its own configurable
+essentials/extras list (see `chest.kits.easy`/`.medium`/`.hard` below), and
 every tier is intended to remain beatable given enough time. The chest
 always additionally includes exactly one water-source item, chosen from
 the island's biome: a water bucket for a dry, desert-family biome (which
 never gets rain, so a cauldron there would never fill), or a cauldron for
 every other biome (rain will fill it naturally over time).
 
+A configurable void buffer (`exclusionZone.enabled`/`exclusionZone.radius`)
+pins the biome to the configured `biome` in a ring beyond the island's own
+edge, before the real seed's own biome takes over — a purely cosmetic/F3
+distinction, since the terrain stays void either way regardless of which
+biome is reported.
+
 `applyToNether` (in Customize: "Also make the Nether a sky island", or
 `skyIsland.applyToNether` in config) mirrors the exact same
-radius/coastline-shape/surfaceY/thicknessBlocks shape into the Nether. The
+radius/coastline-shape/surfaceY/thickness shape into the Nether. The
 Nether's island has no biome concept of its own — its surface is always
 netherrack-over-netherrack with a basalt core, regardless of the
-Overworld's `islandBiome`. The End is unaffected either way: vanilla End
+Overworld's `biome`. The End is unaffected either way: vanilla End
 generation is already a bounded-below floating-island world natively (small
 landmasses surrounded by void), so it needs no changes to fit the same
 theme — use the existing End Border option (below) if you want to keep it
@@ -483,53 +495,59 @@ Configure its defaults with a `skyIsland:` section in
 
 ```yaml
 skyIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 16
+  biome: 'minecraft:plains'
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
-  chestTier: medium
+  thickness: 6
+  chest:
+    tier: medium
+    kits:
+      easy:
+        essentials:
+          - 'minecraft:oak_sapling:4'
+          - 'minecraft:bread:8'
+          - 'minecraft:crafting_table:1'
+        extras:
+          - 'minecraft:wooden_pickaxe:1'
+          - 'minecraft:wooden_axe:1'
+          - 'minecraft:torch:16'
+          - 'minecraft:cobblestone:32'
+        extrasCount: 3
+      medium:
+        essentials:
+          - 'minecraft:oak_sapling:3'
+          - 'minecraft:bread:4'
+        extras:
+          - 'minecraft:wooden_pickaxe:1'
+          - 'minecraft:torch:8'
+          - 'minecraft:cobblestone:16'
+        extrasCount: 2
+      hard:
+        essentials:
+          - 'minecraft:oak_sapling:2'
+        extras:
+          - 'minecraft:bread:2'
+          - 'minecraft:torch:4'
+        extrasCount: 1
   applyToNether: false
-  easyKit:
-    essentials:
-      - 'minecraft:oak_sapling:4'
-      - 'minecraft:bread:8'
-      - 'minecraft:crafting_table:1'
-    extras:
-      - 'minecraft:wooden_pickaxe:1'
-      - 'minecraft:wooden_axe:1'
-      - 'minecraft:torch:16'
-      - 'minecraft:cobblestone:32'
-    extrasCount: 3
-  mediumKit:
-    essentials:
-      - 'minecraft:oak_sapling:3'
-      - 'minecraft:bread:4'
-    extras:
-      - 'minecraft:wooden_pickaxe:1'
-      - 'minecraft:torch:8'
-      - 'minecraft:cobblestone:16'
-    extrasCount: 2
-  hardKit:
-    essentials:
-      - 'minecraft:oak_sapling:2'
-    extras:
-      - 'minecraft:bread:2'
-      - 'minecraft:torch:4'
-    extrasCount: 1
+  exclusionZone:
+    enabled: true
+    radius: 128
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `islandBiome` | `"minecraft:plains"` | The one biome that fills the island's interior and drives its surface-block palette and starter-kit water item. |
-| `radiusBlocks` | `16` | Configured (unperturbed) island radius. Clamped to `8..65536`, the same shared bound ocean island uses — Skyblock scale by default, much smaller than ocean island's own 128-block default. |
+| `biome` | `"minecraft:plains"` | The one biome that fills the island's interior and drives its surface-block palette and starter-kit water item. |
+| `radius` | `16` | Configured (unperturbed) island radius. Clamped to `8..65536`, the same shared bound ocean island uses — Skyblock scale by default, much smaller than ocean island's own 128-block default. |
 | `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius. `0` is a perfect circle; clamped to `0..0.6`. |
 | `surfaceY` | `64` | The island's walkable surface Y — GOALS 05's own default, chosen to avoid slimes. |
-| `thicknessBlocks` | `6` | How many blocks of solid ground extend below `surfaceY` before hitting void. Clamped to `1..64`. |
-| `chestTier` | `"medium"` | `easy`, `medium`, or `hard` — which of `easyKit`/`mediumKit`/`hardKit` the starter chest uses. |
+| `thickness` | `6` | How many blocks of solid ground extend below `surfaceY` before hitting void. Clamped to `1..64`. |
+| `chest.tier` | `"medium"` | `easy`, `medium`, or `hard` — which of `chest.kits.easy`/`.medium`/`.hard` the starter chest uses. |
 | `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
-| `easyKit`/`mediumKit`/`hardKit` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
-| `undergroundBiome` | `""` (disabled) | Biome reported at/below `undergroundBelowSurfaceBlocks` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical field. Blank disables the band entirely. Note the interaction with `thicknessBlocks`: with the defaults (`thicknessBlocks: 6`, `undergroundBelowSurfaceBlocks: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `undergroundBelowSurfaceBlocks` smaller than `thicknessBlocks`. Config-only for now (not yet on the Customize screen). |
+| `chest.kits.easy`/`.medium`/`.hard` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
+| `exclusionZone.enabled`/`.radius` | `true`/`128` | Whether/how wide a buffer beyond the island's own edge keeps reporting `biome` before the real seed's own biome takes over — a purely cosmetic/F3 distinction; the terrain itself stays void either way. |
+| `undergroundBiome` | `""` (disabled) | Biome reported at/below `undergroundBelowSurfaceBlocks` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical field. Blank disables the band entirely. Note the interaction with `thickness`: with the defaults (`thickness: 6`, `undergroundBelowSurfaceBlocks: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `undergroundBelowSurfaceBlocks` smaller than `thickness`. Config-only for now (not yet on the Customize screen). |
 | `undergroundBelowSurfaceBlocks` | `10` | How many blocks below `surfaceY` the underground band starts. Only takes effect when `undergroundBiome` is also set; `0` disables the band even with a biome configured. |
 
 ### Floating resource islands (GOALS 07-08)
@@ -538,9 +556,9 @@ Enable `skyIsland.floatingIslands` to fill the void beyond the starter
 island with scattered small floating islands instead of leaving it empty —
 a jittered grid of cells, each independently rolling whether it holds an
 island (`spawnChance`), with a hash-picked center offset, radius
-(`minRadiusBlocks`..`maxRadiusBlocks`), and coastline shape reusing the
+(`radius.min`..`radius.max`), and coastline shape reusing the
 exact same perturbation as every other island shape in this mod. A
-configurable void buffer (`exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`)
+configurable void buffer (`exclusionZone.enabled`/`exclusionZone.radius`)
 keeps the immediate area around the starter island empty before scattered
 islands begin, so reaching them always takes real bridging.
 
@@ -548,56 +566,60 @@ islands begin, so reaching them always takes real bridging.
 skyIsland:
   floatingIslands:
     enabled: false
-    minRadiusBlocks: 12
-    maxRadiusBlocks: 32
+    radius:
+      min: 12
+      max: 32
     shapeAmplitude: 0.3
-    cellSizeBlocks: 256
+    cellSize: 256
     spawnChance: 0.6
     biomeVariety: true
-    islandBiomes:
+    biomes:
       - 'minecraft:plains'
       - 'minecraft:forest'
       - 'minecraft:desert'
       - 'minecraft:taiga'
       - 'minecraft:savanna'
-    exclusionZoneEnabled: true
-    exclusionZoneRadiusBlocks: 256
-    oreDepositsEnabled: false
-    oreFeatureIds:
-      - 'minecraft:ore_coal'
-      - 'minecraft:ore_iron_small'
-      - 'minecraft:ore_gold_buried'
-      - 'minecraft:ore_redstone'
-      - 'minecraft:ore_lapis'
-      - 'minecraft:ore_diamond_small'
-      - 'minecraft:ore_emerald'
-    lootChestEnabled: false
-    lootKit:
-      essentials:
-        - 'minecraft:bread:2'
-      extras:
-        - 'minecraft:iron_ingot:2'
-        - 'minecraft:emerald:1'
-        - 'minecraft:arrow:8'
-        - 'minecraft:golden_apple:1'
-        - 'minecraft:ender_pearl:1'
-      extrasCount: 2
+    exclusionZone:
+      enabled: true
+      radius: 256
+    oreDeposits:
+      enabled: false
+      featureIds:
+        - 'minecraft:ore_coal'
+        - 'minecraft:ore_iron_small'
+        - 'minecraft:ore_gold_buried'
+        - 'minecraft:ore_redstone'
+        - 'minecraft:ore_lapis'
+        - 'minecraft:ore_diamond_small'
+        - 'minecraft:ore_emerald'
+    lootChest:
+      enabled: false
+      kit:
+        essentials:
+          - 'minecraft:bread:2'
+        extras:
+          - 'minecraft:iron_ingot:2'
+          - 'minecraft:emerald:1'
+          - 'minecraft:arrow:8'
+          - 'minecraft:golden_apple:1'
+          - 'minecraft:ender_pearl:1'
+        extrasCount: 2
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `enabled` | `false` | Whether scattered floating islands generate at all. |
-| `minRadiusBlocks`/`maxRadiusBlocks` | `12`/`32` | Range a scattered island's radius is hash-picked from. Same shared `8..65536` bound as every other island radius. |
+| `radius.min`/`radius.max` | `12`/`32` | Range a scattered island's radius is hash-picked from. Same shared `8..65536` bound as every other island radius. |
 | `shapeAmplitude` | `0.3` | Coastline perturbation strength, same shape as the starter island's own. |
-| `cellSizeBlocks` | `256` | Grid-cell edge length — the primary "how far apart" knob. |
+| `cellSize` | `256` | Grid-cell edge length — the primary "how far apart" knob. |
 | `spawnChance` | `0.6` | Probability (`0..1`) that a given grid cell holds an island, independent of spacing. |
-| `biomeVariety` | `true` | Whether each island hash-picks its own biome from `islandBiomes`, instead of every scattered island sharing the starter island's single `islandBiome`. |
-| `islandBiomes` | plains/forest/desert/taiga/savanna | Candidate biome pool when `biomeVariety` is `true`. Concrete biome ids only, no `#tags`. |
-| `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` | `true`/`256` | Void buffer around the starter island before scattered islands begin. |
-| `oreDepositsEnabled` | `false` | Whether each island gets one embedded vanilla ore-vein feature, hash-picked from `oreFeatureIds` and placed once at the island's own center, clamped to its slab's thickness. |
-| `oreFeatureIds` | coal/iron/gold/redstone/lapis/diamond/emerald | Candidate vanilla `ConfiguredFeature` ids (config-only, like `easyKit`/`mediumKit`/`hardKit` above — not exposed on the Customize screen). |
-| `lootChestEnabled` | `false` | Whether each island gets one placed loot chest at the island's surface, reusing `lootKit`. |
-| `lootKit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `easyKit`/`mediumKit`/`hardKit` above (config-only, not exposed on the Customize screen). |
+| `biomeVariety` | `true` | Whether each island hash-picks its own biome from `biomes`, instead of every scattered island sharing the starter island's single `biome`. |
+| `biomes` | plains/forest/desert/taiga/savanna | Candidate biome pool when `biomeVariety` is `true`. Concrete biome ids only, no `#tags`. |
+| `exclusionZone.enabled`/`.radius` | `true`/`256` | Void buffer around the starter island before scattered islands begin. |
+| `oreDeposits.enabled` | `false` | Whether each island gets one embedded vanilla ore-vein feature, hash-picked from `oreDeposits.featureIds` and placed once at the island's own center, clamped to its slab's thickness. |
+| `oreDeposits.featureIds` | coal/iron/gold/redstone/lapis/diamond/emerald | Candidate vanilla `ConfiguredFeature` ids (config-only, like `chest.kits.easy`/`.medium`/`.hard` above — not exposed on the Customize screen). |
+| `lootChest.enabled` | `false` | Whether each island gets one placed loot chest at the island's surface, reusing `lootChest.kit`. |
+| `lootChest.kit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `chest.kits.easy`/`.medium`/`.hard` above (config-only, not exposed on the Customize screen). |
 
 **Guaranteed village (GOALS 07):** whenever `floatingIslands.enabled` is
 set, one specific scattered island beyond the exclusion zone is always a
@@ -626,19 +648,19 @@ palette, no coastline shape to configure: the island's shape is exactly one
 Every chunk independently rolls whether it's a present island
 (`spawnChance`), grouped into `cellSizeChunks`×`cellSizeChunks`-chunk cells
 if configured larger than 1. The starter chunk (spawn) is always present.
-A void buffer (`exclusionZoneEnabled`/`exclusionZoneRadiusBlocks`) keeps
+A void buffer (`exclusionZone.enabled`/`exclusionZone.radius`) keeps
 the area immediately around the starter chunk empty before scattered
 islands begin.
 
 Each island independently keeps either its **entire natural column** (bedrock
-to sky, `topOnly: false`) or **only its top slice** down to a configured
-depth below its own real surface (`topOnly: true`,
-`topOnlyDepthBlocks` — GOALS 09's own "like 5 deep to ensure access to
+to sky, `topOnly.enabled: false`) or **only its top slice** down to a
+configured depth below its own real surface (`topOnly.enabled: true`,
+`topOnly.depth` — GOALS 09's own "like 5 deep to ensure access to
 stone" example), voiding everything deeper. The cutoff follows each
 column's own natural height, not a flat world-absolute Y. The starter
-island uses the plan-wide `topOnly` setting deterministically; ordinary
-scattered islands instead each independently hash-pick their own depth
-mode via `scatteredTopOnlyChance` (GOALS 37 — "each island can
+island uses the plan-wide `topOnly.enabled` setting deterministically;
+ordinary scattered islands instead each independently hash-pick their own
+depth mode via `topOnly.scatteredChance` (GOALS 37 — "each island can
 independently be top-only... or the entire chunk column"), so the same
 world always gives the same scattered island the same depth mode, but
 different islands can differ from each other and from the starter.
@@ -653,7 +675,7 @@ amethyst geode is separately force-placed on its own reserved chunk
 (also logged) — no configuration needed beyond enabling chunk islands at
 all.
 
-`applyToNether`/`applyToEnd` mirror the exact same chunk-grid mechanism
+`applyTo.nether`/`applyTo.end` mirror the exact same chunk-grid mechanism
 into the Nether and/or the End — the first typed preset in this mod to
 apply to the End's own generator at all. Because chunk islands never
 synthesize terrain, no biome-family palette logic is needed the way sky
@@ -677,13 +699,16 @@ chunkIsland:
   enabled: false
   spawnChance: 0.35
   cellSizeChunks: 1
-  topOnly: false
-  topOnlyDepthBlocks: 5
-  exclusionZoneEnabled: false
-  exclusionZoneRadiusBlocks: 256
-  scatteredTopOnlyChance: 0.0
-  applyToNether: false
-  applyToEnd: false
+  topOnly:
+    enabled: false
+    depth: 5
+    scatteredChance: 0.0
+  exclusionZone:
+    enabled: false
+    radius: 256
+  applyTo:
+    nether: false
+    end: false
   geodeFeatureIds:
     - 'minecraft:amethyst_geode'
 ```
@@ -693,11 +718,11 @@ chunkIsland:
 | `enabled` | `false` | Whether chunk islands generate at all. |
 | `spawnChance` | `0.35` | Probability (`0..1`) that a given grid cell holds an island. |
 | `cellSizeChunks` | `1` | Grid-cell edge length in chunks — `1` rolls every chunk independently; larger groups chunks into multi-chunk landmasses. |
-| `topOnly` | `false` | Whether the starter island (and the guaranteed portal-room island) keep only their top `topOnlyDepthBlocks`, voiding everything below. |
-| `topOnlyDepthBlocks` | `5` | Depth kept below the real generated surface whenever an island resolves top-only. |
-| `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` | `false`/`256` | Void buffer around the starter island before scattered islands begin. |
-| `scatteredTopOnlyChance` | `0.0` | Probability (`0..1`) an ordinary scattered island (not the starter, not the guaranteed portal room) independently resolves top-only instead of full-column. |
-| `applyToNether`/`applyToEnd` | `false`/`false` | Mirrors the same chunk-grid mechanism into the Nether and/or the End. |
+| `topOnly.enabled` | `false` | Whether the starter island (and the guaranteed portal-room island) keep only their top `topOnly.depth`, voiding everything below. |
+| `topOnly.depth` | `5` | Depth kept below the real generated surface whenever an island resolves top-only. |
+| `exclusionZone.enabled`/`.radius` | `false`/`256` | Void buffer around the starter island before scattered islands begin. |
+| `topOnly.scatteredChance` | `0.0` | Probability (`0..1`) an ordinary scattered island (not the starter, not the guaranteed portal room) independently resolves top-only instead of full-column. |
+| `applyTo.nether`/`.end` | `false`/`false` | Mirrors the same chunk-grid mechanism into the Nether and/or the End. |
 | `geodeFeatureIds` | `['minecraft:amethyst_geode']` | Candidate vanilla `ConfiguredFeature` ids the forced geode cell is hash-picked from (config-only, not exposed on the Customize screen). |
 
 Not exposed on the Customize screen beyond the fields listed above —

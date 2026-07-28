@@ -3079,3 +3079,76 @@ Durable decisions, verified API notes, and rationale that should survive across 
   field (`ctx.root()` then a plain field access), never a YAML key, so
   renaming `boundaryRadiusBlocks`/`oceanTransitionWidthBlocks` only changes
   that section's own warning text, nothing about the cross-section logic.
+
+- 2026-07-28 — **Phase 25.6d (islands key restructure) executed.** Two new
+  shared, generic group classes: `ExclusionZoneSchema<S>` (`enabled`/
+  `radius`, parameterized on the radius bound — `oceanIsland`/`skyIsland`/
+  `floatingIslands` all floor at `1` with an unbounded ceiling, `chunkIsland`
+  alone floors at `0` up to `MAX_BORDER_RADIUS_BLOCKS`, its pre-25.6d bound)
+  and `ChestSchema<S>` (`tier`/`kits: {easy, medium, hard}`, optional
+  `enabled` leaf via a second constructor — designed now but not yet
+  exercised with `enabled`, since only `cave` needs that at 25.6e — with a
+  private nested `KitsSchema<S>` group, a third proof that groups nest).
+  **`skyIsland.exclusionZone` is now a real, working group — a confirmed
+  behavior change, not a pure rename** (closes DESIGN §42.7's open
+  question): `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` were real
+  `SkyIslandConfig` fields consumed by world-gen logic (confirmed directly —
+  `SkyIslandCustomization`'s own Customize-screen path already read them
+  independently) but never threaded through config read/sanitize at all
+  before this commit — `config/tests/57`'s values were silently ignored.
+  Wired at the same `[1, MAX]` bound as `oceanIsland`'s own exclusion zone
+  (closest conceptual precedent, no established alternative existed since
+  the field was dead). Verified with 3 new `WorldzConfigTest` methods
+  asserting non-default parsed values (not just that the keys are
+  recognized) and by confirming config 57 comes off `ConfigFixturesTest
+  .KNOWN_UNKNOWN_KEYS` with the suite still green. Once every field on
+  `SkyIslandSchema` became a real `Setting` (this was the last gap besides
+  `undergroundBiome`, still deferred to 25.6g), its previously-mandatory
+  hand-written `summary()` override — needed solely to fake-render the dead
+  exclusionZone pair — became removable entirely; the inherited default
+  summary derivation produces the identical text now, since every group
+  Setting got its own `.render(...)`.
+  **`FloatingIslandsSchema`'s hand-ordered `postValidate` composes with
+  groups cleanly**: for `exclusionZone`/`oreDeposits`/`lootChest` (part of
+  the section's pre-existing divergent-sanitize-order tail), the *outer*
+  group `Setting` gets `.rule(new Rule.None<>())` (bypassing automatic
+  `Setting.group`'s `Rule.Nested` recursion at the wrong declare-order
+  position), and `postValidate` manually calls `<group>.sanitize(value, ctx)`
+  at the exact original imperative position — the same treatment `lootKit`
+  itself already got pre-25.6d, just generalized to groups. The *inner*
+  leaves of these three groups keep their own real rules (e.g.
+  `oreDeposits.featureIds` genuinely gained a `Rule.TrimNonEmpty`, replacing
+  a hand-written trim, since the group's own per-setting sanitize loop
+  always runs before its own `postValidate` — same order as before, just
+  organized differently) — DESIGN R4's "give group leaves `Rule.None`"
+  reading turned out to mean the *outer* setting only, not every leaf
+  transitively. By contrast `radius: {min, max}` is *not* part of the
+  divergent tail (both were always among the first six settings that
+  already sanitized in declare/map order), so it keeps the plain automatic
+  `Setting.group` behavior with no `postValidate` involvement at all — two
+  different group-authoring patterns coexisting correctly in the same
+  class, distinguished only by whether the wrapped fields were originally
+  inside the hand-ordered tail.
+  **`chunkIsland.topOnly: {enabled, depth, scatteredChance}` required an
+  emit-order change**: `scatteredTopOnlyChance` sat after
+  `exclusionZoneRadiusBlocks` pre-25.6d, not contiguous with `topOnly`/
+  `topOnlyDepthBlocks`, so it had to move up to make the group's three
+  members contiguous — the same class of change DESIGN §42.3 documents for
+  `oceanIsland.fluid`, just not individually named there. Confirmed safe by
+  checking all three fields have zero cross-dependency on each other or on
+  `exclusionZone` before moving anything.
+  **Lesson reconfirmed (25.6b/c already logged this once each; now a
+  pattern):** grep every `config/tests/*.yaml` for a sub-step's literal old
+  key strings rather than trusting the TODO line's own named fixture list.
+  Config 98 (`98-sky-island-underground-biome-band.yaml`) sets
+  `skyIsland.islandBiome`/`radiusBlocks` — renamed at 25.6d — even though
+  98 itself is a 25.6g fixture (its `undergroundBiome` pair stays deferred);
+  missed entirely by the TODO line's "30-52, 57, 58, 83" list. Also found
+  and fixed several `WorldzConfigTest` methods whose YAML string used an old
+  key but whose assertion happened to check a POJO field that coincidentally
+  still equaled its untouched default (e.g.
+  `oceanIslandInvalidIslandBiomeFallsBackToDefault`) — these stay green
+  whether or not the rename actually took effect, so they must be
+  hand-verified against the new key set rather than trusted just because
+  they weren't in the initial red list (the exact trap 25.6b's own lesson
+  described, now confirmed to recur every sub-step).

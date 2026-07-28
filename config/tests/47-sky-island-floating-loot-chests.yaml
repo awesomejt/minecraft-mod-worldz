@@ -19,24 +19,27 @@
 skyIsland:
   floatingIslands:
     enabled: true
-    minRadiusBlocks: 14
-    maxRadiusBlocks: 28
+    radius:
+      min: 14
+      max: 28
     shapeAmplitude: 0.3
-    cellSizeBlocks: 160
+    cellSize: 160
     spawnChance: 0.7
     biomeVariety: false
-    exclusionZoneEnabled: true
-    exclusionZoneRadiusBlocks: 128
-    lootChestEnabled: true
-    lootKit:
-      essentials:
-        - 'minecraft:stick:1'
-      extras:
-        - 'minecraft:diamond:1'
-        - 'minecraft:gold_ingot:1'
-        - 'minecraft:book:1'
-        - 'minecraft:saddle:1'
-      extrasCount: 1
+    exclusionZone:
+      enabled: true
+      radius: 128
+    lootChest:
+      enabled: true
+      kit:
+        essentials:
+          - 'minecraft:stick:1'
+        extras:
+          - 'minecraft:diamond:1'
+          - 'minecraft:gold_ingot:1'
+          - 'minecraft:book:1'
+          - 'minecraft:saddle:1'
+        extrasCount: 1
 overworldBorder:
   enabled: false
   ensureEndPortal: true

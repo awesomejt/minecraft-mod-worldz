@@ -2,67 +2,76 @@ package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.config.FloatingIslandsConfig;
 import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
-import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
-import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 
 import java.util.List;
 
 /**
- * Schema for {@link SkyIslandConfig} (GOALS 05, DESIGN §27; TODO 25.2e). {@code islandBiome}
+ * Schema for {@link SkyIslandConfig} (GOALS 05, DESIGN §27; TODO 25.2e, 25.6d). {@code biome}
  * reuses {@link Rule.BiomeIdOrDefault}, exactly like {@link OceanIslandSchema} ({@code
  * sanitizeSkyIsland} :487-492 mirrors {@code sanitizeOceanIsland} :437-442 verbatim). Every other
  * sanitized field processes in the same order it reads/emits, so no {@link #postValidate} is
- * needed at all.
+ * needed at all. Unlike {@code oceanIsland}, there is no {@code island:} wrapper -- the section
+ * name {@code skyIsland} already supplies the prefix (DESIGN §42.3's noted asymmetry) -- and
+ * {@code applyToNether} stays a bare key rather than a one-member {@code applyTo:} group, matching
+ * {@code strip.applyToNether}'s own precedent.
  *
- * <p>Two fields exist on {@link SkyIslandConfig} but are not wired into today's {@code
- * readSkyIslandConfig}/{@code sanitizeSkyIsland}/{@code skyIslandMap} -- pre-existing gaps carried
- * over unchanged (nothing moves), the same shape {@link FlatSchema} documents for {@code
- * FlatConfig}:
- * <ul>
- *   <li>{@code undergroundBiome}/{@code undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3) are
- *   entirely unread, unmapped and unsummarized -- read directly by {@code SkyIslandCustomization}
- *   from the Customize screen instead, never through this config path.</li>
- *   <li>{@code exclusionZoneEnabled}/{@code exclusionZoneRadiusBlocks} are unread and unmapped, but
- *   {@code skyIslandSummary} (:2172-2184) references them anyway -- so the summary line always
- *   renders their untouched constructor defaults ({@code true}, {@code 128}), never a value a user
- *   actually configured. Reproduced exactly via the {@link #summary} override below rather than
- *   declaring them as real {@link Setting}s, since a {@code Setting} is inherently read+mapped.</li>
- * </ul>
+ * <p>One field remains a pre-existing, unwired gap, carried over unchanged (nothing moves), the
+ * same shape {@link FlatSchema} documents for {@code FlatConfig}: {@code undergroundBiome}/{@code
+ * undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3) are entirely unread, unmapped and
+ * unsummarized -- read directly by {@code SkyIslandCustomization} from the Customize screen instead,
+ * never through this config path. Left for TODO 25.6g.
  *
- * <p>Because of that second gap, the summary cannot be derived (unlike {@link OceanIslandSchema}'s
- * genuinely-paired {@code exclusionZone=} settings): it is overridden wholesale here, verbatim
- * against {@code skyIslandSummary}.
+ * <p><strong>{@code exclusionZone} is a real, working group as of TODO 25.6d</strong> (DESIGN
+ * §42.1/§42.7's answered open question), not the pre-25.6d dead pair: {@code
+ * exclusionZoneEnabled}/{@code exclusionZoneRadiusBlocks} were real {@link SkyIslandConfig} fields,
+ * consumed by world-gen logic, but were never read/sanitized through this schema at all --
+ * {@code config/tests/57}'s values were silently ignored, and the pre-25.6d {@link #summary}
+ * override had to render their untouched constructor defaults by hand for exactly that reason. Now
+ * that {@code exclusionZone} is a genuine {@link ExclusionZoneSchema} instance (floored at {@code 1},
+ * matching {@code oceanIsland}'s own bound -- the closest conceptual precedent), every field this
+ * section declares is a real, derivable {@link Setting}, so the hand-written {@link #summary}
+ * override this class used to need is gone: the inherited {@link SchemaSection#summary} now
+ * produces the exact same segments mechanically.
  */
 public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
-    private final StarterKitSchema easyKitSchema;
-    private final StarterKitSchema mediumKitSchema;
-    private final StarterKitSchema hardKitSchema;
+    private final ChestSchema<SkyIslandConfig> chest;
+    private final ExclusionZoneSchema<SkyIslandConfig> exclusionZone;
     private final FloatingIslandsSchema floatingIslandsSchema;
 
     public SkyIslandSchema(String path) {
         super(path, SkyIslandConfig::new);
-        this.easyKitSchema = new StarterKitSchema(path() + ".easyKit");
-        this.mediumKitSchema = new StarterKitSchema(path() + ".mediumKit");
-        this.hardKitSchema = new StarterKitSchema(path() + ".hardKit");
+        this.chest = new ChestSchema<>(
+            path() + ".chest", SkyIslandConfig::new,
+            new Accessor<>(c -> c.chestTier, (c, v) -> c.chestTier = v),
+            new Accessor<>(c -> c.easyKit, (c, v) -> c.easyKit = v),
+            new Accessor<>(c -> c.mediumKit, (c, v) -> c.mediumKit = v),
+            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v)
+        );
+        this.exclusionZone = new ExclusionZoneSchema<>(
+            path() + ".exclusionZone", SkyIslandConfig::new,
+            new Accessor<>(c -> c.exclusionZoneEnabled, (c, v) -> c.exclusionZoneEnabled = v),
+            new Accessor<>(c -> c.exclusionZoneRadiusBlocks, (c, v) -> c.exclusionZoneRadiusBlocks = v),
+            1, Integer.MAX_VALUE
+        );
         this.floatingIslandsSchema = new FloatingIslandsSchema(path() + ".floatingIslands");
     }
 
     @Override
     protected List<Setting<SkyIslandConfig, ?>> declare() {
         return List.of(
-            Setting.<SkyIslandConfig>text("islandBiome", c -> c.islandBiome, (c, v) -> c.islandBiome = v)
+            Setting.<SkyIslandConfig>text("biome", c -> c.islandBiome, (c, v) -> c.islandBiome = v)
                 .rule(new Rule.BiomeIdOrDefault<>(
-                    "Ignoring invalid " + path() + ".islandBiome '{}'.",
-                    "Invalid " + path() + ".islandBiome '{}'; using the default instead.",
+                    "Ignoring invalid " + path() + ".biome '{}'.",
+                    "Invalid " + path() + ".biome '{}'; using the default instead.",
                     () -> new SkyIslandConfig().islandBiome
                 ))
                 .unit(Unit.BIOME_ID)
                 .doc("The one biome that fills the island's interior.")
                 .build(),
-            Setting.<SkyIslandConfig>integer("radiusBlocks", c -> c.radiusBlocks, (c, v) -> c.radiusBlocks = v)
+            Setting.<SkyIslandConfig>integer("radius", c -> c.radiusBlocks, (c, v) -> c.radiusBlocks = v)
                 .range(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
                 .unit(Unit.BLOCKS)
                 .doc("Configured (unperturbed) island radius -- small by default, matching Skyblock's scale.")
@@ -76,62 +85,28 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
                 .unit(Unit.Y_LEVEL)
                 .doc("The island's walkable surface Y.")
                 .build(),
-            Setting.<SkyIslandConfig>integer("thicknessBlocks", c -> c.thicknessBlocks, (c, v) -> c.thicknessBlocks = v)
+            Setting.<SkyIslandConfig>integer("thickness", c -> c.thicknessBlocks, (c, v) -> c.thicknessBlocks = v)
                 .range(SkyIslandPlan.MIN_THICKNESS_BLOCKS, SkyIslandPlan.MAX_THICKNESS_BLOCKS)
                 .unit(Unit.BLOCKS)
                 .doc("How many blocks of solid ground extend below surfaceY.")
                 .build(),
-            Setting.<SkyIslandConfig, StarterKitTier>enumeration(
-                    "chestTier", c -> c.chestTier, (c, v) -> c.chestTier = v,
-                    StarterKitTier::parse, StarterKitTier::serializedName, StarterKitTier.MEDIUM
-                )
-                .doc("Which of easyKit/mediumKit/hardKit the starter chest uses.")
-                .build(),
-            Setting.<SkyIslandConfig, StarterKitConfig>section(
-                    "easyKit", c -> c.easyKit, (c, v) -> c.easyKit = v, easyKitSchema
-                )
-                .doc("Generous starter-chest contents.")
-                .build(),
-            Setting.<SkyIslandConfig, StarterKitConfig>section(
-                    "mediumKit", c -> c.mediumKit, (c, v) -> c.mediumKit = v, mediumKitSchema
-                )
-                .doc("Middle-ground starter-chest contents.")
-                .build(),
-            Setting.<SkyIslandConfig, StarterKitConfig>section(
-                    "hardKit", c -> c.hardKit, (c, v) -> c.hardKit = v, hardKitSchema
-                )
-                .doc("Bare-essentials starter-chest contents.")
+            Setting.group("chest", chest)
+                .render(chest::summary)
+                .doc("The starter chest's difficulty tier and easy/medium/hard kit contents.")
                 .build(),
             Setting.<SkyIslandConfig>flag("applyToNether", c -> c.applyToNether, (c, v) -> c.applyToNether = v)
                 .doc("Whether the Nether is also a sky island, reusing this same shape.")
                 .build(),
+            Setting.group("exclusionZone", exclusionZone)
+                .render(exclusionZone::summary)
+                .doc("Whether/where the starter island's own biome-pinning buffer releases to the seed's own biomes.")
+                .build(),
             Setting.<SkyIslandConfig, FloatingIslandsConfig>section(
                     "floatingIslands", c -> c.floatingIslands, (c, v) -> c.floatingIslands = v, floatingIslandsSchema
                 )
+                .render(floatingIslandsSchema::summary)
                 .doc("Scattered small floating islands beyond the starter island's own footprint.")
                 .build()
         );
-    }
-
-    /**
-     * Overridden: unlike {@link OceanIslandSchema}'s genuinely-paired {@code exclusionZone=}
-     * settings, {@code exclusionZoneEnabled}/{@code exclusionZoneRadiusBlocks} are not real {@link
-     * Setting}s here at all (class Javadoc's second gap) -- their untouched constructor defaults
-     * are read directly, matching {@code skyIslandSummary} exactly. Not mechanically derivable.
-     */
-    @Override
-    public String summary(SkyIslandConfig value) {
-        return "islandBiome=" + value.islandBiome
-            + ", radiusBlocks=" + value.radiusBlocks
-            + ", shapeAmplitude=" + value.shapeAmplitude
-            + ", surfaceY=" + value.surfaceY
-            + ", thicknessBlocks=" + value.thicknessBlocks
-            + ", chestTier=" + value.chestTier.serializedName()
-            + ", easyKit=" + easyKitSchema.summary(value.easyKit)
-            + ", mediumKit=" + mediumKitSchema.summary(value.mediumKit)
-            + ", hardKit=" + hardKitSchema.summary(value.hardKit)
-            + ", applyToNether=" + value.applyToNether
-            + ", exclusionZone=" + (value.exclusionZoneEnabled ? "radius=" + value.exclusionZoneRadiusBlocks : "<disabled>")
-            + ", floatingIslands=" + floatingIslandsSchema.summary(value.floatingIslands);
     }
 }

@@ -17,12 +17,13 @@
 #     island -- confirm it can be poured into a dug frame alongside
 #     cauldron-collected water to produce obsidian.
 skyIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 16
+  biome: 'minecraft:plains'
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
-  chestTier: hard
+  thickness: 6
+  chest:
+    tier: hard
 overworldBorder:
   enabled: false
   ensureEndPortal: true

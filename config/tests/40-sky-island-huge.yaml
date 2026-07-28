@@ -11,11 +11,11 @@
 #  3. Confirm the void everywhere beyond the footprint is completely empty
 #     at every Y level, even far below/above the island's own band.
 skyIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 256
+  biome: 'minecraft:plains'
+  radius: 256
   shapeAmplitude: 0.5
   surfaceY: 80
-  thicknessBlocks: 16
+  thickness: 16
 overworldBorder:
   enabled: false
   ensureEndPortal: true

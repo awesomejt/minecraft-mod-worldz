@@ -22,11 +22,11 @@
 #  4. Confirm a fallback blaze spawner exists somewhere reachable and
 #     blaze rods are obtainable.
 skyIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 16
+  biome: 'minecraft:plains'
+  radius: 16
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
+  thickness: 6
   applyToNether: true
 overworldBorder:
   enabled: false

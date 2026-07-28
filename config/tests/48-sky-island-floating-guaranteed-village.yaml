@@ -32,14 +32,16 @@
 skyIsland:
   floatingIslands:
     enabled: true
-    minRadiusBlocks: 12
-    maxRadiusBlocks: 28
+    radius:
+      min: 12
+      max: 28
     shapeAmplitude: 0.3
-    cellSizeBlocks: 128
+    cellSize: 128
     spawnChance: 0.5
     biomeVariety: true
-    exclusionZoneEnabled: true
-    exclusionZoneRadiusBlocks: 96
+    exclusionZone:
+      enabled: true
+      radius: 96
 overworldBorder:
   enabled: false
   ensureEndPortal: true

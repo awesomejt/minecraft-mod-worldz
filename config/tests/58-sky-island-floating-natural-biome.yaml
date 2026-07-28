@@ -26,18 +26,20 @@
 skyIsland:
   floatingIslands:
     enabled: true
-    minRadiusBlocks: 10
-    maxRadiusBlocks: 24
+    radius:
+      min: 10
+      max: 24
     shapeAmplitude: 0.3
-    cellSizeBlocks: 128
+    cellSize: 128
     spawnChance: 0.9
     biomeVariety: true
-    islandBiomes:
+    biomes:
       - 'minecraft:plains'
       - 'minecraft:forest'
       - 'minecraft:desert'
     naturalBiome: true
-    exclusionZoneEnabled: false
+    exclusionZone:
+      enabled: false
 overworldBorder:
   enabled: false
   ensureEndPortal: true

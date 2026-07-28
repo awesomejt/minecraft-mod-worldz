@@ -14,11 +14,11 @@
 # report exactly what you see (spawn coordinates vs. chest coordinates vs.
 # island center) so the fix (if needed) can target the right mechanism.
 skyIsland:
-  islandBiome: 'minecraft:plains'
-  radiusBlocks: 8
+  biome: 'minecraft:plains'
+  radius: 8
   shapeAmplitude: 0.3
   surfaceY: 64
-  thicknessBlocks: 6
+  thickness: 6
 overworldBorder:
   enabled: false
   ensureEndPortal: true

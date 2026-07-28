@@ -8,7 +8,7 @@
 # without opening Customize and clicking "Done" (same caveat as config
 # 96 -- Customize would persist a hardcoded disabled band instead).
 #
-# `thicknessBlocks: 6` (the default) means solid ground spans Y 58-63
+# `thickness: 6` (the default) means solid ground spans Y 58-63
 # (`surfaceY` 64 minus 6 blocks); `undergroundBelowSurfaceBlocks: 3`
 # (deliberately smaller than the default `10` used in config 97) puts
 # the boundary at Y 61, so the underground band -- Y 58-60, 3 blocks --
@@ -25,9 +25,9 @@
 #  3. Confirm digging one block further (Y 57) drops you into the void
 #     beneath the island, as normal.
 skyIsland:
-  islandBiome: minecraft:plains
-  radiusBlocks: 16
+  biome: minecraft:plains
+  radius: 16
   surfaceY: 64
-  thicknessBlocks: 6
+  thickness: 6
   undergroundBiome: minecraft:dripstone_caves
   undergroundBelowSurfaceBlocks: 3

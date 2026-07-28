@@ -661,22 +661,22 @@ class WorldzConfigTest {
                 + " minecraft:badlands, minecraft:taiga], regionScale=512, starter=biome=<none>, radius=256"
                 + ", spawn=starter_at_origin, naturalBiomes=rivers=false, oceans=false, beaches=false"
                 + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
-                + ", oceanIsland=islandSource=artificial, fluid=water, islandBiome=minecraft:plains, radiusBlocks=128, shapeAmplitude=0.3"
-                + ", shoreWidthBlocks=12, oceanShallowWidthBlocks=64, oceanDeepenWidthBlocks=128"
-                + ", oceanShallowDepthBlocks=8, oceanDeepDepthBlocks=32, oceanRegionScaleBlocks=128"
+                + ", oceanIsland=island=source=artificial, biome=minecraft:plains, radius=128, shapeAmplitude=0.3"
+                + ", fluid=water, shoreWidth=12"
+                + ", ocean=shallowWidth=64, deepenWidth=128, shallowDepth=8, deepDepth=32, regionScale=128"
                 + ", exclusionZone=<disabled>"
                 + ", starterKit=essentials=[minecraft:lily_pad:1, minecraft:dirt:4, minecraft:grass_block:2,"
                 + " minecraft:oak_sapling:3], extras=[minecraft:bread:3, minecraft:wooden_axe:1,"
                 + " minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:water_bucket:1], extrasCount=2"
-                + ", skyIsland=islandBiome=minecraft:plains, radiusBlocks=16, shapeAmplitude=0.3"
-                + ", surfaceY=64, thicknessBlocks=6, chestTier=medium"
-                + ", easyKit=essentials=[minecraft:oak_sapling:4, minecraft:bread:8, minecraft:crafting_table:1,"
+                + ", skyIsland=biome=minecraft:plains, radius=16, shapeAmplitude=0.3"
+                + ", surfaceY=64, thickness=6, chest=tier=medium"
+                + ", kits=easy=essentials=[minecraft:oak_sapling:4, minecraft:bread:8, minecraft:crafting_table:1,"
                 + " minecraft:lava_bucket:1],"
                 + " extras=[minecraft:wooden_pickaxe:1, minecraft:wooden_axe:1, minecraft:torch:16,"
                 + " minecraft:cobblestone:32], extrasCount=3"
-                + ", mediumKit=essentials=[minecraft:oak_sapling:3, minecraft:bread:4, minecraft:lava_bucket:1],"
+                + ", medium=essentials=[minecraft:oak_sapling:3, minecraft:bread:4, minecraft:lava_bucket:1],"
                 + " extras=[minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:cobblestone:16], extrasCount=2"
-                + ", hardKit=essentials=[minecraft:oak_sapling:2, minecraft:lava_bucket:1],"
+                + ", hard=essentials=[minecraft:oak_sapling:2, minecraft:lava_bucket:1],"
                 + " extras=[minecraft:bread:2, minecraft:torch:4],"
                 + " extrasCount=1"
                 + ", applyToNether=false"
@@ -958,17 +958,20 @@ class WorldzConfigTest {
     void oceanIslandSettingsLoadAndSanitizeIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             oceanIsland:
-              islandBiome: desert
-              radiusBlocks: 256
-              shapeAmplitude: 0.4
-              shoreWidthBlocks: 16
-              oceanShallowWidthBlocks: 32
-              oceanDeepenWidthBlocks: 64
-              oceanShallowDepthBlocks: 4
-              oceanDeepDepthBlocks: 40
-              oceanRegionScaleBlocks: 96
-              exclusionZoneEnabled: true
-              exclusionZoneRadiusBlocks: 1500
+              island:
+                biome: desert
+                radius: 256
+                shapeAmplitude: 0.4
+              shoreWidth: 16
+              ocean:
+                shallowWidth: 32
+                deepenWidth: 64
+                shallowDepth: 4
+                deepDepth: 40
+                regionScale: 96
+              exclusionZone:
+                enabled: true
+                radius: 1500
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:desert", config.oceanIsland.islandBiome);
@@ -996,11 +999,13 @@ class WorldzConfigTest {
     void oceanIslandRadiusIsClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             oceanIsland:
-              radiusBlocks: 1
+              island:
+                radius: 1
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             oceanIsland:
-              radiusBlocks: 9999999
+              island:
+                radius: 9999999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, tooSmall.oceanIsland.radiusBlocks);
@@ -1011,11 +1016,13 @@ class WorldzConfigTest {
     void oceanIslandShapeAmplitudeIsClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             oceanIsland:
-              shapeAmplitude: -0.5
+              island:
+                shapeAmplitude: -0.5
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             oceanIsland:
-              shapeAmplitude: 5.0
+              island:
+                shapeAmplitude: 5.0
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0.0, tooSmall.oceanIsland.shapeAmplitude);
@@ -1026,7 +1033,8 @@ class WorldzConfigTest {
     void oceanIslandInvalidIslandBiomeFallsBackToDefault() {
         WorldzConfig config = WorldzConfig.parse("""
             oceanIsland:
-              islandBiome: '#minecraft:is_overworld'
+              island:
+                biome: '#minecraft:is_overworld'
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.oceanIsland.islandBiome);
@@ -1042,7 +1050,8 @@ class WorldzConfigTest {
     void oceanIslandSourceLoadsChestBoat() {
         WorldzConfig config = WorldzConfig.parse("""
             oceanIsland:
-              islandSource: chest_boat
+              island:
+                source: chest_boat
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(IslandSource.CHEST_BOAT, config.oceanIsland.islandSource);
@@ -1052,7 +1061,8 @@ class WorldzConfigTest {
     void oceanIslandSourceLoadsNatural() {
         WorldzConfig config = WorldzConfig.parse("""
             oceanIsland:
-              islandSource: natural
+              island:
+                source: natural
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(IslandSource.NATURAL, config.oceanIsland.islandSource);
@@ -1088,11 +1098,11 @@ class WorldzConfigTest {
     void skyIslandSettingsLoadAndSanitizeIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             skyIsland:
-              islandBiome: desert
-              radiusBlocks: 32
+              biome: desert
+              radius: 32
               shapeAmplitude: 0.4
               surfaceY: 80
-              thicknessBlocks: 10
+              thickness: 10
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:desert", config.skyIsland.islandBiome);
@@ -1115,11 +1125,11 @@ class WorldzConfigTest {
     void skyIslandRadiusIsClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             skyIsland:
-              radiusBlocks: 1
+              radius: 1
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             skyIsland:
-              radiusBlocks: 9999999
+              radius: 9999999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, tooSmall.skyIsland.radiusBlocks);
@@ -1145,11 +1155,11 @@ class WorldzConfigTest {
     void skyIslandThicknessIsClamped() {
         WorldzConfig tooSmall = WorldzConfig.parse("""
             skyIsland:
-              thicknessBlocks: 0
+              thickness: 0
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig tooLarge = WorldzConfig.parse("""
             skyIsland:
-              thicknessBlocks: 999
+              thickness: 999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(SkyIslandPlan.MIN_THICKNESS_BLOCKS, tooSmall.skyIsland.thicknessBlocks);
@@ -1160,10 +1170,49 @@ class WorldzConfigTest {
     void skyIslandInvalidIslandBiomeFallsBackToDefault() {
         WorldzConfig config = WorldzConfig.parse("""
             skyIsland:
-              islandBiome: '#minecraft:is_overworld'
+              biome: '#minecraft:is_overworld'
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals("minecraft:plains", config.skyIsland.islandBiome);
+    }
+
+    /**
+     * TODO 25.6d: {@code skyIsland}'s own {@code exclusionZone} was a real {@link SkyIslandConfig}
+     * field pair, consumed by world-gen logic, but never wired into read/sanitize at all before this
+     * task -- {@code config/tests/57-sky-island-biome-exclusion-zone.yaml}'s values were silently
+     * ignored. This is the regression test that would have caught that gap, and confirms the wire-up
+     * actually threads a non-default value through, not merely that the key is recognized.
+     */
+    @Test
+    void skyIslandExclusionZoneLoadsAndSanitizesIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              exclusionZone:
+                enabled: false
+                radius: 64
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.skyIsland.exclusionZoneEnabled);
+        assertEquals(64, config.skyIsland.exclusionZoneRadiusBlocks);
+    }
+
+    @Test
+    void skyIslandExclusionZoneDefaultsToEnabledWithA128BlockRadius() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertTrue(config.skyIsland.exclusionZoneEnabled);
+        assertEquals(128, config.skyIsland.exclusionZoneRadiusBlocks);
+    }
+
+    @Test
+    void skyIslandExclusionZoneRadiusIsClamped() {
+        WorldzConfig tooSmall = WorldzConfig.parse("""
+            skyIsland:
+              exclusionZone:
+                radius: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(1, tooSmall.skyIsland.exclusionZoneRadiusBlocks);
     }
 
     @Test
@@ -1687,28 +1736,32 @@ class WorldzConfigTest {
             skyIsland:
               floatingIslands:
                 enabled: true
-                minRadiusBlocks: 20
-                maxRadiusBlocks: 50
+                radius:
+                  min: 20
+                  max: 50
                 shapeAmplitude: 0.4
-                cellSizeBlocks: 300
+                cellSize: 300
                 spawnChance: 0.8
                 biomeVariety: false
-                islandBiomes:
+                biomes:
                   - desert
                   - taiga
-                exclusionZoneEnabled: true
-                exclusionZoneRadiusBlocks: 400
-                oreDepositsEnabled: true
-                oreFeatureIds:
-                  - 'minecraft:ore_coal'
-                  - 'minecraft:ore_diamond_small'
-                lootChestEnabled: true
-                lootKit:
-                  essentials:
-                    - 'minecraft:bread:1'
-                  extras:
-                    - 'minecraft:emerald:1'
-                  extrasCount: 1
+                exclusionZone:
+                  enabled: true
+                  radius: 400
+                oreDeposits:
+                  enabled: true
+                  featureIds:
+                    - 'minecraft:ore_coal'
+                    - 'minecraft:ore_diamond_small'
+                lootChest:
+                  enabled: true
+                  kit:
+                    essentials:
+                      - 'minecraft:bread:1'
+                    extras:
+                      - 'minecraft:emerald:1'
+                    extrasCount: 1
                 naturalBiome: true
             """, LOGGER).sanitize(LOGGER);
 
@@ -1740,10 +1793,11 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             skyIsland:
               floatingIslands:
-                oreDepositsEnabled: true
-                oreFeatureIds:
-                  - ''
-                  - '  '
+                oreDeposits:
+                  enabled: true
+                  featureIds:
+                    - ''
+                    - '  '
             """, LOGGER).sanitize(LOGGER);
 
         assertFalse(config.skyIsland.floatingIslands.oreDepositsEnabled);
@@ -1767,8 +1821,9 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             skyIsland:
               floatingIslands:
-                minRadiusBlocks: 100
-                maxRadiusBlocks: 50
+                radius:
+                  min: 100
+                  max: 50
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(100, config.skyIsland.floatingIslands.minRadiusBlocks);
@@ -1798,7 +1853,7 @@ class WorldzConfigTest {
             skyIsland:
               floatingIslands:
                 biomeVariety: true
-                islandBiomes:
+                biomes:
                   - '#minecraft:is_overworld'
             """, LOGGER).sanitize(LOGGER);
 
@@ -1815,11 +1870,13 @@ class WorldzConfigTest {
     void skyIslandChestTierLoadsEasyAndHard() {
         WorldzConfig easy = WorldzConfig.parse("""
             skyIsland:
-              chestTier: easy
+              chest:
+                tier: easy
             """, LOGGER).sanitize(LOGGER);
         WorldzConfig hard = WorldzConfig.parse("""
             skyIsland:
-              chestTier: hard
+              chest:
+                tier: hard
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(StarterKitTier.EASY, easy.skyIsland.chestTier);
@@ -1830,14 +1887,16 @@ class WorldzConfigTest {
     void skyIslandKitsLoadIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
             skyIsland:
-              easyKit:
-                essentials:
-                  - minecraft:bread:10
-                extrasCount: 0
-              hardKit:
-                essentials:
-                  - minecraft:oak_sapling:1
-                extrasCount: 0
+              chest:
+                kits:
+                  easy:
+                    essentials:
+                      - minecraft:bread:10
+                    extrasCount: 0
+                  hard:
+                    essentials:
+                      - minecraft:oak_sapling:1
+                    extrasCount: 0
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(List.of("minecraft:bread:10"), config.skyIsland.easyKit.essentials);
