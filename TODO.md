@@ -3810,7 +3810,7 @@ tests.
       `maxY >= startY`), `StructureDistanceSchema`, `DeepFlatSchema`,
       `StackedSchema`, `FlatSchema`. Proves int/double/bool/enum codecs, plain
       string lists, empty-list fallbacks and `disabledWhen` summary gating.
-- [ ] 25.2c Border and exterior (needs 25.2a). `BorderSchema` (parameterized
+- [x] 25.2c Border and exterior (needs 25.2a). `BorderSchema` (parameterized
       `objectiveKey` — R1, rate-pair + stepped-style `postValidate`,
       overridden `summary`) and `ExteriorSchema` (`oceanAllowed` + the
       cross-section border reference — R2, overridden `summary`). The two

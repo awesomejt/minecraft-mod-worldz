@@ -1,7 +1,9 @@
 package media.jlt.minecraft.mods.worldz.config;
 
+import media.jlt.minecraft.mods.worldz.config.schema.BorderSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.DeepFlatSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.EndBorderSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.ExteriorSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.FlatSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.ForeverNightSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.RisingLavaSchema;
@@ -23,10 +25,12 @@ import media.jlt.minecraft.mods.worldz.config.schema.StructureDistanceSchema;
  * <p>TODO 25.2a converted three sections: {@link #spawn}, {@link #starterKit} and
  * {@link #starterCapsule}. TODO 25.2b converted eight more simple leaf sections: {@link
  * #endBorder}, {@link #strip}, {@link #foreverNight}, {@link #risingLava}, {@link
- * #structureDistance}, {@link #deepFlat}, {@link #stacked}, {@link #flat}. Everything else below
- * still resolves to a {@link LegacySections} adapter -- present here so the calling convention
- * (and the differential test's "current mix") is already uniform, ready for 25.2c onward to flip
- * entries one at a time.
+ * #structureDistance}, {@link #deepFlat}, {@link #stacked}, {@link #flat}. TODO 25.2c converted
+ * the two hardest shapes: {@link #border} (one POJO field, two YAML key names, DESIGN R1) and
+ * {@link #exterior} (the one cross-section rule, DESIGN R2). Everything else below still resolves
+ * to a {@link LegacySections} adapter -- present here so the calling convention (and the
+ * differential test's "current mix") is already uniform, ready for 25.2d onward to flip entries
+ * one at a time.
  */
 public final class SchemaSections {
     private SchemaSections() {
@@ -47,7 +51,7 @@ public final class SchemaSections {
     }
 
     public static SectionCodec<BorderConfig> border(String name, String objectiveKey, String summaryObjectiveName) {
-        return LegacySections.border(name, objectiveKey, summaryObjectiveName);
+        return new BorderSchema(name, objectiveKey, summaryObjectiveName);
     }
 
     public static SectionCodec<EndBorderConfig> endBorder() {
@@ -57,7 +61,7 @@ public final class SchemaSections {
     public static SectionCodec<ExteriorConfig> exterior(
         String name, java.util.function.Function<WorldzConfig, BorderConfig> border, boolean oceanAllowed
     ) {
-        return LegacySections.exterior(name, border, oceanAllowed);
+        return new ExteriorSchema(name, border, oceanAllowed);
     }
 
     public static SectionCodec<StripConfig> strip() {

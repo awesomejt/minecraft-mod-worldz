@@ -1,7 +1,9 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
+import media.jlt.minecraft.mods.worldz.config.BorderConfig;
 import media.jlt.minecraft.mods.worldz.config.DeepFlatConfig;
 import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
+import media.jlt.minecraft.mods.worldz.config.ExteriorConfig;
 import media.jlt.minecraft.mods.worldz.config.FlatConfig;
 import media.jlt.minecraft.mods.worldz.config.ForeverNightConfig;
 import media.jlt.minecraft.mods.worldz.config.LegacySections;
@@ -13,6 +15,7 @@ import media.jlt.minecraft.mods.worldz.config.StarterCapsuleConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.config.StripConfig;
 import media.jlt.minecraft.mods.worldz.config.StructureDistanceConfig;
+import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -566,6 +570,289 @@ class ConfigSchemaDifferentialTest {
         T schemaResult = runOrNull(() -> {
             T parsed = rawOrNull == null ? factory.get() : schemaCodec.read(rawOrNull, new ParseContext(schemaLogger));
             return schemaCodec.sanitize(parsed, new SanitizeContext(schemaLogger, null));
+        });
+
+        if (legacyResult == null || schemaResult == null) {
+            assertEquals(legacyResult == null, schemaResult == null, label + ": one side threw and the other didn't");
+            return;
+        }
+
+        assertEquals(DUMPER.dump(legacyCodec.toMap(legacyResult)), DUMPER.dump(schemaCodec.toMap(schemaResult)), label + ": toMap()");
+        assertEquals(legacyCodec.summary(legacyResult), schemaCodec.summary(schemaResult), label + ": summary()");
+        assertEquals(legacyLogger.warnings(), schemaLogger.warnings(), label + ": WARN lines");
+    }
+
+    // ---- TODO 25.2c: border and exterior, DESIGN's "two hardest shapes, alone, early". Both are
+    // parameterized instances (not zero-arg factories), so they get their own comparison helpers
+    // rather than going through assertSectionIdentical -- following the starterCapsule precedent
+    // above. Both call sites of each section are exercised so the parameterization (border's
+    // objectiveKey, exterior's oceanAllowed + border accessor) is proven identical both ways. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("overworldBorderCorpus")
+    void overworldBorderSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertBorderIdentical(label, rawValueOrNull, "overworldBorder", "ensureEndPortal", "endPortal");
+    }
+
+    static Stream<Arguments> overworldBorderCorpus() throws IOException {
+        return corpusFor("overworldBorder");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("netherBorderCorpus")
+    void netherBorderSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertBorderIdentical(label, rawValueOrNull, "netherBorder", "ensureBlazeAccess", "blazeAccess");
+    }
+
+    static Stream<Arguments> netherBorderCorpus() throws IOException {
+        return corpusFor("netherBorder");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("borderAdversarialFragments")
+    void overworldBorderSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertBorderIdentical(label, LOADER.load(fragment), "overworldBorder", "ensureEndPortal", "endPortal");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("borderAdversarialFragments")
+    void netherBorderSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertBorderIdentical(label, LOADER.load(fragment), "netherBorder", "ensureBlazeAccess", "blazeAccess");
+    }
+
+    static Stream<Arguments> borderAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping (all defaults)", "{}"),
+            Arguments.of("fully specified, stepped style with a complete rate, no warnings", """
+                enabled: true
+                initialRadiusBlocks: 8
+                finalRadiusBlocks: 2000
+                resizeDays: 100
+                resizeDelayDays: 12
+                resizeRateBlocks: 128
+                resizeRateDays: 5
+                resizeStyle: stepped
+                """),
+            Arguments.of("initialRadiusBlocks below minimum is clamped up", "initialRadiusBlocks: 0"),
+            Arguments.of("finalRadiusBlocks far above maximum is clamped down", "finalRadiusBlocks: 99999999999"),
+            Arguments.of("resizeDays far above maximum is clamped down", "resizeDays: 99999999999"),
+            Arguments.of("resizeDelayDays negative is clamped to 0", "resizeDelayDays: -5"),
+            Arguments.of("resizeRateBlocks negative is clamped to 0", "resizeRateBlocks: -5"),
+            Arguments.of("incomplete rate pair (blocks only) falls back to total duration", "resizeDays: 25\nresizeRateBlocks: 128"),
+            Arguments.of("incomplete rate pair (days only) falls back to total duration", "resizeDays: 25\nresizeRateDays: 5"),
+            Arguments.of("stepped style without a rate falls back to continuous", "resizeStyle: stepped"),
+            Arguments.of("stepped style with a complete rate stays stepped", "resizeStyle: stepped\nresizeRateBlocks: 10\nresizeRateDays: 1"),
+            Arguments.of(
+                "incomplete rate pair and stepped-without-a-rate fire together, exercising postValidate's ordering",
+                "resizeStyle: stepped\nresizeRateBlocks: 10"
+            ),
+            Arguments.of("invalid resizeStyle value", "resizeStyle: not-a-style"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @Test
+    void overworldBorderObjectiveFlagRoundTrips() {
+        assertBorderIdentical(
+            "overworldBorder ensureEndPortal=false", LOADER.load("enabled: true\nensureEndPortal: false"),
+            "overworldBorder", "ensureEndPortal", "endPortal"
+        );
+    }
+
+    @Test
+    void netherBorderObjectiveFlagRoundTrips() {
+        assertBorderIdentical(
+            "netherBorder ensureBlazeAccess=false", LOADER.load("enabled: true\nensureBlazeAccess: false"),
+            "netherBorder", "ensureBlazeAccess", "blazeAccess"
+        );
+    }
+
+    /** Comparison for {@code border}'s two parameterized call sites (DESIGN R1): {@code objectiveKey}
+     * differs (the one POJO field with two YAML key names), so unlike the zero-arg sections above
+     * this cannot go through {@link #assertSectionIdentical}. */
+    private static void assertBorderIdentical(String label, Object rawOrNull, String name, String objectiveKey, String summaryObjectiveName) {
+        RecordingLogger legacyLogger = new RecordingLogger();
+        RecordingLogger schemaLogger = new RecordingLogger();
+
+        var legacyCodec = LegacySections.border(name, objectiveKey, summaryObjectiveName);
+        var schemaCodec = SchemaSections.border(name, objectiveKey, summaryObjectiveName);
+
+        BorderConfig legacyResult = runOrNull(() -> {
+            BorderConfig parsed = rawOrNull == null ? new BorderConfig() : legacyCodec.read(rawOrNull, new ParseContext(legacyLogger));
+            return legacyCodec.sanitize(parsed, new SanitizeContext(legacyLogger, null));
+        });
+        BorderConfig schemaResult = runOrNull(() -> {
+            BorderConfig parsed = rawOrNull == null ? new BorderConfig() : schemaCodec.read(rawOrNull, new ParseContext(schemaLogger));
+            return schemaCodec.sanitize(parsed, new SanitizeContext(schemaLogger, null));
+        });
+
+        if (legacyResult == null || schemaResult == null) {
+            assertEquals(legacyResult == null, schemaResult == null, label + ": one side threw and the other didn't");
+            return;
+        }
+
+        assertEquals(DUMPER.dump(legacyCodec.toMap(legacyResult)), DUMPER.dump(schemaCodec.toMap(schemaResult)), label + ": toMap()");
+        assertEquals(legacyCodec.summary(legacyResult), schemaCodec.summary(schemaResult), label + ": summary()");
+        assertEquals(legacyLogger.warnings(), schemaLogger.warnings(), label + ": WARN lines");
+    }
+
+    // ---- exterior: corpus-mined, pairing each file's border section (sanitized once via
+    // SchemaSections, since border's own byte-identity is already proven above) with its exterior
+    // section, so the cross-section derivation (DESIGN R2) is exercised against realistic combined
+    // input, not just an isolated exterior fragment. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("overworldExteriorCorpus")
+    void overworldExteriorSectionMatchesLegacyAcrossCorpus(String label, Object rawBorderOrNull, Object rawExteriorOrNull) {
+        BorderConfig border = sanitizedBorderFor("overworldBorder", "ensureEndPortal", rawBorderOrNull);
+        assertOverworldExteriorIdentical(label, rawExteriorOrNull, border);
+    }
+
+    static Stream<Arguments> overworldExteriorCorpus() throws IOException {
+        return exteriorCorpusFor("overworldBorder", "overworldExterior");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("netherExteriorCorpus")
+    void netherExteriorSectionMatchesLegacyAcrossCorpus(String label, Object rawBorderOrNull, Object rawExteriorOrNull) {
+        BorderConfig border = sanitizedBorderFor("netherBorder", "ensureBlazeAccess", rawBorderOrNull);
+        assertNetherExteriorIdentical(label, rawExteriorOrNull, border);
+    }
+
+    static Stream<Arguments> netherExteriorCorpus() throws IOException {
+        return exteriorCorpusFor("netherBorder", "netherExterior");
+    }
+
+    private static Stream<Arguments> exteriorCorpusFor(String borderKey, String exteriorKey) throws IOException {
+        List<Arguments> arguments = new ArrayList<>();
+        for (Path file : testConfigFiles()) {
+            Object loaded = LOADER.load(Files.readString(file));
+            Object borderValue = loaded instanceof Map<?, ?> map ? map.get(borderKey) : null;
+            Object exteriorValue = loaded instanceof Map<?, ?> map ? map.get(exteriorKey) : null;
+            arguments.add(Arguments.of(file.getFileName().toString(), borderValue, exteriorValue));
+        }
+        Object exampleLoaded = LOADER.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
+        Object exampleBorder = exampleLoaded instanceof Map<?, ?> map ? map.get(borderKey) : null;
+        Object exampleExterior = exampleLoaded instanceof Map<?, ?> map ? map.get(exteriorKey) : null;
+        arguments.add(Arguments.of("jlt_worldz.example.yaml", exampleBorder, exampleExterior));
+        arguments.add(Arguments.of("defaults (absent)", null, null));
+        return arguments.stream();
+    }
+
+    private static BorderConfig sanitizedBorderFor(String name, String objectiveKey, Object rawOrNull) {
+        var codec = SchemaSections.border(name, objectiveKey, "unused");
+        BorderConfig parsed = rawOrNull == null ? new BorderConfig() : codec.read(rawOrNull, new ParseContext(new RecordingLogger()));
+        return codec.sanitize(parsed, new SanitizeContext(new RecordingLogger(), null));
+    }
+
+    // ---- exterior: hand-written adversarial fragments, both dimensions, with and without an
+    // explicit boundary, exercising the auto-derive-from-border and boundary-required-or-enabled
+    // fallbacks (DESIGN R2) that the 104-file corpus (all valid, mostly disabled borders) barely
+    // touches. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("overworldExteriorAdversarialFragments")
+    void overworldExteriorSectionMatchesLegacyForAdversarialFragments(String label, String fragment, BorderConfig border) {
+        assertOverworldExteriorIdentical(label, LOADER.load(fragment), border);
+    }
+
+    static Stream<Arguments> overworldExteriorAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping, no border", "{}", disabledBorder()),
+            Arguments.of("normal mode explicit", "mode: normal", disabledBorder()),
+            Arguments.of(
+                "ocean mode with an explicit boundary, no border needed",
+                "mode: ocean\nboundaryRadiusBlocks: 512\noceanTransitionWidthBlocks: 256", disabledBorder()
+            ),
+            Arguments.of(
+                "ocean mode, explicit boundary smaller than the transition width -- transition clamped down",
+                "mode: ocean\nboundaryRadiusBlocks: 100\noceanTransitionWidthBlocks: 9999", disabledBorder()
+            ),
+            Arguments.of("void mode, auto boundary, no enabled border -- falls back to normal", "mode: void\nboundaryRadiusBlocks: 0", disabledBorder()),
+            Arguments.of(
+                "ocean mode, auto boundary derived from an enabled border",
+                "mode: ocean\nboundaryRadiusBlocks: 0\noceanTransitionWidthBlocks: 128", enabledBorder(512, 2048)
+            ),
+            Arguments.of(
+                "ocean mode, auto boundary derived from border, transition clamped down to the resolved boundary",
+                "mode: ocean\nboundaryRadiusBlocks: 0\noceanTransitionWidthBlocks: 99999", enabledBorder(100, 50)
+            ),
+            Arguments.of("boundaryRadiusBlocks negative is clamped up", "boundaryRadiusBlocks: -10", disabledBorder()),
+            Arguments.of("oceanTransitionWidthBlocks negative is clamped up", "oceanTransitionWidthBlocks: -10", disabledBorder()),
+            Arguments.of("invalid mode value", "mode: not-a-mode", disabledBorder()),
+            Arguments.of("wrong type for the whole section", "true", disabledBorder())
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("netherExteriorAdversarialFragments")
+    void netherExteriorSectionMatchesLegacyForAdversarialFragments(String label, String fragment, BorderConfig border) {
+        assertNetherExteriorIdentical(label, LOADER.load(fragment), border);
+    }
+
+    static Stream<Arguments> netherExteriorAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping, no border", "{}", disabledBorder()),
+            Arguments.of("ocean mode is unsupported for the Nether -- rejected to normal", "mode: ocean", disabledBorder()),
+            Arguments.of("ocean mode unsupported even with an enabled border", "mode: ocean", enabledBorder(512, 2048)),
+            Arguments.of("void mode with an explicit boundary", "mode: void\nboundaryRadiusBlocks: 256", disabledBorder()),
+            Arguments.of("void mode, auto boundary, no enabled border -- falls back to normal", "mode: void", disabledBorder()),
+            Arguments.of("void mode, auto boundary derived from an enabled border", "mode: void", enabledBorder(256, 128)),
+            Arguments.of("invalid mode value", "mode: not-a-mode", disabledBorder()),
+            Arguments.of("wrong type for the whole section", "true", disabledBorder())
+        );
+    }
+
+    private static BorderConfig disabledBorder() {
+        return new BorderConfig();
+    }
+
+    private static BorderConfig enabledBorder(int initialRadiusBlocks, int finalRadiusBlocks) {
+        BorderConfig border = new BorderConfig();
+        border.enabled = true;
+        border.initialRadiusBlocks = initialRadiusBlocks;
+        border.finalRadiusBlocks = finalRadiusBlocks;
+        return border;
+    }
+
+    private static void assertOverworldExteriorIdentical(String label, Object rawOrNull, BorderConfig border) {
+        WorldzConfig legacyRoot = new WorldzConfig();
+        legacyRoot.overworldBorder = border;
+        WorldzConfig schemaRoot = new WorldzConfig();
+        schemaRoot.overworldBorder = border;
+        assertExteriorIdentical(label, rawOrNull, "overworldExterior", c -> c.overworldBorder, true, legacyRoot, schemaRoot);
+    }
+
+    private static void assertNetherExteriorIdentical(String label, Object rawOrNull, BorderConfig border) {
+        WorldzConfig legacyRoot = new WorldzConfig();
+        legacyRoot.netherBorder = border;
+        WorldzConfig schemaRoot = new WorldzConfig();
+        schemaRoot.netherBorder = border;
+        assertExteriorIdentical(label, rawOrNull, "netherExterior", c -> c.netherBorder, false, legacyRoot, schemaRoot);
+    }
+
+    /** Comparison for {@code exterior}'s two parameterized call sites (DESIGN R2): {@code
+     * oceanAllowed} differs and, unlike every other section, sanitize needs {@link
+     * SanitizeContext#root()} for the sibling border, so a real (if minimal) {@link WorldzConfig}
+     * root is built per call rather than passing {@code null} as every other helper in this class
+     * does. */
+    private static void assertExteriorIdentical(
+        String label, Object rawOrNull, String name, Function<WorldzConfig, BorderConfig> accessor, boolean oceanAllowed,
+        WorldzConfig legacyRoot, WorldzConfig schemaRoot
+    ) {
+        RecordingLogger legacyLogger = new RecordingLogger();
+        RecordingLogger schemaLogger = new RecordingLogger();
+
+        var legacyCodec = LegacySections.exterior(name, accessor, oceanAllowed);
+        var schemaCodec = SchemaSections.exterior(name, accessor, oceanAllowed);
+
+        ExteriorConfig legacyResult = runOrNull(() -> {
+            ExteriorConfig parsed = rawOrNull == null ? new ExteriorConfig() : legacyCodec.read(rawOrNull, new ParseContext(legacyLogger));
+            return legacyCodec.sanitize(parsed, new SanitizeContext(legacyLogger, legacyRoot));
+        });
+        ExteriorConfig schemaResult = runOrNull(() -> {
+            ExteriorConfig parsed = rawOrNull == null ? new ExteriorConfig() : schemaCodec.read(rawOrNull, new ParseContext(schemaLogger));
+            return schemaCodec.sanitize(parsed, new SanitizeContext(schemaLogger, schemaRoot));
         });
 
         if (legacyResult == null || schemaResult == null) {
