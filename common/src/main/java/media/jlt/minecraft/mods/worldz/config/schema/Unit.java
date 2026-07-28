@@ -18,6 +18,8 @@ public enum Unit {
     CHANCE,
     /** A plain count with no other unit. */
     COUNT,
+    /** A dimensionless multiplier or shape-strength coefficient (not a 0..1 probability). */
+    FACTOR,
     /** A biome id or biome-tag id string. */
     BIOME_ID,
     /** A list of item ids (optionally with counts). */

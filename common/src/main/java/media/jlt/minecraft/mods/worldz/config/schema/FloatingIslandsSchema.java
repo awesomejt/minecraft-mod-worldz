@@ -63,6 +63,7 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
                 .build(),
             Setting.<FloatingIslandsConfig>decimal("shapeAmplitude", c -> c.shapeAmplitude, (c, v) -> c.shapeAmplitude = v)
                 .range(0.0, IslandShapeProfile.MAX_AMPLITUDE)
+                .unit(Unit.FACTOR)
                 .doc("Coastline perturbation strength.")
                 .build(),
             Setting.<FloatingIslandsConfig>integer("cellSizeBlocks", c -> c.cellSizeBlocks, (c, v) -> c.cellSizeBlocks = v)

@@ -8,9 +8,9 @@ import java.util.List;
 /**
  * Schema for {@link StripBandsConfig} (GOALS 36) -- the ordered biome-band sequence nested inside
  * {@code stripWorld.bands} (TODO 25.2d). Only reachable through {@link StripWorldSchema} in
- * production, but also registered on its own in both {@code LegacySections}/{@code SchemaSections}
- * (like {@code spawn}/{@code starterKit}, DESIGN §41.8) so the differential harness can exercise it
- * directly.
+ * production, but also registered on its own in {@code SchemaSections} (like {@code spawn}/{@code
+ * starterKit}, DESIGN §41.8), which let the now-retired differential harness exercise it directly
+ * during the 25.2 migration.
  *
  * <p>{@code biomes} rejects tags outright ({@code Rule.BiomeIdList.Mode#REJECT_TAGS}): a band
  * sequence needs concrete, walkable biome ids, not a tag's whole pool. Unlike every other

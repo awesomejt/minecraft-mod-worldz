@@ -3837,7 +3837,7 @@ tests.
       `allowRivers`, `allowOceans`) plus the 25 `Setting.section(...)`
       bindings in today's exact `toYaml()` order. At this point every section
       is schema-driven and the differential test is at full strength.
-- [ ] 25.2h Retire the legacy path (needs 25.2g). Delete `LegacySections`, the
+- [x] 25.2h Retire the legacy path (needs 25.2g). Delete `LegacySections`, the
       ~100 `read*`/`sanitize*`/`*Map`/`*Summary` methods and
       `ConfigSchemaDifferentialTest`. `WorldzConfig.java` should land at ~200
       lines (from 2400). Keep the golden `reference-defaults.yaml` test and add

@@ -29,10 +29,9 @@ import media.jlt.minecraft.mods.worldz.config.schema.StructureDistanceSchema;
 
 /**
  * Registry of {@link SectionCodec}s used by {@link WorldzConfig}'s four orchestration methods
- * (DESIGN §41.8): the schema-driven implementation for sections converted so far, falling back
- * to {@link LegacySections} for everything else. Production code is indifferent to which one it
- * gets -- as more sections convert in TODO 25.2b-h, only this class changes; the orchestration
- * methods themselves do not.
+ * (DESIGN §41.8): every one of the 25 sections is now schema-driven (TODO 25.2a-h). This class is
+ * the sole indirection between the orchestration methods (which never construct a section class
+ * directly) and the {@code config/schema} package.
  *
  * <p>TODO 25.2a converted three sections: {@link #spawn}, {@link #starterKit} and
  * {@link #starterCapsule}. TODO 25.2b converted eight more simple leaf sections: {@link
@@ -45,9 +44,9 @@ import media.jlt.minecraft.mods.worldz.config.schema.StructureDistanceSchema;
  * #oceanIsland}, {@link #skyIsland} (nesting {@link #floatingIslands}) and {@link #chunkIsland}.
  * TODO 25.2f converted the chest/kit-preset sections: {@link #cave}, {@link #netherStart} and
  * {@link #endStart} -- the shared {@code chestTier} + three-kit shape, plus Nether-start/End-start's
- * own {@link #starterCapsule}-nesting capsule config. Everything else below still resolves to a
- * {@link LegacySections} adapter -- present here so the calling convention (and the differential
- * test's "current mix") is already uniform, ready for 25.2g (the root) to flip the rest.
+ * own {@link #starterCapsule}-nesting capsule config. TODO 25.2g converted the root itself
+ * ({@code WorldzRootSchema}). TODO 25.2h then retired the legacy path this registry used to fall
+ * back to ({@code LegacySections}, deleted) once nothing referenced it anymore.
  */
 public final class SchemaSections {
     private SchemaSections() {

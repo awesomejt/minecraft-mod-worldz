@@ -61,6 +61,7 @@ public final class OceanIslandSchema extends SchemaSection<OceanIslandConfig> {
                 .build(),
             Setting.<OceanIslandConfig>decimal("shapeAmplitude", c -> c.shapeAmplitude, (c, v) -> c.shapeAmplitude = v)
                 .range(0.0, IslandShapeProfile.MAX_AMPLITUDE)
+                .unit(Unit.FACTOR)
                 .doc("Coastline perturbation strength.")
                 .build(),
             Setting.<OceanIslandConfig>integer("shoreWidthBlocks", c -> c.shoreWidthBlocks, (c, v) -> c.shoreWidthBlocks = v)

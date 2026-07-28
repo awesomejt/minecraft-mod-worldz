@@ -69,6 +69,7 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
                 .build(),
             Setting.<SkyIslandConfig>decimal("shapeAmplitude", c -> c.shapeAmplitude, (c, v) -> c.shapeAmplitude = v)
                 .range(0.0, IslandShapeProfile.MAX_AMPLITUDE)
+                .unit(Unit.FACTOR)
                 .doc("Coastline perturbation strength.")
                 .build(),
             Setting.<SkyIslandConfig>integer("surfaceY", c -> c.surfaceY, (c, v) -> c.surfaceY = v)

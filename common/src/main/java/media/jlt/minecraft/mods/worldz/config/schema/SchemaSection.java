@@ -15,8 +15,10 @@ import java.util.function.Supplier;
  *
  * <p><strong>The declaration order returned by {@link #declare()} must equal today's {@code
  * xMap} emit order</strong> -- that ordering invariant (DESIGN §41.1) is what lets one list drive
- * both parse and emit with byte-identical output, and the differential harness
- * ({@code ConfigSchemaDifferentialTest}) is what enforces it.
+ * both parse and emit with byte-identical output. The differential harness that enforced this
+ * during the TODO 25.2 migration ({@code ConfigSchemaDifferentialTest}) was retired at 25.2h once
+ * there was no more "old" implementation left to compare against; the golden {@code
+ * reference-defaults.yaml} test and {@code ConfigSchemaMetadataTest} are what remain permanently.
  */
 public abstract class SchemaSection<S> implements SectionCodec<S> {
     private final String path;
