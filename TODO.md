@@ -1627,7 +1627,65 @@ tests.
       moving the 11 generic-preset-only top-level keys (`allowedBiomes`,
       `starterBiome`, `layout`, `strip`, …) into `world-types/worldz.yaml`
       where they stop masquerading as global (F3), and merging the
-      `strip`/`stripWorld` split-brain into one file.
+      `strip`/`stripWorld` split-brain into one file (file-level only —
+      see 25.7's note under 25.9 below for the key-level half).
+      **Design pass done, DESIGN §43** (2026-07-28): full 26-entry
+      section-to-file mapping across 15 files, merge-before-schema-walk
+      load mechanics (no framework class touched), per-file unknown-key
+      gate, and `config/jlt_worldz/all.yaml` kept as an optional
+      single-file bundle that wins wholesale when present — **Jason
+      confirmed 2026-07-28: keep the bundle.** This means `config/tests/`
+      fixtures and `MANUAL_TESTING.md`'s workflow stay single-file (no
+      103-fixture-directory conversion), so 25.11 shrinks to prose-only
+      updates. `kits.yaml` is explicitly **not** created by 25.7 — deferred
+      to 25.8 (DESIGN §43.6). Broken into 25.7a-25.7e below, each
+      independently buildable/testable/committable (the bundle path keeps
+      today's single-file load alive throughout, so nothing here is forced
+      to land atomically).
+- [ ] 25.7a `ConfigLayout`/`ConfigFile` (main, `config/` package): the
+      26-root-key → 15-file mapping table (DESIGN §43.2/§43.4.1);
+      corrected `Applicability` on the 26 root settings to match; new
+      `ConfigLayoutTest` proving the mapping totally partitions
+      `WorldzRootSchema.declare()`'s keys with no duplicates/gaps, each
+      unwrapped file owns exactly one key, and each world-type filename
+      matches its `world_preset/*.json` id (`sky-chunk.yaml`↔`chunkIsland`
+      allow-listed by name, DESIGN §43.9 row a). No load-path change yet.
+- [ ] 25.7b `parse(String)` → `parseMap(Map)` refactor; `readSplit`/
+      `readBundle`; `WorldzConfig.load` rewritten per DESIGN §43.4.2-4;
+      per-file skip/WARN handling (absent/blank/non-mapping/YAML-syntax,
+      each isolated per file; value-level errors still all-defaults, per
+      DESIGN §43.4.4); bundle wins wholesale + WARN when present. New
+      `ConfigDirectoryLoadTest`: split the golden `reference-defaults.yaml`
+      into the 15 files via `ConfigLayout`, load from a `@TempDir`, assert
+      `toYaml()` equals the golden byte-for-byte; plus absent-dir, isolated
+      per-file failure, bundle-wins, and cross-file
+      `config.present("overworldBorder")` (25.5's `stacked` gate) cases.
+      **`git diff` must not touch `reference-defaults.yaml`** — no key
+      moved in this task, only the file a key is read from.
+- [ ] 25.7c `SchemaKeyWalker.findUnknownKeysInFile` (DESIGN §43.5) +
+      shallow production misfile WARN via `ConfigLayout.owning`. Proves: a
+      stray key in `cave.yaml` reports against `CaveSchema` only (not the
+      whole root); a `cave:` key written into `runtime.yaml` reports as
+      misfiled, naming `world-types/cave.yaml`; `layout.roleOverrides`'
+      arbitrary sub-keys still don't trip it. `ConfigFixturesTest` itself
+      is unchanged (fixtures stay bundle-shaped).
+- [ ] 25.7d Docs: README.md config section (file tree, wrapped-vs-unwrapped,
+      the bundle, first written statement of F3's live-vs-baked split as
+      it maps to `runtime.yaml` vs. everything else); `REFERENCE_HEADER`
+      grows a file map (e.g. `# foreverNight/risingLava/structureDistance
+      -> config/jlt_worldz/runtime.yaml`); one-line `config/tests/
+      README.md` update for the new `cp` target
+      (`config/jlt_worldz/all.yaml`). 25.10 still owns the generated
+      settings tables.
+- [ ] 25.7e Close-out: Deviation log (strip file-level-only merge, key-level
+      merge moved to 25.9; `kits.yaml` deferred to 25.8); amend 25.9's text
+      to explicitly own the `strip`/`stripWorld` key-level merge and
+      unwrapping `strip-world.yaml` (DESIGN §43.3); confirm 25.11's scope
+      is prose-only (DESIGN §43.8); full `./gradlew build` all modules;
+      NeoForge brief check (no loader-level code expected —
+      `WorldzCommon.java:30-31`'s `load` signature is unchanged). **[Jason]**
+      redeploy both Prism instances before requesting test (per memory:
+      deploy-jar-before-requesting-test).
 - [ ] 25.8 Named shared starter kits (D6). 145 of the 384 generated config
       lines (38%) are 12 near-duplicate kit blocks. Ship the current 12
       pre-named so behavior is byte-identical; keep inline definitions legal.
@@ -1637,7 +1695,15 @@ tests.
       Design and width/portal table in `CONFIG-RESTRUCTURE.md` §5. `width`
       replaces `widthRadiusBlocks`, minimum 1 block; odd widths symmetric about
       Z=0, even widths take the extra block on +Z; End portal and the Nether
-      fortress guarantee target the corridor mid-point. **Not a rename:**
+      fortress guarantee target the corridor mid-point. **Also owns the
+      `strip`/`stripWorld` key-level merge deferred by 25.7** (DESIGN
+      §43.3): fold `strip`'s three keys (`widthRadiusBlocks`→`width`,
+      `widthMode`, `applyToNether`) into `StripWorldSchema` and unwrap
+      `world-types/strip-world.yaml` down to one flat body, since this
+      task already has to touch `StripConfig`/`StripWorldCustomization`/
+      `ObjectiveSite.narrowForStrip`/the Customize screen for the width
+      change — doing the key move here avoids paying for the same
+      surgery twice. **Not a rename:**
       `ObjectiveSite.narrowForStrip` returns a Z *radius* applied symmetrically
       by its three callers (`ProgressionGuarantees:70,114`,
       `StackedVillageDeployment:117`) — an even-width corridor is no longer
@@ -1652,10 +1718,18 @@ tests.
       for the first time (F3): hazards are re-read from config and change
       existing worlds; borders, exteriors and preset sections are baked into
       the save at creation and do nothing to an existing world.
-- [ ] 25.11 Migrate all 104 `config/tests/*.yaml` mechanically. **With D1 there
-      is no alias fallback, so this must land with 25.6/25.7 or the suite
-      breaks.** Gate: a test asserting every `config/tests/*.yaml` parses clean.
-      Refresh MANUAL_TESTING.md's scenario tables.
+- [ ] 25.11 **Scope reduced by DESIGN §43.8 (2026-07-28):** 25.6 already
+      migrated every renamed key across all 103 `config/tests/*.yaml`
+      fixtures (25.6a-h), and 25.7's file split moves no keys and keeps
+      fixtures single-file (`config/jlt_worldz/all.yaml`-shaped, per the
+      kept bundle) — so there is no fixture content left to migrate here.
+      What remains: mechanically update fixtures whose keys 25.9 actually
+      renames (`strip.widthRadiusBlocks`→`width`, the `strip`/`stripWorld`
+      key-level merge) — should land with 25.9 itself, not deferred here,
+      same "no alias fallback" reasoning as before; and a prose-only pass
+      over `config/tests/README.md`/`MANUAL_TESTING.md` for anything 25.7d
+      didn't already cover. Gate: `ConfigFixturesTest` (already exists,
+      25.6a) stays green throughout.
 - [ ] 25.12 Full multiloader build green, both Prism instances redeployed, then
       close the phase. **[Jason] acceptance:** a hand-commented config survives
       a launch intact (25.4); a stacked world with no `worldSizeChunks: 0`
