@@ -1,8 +1,8 @@
-Let's continue to the next task.
+Let's continue to the next task for the `worldz` project (`~/projects/minecraft/worldz/`) - currently working throught the configuration restructure (phase 25).
 
 Read AGENTS.md and follow it exactly. GOALS.md is the source of truth for features and goals. The TODO.md has all the tasks organized by phase. MEMORY.md contains all important decisions.
 
-Proceed to next task and use subagents to work the task in stages - task management, research, planning, impelementation, testing, documentation, deployment, and committing. Use the appropriate subagent to help with efficient token use and session allowances.
+Proceed to next task and use subagents to work the task in stages - `project-manager`, `researcher`, `planner`, `coder`, `tester`, `documentor`, `release-manager`, and `committer`. Use the appropriate subagent to help with efficient token use and session allowances.
 
 Prompt Jason for any questions that come up, but try to determine the questions that need answering before implementation to maximize autonomous working.
 
