@@ -312,8 +312,11 @@ public sealed interface Rule<S, T> {
     }
 
     /** A {@code Setting.section(...)} entry's implicit rule: sanitizing a nested value means
-     * recursing into its own {@link SchemaSection#sanitize}, not clamping the reference itself. */
-    record Nested<S, C>(SchemaSection<C> section) implements Rule<S, C> {
+     * recursing into its own {@link SectionCodec#sanitize}, not clamping the reference itself.
+     * Accepts a {@link SectionCodec} rather than a {@link SchemaSection} directly so root-level
+     * settings can bind a {@code SchemaSections} registry entry (typed {@code SectionCodec}) without
+     * an unchecked cast (TODO 25.2g). */
+    record Nested<S, C>(SectionCodec<C> section) implements Rule<S, C> {
         @Override
         public C apply(S owner, C value, String name, SanitizeContext ctx) {
             return section.sanitize(value, ctx);

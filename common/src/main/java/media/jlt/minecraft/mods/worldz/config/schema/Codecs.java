@@ -178,11 +178,11 @@ public final class Codecs {
     }
 
     /**
-     * Builds a codec that delegates to a nested {@link SchemaSection}, for {@code Setting.section}.
+     * Builds a codec that delegates to a nested {@link SectionCodec}, for {@code Setting.section}.
      *
-     * @param section the nested section's schema
+     * @param section the nested section's schema (or registry entry)
      */
-    public static <C> ValueCodec<C> section(SchemaSection<C> section) {
+    public static <C> ValueCodec<C> section(SectionCodec<C> section) {
         return new ValueCodec<>() {
             @Override
             public C read(Object raw, ParseContext ctx) {

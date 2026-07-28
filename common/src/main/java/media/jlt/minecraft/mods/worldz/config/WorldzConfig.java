@@ -5,6 +5,7 @@ import media.jlt.minecraft.mods.worldz.config.schema.SanitizeContext;
 import media.jlt.minecraft.mods.worldz.config.schema.SchemaSection;
 import media.jlt.minecraft.mods.worldz.config.schema.StarterCapsuleSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StarterKitSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.WorldzRootSchema;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRole;
 import media.jlt.minecraft.mods.worldz.logic.BiomeRoles;
@@ -85,6 +86,14 @@ public final class WorldzConfig {
     public static final int MAX_STACKED_RELIEF_BLOCKS = 16;
 
     static final String YAML_EXTENSION = ".yaml";
+
+    /**
+     * The root schema (DESIGN §41.7, TODO 25.2g): declares every top-level scalar and section, in
+     * {@link #toYaml()}'s exact emit order, and backs {@link #parse}/{@link #sanitize}/
+     * {@link #toYaml}/{@link #summary} directly. One shared instance, since a {@code
+     * SchemaSection} carries no per-call state (its {@code declare()} result is cached).
+     */
+    private static final WorldzRootSchema ROOT = new WorldzRootSchema();
 
     /** Biome ids and biome-tag ids allowed in new Worldz worlds. */
     public List<String> allowedBiomes = new ArrayList<>(List.of(
@@ -198,173 +207,14 @@ public final class WorldzConfig {
 
     static WorldzConfig parse(String yaml, Logger logger) {
         Object loaded = createYaml().load(yaml);
-        if (!(loaded instanceof Map<?, ?> object)) {
+        if (!(loaded instanceof Map<?, ?>)) {
             throw new IllegalArgumentException("root value must be a YAML mapping");
         }
-
-        WorldzConfig config = new WorldzConfig();
-        if (object.containsKey("allowedBiomes")) {
-            config.allowedBiomes = readStringList(object.get("allowedBiomes"), "allowedBiomes", logger);
-        }
-        if (object.containsKey("starterBiome")) {
-            config.starterBiome = readString(object.get("starterBiome"), "starterBiome");
-        }
-        if (object.containsKey("starterRadiusBlocks")) {
-            config.starterRadiusBlocks = readInt(object.get("starterRadiusBlocks"), "starterRadiusBlocks");
-        }
-        if (object.containsKey("ensureStarterLand")) {
-            config.ensureStarterLand = readBoolean(object.get("ensureStarterLand"), "ensureStarterLand");
-        }
-        if (object.containsKey("starterLandTransitionBlocks")) {
-            config.starterLandTransitionBlocks = readInt(
-                object.get("starterLandTransitionBlocks"), "starterLandTransitionBlocks"
-            );
-        }
-        if (object.containsKey("starterLandFoundationDepthBlocks")) {
-            config.starterLandFoundationDepthBlocks = readInt(
-                object.get("starterLandFoundationDepthBlocks"), "starterLandFoundationDepthBlocks"
-            );
-        }
-        ParseContext ctx = new ParseContext(logger);
-        if (object.containsKey("overworldBorder")) {
-            config.overworldBorder = SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal")
-                .read(object.get("overworldBorder"), ctx);
-        }
-        if (object.containsKey("netherBorder")) {
-            config.netherBorder = SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess")
-                .read(object.get("netherBorder"), ctx);
-        }
-        if (object.containsKey("endBorder")) {
-            config.endBorder = SchemaSections.endBorder().read(object.get("endBorder"), ctx);
-        }
-        if (object.containsKey("overworldExterior")) {
-            config.overworldExterior = SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true)
-                .read(object.get("overworldExterior"), ctx);
-        }
-        if (object.containsKey("netherExterior")) {
-            config.netherExterior = SchemaSections.exterior("netherExterior", c -> c.netherBorder, false)
-                .read(object.get("netherExterior"), ctx);
-        }
-        if (object.containsKey("strip")) {
-            config.strip = SchemaSections.strip().read(object.get("strip"), ctx);
-        }
-        if (object.containsKey("layout")) {
-            config.layout = SchemaSections.layout().read(object.get("layout"), ctx);
-        }
-        if (object.containsKey("spawn")) {
-            config.spawn = SchemaSections.spawn("spawn").read(object.get("spawn"), ctx);
-        }
-        if (object.containsKey("singleBiome")) {
-            config.singleBiome = SchemaSections.singleBiome().read(object.get("singleBiome"), ctx);
-        }
-        if (object.containsKey("chaosBiomes")) {
-            config.chaosBiomes = SchemaSections.chaosBiomes().read(object.get("chaosBiomes"), ctx);
-        }
-        if (object.containsKey("stripWorld")) {
-            config.stripWorld = SchemaSections.stripWorld().read(object.get("stripWorld"), ctx);
-        }
-        if (object.containsKey("oceanIsland")) {
-            config.oceanIsland = SchemaSections.oceanIsland().read(object.get("oceanIsland"), ctx);
-        }
-        if (object.containsKey("skyIsland")) {
-            config.skyIsland = SchemaSections.skyIsland().read(object.get("skyIsland"), ctx);
-        }
-        if (object.containsKey("chunkIsland")) {
-            config.chunkIsland = SchemaSections.chunkIsland().read(object.get("chunkIsland"), ctx);
-        }
-        if (object.containsKey("cave")) {
-            config.cave = SchemaSections.cave().read(object.get("cave"), ctx);
-        }
-        if (object.containsKey("netherStart")) {
-            config.netherStart = SchemaSections.netherStart().read(object.get("netherStart"), ctx);
-        }
-        if (object.containsKey("endStart")) {
-            config.endStart = SchemaSections.endStart().read(object.get("endStart"), ctx);
-        }
-        if (object.containsKey("flat")) {
-            config.flat = SchemaSections.flat().read(object.get("flat"), ctx);
-        }
-        if (object.containsKey("deepFlat")) {
-            config.deepFlat = SchemaSections.deepFlat().read(object.get("deepFlat"), ctx);
-        }
-        if (object.containsKey("stacked")) {
-            config.stacked = SchemaSections.stacked().read(object.get("stacked"), ctx);
-        }
-        if (object.containsKey("foreverNight")) {
-            config.foreverNight = SchemaSections.foreverNight().read(object.get("foreverNight"), ctx);
-        }
-        if (object.containsKey("risingLava")) {
-            config.risingLava = SchemaSections.risingLava().read(object.get("risingLava"), ctx);
-        }
-        if (object.containsKey("structureDistance")) {
-            config.structureDistance = SchemaSections.structureDistance().read(object.get("structureDistance"), ctx);
-        }
-        if (object.containsKey("allowRivers")) {
-            config.allowRivers = readBoolean(object.get("allowRivers"), "allowRivers");
-        }
-        if (object.containsKey("allowOceans")) {
-            config.allowOceans = readBoolean(object.get("allowOceans"), "allowOceans");
-        }
-        return config;
+        return ROOT.read(loaded, new ParseContext(logger));
     }
 
     WorldzConfig sanitize(Logger logger) {
-        BiomeListSpec allowedSpec = BiomeListSpec.parse(allowedBiomes);
-        for (String invalid : allowedSpec.invalidEntries()) {
-            logger.warn("Ignoring invalid allowed biome or tag '{}'.", invalid);
-        }
-        allowedBiomes = new ArrayList<>(allowedSpec.entries().stream().map(BiomeListSpec.Entry::configValue).toList());
-
-        starterBiome = starterBiome == null ? "" : starterBiome.trim();
-        if (!starterBiome.isEmpty()) {
-            BiomeListSpec starterSpec = BiomeListSpec.parse(List.of(starterBiome));
-            if (starterSpec.entries().size() != 1 || starterSpec.entries().getFirst().tag()) {
-                logger.warn("Ignoring invalid starter biome '{}'.", starterBiome);
-                starterBiome = "";
-            } else {
-                starterBiome = starterSpec.entries().getFirst().id();
-            }
-        }
-
-        int originalRadius = starterRadiusBlocks;
-        starterRadiusBlocks = Math.clamp(starterRadiusBlocks, MIN_STARTER_RADIUS_BLOCKS, MAX_STARTER_RADIUS_BLOCKS);
-        if (starterRadiusBlocks != originalRadius) {
-            logger.warn("Clamped starterRadiusBlocks from {} to {}.", originalRadius, starterRadiusBlocks);
-        }
-        starterLandTransitionBlocks = clampWithWarning(
-            starterLandTransitionBlocks, 0, MAX_STARTER_LAND_TRANSITION_BLOCKS,
-            "starterLandTransitionBlocks", logger
-        );
-        starterLandFoundationDepthBlocks = clampWithWarning(
-            starterLandFoundationDepthBlocks, 0, MAX_STARTER_LAND_FOUNDATION_DEPTH_BLOCKS,
-            "starterLandFoundationDepthBlocks", logger
-        );
-
-        SanitizeContext ctx = new SanitizeContext(logger, this);
-        overworldBorder = SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal").sanitize(overworldBorder, ctx);
-        netherBorder = SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess").sanitize(netherBorder, ctx);
-        endBorder = SchemaSections.endBorder().sanitize(endBorder, ctx);
-        overworldExterior = SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true).sanitize(overworldExterior, ctx);
-        netherExterior = SchemaSections.exterior("netherExterior", c -> c.netherBorder, false).sanitize(netherExterior, ctx);
-        strip = SchemaSections.strip().sanitize(strip, ctx);
-        layout = SchemaSections.layout().sanitize(layout, ctx);
-        spawn = SchemaSections.spawn("spawn").sanitize(spawn, ctx);
-        singleBiome = SchemaSections.singleBiome().sanitize(singleBiome, ctx);
-        chaosBiomes = SchemaSections.chaosBiomes().sanitize(chaosBiomes, ctx);
-        stripWorld = SchemaSections.stripWorld().sanitize(stripWorld, ctx);
-        oceanIsland = SchemaSections.oceanIsland().sanitize(oceanIsland, ctx);
-        skyIsland = SchemaSections.skyIsland().sanitize(skyIsland, ctx);
-        chunkIsland = SchemaSections.chunkIsland().sanitize(chunkIsland, ctx);
-        cave = SchemaSections.cave().sanitize(cave, ctx);
-        netherStart = SchemaSections.netherStart().sanitize(netherStart, ctx);
-        endStart = SchemaSections.endStart().sanitize(endStart, ctx);
-        flat = SchemaSections.flat().sanitize(flat, ctx);
-        deepFlat = SchemaSections.deepFlat().sanitize(deepFlat, ctx);
-        stacked = SchemaSections.stacked().sanitize(stacked, ctx);
-        foreverNight = SchemaSections.foreverNight().sanitize(foreverNight, ctx);
-        risingLava = SchemaSections.risingLava().sanitize(risingLava, ctx);
-        structureDistance = SchemaSections.structureDistance().sanitize(structureDistance, ctx);
-        return this;
+        return ROOT.sanitize(this, new SanitizeContext(logger, this));
     }
 
     static SingleBiomeConfig sanitizeSingleBiome(SingleBiomeConfig config, Logger logger) {
@@ -797,73 +647,11 @@ public final class WorldzConfig {
      * @return config summary
      */
     public String summary() {
-        return "allowedBiomes=" + allowedBiomes
-            + ", starterBiome=" + (starterBiome.isEmpty() ? "<none>" : starterBiome)
-            + ", starterRadiusBlocks=" + starterRadiusBlocks
-            + ", starterLand=" + (ensureStarterLand
-                ? "transition=" + starterLandTransitionBlocks + ", foundation=" + starterLandFoundationDepthBlocks
-                : "<disabled>")
-            + ", overworldBorder=" + SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal").summary(overworldBorder)
-            + ", netherBorder=" + SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess").summary(netherBorder)
-            + ", endBorder=" + SchemaSections.endBorder().summary(endBorder)
-            + ", overworldExterior=" + SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true).summary(overworldExterior)
-            + ", netherExterior=" + SchemaSections.exterior("netherExterior", c -> c.netherBorder, false).summary(netherExterior)
-            + ", strip=" + SchemaSections.strip().summary(strip)
-            + ", layout=" + SchemaSections.layout().summary(layout)
-            + ", spawn=" + SchemaSections.spawn("spawn").summary(spawn)
-            + ", singleBiome=" + SchemaSections.singleBiome().summary(singleBiome)
-            + ", chaosBiomes=" + SchemaSections.chaosBiomes().summary(chaosBiomes)
-            + ", stripWorld=" + SchemaSections.stripWorld().summary(stripWorld)
-            + ", oceanIsland=" + SchemaSections.oceanIsland().summary(oceanIsland)
-            + ", skyIsland=" + SchemaSections.skyIsland().summary(skyIsland)
-            + ", chunkIsland=" + SchemaSections.chunkIsland().summary(chunkIsland)
-            + ", cave=" + SchemaSections.cave().summary(cave)
-            + ", netherStart=" + SchemaSections.netherStart().summary(netherStart)
-            + ", endStart=" + SchemaSections.endStart().summary(endStart)
-            + ", flat=" + SchemaSections.flat().summary(flat)
-            + ", deepFlat=" + SchemaSections.deepFlat().summary(deepFlat)
-            + ", stacked=" + SchemaSections.stacked().summary(stacked)
-            + ", foreverNight=" + SchemaSections.foreverNight().summary(foreverNight)
-            + ", risingLava=" + SchemaSections.risingLava().summary(risingLava)
-            + ", structureDistance=" + SchemaSections.structureDistance().summary(structureDistance)
-            + ", allowRivers=" + allowRivers
-            + ", allowOceans=" + allowOceans;
+        return ROOT.summary(this);
     }
 
     String toYaml() {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("allowedBiomes", allowedBiomes);
-        values.put("starterBiome", starterBiome);
-        values.put("starterRadiusBlocks", starterRadiusBlocks);
-        values.put("ensureStarterLand", ensureStarterLand);
-        values.put("starterLandTransitionBlocks", starterLandTransitionBlocks);
-        values.put("starterLandFoundationDepthBlocks", starterLandFoundationDepthBlocks);
-        values.put("overworldBorder", SchemaSections.border("overworldBorder", "ensureEndPortal", "endPortal").toMap(overworldBorder));
-        values.put("netherBorder", SchemaSections.border("netherBorder", "ensureBlazeAccess", "blazeAccess").toMap(netherBorder));
-        values.put("endBorder", SchemaSections.endBorder().toMap(endBorder));
-        values.put("overworldExterior", SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true).toMap(overworldExterior));
-        values.put("netherExterior", SchemaSections.exterior("netherExterior", c -> c.netherBorder, false).toMap(netherExterior));
-        values.put("strip", SchemaSections.strip().toMap(strip));
-        values.put("layout", SchemaSections.layout().toMap(layout));
-        values.put("spawn", SchemaSections.spawn("spawn").toMap(spawn));
-        values.put("singleBiome", SchemaSections.singleBiome().toMap(singleBiome));
-        values.put("chaosBiomes", SchemaSections.chaosBiomes().toMap(chaosBiomes));
-        values.put("stripWorld", SchemaSections.stripWorld().toMap(stripWorld));
-        values.put("oceanIsland", SchemaSections.oceanIsland().toMap(oceanIsland));
-        values.put("skyIsland", SchemaSections.skyIsland().toMap(skyIsland));
-        values.put("chunkIsland", SchemaSections.chunkIsland().toMap(chunkIsland));
-        values.put("cave", SchemaSections.cave().toMap(cave));
-        values.put("netherStart", SchemaSections.netherStart().toMap(netherStart));
-        values.put("endStart", SchemaSections.endStart().toMap(endStart));
-        values.put("flat", SchemaSections.flat().toMap(flat));
-        values.put("deepFlat", SchemaSections.deepFlat().toMap(deepFlat));
-        values.put("stacked", SchemaSections.stacked().toMap(stacked));
-        values.put("foreverNight", SchemaSections.foreverNight().toMap(foreverNight));
-        values.put("risingLava", SchemaSections.risingLava().toMap(risingLava));
-        values.put("structureDistance", SchemaSections.structureDistance().toMap(structureDistance));
-        values.put("allowRivers", allowRivers);
-        values.put("allowOceans", allowOceans);
-        return createYaml().dump(values);
+        return createYaml().dump(ROOT.toMap(this));
     }
 
     private void save(Path configFile) throws IOException {

@@ -86,12 +86,15 @@ public record Setting<S, T>(
 
     /**
      * Starts building a nested-section setting. Sanitizing recurses into {@code section}'s own
-     * {@link SchemaSection#sanitize}, pre-installed as this setting's rule -- no further rule
+     * {@link SectionCodec#sanitize}, pre-installed as this setting's rule -- no further rule
      * configuration is needed for the common case (see the worked {@code CaveSchema} example,
-     * DESIGN §41.6).
+     * DESIGN §41.6). Accepts a {@link SectionCodec} rather than a {@link SchemaSection} directly:
+     * every already-converted section is a {@code SchemaSection} (which implements {@code
+     * SectionCodec}), but the root's own settings (TODO 25.2g) bind {@code SchemaSections}
+     * registry entries, whose declared return type is {@code SectionCodec}.
      */
     public static <S, C> PlainBuilder<S, C> section(
-        String key, Function<S, C> get, BiConsumer<S, C> set, SchemaSection<C> section
+        String key, Function<S, C> get, BiConsumer<S, C> set, SectionCodec<C> section
     ) {
         return new PlainBuilder<>(key, new Accessor<>(get, set), Codecs.section(section), new Rule.Nested<>(section));
     }

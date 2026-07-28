@@ -3830,7 +3830,7 @@ tests.
       worked example), `NetherStartSchema`, `EndStartSchema`. Proves the
       shared `chestTier` + three-kit shape that D6/25.8 collapses into named
       kits.
-- [ ] 25.2g The root (needs 25.2a-25.2f). `WorldzRootSchema`: the eight
+- [x] 25.2g The root (needs 25.2a-25.2f). `WorldzRootSchema`: the eight
       top-level scalars (`allowedBiomes`, `starterBiome` with its own warning
       wording — R6, `starterRadiusBlocks`, `ensureStarterLand`,
       `starterLandTransitionBlocks`, `starterLandFoundationDepthBlocks`,

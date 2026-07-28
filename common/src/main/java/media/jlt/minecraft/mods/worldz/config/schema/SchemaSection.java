@@ -74,11 +74,19 @@ public abstract class SchemaSection<S> implements SectionCodec<S> {
     }
 
     private <T> void readOne(S target, Setting<S, T> setting, Object raw, ParseContext scoped) {
-        String fullPath = path + "." + setting.key();
+        String fullPath = childPath(setting.key());
         ParseContext leaf = scoped.rescopedTo(fullPath);
         T value = setting.codec().read(raw, leaf);
         setting.accessor().set(target, value);
         leaf.markPresent(fullPath);
+    }
+
+    /** Builds a leaf setting's full dotted path, omitting the leading {@code "."} at the config
+     * root, whose own {@link #path()} is {@code ""} (TODO 25.2g's {@code WorldzRootSchema}). Every
+     * non-root section has a non-empty {@link #path()}, so this is behavior-identical to the
+     * unconditional {@code path + "." + key} it replaces for all 25 sections converted before now. */
+    private String childPath(String key) {
+        return path.isEmpty() ? key : path + "." + key;
     }
 
     @Override
@@ -92,7 +100,7 @@ public abstract class SchemaSection<S> implements SectionCodec<S> {
     }
 
     private <T> void sanitizeOne(S owner, Setting<S, T> setting, SanitizeContext ctx) {
-        String fullPath = path + "." + setting.key();
+        String fullPath = childPath(setting.key());
         T current = setting.accessor().get(owner);
         T sanitizedValue = setting.rule().apply(owner, current, fullPath, ctx);
         setting.accessor().set(owner, sanitizedValue);
