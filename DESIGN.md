@@ -6990,3 +6990,341 @@ Eight independently buildable, testable, committable steps; grouped so shared
 shapes are proven early and so the hardest sanitize logic lands while the
 framework can still bend. Detail and file lists in `TODO.md` Phase 25, tasks
 25.2a-25.2h.
+
+## 42. Config key restructure (D7/F1, TODO 25.6) — design pass
+
+25.2-25.5 built the schema layer *behind the existing key shape* and proved it
+byte-identical (§41.8). This section designs the other half of
+`CONFIG-RESTRUCTURE.md`'s §7 mitigation — "then restructure keys" — as the
+second of the two provable steps.
+
+**Hard constraint for 25.6: no POJO changes, no gameplay changes, no
+`*Customization`/codec changes.** Only YAML key *names and nesting* move, plus
+the warning strings and dotted presence paths derived from them. `logic/` and
+`client/` must not appear in any 25.6 diff (the one candidate exception, the
+`underground` pair, is isolated into its own sub-step — §42.7).
+
+### 42.1 F1's two tables re-verified against the current tree
+
+`CONFIG-RESTRUCTURE.md` F1 was measured at `989ade7`, against the flat-POJO
+implementation that 25.2 has since deleted. Re-verified here against
+`common/src/test/resources/config/reference-defaults.yaml` (the exact bytes
+`toYaml()` emits today) and the 26 `config/schema/*Schema.java` classes.
+
+**Within-class table (14 rows): 13 confirmed, 1 deferred.**
+
+All 14 flat field sets still exist with the same names and the same emit order,
+so all 14 nests are still buildable as described. The exception is row 12,
+`StripConfig` (`widthRadiusBlocks`, `widthMode`): F1 itself annotates it "see §5
+— width becomes absolute". **25.6 should not touch `strip:` at all.** Renaming
+`widthRadiusBlocks` → `widthRadius` in 25.6 and then → `width` with new
+semantics in 25.9 costs two fixture migrations of the same six strip configs and
+leaves a one-commit window where the key reads like an absolute width while
+still behaving as a radius. Log as a deviation from F1 and hand the whole
+`strip.width*` question to 25.9.
+
+**Cross-class table (4 rows): 2 confirmed, 2 materially wrong.**
+
+| Row | F1 claim | Current reality |
+|---|---|---|
+| `exclusionZone` | appears in `ChunkIsland`, `FloatingIslands`, `OceanIsland`, `SkyIsland` | **3 live, not 4.** `SkyIslandConfig.exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` are not `Setting`s at all — `SkyIslandSchema`'s own Javadoc records them as unread/unmapped, and `skyIslandSummary` renders their untouched constructor defaults. `config/tests/57-sky-island-biome-exclusion-zone.yaml:34-35` sets them and is silently ignored. Open question, TODO Deviation log 2026-07-27, still unanswered. |
+| `naturalBiomes` | `ChaosBiomes`, `SingleBiome`, `StripBands`, + top level (2 of 3) | Confirmed exactly, including the root's missing `allowBeaches`. The shared section must therefore be a **parameterized instance** (`includeBeaches`), the same mechanism `BorderSchema` uses for `objectiveKey` (§41.5, R1). |
+| `underground` | `Flat`, `SkyIsland` | **0 live, not 2.** Neither `FlatSchema` nor `SkyIslandSchema` declares the pair; both Javadocs record it as a pre-existing gap, `reference-defaults.yaml` has no `underground*` key anywhere, and `WorldzConfigTest` never mentions one. `README.md:527-528,952-953` documents them as real settings and `config/tests/97`/`98` exercise them — both silently ineffective. This is the same class of defect as the `skyIsland` exclusion zone, and it is what TODO 25.5's Deviation log deferred here. |
+| `chest` | `Cave`, `EndStart`, `NetherStart`, `SkyIsland` | Confirmed. `Cave` additionally carries `chestEnabled`, so the shared section is parameterized on whether an `enabled` leaf is present. |
+
+**Three shapes F1 missed**, all of which are exactly the defect F1 describes
+("properties under each main object often repeat parts of similar property
+names") and all of which are cheaper to fix now than in a later phase:
+
+| Owner | Flat today | Nests to |
+|---|---|---|
+| root (5 keys sharing a `starter` prefix) | `starterBiome`, `starterRadiusBlocks`, `ensureStarterLand`, `starterLandTransitionBlocks`, `starterLandFoundationDepthBlocks` | `starter: {biome, radius, land: {enabled, transition, foundationDepth}}` |
+| `SingleBiomeConfig`, `ChaosBiomesConfig` | `starterBiome`, `starterRadiusBlocks` | the same `starter: {biome, radius}` section, without `land` |
+| `DeepFlatConfig` | `riversEnabled`, `riverExclusionRadiusBlocks` | `rivers: {enabled, exclusionRadius}` |
+
+F1 missed the first two because its inventory walked the 26 config *classes* and
+the root's scalars belong to no class; it missed `DeepFlat` outright. The root's
+own `summary()` already folds three of those five into one `starterLand=`
+segment (`WorldzRootSchema:249-251`), which is direct evidence they are one
+object. Treat these as a documented **addition** to F1, not a rewrite of it.
+
+Net: **13 within-class nests + 3 cross-class shared shapes + 3 added shapes**,
+plus the §2 suffix sweep, and `strip`/`skyIsland.exclusionZone`/`underground`
+handled as noted.
+
+### 42.2 The mechanism: grouped keys without touching a single POJO
+
+The framework can already nest — `Setting.section(key, get, set, SectionCodec)`
+— but only when the nested YAML object corresponds to a nested *Java* object.
+Every nest in §42.1 is different: the sub-keys belong to fields that stay on the
+same flat POJO. `cave.sealedSurface.y` must still write `CaveConfig.sealedSurfaceY`,
+because `CavePlan`, `CaveCustomization` and `CaveCustomizeScreen` all read that
+field and none of them is in scope.
+
+**Rejected: introducing real nested POJOs** (`CaveConfig.sealedSurface` as a
+`SealedSurfaceConfig`). It is the obvious reading of "nest the keys", and it is
+wrong here: it drags every `logic/` plan, every `client/` screen and most of the
+existing unit tests into what is meant to be a rename, and it buys nothing —
+nothing outside `config/` cares how the YAML is shaped (F8).
+
+**Adopted: a group section — a `SchemaSection<S>` over the parent's *own* type.**
+A group declares settings whose accessors point at the parent's flat fields, and
+is bound into the parent by one new factory:
+
+```java
+// Setting.java — the only new public entry point
+public static <S> PlainBuilder<S, S> group(String key, SchemaSection<S> group) {
+    return new PlainBuilder<>(
+        key,
+        new Accessor<>(owner -> owner, group::copyInto),   // get: identity; set: copy the group's fields across
+        Codecs.section(group),
+        new Rule.Nested<>(group)
+    );
+}
+```
+
+```java
+// SchemaSection.java — the only new framework method (~6 lines)
+public final void copyInto(S from, S to) {
+    for (Setting<S, ?> setting : settings()) { copyOne(setting, from, to); }
+}
+private <T> void copyOne(Setting<S, T> setting, S from, S to) {
+    setting.accessor().set(to, setting.accessor().get(from));
+}
+```
+
+Everything else falls out of machinery that already exists, unchanged:
+
+| Operation | What happens | Why it is correct |
+|---|---|---|
+| `read` | `SchemaSection.readOne` calls `Codecs.section(group).read(subMap, ctx)`, which builds a *throwaway* `S` carrying only the group's fields, then the accessor's setter copies exactly those fields onto the real target. | Fields outside the group are untouched, because `copyInto` iterates only the group's own settings. |
+| presence (25.3) | The group's `path()` is `"cave.sealedSurface"`, so its leaves mark `cave.sealedSurface.y` automatically. | `SchemaSection.childPath` already builds this; no change. |
+| `sanitize` | `Rule.Nested(group).apply(owner, owner, …)` → `group.sanitize(owner, ctx)`, mutating in place. | `sanitize` already returns the same instance when non-null; the setter's `copyInto(owner, owner)` is a self-assign no-op. |
+| `toMap` | `Codecs.section(group).write(owner)` → `group.toMap(owner)`. | Emits the sub-map in the group's declaration order. |
+| warnings | `Rule.IntRange` etc. receive the group's dotted path. | `cave.sealedSurfaceY` → `cave.sealedSurface.y` in every clamp message — the intended change. |
+| `ConfigSchemaMetadataTest` | Recurses on `Rule.Nested` and calls `setting.accessor().get(value)`, which for a group returns the owner. | **The completeness gate works on groups with no test change at all.** |
+
+Two constraints on group authoring:
+
+1. A field may be declared **either** as a parent leaf **or** inside one group,
+   never both — otherwise it sanitizes twice. `ConfigSchemaMetadataTest`'s
+   duplicate-key assertion (`:53-54`) catches the YAML-visible half of this;
+   the double-sanitize half is caught by the golden file only when a clamp
+   actually fires, so review each converted section for it deliberately.
+2. Sections whose sanitize order is hand-written in `postValidate`
+   (`FloatingIslandsSchema`, `RisingLavaSchema`, `BorderSchema`) must keep those
+   clamps in `postValidate` and give the group's own settings `Rule.None`,
+   exactly as `FloatingIslandsSchema` already does for `lootKit` (`:112`). Only
+   the path string inside `postValidate` changes.
+
+Groups nest: `overworldBorder.resize.rate` is a group inside a group, and
+`starter.land` likewise. `copyInto` composes because an inner group's setting is
+itself an identity-accessor `Setting<S, S>`.
+
+### 42.3 The naming sweep (§2), as a complete old→new map
+
+The unit-suffix drop is not a separate activity — it is applied to each section
+in the same commit that nests it. §2's rule 3 ("keep a suffix when it *is* the
+meaning") plus a corollary: **only `Blocks` is dropped.** `Chunks`, `Days`, `Y`
+and `Chance` are either non-default units or axis names, so
+`cellSizeChunks`, `worldSizeChunks`, `resize.days`, `lockAfterDays`,
+`spawnDepthY`, `surfaceY`, `spawnChance` all keep their suffix.
+
+| Section | Old key | New key |
+|---|---|---|
+| root | `starterBiome` / `starterRadiusBlocks` | `starter.biome` / `starter.radius` |
+| root | `ensureStarterLand` / `starterLandTransitionBlocks` / `starterLandFoundationDepthBlocks` | `starter.land.enabled` / `.transition` / `.foundationDepth` |
+| root | `allowRivers` / `allowOceans` | `naturalBiomes.rivers` / `.oceans` |
+| `overworldBorder`, `netherBorder` | `initialRadiusBlocks` / `finalRadiusBlocks` | `initialRadius` / `finalRadius` |
+| " | `resizeDays` / `resizeDelayDays` / `resizeStyle` | `resize.days` / `resize.delayDays` / `resize.style` |
+| " | `resizeRateBlocks` / `resizeRateDays` | `resize.rate.blocks` / `resize.rate.days` |
+| `endBorder` | `minimumRadiusBlocks` | `minimumRadius` |
+| `*Exterior` | `boundaryRadiusBlocks` / `oceanTransitionWidthBlocks` | `boundaryRadius` / `oceanTransitionWidth` |
+| `layout` | `regionScaleBlocks` | `regionScale` |
+| `singleBiome` | `landBiome` | `biome` |
+| `singleBiome`, `chaosBiomes` | `starterBiome` / `starterRadiusBlocks` | `starter.biome` / `starter.radius` |
+| " | `allowRivers` / `allowOceans` / `allowBeaches` | `naturalBiomes.rivers` / `.oceans` / `.beaches` |
+| `chaosBiomes` | `regionScaleBlocks` | `regionScale` |
+| `stripWorld.bands` | `widthBlocks` | `width` |
+| " | `allowRivers` / `allowOceans` / `allowBeaches` | `naturalBiomes.*` |
+| `oceanIsland` | `islandSource` / `islandBiome` / `radiusBlocks` / `shapeAmplitude` | `island.source` / `island.biome` / `island.radius` / `island.shapeAmplitude` |
+| " | `shoreWidthBlocks` | `shoreWidth` |
+| " | `oceanShallowWidthBlocks` / `oceanDeepenWidthBlocks` / `oceanShallowDepthBlocks` / `oceanDeepDepthBlocks` / `oceanRegionScaleBlocks` | `ocean.shallowWidth` / `.deepenWidth` / `.shallowDepth` / `.deepDepth` / `.regionScale` |
+| " | `exclusionZoneEnabled` / `exclusionZoneRadiusBlocks` | `exclusionZone.enabled` / `exclusionZone.radius` |
+| `skyIsland` | `islandBiome` / `radiusBlocks` / `thicknessBlocks` | `biome` / `radius` / `thickness` |
+| " | `chestTier` / `easyKit` / `mediumKit` / `hardKit` | `chest.tier` / `chest.kits.easy` / `.medium` / `.hard` |
+| `skyIsland.floatingIslands` | `minRadiusBlocks` / `maxRadiusBlocks` | `radius.min` / `radius.max` |
+| " | `cellSizeBlocks` / `islandBiomes` | `cellSize` / `biomes` |
+| " | `exclusionZone*` | `exclusionZone.enabled` / `.radius` |
+| " | `oreDepositsEnabled` / `oreFeatureIds` | `oreDeposits.enabled` / `oreDeposits.featureIds` |
+| " | `lootChestEnabled` / `lootKit` | `lootChest.enabled` / `lootChest.kit` |
+| `chunkIsland` | `topOnly` / `topOnlyDepthBlocks` / `scatteredTopOnlyChance` | `topOnly.enabled` / `topOnly.depth` / `topOnly.scatteredChance` |
+| " | `exclusionZone*` | `exclusionZone.enabled` / `.radius` |
+| " | `applyToNether` / `applyToEnd` | `applyTo.nether` / `applyTo.end` |
+| `cave` | `spawnDepthY` | `spawnY` (per `CONFIG-RESTRUCTURE.md` §3's `cave.yaml` example, and matching `netherStart.spawnY`) |
+| " | `sealedSurface` / `sealedSurfaceY` / `sealedSurfaceBlock` / `sealedSurfaceThicknessBlocks` | `sealedSurface.enabled` / `.y` / `.block` / `.thickness` |
+| " | `cavernEnabled` / `cavernRadiusBlocks` / `cavernHeightBlocks` | `cavern.enabled` / `.radius` / `.height` |
+| " | `chestEnabled` / `chestTier` / three kits | `chest.enabled` / `chest.tier` / `chest.kits.{easy,medium,hard}` |
+| `netherStart`, `endStart` | `chestTier` / three kits | `chest.tier` / `chest.kits.*` |
+| `*.capsule` | `sizeBlocks` / `heightBlocks` | `size` / `height` |
+| " | `lightSource` / `lightSpacingBlocks` | `light.source` / `light.spacing` |
+| `deepFlat` | `riversEnabled` / `riverExclusionRadiusBlocks` | `rivers.enabled` / `rivers.exclusionRadius` |
+| `stacked` | `reliefBlocks` | `relief` |
+| `risingLava` | `rateBlocks` / `rateDays` | `rate.blocks` / `rate.days` |
+| `structureDistance` | `minDistanceBlocks` | `minDistance` |
+| `strip` | — | **unchanged; deferred to 25.9** (§42.1) |
+
+Two deliberate asymmetries, both from §2 rule 4 (let nesting disambiguate):
+
+- `oceanIsland` gets an `island:` group but `skyIsland` does not. Ocean island
+  needs it because it also owns an `ocean:` group; sky island's section name
+  already supplies the prefix, so `skyIsland.islandBiome` → `skyIsland.biome` is
+  the correct application of rule 1, not an inconsistency.
+- `chunkIsland` gets `applyTo: {nether, end}`; `strip` and `skyIsland` keep a
+  bare `applyToNether`, because a one-member group is noise.
+
+**Emit order changes** wherever a group's members are not already contiguous —
+`overworldBorder.resizeStyle` currently emits *after* `ensureEndPortal`
+(`reference-defaults.yaml:26-27`) and must join `resize:`; `oceanIsland.fluid`
+currently sits between `islandSource` and `islandBiome` and must move out of
+`island:`. This is legal: §41.1's ordering invariant is that *one list* drives
+both parse and emit, which stays true. Take the opportunity to move root's
+`naturalBiomes` up next to `starter` rather than leaving it stranded after
+`structureDistance`.
+
+### 42.4 Interaction with §41.10's R1-R14
+
+| Risk | How 25.6 touches it |
+|---|---|
+| **R1** (one POJO field, two YAML key names — `ensureObjective`) | The exact mechanism 25.6 needs three more times: `NaturalBiomesSchema(path, includeBeaches)` (root has no `beaches`), `ChestSchema(path, includeEnabled)` (only `cave` has `enabled`), `StarterSchema(path, includeLand)` (only the root has `land`). Parameterized instances, never singletons. |
+| **R2** (`ExteriorSchema`'s cross-section border read) | `ExteriorConfig`'s own keys only lose `Blocks`; the sibling it reads is a POJO field, not a key. No interaction beyond warning text. |
+| **R3** (odd-rounding before clamp, per-parent bounds) | `capsule.size` moves under a renamed key while keeping `Rule.of(OddRounding, IntRange)`. `StarterCapsuleSchema` is instantiated twice with different bounds; both instances must be renamed together or Nether/End diverge. |
+| **R4** (`FloatingIslandsSchema`'s advisory warnings and hand-ordered `postValidate`) | The most delicate section in 25.6: three groups (`radius`, `oreDeposits`, `lootChest`) plus `exclusionZone`, in a section whose sanitize order deliberately diverges from emit order. Keep every clamp in `postValidate`, give group leaves `Rule.None`, and change only the path strings at `:133,138,146,155,165,171,175`. |
+| **R5** (the one conditional clamp) | `cave.sealedSurfaceY`'s `.when(c -> c.sealedSurface)` predicate reads a POJO field, so it survives the nest verbatim; only the key and the warning path change. |
+| **R6/R7** (per-call-site warning wording, double warnings) | Every `Rule.BiomeId`/`BiomeIdOrDefault`/`BlankFallback` in `OceanIslandSchema`, `SkyIslandSchema` and `SingleBiomeSchema` interpolates `path()` into its message at construction time. Renaming `singleBiome.landBiome` → `singleBiome.biome` silently changes user-visible warning text; that is intended, but the assertions in `WorldzConfigTest` must move with it. |
+| **R8** (numeric widening in `write`) | Untouched — codecs are unchanged. The golden file still guards it. |
+| **R12** (`SpawnSchema` collapsed four duplicates) | `spawn: {strategy}` is a single-key section appearing at root, `singleBiome`, `chaosBiomes` and `stripWorld`. Do **not** flatten it back to a scalar as part of "reduce nesting"; the four instances are the 25.2a fix and must stay identical. |
+| **R13** (the 96-line `summary()` assertion) | 25.6 is the first task allowed to change it. Summary labels derive from keys by default, so `.label(...)` overrides and the five hand-written `summary()` bodies must be re-read per section. **Change it deliberately, one section per commit**, never by bulk-accepting a new expected string. |
+| **R14** (`unknownKeysAreTolerated`) | Now actively harmful: silently-ignored unknown keys are why `config/tests/57`, `97` and `98` have been dead without anyone noticing. See §42.5. |
+
+### 42.5 The 25.11 coupling, and the gate that does not exist yet
+
+TODO 25.11 says the 104 fixtures "must land with 25.6/25.7 or the suite breaks."
+**That is not true today, and that is the problem.** `ConfigSchemaDifferentialTest`
+— the only thing that ever loaded `config/tests/*.yaml` — was deleted at 25.2h.
+Nothing under `common/src/test` references the directory any more, and
+`SchemaSection.read` ignores unknown keys by design (`:71`). A fixture that
+still says `cave.sealedSurfaceY` after the rename will therefore **parse
+cleanly, build green, and silently generate a default world** in Jason's manual
+test round. Three fixtures are already in exactly that state for unrelated
+reasons (57, 97, 98).
+
+So the first sub-step is not a rename at all:
+
+**`ConfigFixturesTest` (new, `common/src/test`, reads `../config/tests/*.yaml`):**
+
+1. every fixture parses and sanitizes without throwing;
+2. **every dotted key present in the file is declared by the schema** — walk the
+   YAML tree and the `WorldzRootSchema` tree in parallel and fail on any file
+   key with no declaring `Setting`. The walker is the one already in
+   `ConfigSchemaMetadataTest.collectKeys`, promoted to a shared test helper;
+3. the file count is asserted, so a fixture cannot be quietly dropped.
+
+With (2) in place, "did I migrate the fixtures?" becomes a build failure instead
+of a manual-test failure, and the 25.6/25.11 coupling is mechanically enforced
+for every later sub-step. It also converts the three known dead fixtures into
+red tests on day one — which is the right way to force §42.7's open question
+rather than discovering it in-game.
+
+Given that gate, the per-sub-step rule is simple and absolute:
+
+> **Every sub-step that moves a key migrates, in the same commit: the affected
+> `config/tests/*.yaml`, `config/jlt_worldz.example.yaml` (for the 13 sections
+> it covers), the assertions in `WorldzConfigTest`/`ConfigPresenceTest`, and the
+> regenerated `common/src/test/resources/config/reference-defaults.yaml`.**
+> Nothing is deferred to 25.11. What is left for 25.11 is only the prose:
+> `config/tests/README.md` and `MANUAL_TESTING.md`'s scenario tables.
+
+Three collateral files deserve naming:
+
+- **`reference-defaults.yaml`** must be regenerated in every key-moving commit
+  (`defaultConfigMatchesTheCapturedReference` is string equality). Its diff *is*
+  the sub-step's authoritative record of what moved — review it as such. §41.8
+  anticipated this ("what 25.6/25.7 will deliberately regenerate").
+- **`config/jlt_worldz.example.yaml`** is read by
+  `documentedExampleParsesToTheSameDefaultsAsCode` (`WorldzConfigTest:97`), so
+  it is build-coupled, not documentation. It covers only 13 sections (F6).
+- **`README.md`'s 139 setting rows** are not build-coupled. 25.10 regenerates
+  them from the schema. Do a *mechanical key-name replacement only* for the
+  sections each sub-step touches — enough that the tree is never self-
+  contradictory, without pre-empting 25.10's renderer.
+
+### 42.6 Sub-step sequence
+
+Eight steps, following 25.2a-h's discipline: each builds green, each is
+committable, each carries its own fixture migration. Sequenced so the gate
+exists before anything moves, then by **fixture disjointness** — each fixture
+file is edited exactly once — rather than by shape, so that a shared shape's
+schema class is simply introduced by whichever sub-step needs it first.
+
+| Step | Scope | Fixtures |
+|---|---|---|
+| **a** | Framework only: `Setting.group`, `SchemaSection.copyInto`, `ConfigFixturesTest` (unknown-key gate), shared key-walker helper. No key moves. | none moved; 57/97/98 turn red and are resolved per §42.7 |
+| **b** | Root + generic-preset sections: `starter`(+`land`), `naturalBiomes`, `layout.regionScale`, `singleBiome`, `chaosBiomes`, `stripWorld.bands`. Introduces `StarterSchema`, `NaturalBiomesSchema`. | 01-19, 29, 29a, 85 |
+| **c** | Borders, exteriors, hazards: `resize`(+`rate`), `initialRadius`/`finalRadius`, `minimumRadius`, `boundaryRadius`/`oceanTransitionWidth`, `risingLava.rate`, `structureDistance.minDistance`. `strip` untouched. | 13, 20-25, 79-85 |
+| **d** | Islands: `oceanIsland` (`island`, `ocean`, `exclusionZone`), `skyIsland` (prefix drop, `chest`), `floatingIslands` (`radius`, `oreDeposits`, `lootChest`, `exclusionZone`), `chunkIsland` (`topOnly`, `applyTo`, `exclusionZone`). Introduces `ExclusionZoneSchema`, `ChestSchema`. | 30-52, 57, 58, 83 |
+| **e** | Underground/capsule presets: `cave` (`spawnY`, `sealedSurface`, `cavern`, `chest`), `netherStart`, `endStart`, `capsule` (`size`/`height`/`light`). Reuses `ChestSchema`; R3's two parameterized capsule instances. | 53-56, 59-65, 86-93 |
+| **f** | Flat family: `deepFlat.rivers`, `stacked.relief`, `flat` suffix drops. | 66-78, 94-96, 99-101 |
+| **g** | The `underground` shared shape — wire `flat`/`skyIsland`'s dead pair into the schema as `underground: {biome, belowSurface}`. **Behavior-affecting; gated on §42.7's answer**; separate commit, separately [Jason]-testable, and it is what makes 97/98 mean what they claim. | 97, 98 |
+| **h** | Close-out: full `README.md` key pass, `config/jlt_worldz.example.yaml` final review, `ConfigSchemaMetadataTest` tightened (assert no leaf key ends in `Blocks`), Deviation-log entries for `strip` and for F1's corrections. | none |
+
+**Dependencies.** `a` blocks everything. `b`-`f` are mutually independent once
+`a` lands and could be done in any order or in parallel by separate workers —
+they touch disjoint schema classes and disjoint fixtures. The only sequencing
+constraints are that `d` must precede `e` (it introduces `ChestSchema`) and that
+`h` runs last. `g` needs `d` and `f` (both sections must already be renamed) and
+Jason's answer. In practice, run `b` first regardless: it exercises `Setting
+.group` on the simplest shapes (`starter`, `naturalBiomes` — flat scalars, no
+`postValidate`, no summary overrides) and would surface a framework error before
+`d`'s four-group sections depend on it.
+
+**Per-step checklist**, applied identically to `b`-`g`:
+
+1. rename/nest in the section's `*Schema.java` (and any shared shape class);
+2. update `postValidate` path strings and `summary()`/`label()` overrides;
+3. regenerate `reference-defaults.yaml`;
+4. migrate that section's `config/tests/*.yaml`;
+5. migrate `config/jlt_worldz.example.yaml` if it covers the section;
+6. update `WorldzConfigTest` (233 occurrences of affected identifiers across the
+   whole file) and `ConfigPresenceTest` (`cave.easyKit.essentials` →
+   `cave.chest.kits.easy.essentials`);
+7. mechanical `README.md` key replacement for that section;
+8. `./gradlew build`, commit.
+
+### 42.7 Open question for Jason
+
+`CONFIG-RESTRUCTURE.md`'s D1-D10 answer everything about *how* to rename. They
+do not answer one thing that 25.6 cannot avoid, because the unknown-key gate in
+step `a` makes it a build failure rather than a choice:
+
+> **Three shipped test configs set keys the mod has never read.**
+> `57-sky-island-biome-exclusion-zone.yaml` sets
+> `skyIsland.exclusionZoneEnabled/RadiusBlocks`; `97-flat-underground-biome-band.yaml`
+> and `98-sky-island-underground-biome-band.yaml` set
+> `flat`/`skyIsland`'s `undergroundBiome`/`undergroundBelowSurfaceBlocks`.
+> All five keys are documented in `README.md` as real settings and all five are
+> silently ignored by the parse layer. **Wire them up as part of 25.6 (a small,
+> isolated behavior change beyond D9, and the only way configs 57/97/98 test
+> what they claim), or delete the keys from the fixtures and the README and
+> treat the Customize screen as the only supported path?**
+
+Recommendation: **wire them**, in sub-step `g` for `underground` and in `d` for
+`skyIsland.exclusionZone`, each as its own commit so Jason can accept or revert
+them independently of the rename. The alternative leaves GOAL 42's config-only
+path permanently dead while the README says otherwise. This supersedes the two
+already-open flags (TODO Deviation log, 2026-07-27 and 2026-07-28) — answering
+it once closes both.
+
+No other genuine question. Everything else in this section — group mechanism,
+naming asymmetries, `strip` deferral, F1's three missing shapes — is an
+engineering call already determined by D1/D7/§2 and recorded above.

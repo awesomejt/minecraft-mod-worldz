@@ -1058,10 +1058,69 @@ tests.
       99/101 only mention it in prose comments.** All 4 cleaned up (73/74:
       comment reworded, key deleted; 75/76: intro prose updated to describe
       the new mechanism, key deleted). `./gradlew :common:test` green.
-- [ ] 25.6 Restructure the keys (D7) per CONFIG-RESTRUCTURE.md F1's two tables
-      — 14 within-class nests plus 4 cross-class shared shapes
-      (`exclusionZone`, `naturalBiomes`, `underground`, `chest`), with unit
-      suffixes dropped per the §2 naming rule.
+- [ ] 25.6 Restructure the keys (D7) per CONFIG-RESTRUCTURE.md F1's two tables,
+      as corrected by DESIGN §42.1 — 13 within-class nests (strip deferred to
+      25.9), 3 live cross-class shapes (`exclusionZone`, `naturalBiomes`,
+      `chest`) plus 3 shapes F1 missed (`starter`, `starter.land`,
+      `deepFlat.rivers`), with `Blocks` suffixes dropped per the §2 naming
+      rule. Design and full old→new key map in **DESIGN §42**. Broken into
+      25.6a-25.6h below, each independently buildable/testable/committable.
+      **No POJO, `logic/` or `client/` changes** — nesting is done with
+      `Setting.group` over the parent's own type (§42.2).
+- [ ] 25.6a Framework + the fixture gate. Add `Setting.group(key,
+      SchemaSection<S>)` and `SchemaSection.copyInto` (§42.2). Add
+      `ConfigFixturesTest`: every `config/tests/*.yaml` parses+sanitizes, the
+      file count is asserted, and **every dotted key in the file is declared by
+      the schema** (promote `ConfigSchemaMetadataTest.collectKeys` to a shared
+      helper). **This gate is what makes 25.11's "must land together" real** —
+      `ConfigSchemaDifferentialTest` was deleted at 25.2h and nothing reads
+      `config/tests/` today, so a stale fixture currently builds green and
+      fails only in-game. No keys move. Expect configs 57/97/98 to go red —
+      resolve per 25.6g / Questions for Jason.
+- [ ] 25.6b Root + generic-preset sections (needs 25.6a). `starter: {biome,
+      radius, land: {enabled, transition, foundationDepth}}` and
+      `naturalBiomes: {rivers, oceans[, beaches]}` as parameterized shared
+      instances (DESIGN R1's mechanism); `layout.regionScale`;
+      `singleBiome` (`landBiome`→`biome`); `chaosBiomes`;
+      `stripWorld.bands.width`. Simplest group shapes first — proves the
+      framework before 25.6d's multi-group sections. Fixtures 01-19, 29, 29a, 85.
+- [ ] 25.6c Borders, exteriors, hazards (needs 25.6a). `resize: {days,
+      delayDays, style, rate: {blocks, days}}` (nested group; `resizeStyle`
+      joins the group, changing emit order — legal per §41.1),
+      `initialRadius`/`finalRadius`, `endBorder.minimumRadius`,
+      `*Exterior.boundaryRadius`/`oceanTransitionWidth`, `risingLava.rate`,
+      `structureDistance.minDistance`. `BorderSchema`/`RisingLavaSchema`
+      `postValidate` keep their clamps; only path strings change. `strip:`
+      untouched (deferred to 25.9 — log the F1 deviation). Fixtures 13, 20-25,
+      79-85.
+- [ ] 25.6d Islands (needs 25.6a). `oceanIsland` (`island`, `ocean`,
+      `exclusionZone`), `skyIsland` (prefix drop, `chest`), `floatingIslands`
+      (`radius`, `oreDeposits`, `lootChest`, `exclusionZone` — DESIGN R4: keep
+      every clamp in `postValidate`, group leaves get `Rule.None`),
+      `chunkIsland` (`topOnly`+`scatteredChance`, `applyTo`, `exclusionZone`).
+      Introduces the shared `ExclusionZoneSchema` and `ChestSchema`
+      (parameterized on `enabled`). Fixtures 30-52, 57, 58, 83.
+- [ ] 25.6e Cave / Nether-start / End-start (needs 25.6d for `ChestSchema`).
+      `cave` (`spawnDepthY`→`spawnY` per CONFIG-RESTRUCTURE.md §3, `sealedSurface`
+      — DESIGN R5's conditional clamp survives verbatim —, `cavern`, `chest`
+      with `enabled`), `netherStart`, `endStart`, and `capsule` (`size`,
+      `height`, `light: {source, spacing}`) on **both** parameterized
+      `StarterCapsuleSchema` instances (DESIGN R3). Fixtures 53-56, 59-65, 86-93.
+- [ ] 25.6f Flat family (needs 25.6a). `deepFlat.rivers: {enabled,
+      exclusionRadius}` (an F1 miss), `stacked.relief`, `flat` suffix drops.
+      Fixtures 66-78, 94-96, 99-101.
+- [ ] 25.6g **[Jason-gated]** Wire the dead `underground` pair (needs 25.6d,
+      25.6f + the answer in Questions for Jason). `flat`/`skyIsland`'s
+      `undergroundBiome`/`undergroundBelowSurfaceBlocks` have never been read
+      by the parse layer despite README:527-528/952-953 and configs 97/98.
+      Declare them as `underground: {biome, belowSurface}` so those two configs
+      finally test what they claim. Behavior-affecting — separate commit,
+      separately revertable. Skip if Jason chooses "delete the keys instead".
+- [ ] 25.6h Close-out (needs 25.6b-25.6g). Full `README.md` key-name pass,
+      final `config/jlt_worldz.example.yaml` review, tighten
+      `ConfigSchemaMetadataTest` (no leaf key may end in `Blocks`), and log the
+      Deviation entries: `strip` width deferred to 25.9, and F1's four
+      corrections (§42.1).
 - [ ] 25.7 Split into `config/jlt_worldz/` (D2, D10). Biggest single win is
       moving the 11 generic-preset-only top-level keys (`allowedBiomes`,
       `starterBiome`, `layout`, `strip`, …) into `world-types/worldz.yaml`
@@ -1210,6 +1269,22 @@ tests.
 ## Questions for Jason (running list)
 
 (Add here when blocked; don't guess on gameplay/scope questions.)
+
+- **2026-07-28 — Phase 25.6: five documented settings the mod has never
+  read.** `skyIsland.exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` and
+  `flat`/`skyIsland`'s `undergroundBiome`/`undergroundBelowSurfaceBlocks` are
+  documented in README, set by `config/tests/57`, `97` and `98`, and silently
+  ignored by the parse layer (verified: no `Setting` declares them, no
+  `underground*` key exists in `reference-defaults.yaml`). 25.6a's new
+  unknown-key gate (`ConfigFixturesTest`) turns all three fixtures red the
+  moment it lands. **Wire them up as part of 25.6 (a small behavior change
+  beyond D9; the only way 57/97/98 test what they claim), or delete the keys
+  from the fixtures and README and treat the Customize screen as the only
+  supported path?** Recommendation: wire them, in isolated commits (25.6d for
+  `skyIsland.exclusionZone`, 25.6g for `underground`) so each can be accepted
+  or reverted independently of the rename. Supersedes the 2026-07-27 and
+  2026-07-28 Deviation-log flags on this same gap — one answer closes both.
+  DESIGN §42.7 has the full detail.
 
 - **2026-07-27 — Phase 25 config restructure: ALL TEN ANSWERED, same day.**
   Recorded as decisions D1–D10 in `CONFIG-RESTRUCTURE.md` §1 — that table is
