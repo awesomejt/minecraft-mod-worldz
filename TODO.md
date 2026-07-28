@@ -3826,7 +3826,7 @@ tests.
       bound, two advisory warnings — R4, overridden `summary`),
       `ChunkIslandSchema` (conditional summary segment). Proves the shared
       `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` pair 25.6 collapses.
-- [ ] 25.2f Chest/kit presets (needs 25.2a). `CaveSchema` (DESIGN §41.6's
+- [x] 25.2f Chest/kit presets (needs 25.2a). `CaveSchema` (DESIGN §41.6's
       worked example), `NetherStartSchema`, `EndStartSchema`. Proves the
       shared `chestTier` + three-kit shape that D6/25.8 collapses into named
       kits.

@@ -1,16 +1,19 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.config.BorderConfig;
+import media.jlt.minecraft.mods.worldz.config.CaveConfig;
 import media.jlt.minecraft.mods.worldz.config.ChaosBiomesConfig;
 import media.jlt.minecraft.mods.worldz.config.ChunkIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.DeepFlatConfig;
 import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
+import media.jlt.minecraft.mods.worldz.config.EndStartConfig;
 import media.jlt.minecraft.mods.worldz.config.ExteriorConfig;
 import media.jlt.minecraft.mods.worldz.config.FlatConfig;
 import media.jlt.minecraft.mods.worldz.config.FloatingIslandsConfig;
 import media.jlt.minecraft.mods.worldz.config.ForeverNightConfig;
 import media.jlt.minecraft.mods.worldz.config.LayoutConfig;
 import media.jlt.minecraft.mods.worldz.config.LegacySections;
+import media.jlt.minecraft.mods.worldz.config.NetherStartConfig;
 import media.jlt.minecraft.mods.worldz.config.OceanIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.RisingLavaConfig;
 import media.jlt.minecraft.mods.worldz.config.SchemaSections;
@@ -1448,6 +1451,161 @@ class ConfigSchemaDifferentialTest {
         assertEquals(DUMPER.dump(legacyCodec.toMap(legacyResult)), DUMPER.dump(schemaCodec.toMap(schemaResult)), label + ": toMap()");
         assertEquals(legacyCodec.summary(legacyResult), schemaCodec.summary(schemaResult), label + ": summary()");
         assertEquals(legacyLogger.warnings(), schemaLogger.warnings(), label + ": WARN lines");
+    }
+
+    // ---- TODO 25.2f: chest/kit-preset sections. All three (cave, netherStart, endStart) have
+    // zero-arg factory methods on both registries (like TODO 25.2b/d/e's leaf sections), so they
+    // reuse assertSectionIdentical/corpusFor. Adversarial fragments cover the shared chestTier +
+    // three-kit shape plus each section's own rules: cave's conditional sealedSurfaceY clamp and
+    // cavern bounds, and Nether-start/End-start's own StarterCapsuleSchema parameterization
+    // (capsule bounds/odd-rounding, forceCapsule toggling for Nether-start only). ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("caveCorpus")
+    void caveSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.cave(), SchemaSections.cave(), CaveConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> caveCorpus() throws IOException {
+        return corpusFor("cave");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("caveAdversarialFragments")
+    void caveSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(label, LegacySections.cave(), SchemaSections.cave(), CaveConfig::new, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> caveAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                spawnDepthY: -40
+                sealedSurface: true
+                sealedSurfaceY: 100
+                sealedSurfaceBlock: deepslate
+                sealedSurfaceThicknessBlocks: 10
+                cavernEnabled: true
+                cavernRadiusBlocks: 64
+                cavernHeightBlocks: 32
+                chestEnabled: true
+                chestTier: hard
+                easyKit:
+                  essentials: ["minecraft:torch:1"]
+                """),
+            Arguments.of(
+                "sealedSurfaceY below minimum is clamped up only when sealedSurface is enabled",
+                "sealedSurface: true\nsealedSurfaceY: -999"
+            ),
+            Arguments.of(
+                "sealedSurfaceY below minimum is ignored when sealedSurface is disabled",
+                "sealedSurface: false\nsealedSurfaceY: -999"
+            ),
+            Arguments.of("sealedSurfaceThicknessBlocks below minimum is clamped up", "sealedSurfaceThicknessBlocks: 0"),
+            Arguments.of("sealedSurfaceThicknessBlocks above maximum is clamped down", "sealedSurfaceThicknessBlocks: 9999"),
+            Arguments.of(
+                "cavernRadiusBlocks and cavernHeightBlocks below minimum are clamped up together",
+                "cavernRadiusBlocks: 1\ncavernHeightBlocks: 1"
+            ),
+            Arguments.of(
+                "cavernRadiusBlocks and cavernHeightBlocks above maximum are clamped down together",
+                "cavernRadiusBlocks: 9999999\ncavernHeightBlocks: 9999999"
+            ),
+            Arguments.of("invalid sealedSurfaceBlock value", "sealedSurfaceBlock: not-a-block"),
+            Arguments.of("invalid chestTier value", "chestTier: not-a-tier"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("netherStartCorpus")
+    void netherStartSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.netherStart(), SchemaSections.netherStart(), NetherStartConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> netherStartCorpus() throws IOException {
+        return corpusFor("netherStart");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("netherStartAdversarialFragments")
+    void netherStartSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.netherStart(), SchemaSections.netherStart(), NetherStartConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> netherStartAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                spawnY: 64
+                chestTier: hard
+                forceCapsule: true
+                easyKit:
+                  essentials: ["minecraft:bread:10"]
+                capsule:
+                  sizeBlocks: 7
+                  heightBlocks: 4
+                  lightSource: lantern
+                  lightSpacingBlocks: 3
+                """),
+            Arguments.of("spawnY below minimum is clamped up", "spawnY: -999"),
+            Arguments.of("spawnY above maximum is clamped down", "spawnY: 9999999"),
+            Arguments.of("forceCapsule toggled true, no other changes", "forceCapsule: true"),
+            Arguments.of("capsule sizeBlocks is odd-rounded, then within Nether-start bounds", "capsule:\n  sizeBlocks: 6"),
+            Arguments.of("capsule sizeBlocks clamped to Nether-start minimum", "capsule:\n  sizeBlocks: -5"),
+            Arguments.of("capsule sizeBlocks clamped to Nether-start maximum", "capsule:\n  sizeBlocks: 9999"),
+            Arguments.of("capsule heightBlocks below Nether-start minimum", "capsule:\n  heightBlocks: -50"),
+            Arguments.of("capsule heightBlocks above Nether-start maximum", "capsule:\n  heightBlocks: 999"),
+            Arguments.of("capsule lightSpacingBlocks at zero is clamped up", "capsule:\n  lightSpacingBlocks: 0"),
+            Arguments.of("invalid chestTier value", "chestTier: not-a-tier"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endStartCorpus")
+    void endStartSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.endStart(), SchemaSections.endStart(), EndStartConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> endStartCorpus() throws IOException {
+        return corpusFor("endStart");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endStartAdversarialFragments")
+    void endStartSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.endStart(), SchemaSections.endStart(), EndStartConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> endStartAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                chestTier: hard
+                easyKit:
+                  essentials: ["minecraft:firework_rocket:99"]
+                  extras: []
+                  extrasCount: 0
+                capsule:
+                  sizeBlocks: 7
+                  heightBlocks: 4
+                  lightSource: lantern
+                  lightSpacingBlocks: 3
+                """),
+            Arguments.of("capsule sizeBlocks is odd-rounded, then within End-start bounds", "capsule:\n  sizeBlocks: 6"),
+            Arguments.of("capsule sizeBlocks clamped to End-start minimum", "capsule:\n  sizeBlocks: -5"),
+            Arguments.of("capsule sizeBlocks clamped to End-start maximum", "capsule:\n  sizeBlocks: 9999"),
+            Arguments.of("capsule heightBlocks below End-start minimum", "capsule:\n  heightBlocks: -50"),
+            Arguments.of("capsule heightBlocks above End-start maximum", "capsule:\n  heightBlocks: 999"),
+            Arguments.of("capsule lightSpacingBlocks far above End-start maximum", "capsule:\n  lightSpacingBlocks: 9999"),
+            Arguments.of("invalid chestTier value", "chestTier: not-a-tier"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
     }
 
     // ---- error paths: a root-level non-mapping value must reject identically ----

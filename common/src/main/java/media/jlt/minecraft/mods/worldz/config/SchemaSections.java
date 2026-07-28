@@ -1,15 +1,18 @@
 package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.config.schema.BorderSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.CaveSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.ChaosBiomesSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.ChunkIslandSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.DeepFlatSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.EndBorderSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.EndStartSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.ExteriorSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.FlatSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.FloatingIslandsSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.ForeverNightSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.LayoutSchema;
+import media.jlt.minecraft.mods.worldz.config.schema.NetherStartSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.OceanIslandSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.RisingLavaSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.SectionCodec;
@@ -40,9 +43,11 @@ import media.jlt.minecraft.mods.worldz.config.schema.StructureDistanceSchema;
  * biome-list sections: {@link #layout}, {@link #singleBiome}, {@link #chaosBiomes}, {@link
  * #stripWorld} and {@link #stripBands}. TODO 25.2e converted the four island sections: {@link
  * #oceanIsland}, {@link #skyIsland} (nesting {@link #floatingIslands}) and {@link #chunkIsland}.
- * Everything else below still resolves to a {@link LegacySections} adapter -- present here so the
- * calling convention (and the differential test's "current mix") is already uniform, ready for
- * 25.2f onward to flip entries one at a time.
+ * TODO 25.2f converted the chest/kit-preset sections: {@link #cave}, {@link #netherStart} and
+ * {@link #endStart} -- the shared {@code chestTier} + three-kit shape, plus Nether-start/End-start's
+ * own {@link #starterCapsule}-nesting capsule config. Everything else below still resolves to a
+ * {@link LegacySections} adapter -- present here so the calling convention (and the differential
+ * test's "current mix") is already uniform, ready for 25.2g (the root) to flip the rest.
  */
 public final class SchemaSections {
     private SchemaSections() {
@@ -117,15 +122,15 @@ public final class SchemaSections {
     }
 
     public static SectionCodec<CaveConfig> cave() {
-        return LegacySections.cave();
+        return new CaveSchema("cave");
     }
 
     public static SectionCodec<NetherStartConfig> netherStart() {
-        return LegacySections.netherStart();
+        return new NetherStartSchema("netherStart");
     }
 
     public static SectionCodec<EndStartConfig> endStart() {
-        return LegacySections.endStart();
+        return new EndStartSchema("endStart");
     }
 
     public static SectionCodec<FlatConfig> flat() {
