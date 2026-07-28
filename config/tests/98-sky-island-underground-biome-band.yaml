@@ -9,12 +9,12 @@
 # 96 -- Customize would persist a hardcoded disabled band instead).
 #
 # `thickness: 6` (the default) means solid ground spans Y 58-63
-# (`surfaceY` 64 minus 6 blocks); `undergroundBelowSurfaceBlocks: 3`
+# (`surfaceY` 64 minus 6 blocks); `underground.belowSurface: 3`
 # (deliberately smaller than the default `10` used in config 97) puts
 # the boundary at Y 61, so the underground band -- Y 58-60, 3 blocks --
 # falls *within* the slab's own diggable ground rather than in the void
 # beneath it. See README's own note on this interaction: with the
-# default `undergroundBelowSurfaceBlocks: 10`, the band would start
+# default `underground.belowSurface: 10`, the band would start
 # below the slab entirely, in unreachable void.
 #
 # Steps once in-game:
@@ -29,5 +29,6 @@ skyIsland:
   radius: 16
   surfaceY: 64
   thickness: 6
-  undergroundBiome: minecraft:dripstone_caves
-  undergroundBelowSurfaceBlocks: 3
+  underground:
+    biome: minecraft:dripstone_caves
+    belowSurface: 3

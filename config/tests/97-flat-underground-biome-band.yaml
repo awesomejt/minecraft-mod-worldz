@@ -8,11 +8,11 @@
 # screen, DESIGN §37.3) -- select "Worldz: Flat" and click **Create
 # World directly**. Do NOT open Customize and click "Done": doing so
 # persists FlatCustomization's own hardcoded disabled band instead of
-# reading this file's `undergroundBiome`/`undergroundBelowSurfaceBlocks`,
+# reading this file's `underground.biome`/`underground.belowSurface`,
 # and the feature will silently appear to do nothing.
 #
 # Same 128-block default layer stack as config 66 (surface at Y 64).
-# `undergroundBelowSurfaceBlocks: 10` puts the boundary at Y 54
+# `underground.belowSurface: 10` puts the boundary at Y 54
 # (64 - 10): `minecraft:dripstone_caves` reported at Y 53 and below,
 # `minecraft:plains` from Y 54 up -- purely a biome-reporting change,
 # the layer stack still paints the exact same solid stone/dirt/grass
@@ -36,8 +36,9 @@ flat:
     - "minecraft:dirt:3"
     - "minecraft:grass_block:1"
   biome: minecraft:plains
-  undergroundBiome: minecraft:dripstone_caves
-  undergroundBelowSurfaceBlocks: 10
+  underground:
+    biome: minecraft:dripstone_caves
+    belowSurface: 10
 overworldBorder:
   enabled: false
   ensureEndPortal: true

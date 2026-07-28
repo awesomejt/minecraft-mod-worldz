@@ -184,6 +184,9 @@ skyIsland:
   exclusionZone:
     enabled: true
     radius: 128
+  underground:
+    biome: ''
+    belowSurface: 10
   floatingIslands:
     enabled: false
     radius:
@@ -381,6 +384,9 @@ flat:
   structureOverrides:
   - minecraft:villages
   - minecraft:strongholds
+  underground:
+    biome: ''
+    belowSurface: 10
 deepFlat:
   surfaceY: 64
   capLayers:

@@ -2,6 +2,7 @@ package media.jlt.minecraft.mods.worldz.config;
 
 import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.DeepFlatPlan;
+import media.jlt.minecraft.mods.worldz.logic.FlatPlan;
 import media.jlt.minecraft.mods.worldz.logic.EndStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
@@ -681,6 +682,7 @@ class WorldzConfigTest {
                 + " extrasCount=1"
                 + ", applyToNether=false"
                 + ", exclusionZone=radius=128"
+                + ", underground=biome=<none>, belowSurface=10"
                 + ", floatingIslands=<disabled>"
                 + ", chunkIsland=<disabled>"
                 + ", cave=spawnY=-32, sealedSurface=enabled=false, y=128, block=stone, thickness=5"
@@ -717,6 +719,7 @@ class WorldzConfigTest {
                 + ", flat=layers=[minecraft:bedrock:1, minecraft:stone:123, minecraft:dirt:3, minecraft:grass_block:1],"
                 + " biome=minecraft:plains, decoration=false,"
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
+                + ", underground=biome=<none>, belowSurface=10"
                 + ", deepFlat=surfaceY=64, capLayers=[minecraft:dirt:3, minecraft:grass_block:1],"
                 + " rivers=enabled=true, exclusionRadius=512"
                 + ", stacked=layers=[minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30,"
@@ -1215,6 +1218,46 @@ class WorldzConfigTest {
         assertEquals(1, tooSmall.skyIsland.exclusionZoneRadiusBlocks);
     }
 
+    /**
+     * TODO 25.6g: {@code skyIsland.undergroundBiome}/{@code undergroundBelowSurfaceBlocks} were
+     * real {@link SkyIslandConfig} fields, read directly by {@link SkyIslandPlan#fromConfig}, but
+     * never wired into read/sanitize at all before this task -- {@code
+     * config/tests/98-sky-island-underground-biome-band.yaml}'s values were silently ignored. This
+     * is the regression test that would have caught that gap, confirming the wire-up actually
+     * threads a non-default value through, not merely that the key is recognized.
+     */
+    @Test
+    void skyIslandUndergroundLoadsAndSanitizesIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              underground:
+                biome: minecraft:dripstone_caves
+                belowSurface: 3
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:dripstone_caves", config.skyIsland.undergroundBiome);
+        assertEquals(3, config.skyIsland.undergroundBelowSurfaceBlocks);
+    }
+
+    @Test
+    void skyIslandUndergroundDefaultsToDisabled() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals("", config.skyIsland.undergroundBiome);
+        assertEquals(10, config.skyIsland.undergroundBelowSurfaceBlocks);
+    }
+
+    @Test
+    void skyIslandUndergroundBelowSurfaceIsFlooredAtZero() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              underground:
+                belowSurface: -5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.skyIsland.undergroundBelowSurfaceBlocks);
+    }
+
     @Test
     void caveSettingsLoadAndSanitizeIndependently() {
         WorldzConfig config = WorldzConfig.parse("""
@@ -1505,6 +1548,57 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertFalse(config.flat.layers.isEmpty());
+    }
+
+    /**
+     * TODO 25.6g: {@code flat.undergroundBiome}/{@code undergroundBelowSurfaceBlocks} were real
+     * {@link FlatConfig} fields, read directly by {@link FlatPlan#fromConfig}, but never wired into
+     * read/sanitize at all before this task -- {@code
+     * config/tests/97-flat-underground-biome-band.yaml}'s values were silently ignored. This is the
+     * regression test that would have caught that gap, confirming the wire-up actually threads a
+     * non-default value through, not merely that the key is recognized.
+     */
+    @Test
+    void flatUndergroundLoadsAndSanitizesIndependently() {
+        WorldzConfig config = WorldzConfig.parse("""
+            flat:
+              underground:
+                biome: minecraft:dripstone_caves
+                belowSurface: 15
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("minecraft:dripstone_caves", config.flat.undergroundBiome);
+        assertEquals(15, config.flat.undergroundBelowSurfaceBlocks);
+    }
+
+    @Test
+    void flatUndergroundDefaultsToDisabled() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+
+        assertEquals("", config.flat.undergroundBiome);
+        assertEquals(10, config.flat.undergroundBelowSurfaceBlocks);
+    }
+
+    @Test
+    void flatUndergroundBelowSurfaceIsFlooredAtZero() {
+        WorldzConfig config = WorldzConfig.parse("""
+            flat:
+              underground:
+                belowSurface: -5
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(0, config.flat.undergroundBelowSurfaceBlocks);
+    }
+
+    @Test
+    void flatUndergroundInvalidBiomeIsIgnoredRatherThanFailing() {
+        WorldzConfig config = WorldzConfig.parse("""
+            flat:
+              underground:
+                biome: '#minecraft:is_overworld'
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals("", config.flat.undergroundBiome);
     }
 
     @Test

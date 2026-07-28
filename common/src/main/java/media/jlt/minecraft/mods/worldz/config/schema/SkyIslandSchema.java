@@ -18,11 +18,12 @@ import java.util.List;
  * {@code applyToNether} stays a bare key rather than a one-member {@code applyTo:} group, matching
  * {@code strip.applyToNether}'s own precedent.
  *
- * <p>One field remains a pre-existing, unwired gap, carried over unchanged (nothing moves), the
- * same shape {@link FlatSchema} documents for {@code FlatConfig}: {@code undergroundBiome}/{@code
- * undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3) are entirely unread, unmapped and
- * unsummarized -- read directly by {@code SkyIslandCustomization} from the Customize screen instead,
- * never through this config path. Left for TODO 25.6g.
+ * <p><strong>{@code underground} is a real, working group as of TODO 25.6g</strong>, the same shared
+ * {@link UndergroundSchema} {@link FlatSchema} now also uses: {@code undergroundBiome}/{@code
+ * undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3) previously existed on {@link
+ * SkyIslandConfig} but were entirely unread, unmapped and unsummarized by this schema -- {@code
+ * config/tests/98}'s values were silently ignored, read directly by {@code SkyIslandCustomization}
+ * from the Customize screen instead (which always disables the band). Now wired for real.
  *
  * <p><strong>{@code exclusionZone} is a real, working group as of TODO 25.6d</strong> (DESIGN
  * §42.1/§42.7's answered open question), not the pre-25.6d dead pair: {@code
@@ -39,6 +40,7 @@ import java.util.List;
 public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
     private final ChestSchema<SkyIslandConfig> chest;
     private final ExclusionZoneSchema<SkyIslandConfig> exclusionZone;
+    private final UndergroundSchema<SkyIslandConfig> underground;
     private final FloatingIslandsSchema floatingIslandsSchema;
 
     public SkyIslandSchema(String path) {
@@ -55,6 +57,11 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
             new Accessor<>(c -> c.exclusionZoneEnabled, (c, v) -> c.exclusionZoneEnabled = v),
             new Accessor<>(c -> c.exclusionZoneRadiusBlocks, (c, v) -> c.exclusionZoneRadiusBlocks = v),
             1, Integer.MAX_VALUE
+        );
+        this.underground = new UndergroundSchema<>(
+            path() + ".underground", SkyIslandConfig::new,
+            new Accessor<>(c -> c.undergroundBiome, (c, v) -> c.undergroundBiome = v),
+            new Accessor<>(c -> c.undergroundBelowSurfaceBlocks, (c, v) -> c.undergroundBelowSurfaceBlocks = v)
         );
         this.floatingIslandsSchema = new FloatingIslandsSchema(path() + ".floatingIslands");
     }
@@ -100,6 +107,10 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
             Setting.group("exclusionZone", exclusionZone)
                 .render(exclusionZone::summary)
                 .doc("Whether/where the starter island's own biome-pinning buffer releases to the seed's own biomes.")
+                .build(),
+            Setting.group("underground", underground)
+                .render(underground::summary)
+                .doc("Synthetic underground-biome band a configured number of blocks below surfaceY; config-only for now.")
                 .build(),
             Setting.<SkyIslandConfig, FloatingIslandsConfig>section(
                     "floatingIslands", c -> c.floatingIslands, (c, v) -> c.floatingIslands = v, floatingIslandsSchema

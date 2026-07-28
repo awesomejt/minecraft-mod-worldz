@@ -3187,3 +3187,49 @@ Durable decisions, verified API notes, and rationale that should survive across 
   that the TODO line's fixture list is a floor, not a ceiling, and that
   stale comments in *other* sections' fixtures can surface during the same
   grep sweep.
+- 2026-07-28 — **Phase 25.6g (the `underground` shared shape) executed —
+  settled, shipped decision.** Jason confirmed (2026-07-28, same day as
+  the original "five documented settings the mod has never read" question):
+  wire `flat`/`skyIsland`'s dead `undergroundBiome`/`undergroundBelowSurfaceBlocks`
+  pair up for real rather than deleting the keys/README docs — the last of
+  the three DESIGN §42.7 gaps (57 at 25.6d, 97/98 here), closing that open
+  question out completely. New `UndergroundSchema<S>` (`biome`/
+  `belowSurface`), reused unmodified at both `FlatSchema` and
+  `SkyIslandSchema` — unlike `ExclusionZoneSchema`/`ChestSchema` (both
+  parameterized on a per-site bound/leaf difference), this one needed no
+  such parameter: both owners share one identical shape and one identical
+  bound, so `UndergroundSchema<S>` only ever varies in `S` and the two
+  `Accessor`s passed to its constructor.
+  **`biome` follows `StarterSchema`'s "blank means disabled" shape, not
+  `oceanIsland`/`skyIsland.biome`'s "blank falls back to a default" shape**:
+  `Rule.BiomeId(allowEmpty=true, () -> "", …)`, not `BiomeIdOrDefault`. The
+  distinction matters here specifically because an empty `undergroundBiome`
+  is DESIGN §37.3's own documented "band disabled" state, not an error —
+  the same reasoning `StarterSchema.biome` (an optional starter-zone
+  override) already uses, and a different call than `skyIsland.biome`/
+  `oceanIsland.islandBiome` (which must always resolve to a concrete biome
+  because the shape has no "disabled" state at all).
+  **No `logic:` change needed, confirmed by reading first rather than
+  assuming**: `FlatPlan.fromConfig`/`SkyIslandPlan.fromConfig` already read
+  `config.undergroundBiome`/`undergroundBelowSurfaceBlocks` unconditionally
+  — they were only ever handed the untouched constructor defaults (`""`,
+  `10`) before this task because nothing upstream had ever parsed a real
+  value onto those fields. Once the schema populates them for real, the
+  existing read path needs zero changes — the exact "report whether logic/
+  needed touching" question this task was scoped to answer, answered no.
+  `belowSurface` floors at `0` (`range(0, Integer.MAX_VALUE)`) — the one
+  real invariant either `Plan` record enforces (both reject negative in
+  their compact constructors) — with no invented upper bound, since neither
+  the `Plan` records nor any Customize-screen control (still config-only)
+  impose one today.
+  Fixtures 97/98 migrated to `underground: {biome, belowSurface}` and
+  removed from `ConfigFixturesTest.KNOWN_UNKNOWN_KEYS`, which is now
+  `Map.of()` (empty) for the first time since the gate was introduced at
+  25.6a — all three originally-flagged gaps (57, 97, 98) are now resolved.
+  7 new `WorldzConfigTest` regression cases confirm non-default values
+  thread through to the POJO fields, not just that the keys parse — same
+  discipline as 25.6d's exclusionZone tests. `reference-defaults.yaml`/R13's
+  summary assertion updated using 25.6e's own scratch-dump workflow (temp
+  `Files.writeString` in the test, run once via `--tests`, diff, revert) —
+  confirmed the diff was exactly the two new `underground:` blocks, nothing
+  else moved.

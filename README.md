@@ -534,6 +534,9 @@ skyIsland:
   exclusionZone:
     enabled: true
     radius: 128
+  underground:
+    biome: ''
+    belowSurface: 10
 ```
 
 | Setting | Default | Description |
@@ -547,8 +550,8 @@ skyIsland:
 | `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
 | `chest.kits.easy`/`.medium`/`.hard` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
 | `exclusionZone.enabled`/`.radius` | `true`/`128` | Whether/how wide a buffer beyond the island's own edge keeps reporting `biome` before the real seed's own biome takes over — a purely cosmetic/F3 distinction; the terrain itself stays void either way. |
-| `undergroundBiome` | `""` (disabled) | Biome reported at/below `undergroundBelowSurfaceBlocks` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical field. Blank disables the band entirely. Note the interaction with `thickness`: with the defaults (`thickness: 6`, `undergroundBelowSurfaceBlocks: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `undergroundBelowSurfaceBlocks` smaller than `thickness`. Config-only for now (not yet on the Customize screen). |
-| `undergroundBelowSurfaceBlocks` | `10` | How many blocks below `surfaceY` the underground band starts. Only takes effect when `undergroundBiome` is also set; `0` disables the band even with a biome configured. |
+| `underground.biome` | `""` (disabled) | Biome reported at/below `underground.belowSurface` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical setting. Blank disables the band entirely. Note the interaction with `thickness`: with the defaults (`thickness: 6`, `underground.belowSurface: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `underground.belowSurface` smaller than `thickness`. Config-only for now (not yet on the Customize screen). |
+| `underground.belowSurface` | `10` | How many blocks below `surfaceY` the underground band starts. Only takes effect when `underground.biome` is also set; `0` disables the band even with a biome configured. |
 
 ### Floating resource islands (GOALS 07-08)
 
@@ -978,6 +981,9 @@ flat:
   structureOverrides:
     - "minecraft:villages"
     - "minecraft:strongholds"
+  underground:
+    biome: ''
+    belowSurface: 10
 ```
 
 | Setting | Default | Description |
@@ -986,8 +992,8 @@ flat:
 | `biome` | `minecraft:plains` | The single biome reported everywhere. |
 | `decoration` | `false` | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs, matching vanilla flat's own all-or-nothing `features` flag. Structures are unaffected either way (0.3.7 fix, see below) — this only ever toggled tree/flower/ore-vein placement. |
 | `structureOverrides` | `["minecraft:villages", "minecraft:strongholds"]` | Structure sets eligible to place; empty means every registered set is eligible, matching vanilla's own default. |
-| `undergroundBiome` | `""` (disabled) | Biome reported at/below `undergroundBelowSurfaceBlocks` blocks under the surface (GOAL 42) — a single fixed biome, not sampled variety, matching `biome`'s own single-fixed-value design. Blank disables the band entirely; `biome` is then reported at every depth, unchanged from before this field existed. Config-only for now (not yet on the Customize screen). |
-| `undergroundBelowSurfaceBlocks` | `10` | How many blocks below the flat surface the underground band starts. Only takes effect when `undergroundBiome` is also set; `0` disables the band even with a biome configured. |
+| `underground.biome` | `""` (disabled) | Biome reported at/below `underground.belowSurface` blocks under the surface (GOAL 42) — a single fixed biome, not sampled variety, matching `biome`'s own single-fixed-value design. Blank disables the band entirely; `biome` is then reported at every depth, unchanged from before this setting existed. Config-only for now (not yet on the Customize screen). |
+| `underground.belowSurface` | `10` | How many blocks below the flat surface the underground band starts. Only takes effect when `underground.biome` is also set; `0` disables the band even with a biome configured. |
 
 **Bug fixed (0.3.7):** `decoration: false` (the default) used to silently skip real structure
 placement too, not just ordinary biome decoration — a village or stronghold's *site* would still
@@ -1031,7 +1037,7 @@ entirely below the Y-40 cutoff, and only reachable by digging down to it.
 See `config/tests/94-flat-slime-cavity.yaml` for a ready-to-use example.
 
 **Underground biome band (GOAL 42)**: a related but separate idea —
-`undergroundBiome`/`undergroundBelowSurfaceBlocks` report a *different*
+`underground.biome`/`underground.belowSurface` report a *different*
 biome below a configured depth, rather than carving a physical cavity into
 the layer stack at all. Useful for biome-gated content (e.g. structures or
 mob spawns that only apply underground) without needing an air pocket:
@@ -1039,8 +1045,9 @@ mob spawns that only apply underground) without needing an air pocket:
 ```yaml
 flat:
   biome: minecraft:plains
-  undergroundBiome: minecraft:dripstone_caves
-  undergroundBelowSurfaceBlocks: 10
+  underground:
+    biome: minecraft:dripstone_caves
+    belowSurface: 10
 ```
 
 With the default 128-block layer stack (Y 64 surface), this reports

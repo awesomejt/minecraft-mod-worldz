@@ -41,21 +41,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *       silently dropped later without this test noticing.
  * </ul>
  *
- * <p><strong>Configs 97 and 98 are known, pre-existing failures, not something this task
- * introduces</strong> (DESIGN §42.1/§42.5/§42.7): they set {@code flat}/{@code skyIsland}'s
- * {@code undergroundBiome}/{@code undergroundBelowSurfaceBlocks} -- despite being documented in
- * {@code README.md} and shipped in these two files. Jason has already decided (TODO.md's
- * "Questions for Jason", 2026-07-28 entry) to wire them up in TODO 25.6g ({@code underground}), not
- * in this framework-only step. {@link #KNOWN_UNKNOWN_KEYS} asserts the exact expected set for each
- * of the two, rather than merely allowing any unknown key, so the gate is provably working (it does
- * catch real drift) and so 25.6g's own wiring change -- and only that change -- turns each entry
- * green.
- *
- * <p>Config 57 ({@code skyIsland.exclusionZoneEnabled}/{@code exclusionZoneRadiusBlocks}) was the
- * third member of this set until TODO 25.6d wired {@code skyIsland}'s own {@code exclusionZone}
- * into the schema for real (DESIGN §42.7's answered open question) -- it is no longer in {@link
- * #KNOWN_UNKNOWN_KEYS} because its renamed keys ({@code skyIsland.exclusionZone.enabled}/{@code
- * .radius}) are now genuinely declared and honored, not merely unrecognized-but-tolerated.
+ * <p>Configs 57, 97 and 98 were the three known, pre-existing gaps this gate exists to prove is
+ * working (DESIGN §42.1/§42.5/§42.7) -- each set a key the parse layer had never actually declared,
+ * despite it being documented in {@code README.md}. All three are now resolved: TODO 25.6d wired
+ * {@code skyIsland.exclusionZone} into the schema (config 57), and TODO 25.6g wired {@code flat}/
+ * {@code skyIsland}'s shared {@code underground: {biome, belowSurface}} group into the schema
+ * (configs 97/98, migrated to the new nested key in that same commit). {@link #KNOWN_UNKNOWN_KEYS}
+ * is therefore empty today -- kept as a live map (not deleted outright) so a future genuine gap of
+ * this same shape has an obvious place to be recorded and asserted precisely, the same discipline
+ * that made all three of these provably fixed rather than silently reconciled.
  */
 class ConfigFixturesTest {
     private static final Logger LOGGER = NOPLogger.NOP_LOGGER;
@@ -73,12 +67,7 @@ class ConfigFixturesTest {
     // (TODO Deviation log, 2026-07-28).
     private static final int EXPECTED_FIXTURE_COUNT = 103;
 
-    private static final Map<String, Set<String>> KNOWN_UNKNOWN_KEYS = Map.of(
-        "97-flat-underground-biome-band.yaml",
-        Set.of("flat.undergroundBiome", "flat.undergroundBelowSurfaceBlocks"),
-        "98-sky-island-underground-biome-band.yaml",
-        Set.of("skyIsland.undergroundBiome", "skyIsland.undergroundBelowSurfaceBlocks")
-    );
+    private static final Map<String, Set<String>> KNOWN_UNKNOWN_KEYS = Map.of();
 
     @Test
     void fixtureDirectoryHasTheExpectedFileCount() throws IOException {
@@ -98,7 +87,7 @@ class ConfigFixturesTest {
         assertEquals(
             KNOWN_UNKNOWN_KEYS.getOrDefault(fileName, Set.of()),
             new LinkedHashSet<>(unknownKeys),
-            () -> fileName + ": unknown-key set changed (see DESIGN §42.5/§42.7, TODO 25.6d/25.6g for 57/97/98)"
+            () -> fileName + ": unknown-key set changed (see DESIGN §42.5/§42.7 -- 57/97/98 resolved at 25.6d/25.6g)"
         );
 
         WorldzConfig parsed = assertDoesNotThrow(() -> ROOT.read(raw, new ParseContext(LOGGER)), fileName + " failed to parse");

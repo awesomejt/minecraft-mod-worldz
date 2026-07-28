@@ -9,14 +9,21 @@ import java.util.List;
  * jlt_worldz:flat} typed preset, consulted only when it resolves without explicit
  * Customize-screen values. Summary is fully derivable: no gate, no relabeling.
  *
- * <p>{@code undergroundBiome}/{@code undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3) exist
- * on {@link FlatConfig} but are not wired into today's {@code readFlatConfig}/{@code
- * sanitizeFlat}/{@code flatMap}/{@code flatSummary} either -- out of scope here (nothing moves),
- * carried over unchanged as a pre-existing gap.
+ * <p>{@code undergroundBiome}/{@code undergroundBelowSurfaceBlocks} (GOAL 42, DESIGN §37.3) are
+ * now wired into the schema as the shared {@code underground: {biome, belowSurface}} group (TODO
+ * 25.6g, {@link UndergroundSchema}) -- previously a pre-existing gap ({@code config/tests/97}'s
+ * values were silently ignored), now a real, sanitized pair.
  */
 public final class FlatSchema extends SchemaSection<FlatConfig> {
+    private final UndergroundSchema<FlatConfig> underground;
+
     public FlatSchema(String path) {
         super(path, FlatConfig::new);
+        this.underground = new UndergroundSchema<>(
+            path() + ".underground", FlatConfig::new,
+            new Accessor<>(c -> c.undergroundBiome, (c, v) -> c.undergroundBiome = v),
+            new Accessor<>(c -> c.undergroundBelowSurfaceBlocks, (c, v) -> c.undergroundBelowSurfaceBlocks = v)
+        );
     }
 
     @Override
@@ -42,6 +49,10 @@ public final class FlatSchema extends SchemaSection<FlatConfig> {
                 .nullFallback(() -> new FlatConfig().structureOverrides)
                 .preset("flat").customizeExposed()
                 .doc("Structure sets eligible to place; empty means every registered set is eligible.")
+                .build(),
+            Setting.group("underground", underground)
+                .render(underground::summary)
+                .doc("Synthetic underground-biome band a configured number of blocks below the surface; config-only for now.")
                 .build()
         );
     }
