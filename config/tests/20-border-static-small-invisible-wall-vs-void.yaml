@@ -1,6 +1,6 @@
 # GOALS 17/18: a small static Overworld border (invisible wall) with a void
 # exterior at the same boundary (auto-derived from the border radius since
-# overworldExterior.boundaryRadiusBlocks is 0), on the plain "Worldz" preset
+# overworldExterior.boundaryRadius is 0), on the plain "Worldz" preset
 # (NOT a typed preset -- this phase is about the shared border/exterior
 # mechanism itself). Walking to the border edge should stop you with the
 # vanilla invisible-wall effect; terrain generation itself is completely
@@ -12,8 +12,8 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 128
-  finalRadiusBlocks: 128
+  initialRadius: 128
+  finalRadius: 128
   ensureEndPortal: true
 overworldExterior:
   mode: void

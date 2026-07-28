@@ -21,7 +21,7 @@ public final class StructureDistanceSchema extends SchemaSection<StructureDistan
                 .live()
                 .doc("Whether vanilla structure sets are held back from spawn at all.")
                 .build(),
-            Setting.<StructureDistanceConfig>integer("minDistanceBlocks", c -> c.minDistanceBlocks, (c, v) -> c.minDistanceBlocks = v)
+            Setting.<StructureDistanceConfig>integer("minDistance", c -> c.minDistanceBlocks, (c, v) -> c.minDistanceBlocks = v)
                 .range(0, WorldzConfig.MAX_BORDER_RADIUS_BLOCKS)
                 .unit(Unit.BLOCKS).live()
                 .doc("Minimum block distance (Chebyshev) from spawn.")
@@ -45,6 +45,6 @@ public final class StructureDistanceSchema extends SchemaSection<StructureDistan
         if (!value.enabled) {
             return "<disabled>";
         }
-        return "minDistanceBlocks=" + value.minDistanceBlocks + ", exemptStructureSets=" + value.exemptStructureSets;
+        return "minDistance=" + value.minDistanceBlocks + ", exemptStructureSets=" + value.exemptStructureSets;
     }
 }

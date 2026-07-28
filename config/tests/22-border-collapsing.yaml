@@ -9,7 +9,7 @@
 # Requires 0.2.12+ (see config 21's note) -- earlier versions never
 # actually started the collapse either.
 #
-# This file's resizeDelayDays/resizeDays (10 and 40): ten full days to
+# This file's resize.delayDays/resize.days (10 and 40): ten full days to
 # explore, then the border creeps from 2048 down to 256 over 40 days,
 # roughly 45 radius-blocks per day. Steps once in-game (adjust tick
 # counts if you change the values above):
@@ -28,10 +28,11 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 2048
-  finalRadiusBlocks: 256
-  resizeDelayDays: 10
-  resizeDays: 40
+  initialRadius: 2048
+  finalRadius: 256
+  resize:
+    delayDays: 10
+    days: 40
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

@@ -6,7 +6,7 @@
 # (`starter_at_origin`), so a build there is always safe even after the
 # border fully collapses.
 #
-# Requires 0.2.16+ (Phase 5b: resizeStyle/stepped driver did not exist
+# Requires 0.2.16+ (Phase 5b: resize.style/stepped driver did not exist
 # before it).
 #
 # A stepped border recomputes its radius fresh from elapsed clock ticks
@@ -34,12 +34,14 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 1024
-  finalRadiusBlocks: 32
-  resizeDelayDays: 10
-  resizeRateBlocks: 2
-  resizeRateDays: 1
-  resizeStyle: stepped
+  initialRadius: 1024
+  finalRadius: 32
+  resize:
+    delayDays: 10
+    style: stepped
+    rate:
+      blocks: 2
+      days: 1
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

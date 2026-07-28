@@ -1,7 +1,7 @@
 # GOALS 17: carrying the world-size limit into the End. The Overworld
 # border is set to the absolute minimum (64 blocks) to deliberately make
 # "just carry the same size" unplayable for the dragon fight -- confirms
-# the minimumRadiusBlocks floor (256, the default) actually overrides it
+# the minimumRadius floor (256, the default) actually overrides it
 # instead of producing a tiny, broken End border.
 #
 # Steps once in-game:
@@ -11,18 +11,18 @@
 #  2. Use the fallback portal (or `/execute in minecraft:the_end run tp`)
 #     to reach the End.
 #  3. Confirm the End border is centered at (0, 0) with radius 256 (the
-#     configured minimumRadiusBlocks), NOT 64 -- the main island, every
+#     configured minimumRadius), NOT 64 -- the main island, every
 #     obsidian pillar, and the exit portal should all be comfortably
 #     inside it, not clipped by the border.
 #  4. Confirm the dragon fight is normal and winnable.
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 64
-  finalRadiusBlocks: 64
+  initialRadius: 64
+  finalRadius: 64
   ensureEndPortal: true
 endBorder:
   carryFromOverworld: true
-  minimumRadiusBlocks: 256
+  minimumRadius: 256
 layout:
   mode: legacy
 spawn:

@@ -271,19 +271,22 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
               enabled: true
-              initialRadiusBlocks: 0
-              finalRadiusBlocks: 2000
-              resizeDays: 100
-              resizeDelayDays: 12
-              resizeRateBlocks: 128
-              resizeRateDays: 5
-              resizeStyle: stepped
+              initialRadius: 0
+              finalRadius: 2000
+              resize:
+                days: 100
+                delayDays: 12
+                style: stepped
+                rate:
+                  blocks: 128
+                  days: 5
               ensureEndPortal: false
             netherBorder:
               enabled: true
-              initialRadiusBlocks: 256
-              finalRadiusBlocks: 128
-              resizeDays: 25
+              initialRadius: 256
+              finalRadius: 128
+              resize:
+                days: 25
               ensureBlazeAccess: true
             """, LOGGER).sanitize(LOGGER);
 
@@ -309,9 +312,10 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
               enabled: true
-              initialRadiusBlocks: 8
-              finalRadiusBlocks: 1024
-              resizeStyle: stepped
+              initialRadius: 8
+              finalRadius: 1024
+              resize:
+                style: stepped
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(ResizeStyle.CONTINUOUS, config.overworldBorder.resizeStyle);
@@ -322,7 +326,7 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             endBorder:
               carryFromOverworld: true
-              minimumRadiusBlocks: 0
+              minimumRadius: 0
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.endBorder.carryFromOverworld);
@@ -341,8 +345,10 @@ class WorldzConfigTest {
     void incompleteBorderRateFallsBackToTotalDuration() {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
-              resizeDays: 25
-              resizeRateBlocks: 128
+              resize:
+                days: 25
+                rate:
+                  blocks: 128
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(25, config.overworldBorder.resizeDays);
@@ -354,7 +360,8 @@ class WorldzConfigTest {
     void negativeResizeDelayIsClampedToZero() {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
-              resizeDelayDays: -5
+              resize:
+                delayDays: -5
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0, config.overworldBorder.resizeDelayDays);
@@ -365,15 +372,15 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
               enabled: true
-              initialRadiusBlocks: 512
-              finalRadiusBlocks: 2048
+              initialRadius: 512
+              finalRadius: 2048
             overworldExterior:
               mode: ocean
-              boundaryRadiusBlocks: 0
-              oceanTransitionWidthBlocks: 256
+              boundaryRadius: 0
+              oceanTransitionWidth: 256
             netherExterior:
               mode: ocean
-              boundaryRadiusBlocks: 512
+              boundaryRadius: 512
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(ExteriorMode.OCEAN, config.overworldExterior.mode);
@@ -387,7 +394,7 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldExterior:
               mode: void
-              boundaryRadiusBlocks: 0
+              boundaryRadius: 0
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(ExteriorMode.NORMAL, config.overworldExterior.mode);
@@ -1590,8 +1597,9 @@ class WorldzConfigTest {
               delayDays: 5
               startY: -32
               maxY: 32
-              rateBlocks: 2
-              rateDays: 3
+              rate:
+                blocks: 2
+                days: 3
             """, LOGGER).sanitize(LOGGER);
 
         assertTrue(config.risingLava.enabled);
@@ -1630,8 +1638,9 @@ class WorldzConfigTest {
     void risingLavaRateValuesClampToAtLeastOne() {
         WorldzConfig config = WorldzConfig.parse("""
             risingLava:
-              rateBlocks: 0
-              rateDays: -5
+              rate:
+                blocks: 0
+                days: -5
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(1, config.risingLava.rateBlocks);
@@ -1643,7 +1652,7 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             structureDistance:
               enabled: true
-              minDistanceBlocks: 3000
+              minDistance: 3000
               exemptStructureSets:
                 - minecraft:strongholds
             """, LOGGER).sanitize(LOGGER);
@@ -1666,7 +1675,7 @@ class WorldzConfigTest {
     void structureDistanceMinDistanceClampsToNonNegative() {
         WorldzConfig config = WorldzConfig.parse("""
             structureDistance:
-              minDistanceBlocks: -5
+              minDistance: -5
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0, config.structureDistance.minDistanceBlocks);

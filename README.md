@@ -1216,7 +1216,7 @@ resize schedule in the Overworld — Minecraft 26.2 ties this mod's own
 border-scheduling math to the same per-dimension clock day/night uses. A
 resize that's already smoothly animating is **not** affected (vanilla's
 own border animation runs independently once started); only a resize
-still waiting on its own `resizeDelayDays` countdown, or an active
+still waiting on its own `resize.delayDays` countdown, or an active
 *stepped*-style resize's own periodic jumps, stalls while night stays
 locked. Not engineered around; if you're combining forever night with a
 delayed or stepped border schedule, expect it to hold still until night
@@ -1226,7 +1226,7 @@ unlocks.
 
 Set `risingLava.enabled: true` for a world-wide lava level that rises over
 time in the Overworld. It holds at `startY` for `delayDays`, then rises
-`rateBlocks` every `rateDays` until it reaches `maxY`. Every air or water
+`rate.blocks` every `rate.days` until it reaches `maxY`. Every air or water
 block (source or flowing — vanilla represents both as the same block) at
 or below the current level converts to lava; solid terrain is untouched.
 Already-loaded chunks convert incrementally as the level rises; a chunk
@@ -1239,8 +1239,9 @@ risingLava:
   delayDays: 3
   startY: -64
   maxY: 64
-  rateBlocks: 1
-  rateDays: 1
+  rate:
+    blocks: 1
+    days: 1
 ```
 
 | Setting | Default | Description |
@@ -1249,7 +1250,7 @@ risingLava:
 | `delayDays` | `3` | In-game days before the level starts rising. |
 | `startY` | `-64` | Y the lava level starts at (the dimension's own real min Y) — everything at or below this converts as soon as the hazard activates. |
 | `maxY` | `64` | Y the lava level stops rising at (sea level by default). |
-| `rateBlocks` / `rateDays` | `1` / `1` | The level rises `rateBlocks` every `rateDays` — one block per in-game day by default, a deliberately slow first-pass number. |
+| `rate.blocks` / `rate.days` | `1` / `1` | The level rises `rate.blocks` every `rate.days` — one block per in-game day by default, a deliberately slow first-pass number. |
 
 No special handling for floating/void-based world types (sky island, sky
 chunk, chunk island) — the rule is uniform everywhere air or water exists,
@@ -1266,7 +1267,7 @@ Like world hazards above, this is a shared runtime rule composing with
 
 Set `structureDistance.enabled: true` to hold every vanilla structure set
 (villages, pillager outposts, strongholds, trail ruins, and so on) back
-from spawn until it's at least `minDistanceBlocks` away (Chebyshev — the
+from spawn until it's at least `minDistance` away (Chebyshev — the
 same "square" distance border/exterior/exclusion-zone settings use
 throughout this mod), turning them into a genuine trip rather than a
 next-door neighbor. List any structure set ids that should stay at their
@@ -1275,15 +1276,15 @@ normal, un-restricted vanilla distance in `exemptStructureSets`.
 ```yaml
 structureDistance:
   enabled: false
-  minDistanceBlocks: 2000
+  minDistance: 2000
   exemptStructureSets: []
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `enabled` | `false` | Whether structures are held back from spawn at all. |
-| `minDistanceBlocks` | `2000` | Minimum distance from spawn before a restricted structure set may generate. |
-| `exemptStructureSets` | `[]` | Structure set ids (e.g. `minecraft:strongholds`) always allowed at their normal vanilla distance, regardless of `minDistanceBlocks`. |
+| `minDistance` | `2000` | Minimum distance from spawn before a restricted structure set may generate. |
+| `exemptStructureSets` | `[]` | Structure set ids (e.g. `minecraft:strongholds`) always allowed at their normal vanilla distance, regardless of `minDistance`. |
 
 Vanilla's `/locate structure` predicts a candidate position from the
 structure's own placement math and has no idea this mod suppressed
@@ -1315,7 +1316,7 @@ showing every setting at its current built-in default.
 | `starter.land.foundationDepth` | `48` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
 | `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
 | `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
-| `endBorder` | disabled | Option to carry the Overworld's eventual radius into the End, clamped up to `minimumRadiusBlocks` so the dragon fight stays winnable. |
+| `endBorder` | disabled | Option to carry the Overworld's eventual radius into the End, clamped up to `minimumRadius` so the dragon fight stays winnable. |
 | `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
 | `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
 | `layout` | `legacy` | Coordinated land/ocean/beach terrain layout; `legacy` keeps today's climate-filter-only behavior. See [Coordinated world layouts](#coordinated-world-layouts). |
@@ -1387,47 +1388,53 @@ it converts whatever is currently typed instead of reinterpreting the digits.
 ```yaml
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 512
-  finalRadiusBlocks: 2048
-  resizeDays: 100
-  resizeDelayDays: 0
-  resizeRateBlocks: 0
-  resizeRateDays: 0
+  initialRadius: 512
+  finalRadius: 2048
+  resize:
+    days: 100
+    delayDays: 0
+    style: continuous
+    rate:
+      blocks: 0
+      days: 0
   ensureEndPortal: true
 netherBorder:
   enabled: true
-  initialRadiusBlocks: 256
-  finalRadiusBlocks: 512
-  resizeDays: 100
-  resizeDelayDays: 0
-  resizeRateBlocks: 0
-  resizeRateDays: 0
+  initialRadius: 256
+  finalRadius: 512
+  resize:
+    days: 100
+    delayDays: 0
+    style: continuous
+    rate:
+      blocks: 0
+      days: 0
   ensureBlazeAccess: true
 ```
 
 Equal initial and final radii make a static border. A larger final radius grows
-linearly; a smaller one shrinks. With no delay, `resizeDays: 0` applies the final
+linearly; a smaller one shrinks. With no delay, `resize.days: 0` applies the final
 radius immediately. The transition uses elapsed Minecraft game time and resumes
 rather than restarting when the save is reopened.
 
-`resizeDelayDays` holds the initial radius before any growth or collapse begins.
+`resize.delayDays` holds the initial radius before any growth or collapse begins.
 For example, a collapsing world can start large for 30 days and then shrink over
 the configured duration. Only in-game server ticks count: closing the world
-pauses both the delay and transition. If `resizeDays` and the rate fields are
+pauses both the delay and transition. If `resize.days` and the rate fields are
 zero, the border jumps to its final radius when the delay expires.
 
 Set both rate fields to resize by a distance over an interval. For example,
-`resizeRateBlocks: 64` and `resizeRateDays: 5` changes the radius continuously
+`resize.rate.blocks: 64` and `resize.rate.days: 5` changes the radius continuously
 at 64 blocks every five Minecraft days. A positive rate pair overrides
-`resizeDays`; leave both rate fields at zero to use the total duration. The last
+`resize.days`; leave both rate fields at zero to use the total duration. The last
 partial interval is scaled proportionally, so the border stops exactly at the
 configured final radius.
 
-`resizeStyle` picks how the rate fields are applied: `continuous` (the
+`resize.style` picks how the rate fields are applied: `continuous` (the
 default) smooths the same distance into one gradual lerp, as above. `stepped`
-instead jumps abruptly by `resizeRateBlocks` every `resizeRateDays`, with the
-border holding still in between -- for example `resizeRateBlocks: 1` and
-`resizeRateDays: 1` reveals one more block of radius each day. `stepped`
+instead jumps abruptly by `resize.rate.blocks` every `resize.rate.days`, with the
+border holding still in between -- for example `resize.rate.blocks: 1` and
+`resize.rate.days: 1` reveals one more block of radius each day. `stepped`
 requires a positive rate pair; without one it's ignored and treated as
 `continuous`. The Customize screen's border editor has a **Resize style**
 button that toggles between the two.
@@ -1437,16 +1444,16 @@ button that toggles between the two.
 ```yaml
 endBorder:
   carryFromOverworld: true
-  minimumRadiusBlocks: 256
+  minimumRadius: 256
 ```
 
 With `carryFromOverworld: true` and an enabled `overworldBorder`, the End also
 gets a static square border centered at `(0, 0)`, sized to the larger of the
-Overworld's eventual (final) radius and `minimumRadiusBlocks` -- so a very
+Overworld's eventual (final) radius and `minimumRadius` -- so a very
 small Overworld border does not shrink the End border below a size that keeps
 the main island, every obsidian pillar, and the exit portal reachable and
 intact. The End border does not resize over time and does not respect
-`resizeDelayDays`; it is set once, at world creation, to its eventual size.
+`resize.delayDays`; it is set once, at world creation, to its eventual size.
 With no Overworld border enabled, or `carryFromOverworld: false`, the End
 stays completely unbordered. End terrain generation itself is always
 untouched vanilla -- this only limits how far a player can fly from the
@@ -1461,18 +1468,18 @@ cannot reach the generated ocean or void. The square is centered at `(0, 0)`.
 ```yaml
 overworldExterior:
   mode: ocean
-  boundaryRadiusBlocks: 2048
-  oceanTransitionWidthBlocks: 256
+  boundaryRadius: 2048
+  oceanTransitionWidth: 256
 netherExterior:
   mode: void
-  boundaryRadiusBlocks: 512
-  oceanTransitionWidthBlocks: 0
+  boundaryRadius: 512
+  oceanTransitionWidth: 0
 ```
 
-`boundaryRadiusBlocks` is the outer radius. Set it to `0` (`auto` in Customize)
+`boundaryRadius` is the outer radius. Set it to `0` (`auto` in Customize)
 to use the larger of the border's initial and final radii; automatic mode needs
 an enabled border. With ocean mode, the transition begins inward by
-`oceanTransitionWidthBlocks`, making that much ocean accessible before the
+`oceanTransitionWidth`, making that much ocean accessible before the
 outer boundary. Deep ocean with a solid seabed continues indefinitely beyond
 the boundary. Void mode produces empty columns indefinitely. Nether supports
 normal and void only; the End always retains vanilla generation.

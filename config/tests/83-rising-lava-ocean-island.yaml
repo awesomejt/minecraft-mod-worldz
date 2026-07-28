@@ -36,5 +36,6 @@ risingLava:
   delayDays: 1
   startY: -64
   maxY: 32
-  rateBlocks: 8
-  rateDays: 1
+  rate:
+    blocks: 8
+    days: 1

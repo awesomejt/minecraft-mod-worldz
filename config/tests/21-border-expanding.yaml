@@ -20,13 +20,13 @@
 # Deviation log entry. Delete any world created with an older jar and
 # start fresh; its stuck state isn't fixable in place.
 #
-# Requires 0.2.13+ for the tiny initialRadiusBlocks below: earlier versions
+# Requires 0.2.13+ for the tiny initialRadius below: earlier versions
 # clamped any border radius up to a 64-block floor
 # (WorldzConfig.MIN_BORDER_RADIUS_BLOCKS), so a 2-block start silently
 # became 64. 0.2.13 lowers that floor to 1 -- beatability at very small
 # sizes is the user's own responsibility, not something the floor enforces.
 #
-# This file's resizeDelayDays/resizeDays (2 and 88) make a deliberately
+# This file's resize.delayDays/resize.days (2 and 88) make a deliberately
 # slow reveal: after the delay the border creeps from 2 to 1024 over 88
 # days, roughly 11.6 radius-blocks per day. Steps once in-game (adjust the
 # tick counts if you change the values above):
@@ -43,10 +43,11 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 2
-  finalRadiusBlocks: 1024
-  resizeDelayDays: 2
-  resizeDays: 88
+  initialRadius: 2
+  finalRadius: 1024
+  resize:
+    delayDays: 2
+    days: 88
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

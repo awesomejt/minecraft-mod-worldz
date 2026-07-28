@@ -21,7 +21,7 @@ public final class EndBorderSchema extends SchemaSection<EndBorderConfig> {
             Setting.<EndBorderConfig>flag("carryFromOverworld", c -> c.carryFromOverworld, (c, v) -> c.carryFromOverworld = v)
                 .doc("Whether the End receives a border matching the Overworld's eventual (final) radius.")
                 .build(),
-            Setting.<EndBorderConfig>integer("minimumRadiusBlocks", c -> c.minimumRadiusBlocks, (c, v) -> c.minimumRadiusBlocks = v)
+            Setting.<EndBorderConfig>integer("minimumRadius", c -> c.minimumRadiusBlocks, (c, v) -> c.minimumRadiusBlocks = v)
                 .range(WorldzConfig.MIN_BORDER_RADIUS_BLOCKS, WorldzConfig.MAX_BORDER_RADIUS_BLOCKS)
                 .unit(Unit.BLOCKS)
                 .doc("Smallest End border half-width regardless of the carried Overworld radius.")
@@ -32,7 +32,7 @@ public final class EndBorderSchema extends SchemaSection<EndBorderConfig> {
     /**
      * Overridden: {@code carryFromOverworld} gates the whole line, and the surviving field renders
      * under the relabeled segment {@code "carried, minimum=..."}, not {@code
-     * "carryFromOverworld=..., minimumRadiusBlocks=..."} -- not mechanically derivable.
+     * "carryFromOverworld=..., minimumRadius=..."} -- not mechanically derivable.
      */
     @Override
     public String summary(EndBorderConfig value) {

@@ -22,35 +22,39 @@ naturalBiomes:
   oceans: false
 overworldBorder:
   enabled: false
-  initialRadiusBlocks: 512
-  finalRadiusBlocks: 512
-  resizeDays: 0
-  resizeDelayDays: 0
-  resizeRateBlocks: 0
-  resizeRateDays: 0
+  initialRadius: 512
+  finalRadius: 512
+  resize:
+    days: 0
+    delayDays: 0
+    style: continuous
+    rate:
+      blocks: 0
+      days: 0
   ensureEndPortal: true
-  resizeStyle: continuous
 netherBorder:
   enabled: false
-  initialRadiusBlocks: 512
-  finalRadiusBlocks: 512
-  resizeDays: 0
-  resizeDelayDays: 0
-  resizeRateBlocks: 0
-  resizeRateDays: 0
+  initialRadius: 512
+  finalRadius: 512
+  resize:
+    days: 0
+    delayDays: 0
+    style: continuous
+    rate:
+      blocks: 0
+      days: 0
   ensureBlazeAccess: true
-  resizeStyle: continuous
 endBorder:
   carryFromOverworld: false
-  minimumRadiusBlocks: 256
+  minimumRadius: 256
 overworldExterior:
   mode: normal
-  boundaryRadiusBlocks: 0
-  oceanTransitionWidthBlocks: 128
+  boundaryRadius: 0
+  oceanTransitionWidth: 128
 netherExterior:
   mode: normal
-  boundaryRadiusBlocks: 0
-  oceanTransitionWidthBlocks: 128
+  boundaryRadius: 0
+  oceanTransitionWidth: 128
 strip:
   enabled: false
   widthRadiusBlocks: 32
@@ -382,10 +386,11 @@ risingLava:
   delayDays: 3
   startY: -64
   maxY: 64
-  rateBlocks: 1
-  rateDays: 1
+  rate:
+    blocks: 1
+    days: 1
 structureDistance:
   enabled: false
-  minDistanceBlocks: 2000
+  minDistance: 2000
   exemptStructureSets: [
     ]

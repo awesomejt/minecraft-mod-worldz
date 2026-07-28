@@ -4,7 +4,7 @@
 # was needed), and exercises exemptStructureSets. Select the "Worldz: Single
 # Biome" world type (NOT plain "Worldz") on the creation screen.
 #
-# minDistanceBlocks shrunk to 500 for testability -- the shipped default is
+# minDistance shrunk to 500 for testability -- the shipped default is
 # 2000; see config/jlt_worldz.example.yaml for that. Strongholds are
 # exempted, so they should still generate at their normal vanilla distance
 # even inside the 500-block radius that suppresses everything else.
@@ -29,6 +29,6 @@ singleBiome:
     strategy: starter_at_origin
 structureDistance:
   enabled: true
-  minDistanceBlocks: 500
+  minDistance: 500
   exemptStructureSets:
     - minecraft:strongholds

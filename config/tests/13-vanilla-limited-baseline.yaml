@@ -9,8 +9,8 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 1000
-  finalRadiusBlocks: 1000
+  initialRadius: 1000
+  finalRadius: 1000
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

@@ -44,8 +44,8 @@ strip:
   widthMode: void
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 2048
-  finalRadiusBlocks: 2048
+  initialRadius: 2048
+  finalRadius: 2048
   ensureEndPortal: true
 stripWorld:
   spawn:

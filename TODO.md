@@ -1189,15 +1189,78 @@ tests.
       `client/` files in the diff (verified via `git diff --name-only`); no
       POJO field renames. `./gradlew build` green (`common:test` 839 tests,
       0 failures; fabric/neoforge assemble clean).
-- [ ] 25.6c Borders, exteriors, hazards (needs 25.6a). `resize: {days,
-      delayDays, style, rate: {blocks, days}}` (nested group; `resizeStyle`
-      joins the group, changing emit order — legal per §41.1),
-      `initialRadius`/`finalRadius`, `endBorder.minimumRadius`,
-      `*Exterior.boundaryRadius`/`oceanTransitionWidth`, `risingLava.rate`,
-      `structureDistance.minDistance`. `BorderSchema`/`RisingLavaSchema`
-      `postValidate` keep their clamps; only path strings change. `strip:`
-      untouched (deferred to 25.9 — log the F1 deviation). Fixtures 13, 20-25,
-      79-85.
+- [x] 25.6c Borders, exteriors, hazards (needs 25.6a) — **done**.
+      `BorderSchema` gained two private nested group classes, `ResizeSchema`
+      (`resize: {days, delayDays, style, rate}`) and `RateSchema` (`resize
+      .rate: {blocks, days}`), a group inside a group over `BorderSchema`'s
+      own `BorderConfig` type (DESIGN §42.2's "groups nest" — `resize`'s
+      `Setting.group` accessor is itself an identity `Setting<BorderConfig,
+      BorderConfig>`, so `copyInto` composes down through `rate` with zero
+      extra framework code). `resizeStyle` now joins `resize` as `style`,
+      moving from after `ensureEndPortal`/`ensureBlazeAccess` to inside the
+      `resize` block — the one deliberate emit-order change DESIGN §42.3
+      called out, confirmed via the regenerated `reference-defaults.yaml`.
+      `initialRadiusBlocks`/`finalRadiusBlocks` → `initialRadius`/
+      `finalRadius`; `EndBorderSchema.minimumRadiusBlocks` → `minimumRadius`;
+      `ExteriorSchema.boundaryRadiusBlocks`/`oceanTransitionWidthBlocks` →
+      `boundaryRadius`/`oceanTransitionWidth`; `RisingLavaSchema` gained its
+      own private `RateSchema` (`rate: {blocks, days}`, no override needed —
+      the inherited default `summary()` already renders `blocks=X, days=Y`);
+      `StructureDistanceSchema.minDistanceBlocks` → `minDistance`. No POJO
+      field renames anywhere — every `*Config` class keeps its original flat
+      field names; only `Setting` key strings, nesting, and derived warning/
+      summary text changed. `BorderSchema`/`RisingLavaSchema` `postValidate`
+      keep their exact clamps and ordering (incomplete-rate-pair reset then
+      stepped-fallback for border; `maxY>=startY` then the two rate clamps
+      for rising lava) — only the path strings inside the warning messages
+      changed (e.g. `resizeRateBlocks` → `resize.rate.blocks`). R2 verified
+      by reading `ExteriorSchema.postValidate` directly (not just trusting
+      DESIGN's claim): the sibling-border cross-check reads `BorderConfig`
+      POJO fields (`initialRadiusBlocks`/`finalRadiusBlocks`/`enabled`)
+      directly, never a YAML key, so the rename has zero interaction beyond
+      its own warning text.
+      **Found broader-than-listed fixture scope**, flagged rather than
+      silently expanded: the TODO text named fixtures 13/20-25/79-85, but
+      `overworldBorder`/`netherBorder`/`endBorder`/`*Exterior`/`risingLava`/
+      `structureDistance` are shared root-level sections nearly every world
+      type's own fixture sets just to fence/hazard the world, not only the
+      ones whose own subject is border/hazard behavior — so `ConfigFixturesTest`'s
+      unknown-key gate would have gone red on collateral fixtures otherwise.
+      Grepped every `config/tests/*.yaml` for the old leaf-key strings and
+      migrated all 21 that actually used them: 06, 13, 20-29 (+27a/29a), 73,
+      76, 81-85 — 13 more than the 8 the TODO text named (`oceanIsland`'s own
+      keys in 83 left untouched, out of scope for 25.6d). `strip:` left
+      completely untouched (`widthRadiusBlocks`/`widthMode` unchanged in
+      every fixture and in `StripSchema.java`) — confirmed via `git diff`
+      touching no `Strip*.java` file; the F1 deviation was already logged at
+      25.6a/§42.1, no new entry needed. `config/jlt_worldz.example.yaml`
+      migrated for the 5 sections it covers (`structureDistance` isn't in
+      the example file, confirmed by grep before editing). `reference-
+      defaults.yaml` regenerated and diffed by hand (only the expected
+      `resize`/`boundaryRadius`/`oceanTransitionWidth`/`minimumRadius`/
+      `minDistance`/`rate` hunks moved). `WorldzConfigTest` (border/exterior/
+      risingLava/structureDistance test bodies' YAML re-nested, Java field
+      assertions on `BorderConfig`/`ExteriorConfig`/etc. untouched since
+      those POJO field names didn't change), `StackedConfigTest` (2 fixtures
+      reusing `overworldBorder`/`overworldExterior` inline YAML), and
+      `ProjectMetadataTest` (2 README-content assertions moved to
+      `resize.rate.blocks`/`resize.delayDays` wording) updated; `ConfigPresenceTest`
+      needed no change (grepped empty for every affected key). `README.md`
+      mechanical key-name pass for "Limited-world borders", "Carrying the
+      border into the End", "Ocean and void exteriors", forever-night's
+      known-limitation note, "Rising lava floor", and "Structures far from
+      spawn". `config/tests/README.md`/`MANUAL_TESTING.md` prose left alone
+      per DESIGN §42.5 (explicitly deferred to 25.11). No `logic/`/`client/`
+      files in the diff (verified via `git status`); `client/WorldzBorderScreen
+      .java`'s own `resizeRateBlocks`/`resizeRateDays`/`resizeDelayDays` Java
+      field names are unaffected (client-side widget fields, not YAML keys,
+      out of scope) and its own `ProjectMetadataTest` assertions (lines
+      693-695) needed no change. `./gradlew build` green (`common:test` 838
+      tests, 0 failures — matching 25.6b's own count of "839" minus nothing:
+      `@Test` annotation count is unchanged, 735 before and after, confirming
+      no test was silently dropped); `ConfigFixturesTest` still reports the
+      full 104 (103 fixtures + 1 count assertion), all green, including the
+      21 migrated fixtures' unknown-key gate.
 - [ ] 25.6d Islands (needs 25.6a). `oceanIsland` (`island`, `ocean`,
       `exclusionZone`), `skyIsland` (prefix drop, `chest`), `floatingIslands`
       (`radius`, `oreDeposits`, `lootChest`, `exclusionZone` — DESIGN R4: keep
@@ -1610,6 +1673,22 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-28 (Phase 25.6c, F1 deviation re-logged at the point it bites) —
+  **`strip.widthRadiusBlocks`/`strip.widthMode` were deliberately left
+  untouched by 25.6c**, per DESIGN §42.1's own recommendation: F1 itself
+  annotates that row "see §5 — width becomes absolute", and renaming
+  `widthRadiusBlocks` → `widthRadius` now, then → `width` with new (absolute,
+  not radius) semantics in TODO 25.9, would cost two fixture migrations of
+  the same six strip configs and leave a one-commit window where the key
+  reads like an absolute width while still behaving as a radius. `strip:` is
+  untouched in every `*Schema.java` file and every `config/tests/*.yaml`
+  fixture touched this sub-step (confirmed via `git diff --name-only` —
+  no `Strip*.java` file appears in the 25.6c diff). The whole `strip.width*`
+  question is handed to TODO 25.9 unchanged. (25.6h's own close-out task
+  also names this deviation for its final log pass; this entry exists so it
+  isn't silently undocumented in the meantime, per the 25.6c task's own
+  instruction to log it here if not already present.)
 
 - 2026-07-28 (Phase 25.6a, doc count found stale) — **`config/tests/*.yaml`'s
   real count is 103, not the "104" repeated throughout `TODO.md` (this

@@ -1,6 +1,6 @@
 # GOAL 29 (Phase 18.2, DESIGN §35.2): rising lava on a plain, bordered
 # "vanilla-limited" world (mirrors config 13's own shape). Accelerated
-# rate for testability (rateBlocks/rateDays much faster than the shipped
+# rate for testability (rate.blocks/rate.days much faster than the shipped
 # default of 1 block/day) -- real worlds should use much slower defaults;
 # see config/jlt_worldz.example.yaml for those.
 #
@@ -12,7 +12,7 @@
 #     already lava-adjacent to bedrock by default) and rising.
 #  3. `/tick step 24000` repeatedly (or `/tick step 240000` for 10 days at
 #     once) and periodically check the lava level with F3 or by digging --
-#     confirm it's risen by roughly `rateBlocks * elapsed days / rateDays`
+#     confirm it's risen by roughly `rate.blocks * elapsed days / rate.days`
 #     blocks from startY, converting air and water to lava as it goes,
 #     leaving solid terrain (stone, ore, structures) untouched.
 #  4. Confirm a chunk you have NOT visited yet, once you first enter it,
@@ -24,15 +24,16 @@
 #     and holds there, never exceeding it.
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 1000
-  finalRadiusBlocks: 1000
+  initialRadius: 1000
+  finalRadius: 1000
   ensureEndPortal: true
 risingLava:
   enabled: true
   delayDays: 1
   startY: -64
   maxY: 0
-  rateBlocks: 8
-  rateDays: 1
+  rate:
+    blocks: 8
+    days: 1
 spawn:
   strategy: starter_at_origin

@@ -45,52 +45,58 @@ naturalBiomes:
   oceans: false
 
 # Optional square border centered at 0,0. Radius is center-to-side distance;
-# resizeDelayDays waits at the initial radius. End portal is reachable by
+# resize.delayDays waits at the initial radius. End portal is reachable by
 # the final size when enabled.
 overworldBorder:
   enabled: false
-  initialRadiusBlocks: 512
-  finalRadiusBlocks: 512
-  resizeDays: 0
-  resizeDelayDays: 0
-  resizeRateBlocks: 0
-  resizeRateDays: 0
+  initialRadius: 512
+  finalRadius: 512
+  resize:
+    days: 0
+    delayDays: 0
+    style: continuous
+    rate:
+      blocks: 0
+      days: 0
   ensureEndPortal: true
 
-# Optional independent Nether border; resizeDelayDays waits at the initial
+# Optional independent Nether border; resize.delayDays waits at the initial
 # radius. Blaze access is reachable by the final size when enabled.
 netherBorder:
   enabled: false
-  initialRadiusBlocks: 512
-  finalRadiusBlocks: 512
-  resizeDays: 0
-  resizeDelayDays: 0
-  resizeRateBlocks: 0
-  resizeRateDays: 0
+  initialRadius: 512
+  finalRadius: 512
+  resize:
+    days: 0
+    delayDays: 0
+    style: continuous
+    rate:
+      blocks: 0
+      days: 0
   ensureBlazeAccess: true
 
 # Option to carry the Overworld's eventual (final) border radius into the
-# End (GOALS 17), clamped up to minimumRadiusBlocks so the dragon fight
+# End (GOALS 17), clamped up to minimumRadius so the dragon fight
 # stays winnable even at very small Overworld sizes. Only takes effect
 # when the Overworld border above is enabled; the End otherwise stays
 # completely vanilla and unbordered.
 endBorder:
   carryFromOverworld: false
-  minimumRadiusBlocks: 256
+  minimumRadius: 256
 
 # Terrain beyond a central square: normal, ocean, or void. Boundary 0
 # derives from an enabled border.
 overworldExterior:
   mode: normal
-  boundaryRadiusBlocks: 0
-  oceanTransitionWidthBlocks: 128
+  boundaryRadius: 0
+  oceanTransitionWidth: 128
 
 # Nether terrain beyond a central square: normal or void. Boundary 0
 # derives from an enabled border.
 netherExterior:
   mode: normal
-  boundaryRadiusBlocks: 0
-  oceanTransitionWidthBlocks: 128
+  boundaryRadius: 0
+  oceanTransitionWidth: 128
 
 # Coordinated terrain layout: mode (legacy/ocean/single_biome/void/chaos),
 # weighted biomes list (id or id@weight, roles resolved via maintained
@@ -183,8 +189,8 @@ foreverNight:
 
 # World-hazard "rising lava floor" module (GOAL 29, DESIGN §35.2) -- a
 # shared runtime rule, not a typed preset, composable with any world type.
-# Overworld only. Holds at startY for delayDays, then rises rateBlocks
-# every rateDays until it reaches maxY. Every air or water block at or
+# Overworld only. Holds at startY for delayDays, then rises rate.blocks
+# every rate.days until it reaches maxY. Every air or water block at or
 # below the current level converts to lava; solid terrain is untouched.
 # Already-loaded chunks convert incrementally as the level rises; a chunk
 # that loads later (or reloads after a restart) catches up to the current
@@ -195,5 +201,6 @@ risingLava:
   delayDays: 3
   startY: -64
   maxY: 64
-  rateBlocks: 1
-  rateDays: 1
+  rate:
+    blocks: 1
+    days: 1

@@ -6,7 +6,7 @@
 # instant damage) if you actually fall out of the world. **Select "Worldz:
 # Stacked"**. Same eight-layer stack as config 72; `overworldBorder` is
 # disabled entirely (no invisible wall) while `overworldExterior` still
-# gets an explicit 64-block `boundaryRadiusBlocks` -- verified against
+# gets an explicit 64-block `boundaryRadius` -- verified against
 # `WorldzConfig.sanitizeExterior`, which only rejects a non-NORMAL exterior
 # mode down to NORMAL when *both* the border is disabled *and* no explicit
 # boundary is given; setting the boundary here keeps VOID mode active with
@@ -67,4 +67,4 @@ overworldBorder:
   ensureEndPortal: true
 overworldExterior:
   mode: void
-  boundaryRadiusBlocks: 64
+  boundaryRadius: 64

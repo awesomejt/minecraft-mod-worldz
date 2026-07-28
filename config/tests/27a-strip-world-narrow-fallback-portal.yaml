@@ -26,8 +26,8 @@ strip:
   widthMode: void
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 128
-  finalRadiusBlocks: 128
+  initialRadius: 128
+  finalRadius: 128
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

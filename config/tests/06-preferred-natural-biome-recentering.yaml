@@ -7,7 +7,7 @@
 #  1. Note the origin (spawn coordinates minus the ~(8,8) spawn offset).
 #  2. Walk toward (0,0) -- the border should NOT be there.
 #  3. Walk to the border edge in each direction -- it should be
-#     `overworldBorder.initialRadiusBlocks` (1024) from the FOUND origin.
+#     `overworldBorder.initialRadius` (1024) from the FOUND origin.
 #  4. Beyond the exterior boundary, terrain should turn to ocean, again
 #     measured from the found origin, not (0,0).
 #  5. /locate structure minecraft:stronghold (or explore) -- the End portal
@@ -17,12 +17,12 @@ starter:
   radius: 256
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 1024
-  finalRadiusBlocks: 1024
+  initialRadius: 1024
+  finalRadius: 1024
   ensureEndPortal: true
 overworldExterior:
   mode: ocean
-  oceanTransitionWidthBlocks: 128
+  oceanTransitionWidth: 128
 layout:
   mode: ocean
   biomes:

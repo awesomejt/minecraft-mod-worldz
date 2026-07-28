@@ -12,7 +12,7 @@
 #  1. Confirm the world is already permanent night at spawn (lockAfterDays
 #     is 0 here) and the border starts at radius 8.
 #  2. `/tick step 48000` (2 in-game days -- the border's own
-#     resizeDelayDays). Use `/tick step`, not `/time add` -- if `/time
+#     resize.delayDays). Use `/tick step`, not `/time add` -- if `/time
 #     add` turns out to bypass the `advance_time` gamerule on this
 #     snapshot (unconfirmed either way, flag what you find), it would
 #     defeat the point of this test by moving the clock directly.
@@ -32,12 +32,14 @@ foreverNight:
   lockAfterDays: 0
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 8
-  finalRadiusBlocks: 1024
-  resizeDelayDays: 2
-  resizeRateBlocks: 1
-  resizeRateDays: 1
-  resizeStyle: stepped
+  initialRadius: 8
+  finalRadius: 1024
+  resize:
+    delayDays: 2
+    style: stepped
+    rate:
+      blocks: 1
+      days: 1
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

@@ -15,8 +15,8 @@ import java.util.function.Function;
  * (DESIGN R2, the one section that needs {@link SanitizeContext#root()}).
  *
  * <p>{@code mode}'s own ocean-legality rejection is a per-setting rule (composed with the usual
- * null-fallback) so it runs inline, before {@code boundaryRadiusBlocks}/{@code
- * oceanTransitionWidthBlocks}'s own clamps -- matching {@code sanitizeExterior}'s exact top-to-
+ * null-fallback) so it runs inline, before {@code boundaryRadius}/{@code
+ * oceanTransitionWidth}'s own clamps -- matching {@code sanitizeExterior}'s exact top-to-
  * bottom order. The remaining two checks (boundary-required-or-enabled-border, and the ocean-
  * transition-vs-resolved-boundary clamp) read the sibling border via {@code ctx.root()}, so they
  * cannot be per-setting rules; they live in {@link #postValidate}, in the same order as today's
@@ -53,14 +53,14 @@ public final class ExteriorSchema extends SchemaSection<ExteriorConfig> {
                 .doc("Terrain generated outside the central envelope: normal, ocean or void.")
                 .build(),
             Setting.<ExteriorConfig>integer(
-                    "boundaryRadiusBlocks", c -> c.boundaryRadiusBlocks, (c, v) -> c.boundaryRadiusBlocks = v
+                    "boundaryRadius", c -> c.boundaryRadiusBlocks, (c, v) -> c.boundaryRadiusBlocks = v
                 )
                 .range(0, WorldzConfig.MAX_BORDER_RADIUS_BLOCKS)
                 .unit(Unit.BLOCKS)
                 .doc("Outer envelope half-width, or zero to derive it from an enabled border.")
                 .build(),
             Setting.<ExteriorConfig>integer(
-                    "oceanTransitionWidthBlocks", c -> c.oceanTransitionWidthBlocks, (c, v) -> c.oceanTransitionWidthBlocks = v
+                    "oceanTransitionWidth", c -> c.oceanTransitionWidthBlocks, (c, v) -> c.oceanTransitionWidthBlocks = v
                 )
                 .range(0, WorldzConfig.MAX_BORDER_RADIUS_BLOCKS)
                 .unit(Unit.BLOCKS)
@@ -89,7 +89,7 @@ public final class ExteriorSchema extends SchemaSection<ExteriorConfig> {
             : value.boundaryRadiusBlocks;
         if (value.mode == ExteriorMode.OCEAN && value.oceanTransitionWidthBlocks > resolvedBoundary) {
             ctx.logger().warn(
-                "Clamped {}.oceanTransitionWidthBlocks from {} to {}.", path(), value.oceanTransitionWidthBlocks, resolvedBoundary
+                "Clamped {}.oceanTransitionWidth from {} to {}.", path(), value.oceanTransitionWidthBlocks, resolvedBoundary
             );
             value.oceanTransitionWidthBlocks = resolvedBoundary;
         }

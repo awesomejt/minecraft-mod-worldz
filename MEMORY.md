@@ -3050,3 +3050,32 @@ Durable decisions, verified API notes, and rationale that should survive across 
   text out of `common/build/test-results/test/TEST-...WorldzConfigTest.xml`
   (HTML-unescape it), take the "but was" half, and write that as the new
   golden file — then diff old vs. new by hand before trusting it.
+
+- 2026-07-28 — **Phase 25.6c (borders/exteriors/hazards key restructure)
+  executed.** `BorderSchema` gained two private nested group classes
+  (`ResizeSchema` containing `days`/`delayDays`/`style` plus a further-nested
+  `RateSchema`), proving DESIGN §42.2's "groups nest" claim for real: the
+  outer group's own `Setting.group` accessor is an identity `Setting
+  <BorderConfig, BorderConfig>`, so the inner group's `copyInto` composes
+  automatically with no extra framework code, exactly as designed.
+  **Non-obvious pitfall worth remembering for 25.6d-h:** a TODO sub-step's
+  own enumerated fixture list is not the complete set of fixtures that need
+  migrating. `overworldBorder`/`netherBorder`/`endBorder`/`*Exterior`/
+  `risingLava`/`structureDistance` are shared root-level sections that many
+  *other* world types' fixtures set just to fence/hazard the world (not
+  because that fixture's own subject is border/hazard behavior) — 13 more
+  fixtures needed the same key renames than the 8 the 25.6c TODO line named,
+  found only by grepping every `config/tests/*.yaml` for the old leaf-key
+  strings directly rather than trusting the task's own fixture list. Since
+  `ConfigFixturesTest`'s unknown-key gate (25.6a) checks literally every
+  fixture, a missed one is a guaranteed red build, not a silent gap — but
+  better to grep proactively than discover it via a confusing failure in an
+  unrelated-looking fixture. Apply the same grep-first discipline for
+  25.6d-h: for each sub-step's renamed keys, `grep -l` every `config/tests/
+  *.yaml` before assuming the TODO line's named fixture list is exhaustive.
+  Also confirmed directly (not just trusting DESIGN's own claim) that R2
+  (`ExteriorSchema`'s cross-section border read) has zero interaction with
+  this sub-step: `postValidate` reads the sibling `BorderConfig` as a POJO
+  field (`ctx.root()` then a plain field access), never a YAML key, so
+  renaming `boundaryRadiusBlocks`/`oceanTransitionWidthBlocks` only changes
+  that section's own warning text, nothing about the cross-section logic.

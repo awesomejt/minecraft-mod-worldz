@@ -9,8 +9,11 @@ import java.util.List;
 /**
  * Schema for {@link RisingLavaConfig} (GOAL 29, DESIGN §35.2) -- a shared world-hazard runtime
  * rule, root-level, composable with any world type. Overworld only for this phase (DESIGN §35.3).
+ * {@code rate: {blocks, days}} is a group over this section's own {@link RisingLavaConfig} type
+ * (TODO 25.6c) -- both fields stay flat on {@link RisingLavaConfig} itself, exactly as before; only
+ * the YAML shape and key names change.
  *
- * <p>{@code rateBlocks}/{@code rateDays} declare {@link Rule.None} and are instead clamped inside
+ * <p>{@code rate.blocks}/{@code rate.days} declare {@link Rule.None} and are instead clamped inside
  * {@link #postValidate}, <em>after</em> the {@code maxY >= startY} cross-field check -- matching
  * {@code sanitizeRisingLava}'s own interleaved order exactly (delay/start/max clamps, then the
  * cross-check, then the rate clamps). A plain per-setting declaration order would run the rate
@@ -21,8 +24,11 @@ public final class RisingLavaSchema extends SchemaSection<RisingLavaConfig> {
     private static final int MIN_Y = FlatConfig.OVERWORLD_MIN_Y;
     private static final int MAX_BUILD_Y = FlatConfig.OVERWORLD_MIN_Y + FlatConfig.MAX_TOTAL_HEIGHT_BLOCKS - 1;
 
+    private final RateSchema rate;
+
     public RisingLavaSchema(String path) {
         super(path, RisingLavaConfig::new);
+        this.rate = new RateSchema(path + ".rate");
     }
 
     @Override
@@ -47,26 +53,17 @@ public final class RisingLavaSchema extends SchemaSection<RisingLavaConfig> {
                 .unit(Unit.Y_LEVEL).live()
                 .doc("Y the lava level stops rising at.")
                 .build(),
-            Setting.<RisingLavaConfig>integer("rateBlocks", c -> c.rateBlocks, (c, v) -> c.rateBlocks = v)
-                .unit(Unit.BLOCKS).live()
-                .rangeText(rangeText(1, WorldzConfig.MAX_BORDER_RATE_BLOCKS))
-                .doc("Blocks the level rises per rateDays.")
-                .build(),
-            Setting.<RisingLavaConfig>integer("rateDays", c -> c.rateDays, (c, v) -> c.rateDays = v)
-                .unit(Unit.DAYS).live()
-                .rangeText(rangeText(1, WorldzConfig.MAX_BORDER_RESIZE_DAYS))
-                .doc("In-game days per rateBlocks of rise.")
+            Setting.group("rate", rate)
+                .render(rate::summary)
+                .doc("Distance-over-time rise rate.")
                 .build()
         );
     }
 
-    private static String rangeText(int min, int max) {
-        return min + ".." + max;
-    }
-
     /**
      * Cross-field check ({@code maxY >= startY}), then the two rate clamps -- in that exact order,
-     * matching {@code sanitizeRisingLava} (DESIGN's postValidate hook, per TODO 25.2b).
+     * matching {@code sanitizeRisingLava} (DESIGN's postValidate hook, per TODO 25.2b). Only the
+     * warning path strings changed (TODO 25.6c); the clamps and their order are untouched.
      */
     @Override
     protected void postValidate(RisingLavaConfig value, SanitizeContext ctx) {
@@ -74,8 +71,8 @@ public final class RisingLavaSchema extends SchemaSection<RisingLavaConfig> {
             ctx.logger().warn("risingLava.maxY ({}) was below startY ({}); raised to match.", value.maxY, value.startY);
             value.maxY = value.startY;
         }
-        value.rateBlocks = clampWithWarning(value.rateBlocks, 1, WorldzConfig.MAX_BORDER_RATE_BLOCKS, path() + ".rateBlocks", ctx);
-        value.rateDays = clampWithWarning(value.rateDays, 1, WorldzConfig.MAX_BORDER_RESIZE_DAYS, path() + ".rateDays", ctx);
+        value.rateBlocks = clampWithWarning(value.rateBlocks, 1, WorldzConfig.MAX_BORDER_RATE_BLOCKS, path() + ".rate.blocks", ctx);
+        value.rateDays = clampWithWarning(value.rateDays, 1, WorldzConfig.MAX_BORDER_RESIZE_DAYS, path() + ".rate.days", ctx);
     }
 
     private static int clampWithWarning(int value, int minimum, int maximum, String name, SanitizeContext ctx) {
@@ -88,7 +85,9 @@ public final class RisingLavaSchema extends SchemaSection<RisingLavaConfig> {
 
     /**
      * Overridden: {@code enabled} gates the whole line and is itself excluded from the surviving
-     * segments -- not mechanically derivable (no section-level "disabled" gate in the framework).
+     * segments, and {@code rate}'s own fields fold into one {@code "rate="} segment via {@link
+     * RateSchema#summary} -- not mechanically derivable (no section-level "disabled" gate in the
+     * framework).
      */
     @Override
     public String summary(RisingLavaConfig value) {
@@ -96,6 +95,45 @@ public final class RisingLavaSchema extends SchemaSection<RisingLavaConfig> {
             return "<disabled>";
         }
         return "delayDays=" + value.delayDays + ", startY=" + value.startY + ", maxY=" + value.maxY
-            + ", rateBlocks=" + value.rateBlocks + ", rateDays=" + value.rateDays;
+            + ", rate=" + rate.summary(value);
+    }
+
+    /**
+     * {@code risingLava.rate} (TODO 25.6c): {@code blocks}/{@code days}, a group over {@link
+     * RisingLavaSchema}'s own {@link RisingLavaConfig} type rather than a shared/parameterized
+     * class -- there is only ever one owner shape. Private, exactly like {@code
+     * WorldzRootSchema.StarterLandSchema}/{@code BorderSchema.ResizeSchema}. Declares {@link
+     * Rule.None} for both leaves since the real clamps live in {@link RisingLavaSchema#postValidate},
+     * matching DESIGN §42.2's constraint 2 for sections whose sanitize order is hand-written.
+     */
+    private static final class RateSchema extends SchemaSection<RisingLavaConfig> {
+        RateSchema(String path) {
+            super(path, RisingLavaConfig::new);
+        }
+
+        @Override
+        protected List<Setting<RisingLavaConfig, ?>> declare() {
+            return List.of(
+                Setting.<RisingLavaConfig>integer("blocks", c -> c.rateBlocks, (c, v) -> c.rateBlocks = v)
+                    .unit(Unit.BLOCKS).live()
+                    .rangeText(rangeText(1, WorldzConfig.MAX_BORDER_RATE_BLOCKS))
+                    .doc("Blocks the level rises per rate.days.")
+                    .build(),
+                Setting.<RisingLavaConfig>integer("days", c -> c.rateDays, (c, v) -> c.rateDays = v)
+                    .unit(Unit.DAYS).live()
+                    .rangeText(rangeText(1, WorldzConfig.MAX_BORDER_RESIZE_DAYS))
+                    .doc("In-game days per rate.blocks of rise.")
+                    .build()
+            );
+        }
+
+        private static String rangeText(int min, int max) {
+            return min + ".." + max;
+        }
+
+        // No summary() override: the inherited default (SchemaSection.summary(), "blocks=X, days=Y")
+        // already reads exactly like pre-restructure's flat "rateBlocks=X, rateDays=Y" pair, just
+        // without the "rate" prefix repeated on each leaf -- unlike BorderSchema.RateSchema, there is
+        // no optional/"<total-days>" fallback shape here to hand-render.
     }
 }

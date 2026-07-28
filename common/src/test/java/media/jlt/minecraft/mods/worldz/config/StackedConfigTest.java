@@ -113,7 +113,7 @@ class StackedConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldBorder:
               enabled: true
-              finalRadiusBlocks: 2048
+              finalRadius: 2048
             stacked:
               layers:
                 - "minecraft:plains;minecraft:stone:20;0"
@@ -133,7 +133,7 @@ class StackedConfigTest {
         WorldzConfig config = WorldzConfig.parse("""
             overworldExterior:
               mode: ocean
-              boundaryRadiusBlocks: 64
+              boundaryRadius: 64
             stacked:
               layers:
                 - "minecraft:plains;minecraft:stone:20;0"

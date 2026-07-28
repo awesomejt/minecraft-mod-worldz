@@ -4,7 +4,7 @@
 # up to a max of 1024. Unlike config 21 (continuous), the border should hold
 # perfectly still between jumps, not creep smoothly.
 #
-# Requires 0.2.16+ (Phase 5b: resizeStyle/stepped driver did not exist
+# Requires 0.2.16+ (Phase 5b: resize.style/stepped driver did not exist
 # before it).
 #
 # Unlike continuous schedules (config 21), a stepped border recomputes its
@@ -31,12 +31,14 @@ layout:
   mode: legacy
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 8
-  finalRadiusBlocks: 1024
-  resizeDelayDays: 2
-  resizeRateBlocks: 1
-  resizeRateDays: 1
-  resizeStyle: stepped
+  initialRadius: 8
+  finalRadius: 1024
+  resize:
+    delayDays: 2
+    style: stepped
+    rate:
+      blocks: 1
+      days: 1
   ensureEndPortal: true
 spawn:
   strategy: starter_at_origin

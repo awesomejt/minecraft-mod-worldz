@@ -28,11 +28,11 @@
 #     instead, which is the more interesting stronghold case.
 overworldBorder:
   enabled: true
-  initialRadiusBlocks: 3000
-  finalRadiusBlocks: 3000
+  initialRadius: 3000
+  finalRadius: 3000
   ensureEndPortal: true
 structureDistance:
   enabled: true
-  minDistanceBlocks: 400
+  minDistance: 400
 spawn:
   strategy: starter_at_origin
