@@ -1368,6 +1368,21 @@ deliberately unaffected (`deep_flat` already reports real vanilla biomes at
 real depth for free, `stacked` already assigns biomes by Y — see TODO 21.1's
 pre-work correction and 21.4's own scope note).
 
+## Phase 25 config-file behavior (TODO 25.4)
+
+No config/gameplay change to verify — this is the concrete scenario TODO
+25.12's `[Jason]` acceptance step ("a hand-commented config survives a launch
+intact") points at.
+
+1. Hand-write a small `config/jlt_worldz.yaml` with a couple of `#` comment
+   lines and only one or two settings overridden (e.g. `starterRadiusBlocks`).
+2. Launch the game (either loader) and let it reach the title screen.
+3. Confirm `config/jlt_worldz.yaml` is byte-identical to what you wrote —
+   comments intact, no other settings appended.
+4. Confirm a new `config/jlt_worldz.reference.yaml` appeared alongside it,
+   showing every setting at its built-in default. It's regenerated every
+   launch and safe to delete; the mod never reads it back.
+
 ## Scenario table: seed-informed spawn (Phase 16)
 
 This is the current unverified feature. Run each row on **both** loaders

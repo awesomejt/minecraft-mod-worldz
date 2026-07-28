@@ -52,8 +52,12 @@ class WorldzConfigTest {
     @TempDir
     Path temporaryDirectory;
 
+    private Path referenceFile() {
+        return temporaryDirectory.resolve("jlt_worldz.reference.yaml");
+    }
+
     @Test
-    void missingConfigUsesDefaultsWithoutCreatingAFile() throws IOException {
+    void missingConfigUsesDefaultsWithoutCreatingAUserConfigFile() throws IOException {
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
         assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
@@ -83,6 +87,8 @@ class WorldzConfigTest {
         assertFalse(config.allowRivers);
         assertFalse(config.allowOceans);
         assertFalse(Files.exists(temporaryDirectory.resolve("jlt_worldz.yaml")));
+        assertTrue(Files.exists(referenceFile()));
+        assertEquals(WorldzConfig.referenceYaml(), Files.readString(referenceFile()));
     }
 
     @Test
@@ -126,38 +132,113 @@ class WorldzConfigTest {
     @Test
     void unknownKeysAreTolerated() throws IOException {
         Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
-        Files.writeString(configFile, """
+        String written = """
             allowedBiomes:
               - desert
             futureOption:
               enabled: true
-            """);
+            """;
+        Files.writeString(configFile, written);
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
         assertEquals(List.of("minecraft:desert"), config.allowedBiomes);
         assertEquals(256, config.starterRadiusBlocks);
-        assertFalse(Files.readString(configFile).contains("futureOption"));
+        // The file on disk is untouched byte-for-byte, futureOption included.
+        assertEquals(written, Files.readString(configFile));
+        // The parsed model still drops what the schema doesn't declare.
+        assertFalse(config.toYaml().contains("futureOption"));
     }
 
     @Test
     void nonStringAndSyntacticallyInvalidBiomeEntriesAreDropped() throws IOException {
         Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
-        Files.writeString(configFile, """
+        String written = """
             allowedBiomes:
               - plains
               - 42
               - null
               - 'Bad Namespace:plains'
               - '#is_overworld'
-            """);
+            """;
+        Files.writeString(configFile, written);
 
         WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
 
         assertEquals(List.of("minecraft:plains", "#minecraft:is_overworld"), config.allowedBiomes);
-        String rewritten = Files.readString(configFile);
-        assertFalse(rewritten.contains("42"));
-        assertFalse(rewritten.contains("Bad Namespace"));
+        // The file on disk is untouched byte-for-byte.
+        assertEquals(written, Files.readString(configFile));
+        // The parsed model still drops the invalid entries.
+        assertFalse(config.toYaml().contains("42"));
+        assertFalse(config.toYaml().contains("Bad Namespace"));
+    }
+
+    /**
+     * The headline regression test for D4/TODO 25.4 (see MEMORY.md, F5): a small, hand-commented
+     * config must survive a launch byte-identical, not get expanded into the full multi-hundred-
+     * line dump the old unconditional rewrite produced.
+     */
+    @Test
+    void validConfigWithCommentsSurvivesLoadUnchanged() throws IOException {
+        Path configFile = temporaryDirectory.resolve("jlt_worldz.yaml");
+        String written = """
+            # My personal Worldz config.
+            # Only overriding the two settings I care about.
+            starterRadiusBlocks: 512  # bigger starter zone
+            allowedBiomes:
+              - minecraft:desert
+              - minecraft:badlands
+            """;
+        Files.writeString(configFile, written);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertEquals(512, config.starterRadiusBlocks);
+        assertEquals(List.of("minecraft:desert", "minecraft:badlands"), config.allowedBiomes);
+        assertEquals(written, Files.readString(configFile));
+        assertFalse(Files.readString(configFile).contains("oceanIsland"));
+    }
+
+    @Test
+    void referenceFileIsRegeneratedOverStaleContent() throws IOException {
+        Files.writeString(referenceFile(), "stale: true\n");
+
+        WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertEquals(WorldzConfig.referenceYaml(), Files.readString(referenceFile()));
+    }
+
+    @Test
+    void referenceFileBodyMatchesTheCapturedSchemaDefaults() throws IOException {
+        String defaults = Files.readString(Path.of("src/test/resources/config/reference-defaults.yaml"));
+        String reference = WorldzConfig.referenceYaml();
+
+        assertTrue(reference.endsWith(defaults));
+        String header = reference.substring(0, reference.length() - defaults.length());
+        for (String line : header.lines().toList()) {
+            assertTrue(line.startsWith("#"));
+        }
+    }
+
+    @Test
+    void referenceFileRoundTripsBackToDefaults() {
+        String roundTripped = WorldzConfig.parse(WorldzConfig.referenceYaml(), LOGGER).sanitize(LOGGER).toYaml();
+        String defaults = new WorldzConfig().sanitize(LOGGER).toYaml();
+
+        assertEquals(defaults, roundTripped);
+    }
+
+    // Assumes a POSIX filesystem (AGENTS.md: Temurin 25 on Linux): Files.createDirectories on a
+    // path that already exists as a regular file throws, which is exactly the failure this
+    // test forces onto writeReference's config directory argument.
+    @Test
+    void referenceWriteFailureDoesNotBlockConfigLoading() throws IOException {
+        Path notADirectory = temporaryDirectory.resolve("notADirectory");
+        Files.writeString(notADirectory, "not a directory");
+
+        WorldzConfig config = WorldzConfig.load(notADirectory, "jlt_worldz", LOGGER);
+
+        assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
     }
 
     @Test

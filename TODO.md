@@ -304,7 +304,7 @@ Independent of 5b/5c; Jason picks phase order.
       the existing safety-margin fallback logic sidesteps it in
       practice) in DESIGN §24.9. 3 new tests; full suite green (348
       tests); clean build.
-- [ ] 7.4 Test configs (tiny/default/huge island, 04 variant); docs;
+- [x] 7.4 Test configs (tiny/default/huge island, 04 variant); docs;
       **[Jason]** acceptance including "does the island read as natural".
       **Configs and docs done (0.2.31):** `config/tests/30`-`33` (default
       128-radius island; the 8-block "1 chunk" floor exercising the
@@ -1003,11 +1003,28 @@ tests.
       schema/key/gameplay change), same as 25.1/25.2. **Not yet consumed
       anywhere** — 25.5 (sentinel retirement) is what will call
       `config.present(...)` for real; this task only proves the capability.
-- [ ] 25.4 Stop rewriting the config file (D4, needs 25.3 — see F5: today's
+- [x] 25.4 Stop rewriting the config file (D4, needs 25.3 — see F5: today's
       rewrite makes every setting explicit after one launch, which would
       silently defeat 25.3). Load becomes parse-validate-log. Emit
       `jlt_worldz.reference.yaml` from the same schema that drives parsing, so
-      it cannot drift from the code.
+      it cannot drift from the code. — **done**. `WorldzConfig.load` no
+      longer calls `save`; `loadExisting` is now parse-validate-sanitize only,
+      so `config/jlt_worldz.yaml` is never rewritten regardless of whether it
+      parsed cleanly — comments and omitted settings now survive every
+      launch. `load` always regenerates `config/<modId>.reference.yaml` via
+      the new `writeReference`/`referenceYaml`: a fixed comment header plus
+      plain `new WorldzConfig().sanitize().toYaml()` output (no per-key doc
+      comments — that's 25.10's job once its bespoke renderer exists), never
+      throwing on write failure so a broken reference file can't block the
+      user's own config from loading. The old `save` method and the
+      now-unused `StandardCopyOption` import were deleted. 4 existing tests
+      reworked (`unknownKeysAreTolerated`,
+      `nonStringAndSyntacticallyInvalidBiomeEntriesAreDropped`, and the
+      renamed `missingConfigUsesDefaultsWithoutCreatingAUserConfigFile`/
+      `malformedConfigUsesDefaultsWithoutOverwritingInput`) plus 5 new ones
+      covering the reference file and the headline comment-preservation
+      regression. No `config/tests/*.yaml` added — zero in-game-observable
+      schema/gameplay change, same precedent as 25.1-25.3.
 - [ ] 25.5 Retire every sentinel (D5, needs 25.3). Rewrite `StackedConfig`'s
       two `effective*` methods in terms of "did the user set it?", and convert
       `boundaryRadiusBlocks: 0`, `resizeRate*: 0`, `undergroundBiome: ""` and

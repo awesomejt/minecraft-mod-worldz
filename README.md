@@ -70,7 +70,12 @@ For singleplayer:
    [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml), which
    documents every setting with comments, then restart Minecraft. No config
    file at all is a normal, supported setup: the mod's own defaults apply
-   directly and it never creates one for you.
+   directly and it never creates one for you. The mod never rewrites your
+   `config/jlt_worldz.yaml` either — comments and settings you didn't set are
+   preserved across every launch. Instead, it writes
+   `config/jlt_worldz.reference.yaml` on every launch: a generated, never-read,
+   safe-to-delete file showing every setting at its built-in default, handy to
+   copy values from.
 2. Create a world and select **Worldz** under **World Type**.
 3. Select **Customize** to change the biome list, starter zone and land,
    borders, exterior terrain, coordinated layout, or resize rates for this
@@ -1289,7 +1294,11 @@ defaults for the singleplayer Customize screen and the direct inputs for
 dedicated-server world creation. A complete, comment-documented reference —
 the way to discover every available setting — lives at
 [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml); copy the
-parts you want into your own `config/jlt_worldz.yaml`.
+parts you want into your own `config/jlt_worldz.yaml`. The mod never rewrites
+`config/jlt_worldz.yaml` itself, so any comments or settings you leave out
+stay untouched; it writes `config/jlt_worldz.reference.yaml` alongside it on
+every launch instead — generated, never read back, safe to delete, and always
+showing every setting at its current built-in default.
 
 | Setting | Default | Description |
 |---|---|---|

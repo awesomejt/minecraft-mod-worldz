@@ -4,16 +4,15 @@ import media.jlt.minecraft.mods.worldz.config.schema.ParseContext;
 import media.jlt.minecraft.mods.worldz.config.schema.SanitizeContext;
 import media.jlt.minecraft.mods.worldz.config.schema.WorldzRootSchema;
 import org.slf4j.Logger;
+import org.slf4j.helpers.NOPLogger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 import org.yaml.snakeyaml.representer.Representer;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,6 +61,15 @@ public final class WorldzConfig {
     public static final int MAX_STACKED_RELIEF_BLOCKS = 16;
 
     static final String YAML_EXTENSION = ".yaml";
+    static final String REFERENCE_SUFFIX = ".reference" + YAML_EXTENSION;
+
+    /** Fixed comment header prepended to every generated reference file. */
+    private static final String REFERENCE_HEADER = """
+        # jlt_worldz reference config -- GENERATED, do not edit.
+        # Rewritten from the mod's schema on every launch; the mod never reads this file.
+        # Every setting is shown at its built-in default. Copy the parts you want into
+        # jlt_worldz.yaml (which the mod never rewrites -- your comments are preserved).
+        """;
 
     /**
      * The root schema (DESIGN §41.7, TODO 25.2g): declares every top-level scalar and section, in
@@ -158,9 +166,11 @@ public final class WorldzConfig {
 
     /**
      * Loads {@code <configDir>/<modId>.yaml} when present. The mod-level config file is
-     * optional: when absent, code defaults apply directly and no file is created. See
-     * {@code config/jlt_worldz.example.yaml} for the documented, comment-annotated
-     * reference to copy from when a reusable custom config is wanted.
+     * optional: when absent, code defaults apply directly and no file is created. The user's file
+     * is never rewritten -- comments and omitted settings survive every launch unchanged. See
+     * {@code config/jlt_worldz.example.yaml} for the documented, comment-annotated reference to
+     * copy from when a reusable custom config is wanted; a sibling {@code <modId>.reference.yaml},
+     * regenerated on every load from the mod's own schema, is an equivalent always-current source.
      *
      * @param configDir loader-provided configuration directory
      * @param modId stable mod id used as the filename
@@ -169,20 +179,18 @@ public final class WorldzConfig {
      */
     public static WorldzConfig load(Path configDir, String modId, Logger logger) {
         Path configFile = configDir.resolve(modId + YAML_EXTENSION);
-        if (!Files.exists(configFile)) {
-            return new WorldzConfig().sanitize(logger);
-        }
-        return loadExisting(configFile, logger);
+        WorldzConfig config = Files.exists(configFile)
+            ? loadExisting(configFile, logger)
+            : new WorldzConfig().sanitize(logger);
+        writeReference(configDir, modId, logger);
+        return config;
     }
 
     static WorldzConfig loadExisting(Path configFile, Logger logger) {
         try {
-            WorldzConfig config = parse(Files.readString(configFile), logger).sanitize(logger);
-            config.save(configFile);
-            return config;
+            return parse(Files.readString(configFile), logger).sanitize(logger);
         } catch (Exception exception) {
-            logger.warn("Could not load config {}: {}. Using defaults without changing the file.",
-                configFile, exception.getMessage());
+            logger.warn("Could not load config {}: {}. Using defaults.", configFile, exception.getMessage());
             return new WorldzConfig().sanitize(logger);
         }
     }
@@ -229,17 +237,26 @@ public final class WorldzConfig {
         return createYaml().dump(ROOT.toMap(this));
     }
 
-    private void save(Path configFile) throws IOException {
-        Path parent = configFile.getParent();
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
-        Path temporary = configFile.resolveSibling(configFile.getFileName() + ".tmp");
-        Files.writeString(temporary, toYaml());
+    /**
+     * Renders the generated reference file's exact contents: fixed comment header + the schema's
+     * all-defaults YAML. Deterministic -- no timestamp, no version.
+     */
+    static String referenceYaml() {
+        return REFERENCE_HEADER + new WorldzConfig().sanitize(NOPLogger.NOP_LOGGER).toYaml();
+    }
+
+    /**
+     * Writes {@code <configDir>/<modId>.reference.yaml}, overwriting any previous copy. Never
+     * throws: a failure here must not stop the user's own config from loading.
+     */
+    static void writeReference(Path configDir, String modId, Logger logger) {
+        Path referenceFile = configDir.resolve(modId + REFERENCE_SUFFIX);
         try {
-            Files.move(temporary, configFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException unsupportedAtomicMove) {
-            Files.move(temporary, configFile, StandardCopyOption.REPLACE_EXISTING);
+            Files.createDirectories(configDir);
+            Files.writeString(referenceFile, referenceYaml());
+            logger.info("Wrote reference config {}", referenceFile);
+        } catch (Exception exception) {
+            logger.warn("Could not write reference config {}: {}", referenceFile, exception.getMessage());
         }
     }
 

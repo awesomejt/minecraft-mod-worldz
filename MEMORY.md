@@ -1694,6 +1694,19 @@ Durable decisions, verified API notes, and rationale that should survive across 
      setting is hand-written into four parallel methods (read/sanitize/map/
      summary, ~100 methods total).
 
+- 2026-07-28 -- **TODO 25.4 reverses the 2026-07-14 "rewrite successfully
+  parsed config atomically after sanitation" decision above** (D4,
+  `CONFIG-RESTRUCTURE.md`). `WorldzConfig.load` no longer writes the user's
+  `config/jlt_worldz.yaml` at all -- load is now parse-validate-log only, so
+  comments and omitted settings survive every launch unchanged, which is what
+  makes 25.3's presence tracking meaningful going forward. In its place, `load`
+  regenerates `config/<modId>.reference.yaml` on every launch from
+  `WorldzConfig.referenceYaml()`: a fixed comment header plus
+  `new WorldzConfig().sanitize().toYaml()`, walked from the same schema that
+  drives parsing so it cannot drift from the code. No per-key doc comments in
+  that file yet -- SnakeYAML can't emit them without a bespoke renderer,
+  deferred to 25.10. Do not re-litigate the old rewrite-on-load behavior.
+
 ## Reference Log
 
 - Phase 0: Fabric project structure and `fabric.mod.json` entrypoints — https://docs.fabricmc.net/develop/getting-started/project-structure

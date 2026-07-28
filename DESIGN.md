@@ -6853,7 +6853,8 @@ orchestration methods collapse to one line each:
 | ~100 `read*`/`sanitize*`/`*Map`/`*Summary` methods | deleted; ~30 schema classes |
 
 **Legitimately stays hand-written on `WorldzConfig`:** `load` (:173-179),
-`loadExisting` (:181-191), `save` (:898-910), `createYaml` (:2382-2399), the
+`loadExisting` (:181-191), `writeReference`/`referenceYaml` (TODO 25.4),
+`createYaml` (:2382-2399), the
 public constants block (:42-79 — the bounds the schemas reference), and the
 public fields. Target size: **~200 lines, down from 2400**, directly answering
 Jason's "2400 lines in any one class needs a very compelling reason."
@@ -6945,6 +6946,17 @@ new renderer.
 Both are additive by construction. Populating `docs`/`applies` *during* 25.2 is
 the single highest-leverage decision here: it is where most of the authoring
 effort goes, and it is what makes 25.4 and 25.10 nearly free.
+
+**As built (25.4).** `load` dropped the write-back entirely instead of
+consulting `Setting.docs()`/`applies()` -- those stay unused until 25.10's
+per-key renderer exists. `referenceYaml()` is a fixed comment header
+concatenated with `new WorldzConfig().sanitize(NOPLogger.NOP_LOGGER).toYaml()`
+(plain schema defaults, no per-key doc comments), and `writeReference` writes
+it to `<configDir>/<modId>.reference.yaml` on every `load`, swallowing any
+failure so a broken reference write can never block the user's own config from
+loading. `loadExisting` lost its `save(configFile)` call and the private
+`save` method was deleted outright, along with the now-unused
+`StandardCopyOption` import.
 
 ### 41.10 Risks specific to this sub-task
 
