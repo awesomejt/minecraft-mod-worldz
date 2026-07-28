@@ -11,7 +11,7 @@
 # reporting its own configured biome, bottom to top: taiga (deepest, real
 # min Y), desert, badlands, swamp, jungle, savanna, snowy_taiga, plains
 # (surface). Every layer's own surface has a small (up to 4 blocks, the
-# reliefBlocks default) bump that varies by column, so bands read as
+# relief default) bump that varies by column, so bands read as
 # gently uneven ground rather than perfectly flat slabs.
 #
 # Steps once in-game:

@@ -1,4 +1,4 @@
-# GOAL 35 (Phase 17.2c, DESIGN §34.7): reliefBlocks=0 restores the
+# GOAL 35 (Phase 17.2c, DESIGN §34.7): relief=0 restores the
 # pre-§34.7 perfectly flat per-layer behavior. **Select "Worldz:
 # Stacked"**. Same eight-layer stack and bounded-world default as config
 # 72, but with relief explicitly disabled -- isolates "is an oddity a
@@ -11,7 +11,7 @@
 #     gaps, 64-block border, fallback End portal near the bottom layer's
 #     Y -32.
 stacked:
-  reliefBlocks: 0
+  relief: 0
   layers:
     - "minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30"
     - "minecraft:desert;minecraft:sandstone:7,minecraft:sand:3;30"

@@ -22,10 +22,10 @@
 #  3. Explore underground for a cave biome (lush caves, dripstone caves,
 #     deep dark) -- confirm real vanilla variety, the same as any normal
 #     world.
-#  4. Find a river or ocean biome well past `riverExclusionRadiusBlocks`
+#  4. Find a river or ocean biome well past `rivers.exclusionRadius`
 #     (512 blocks from spawn, below) and confirm it shows as water at
 #     the flat surface, not paved over with the land cap -- this is
-#     riversEnabled's default (on). A real cave breach immediately
+#     rivers.enabled's default (on). A real cave breach immediately
 #     beneath the water should no longer drain it away (0.3.11 fix,
 #     DESIGN §33.4's previously-known first-pass gap, now bounded); a
 #     genuinely deeper cave system further down still floods normally,
@@ -38,8 +38,9 @@ deepFlat:
   capLayers:
     - "minecraft:dirt:3"
     - "minecraft:grass_block:1"
-  riversEnabled: true
-  riverExclusionRadiusBlocks: 512
+  rivers:
+    enabled: true
+    exclusionRadius: 512
 overworldBorder:
   enabled: false
   ensureEndPortal: true

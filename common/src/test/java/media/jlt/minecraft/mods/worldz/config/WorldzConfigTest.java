@@ -718,12 +718,12 @@ class WorldzConfigTest {
                 + " biome=minecraft:plains, decoration=false,"
                 + " structureOverrides=[minecraft:villages, minecraft:strongholds]"
                 + ", deepFlat=surfaceY=64, capLayers=[minecraft:dirt:3, minecraft:grass_block:1],"
-                + " riversEnabled=true, riverExclusionRadiusBlocks=512"
+                + " rivers=enabled=true, exclusionRadius=512"
                 + ", stacked=layers=[minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30,"
                 + " minecraft:desert, minecraft:badlands, minecraft:swamp, minecraft:jungle,"
                 + " minecraft:savanna, minecraft:snowy_taiga,"
                 + " minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0],"
-                + " seedRandomizedOrder=false, worldSizeChunks=4, reliefBlocks=4, forceTopVillage=false"
+                + " seedRandomizedOrder=false, worldSizeChunks=4, relief=4, forceTopVillage=false"
                 + ", foreverNight=<disabled>"
                 + ", risingLava=<disabled>"
                 + ", structureDistance=<disabled>",
@@ -1513,8 +1513,9 @@ class WorldzConfigTest {
             deepFlat:
               surfaceY: 80
               capLayers: ["minecraft:dirt:2", "minecraft:grass_block:1"]
-              riversEnabled: false
-              riverExclusionRadiusBlocks: 256
+              rivers:
+                enabled: false
+                exclusionRadius: 256
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(80, config.deepFlat.surfaceY);
@@ -1565,7 +1566,7 @@ class WorldzConfigTest {
               layers: ["minecraft:taiga;minecraft:stone:40;6", "minecraft:plains;minecraft:stone:20,minecraft:grass_block:1;0"]
               seedRandomizedOrder: true
               worldSizeChunks: 8
-              reliefBlocks: 2
+              relief: 2
               forceTopVillage: true
             """, LOGGER).sanitize(LOGGER);
 
@@ -1615,7 +1616,7 @@ class WorldzConfigTest {
     void stackedReliefBlocksClampsToConfiguredMaximum() {
         WorldzConfig config = WorldzConfig.parse("""
             stacked:
-              reliefBlocks: 9999
+              relief: 9999
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(WorldzConfig.MAX_STACKED_RELIEF_BLOCKS, config.stacked.reliefBlocks);

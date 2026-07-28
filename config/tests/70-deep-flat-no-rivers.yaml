@@ -5,7 +5,7 @@
 # Requires 0.3.9+ (same `applyDeepFlatCap` chunk-generation crash as
 # config 69 -- see its own note -- affected every deep_flat config
 # including this one; delete any pre-0.3.9 save first). Since
-# `riversEnabled: false` forces every column through the land-cap branch
+# `rivers.enabled: false` forces every column through the land-cap branch
 # regardless of biome, this config exercises 0.3.10's `sealBeneathCap`
 # fix on effectively every column, not just some: no stray dirt-rimmed
 # ponds should punch through the flat surface anywhere here.
@@ -17,7 +17,7 @@
 #  2. Locate where a river or ocean would naturally be (F3 biome
 #     readout finds the real river/ocean biome boundary underground or
 #     via the real terrain below) and confirm the *surface* there is
-#     ordinary land cap (dirt/grass), not water -- riversEnabled: false
+#     ordinary land cap (dirt/grass), not water -- rivers.enabled: false
 #     means every column gets the same cap regardless of biome.
 #  3. Confirm caves/cave biomes/structures below the cap are unaffected
 #     -- this option only changes the cap band's own material choice.
@@ -26,7 +26,8 @@ deepFlat:
   capLayers:
     - "minecraft:dirt:3"
     - "minecraft:grass_block:1"
-  riversEnabled: false
+  rivers:
+    enabled: false
 overworldBorder:
   enabled: false
   ensureEndPortal: true

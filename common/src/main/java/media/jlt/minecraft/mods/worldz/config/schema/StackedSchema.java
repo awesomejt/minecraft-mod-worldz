@@ -34,7 +34,7 @@ public final class StackedSchema extends SchemaSection<StackedConfig> {
                 .unit(Unit.CHUNKS).preset("stacked").customizeExposed()
                 .doc("Overworld exterior half-width in chunks; zero opts out to the shared exterior section.")
                 .build(),
-            Setting.<StackedConfig>integer("reliefBlocks", c -> c.reliefBlocks, (c, v) -> c.reliefBlocks = v)
+            Setting.<StackedConfig>integer("relief", c -> c.reliefBlocks, (c, v) -> c.reliefBlocks = v)
                 .range(0, WorldzConfig.MAX_STACKED_RELIEF_BLOCKS)
                 .unit(Unit.BLOCKS).preset("stacked").customizeExposed()
                 .doc("Maximum per-column height bump applied to each layer's own surface.")

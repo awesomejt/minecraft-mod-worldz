@@ -1105,16 +1105,17 @@ deepFlat:
   capLayers:
     - "minecraft:dirt:3"
     - "minecraft:grass_block:1"
-  riversEnabled: true
-  riverExclusionRadiusBlocks: 512
+  rivers:
+    enabled: true
+    exclusionRadius: 512
 ```
 
 | Setting | Default | Description |
 |---|---|---|
 | `surfaceY` | `64` | The flat cap height — everything above clears to air, real terrain below stays. |
 | `capLayers` | `["minecraft:dirt:3", "minecraft:grass_block:1"]` | Land-cap layer stack, painted immediately below `surfaceY`, same `block` or `block:height` shorthand as classic flat's `layers`. |
-| `riversEnabled` | `true` | Whether a river/ocean biome column gets a water surface instead of the land cap. |
-| `riverExclusionRadiusBlocks` | `512` | Radius around spawn within which river/ocean columns always get the land cap regardless of `riversEnabled` — GOAL 16's "far away from spawn" option. |
+| `rivers.enabled` | `true` | Whether a river/ocean biome column gets a water surface instead of the land cap. |
+| `rivers.exclusionRadius` | `512` | Radius around spawn within which river/ocean columns always get the land cap regardless of `rivers.enabled` — GOAL 16's "far away from spawn" option. |
 
 **Known first-pass limitation, not yet fixed:** a water-capped river/ocean
 column's water sits directly on whatever real terrain is immediately
@@ -1164,7 +1165,7 @@ stacked:
     - "minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0"
   seedRandomizedOrder: false
   worldSizeChunks: 4
-  reliefBlocks: 4
+  relief: 4
   forceTopVillage: false
 ```
 
@@ -1173,7 +1174,7 @@ stacked:
 | `layers` | 8 bands, 324 blocks total | Ordered bottom-to-top layer list. Each entry is either the full `"<biome>;<blocks>;<air gap>"` shorthand (`<blocks>` reuses `flat.layers`' own comma-separated `block`/`block:height` shorthand for that layer's own material stack; `<biome>` is the layer's reported biome, drives decoration/ore feature selection, not block choice; `<air gap>` is the open headroom above the block stack) — or just a bare biome id (e.g. `"minecraft:jungle"`), which expands to that biome's own standard block composition and a 30-block air gap. A biome not specifically tuned falls back to a generic stone/dirt/grass composition rather than failing — any biome id works. The simplified form never bakes in stack-position choices like bedrock or extra depth; the shipped default's bottom/top layers use the full form for exactly that reason. |
 | `seedRandomizedOrder` | `false` | Shuffles the configured layer order, deterministically from the real world seed, instead of using it as written. |
 | `worldSizeChunks` | `4` | Overworld border half-width in chunks (a 64-block radius by default) plus a matching `VOID` exterior beyond it, applied automatically — independent of the shared `overworldBorder`/`overworldExterior` sections. `0` restores an unlimited world (the original behavior). |
-| `reliefBlocks` | `4` | Maximum per-column height bump on each layer's own surface, traded out of that layer's own air gap so biome-band boundaries never move. `0` restores perfectly flat layers. |
+| `relief` | `4` | Maximum per-column height bump on each layer's own surface, traded out of that layer's own air gap so biome-band boundaries never move. `0` restores perfectly flat layers. |
 | `forceTopVillage` | `false` | Always force-generates a real vanilla village near spawn on the top layer's own surface, provided that layer's biome is village-compatible (silently skipped, logged at `INFO`, if not) — never a natural-search-first attempt, since natural placement isn't reliable to land anywhere reachable in a small, bounded stacked world. **Known risk with the default border:** the default 64-block-radius border is smaller than a real village's typical footprint, so the forced village may visibly clip the border/void wall — not yet resolved, report back what you actually see. |
 
 The stack's vertical center lands around Y98 with the default layer list
