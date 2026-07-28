@@ -1636,9 +1636,24 @@ Durable decisions, verified API notes, and rationale that should survive across 
   Full design in DESIGN §29 (TODO 12.1); execution split into TODO
   12.1-12.7 mirroring Phase 10/11's granularity.
 
-- 2026-07-27 -- **Config-system facts, measured for the Phase 25 restructure
-  proposal** (`CONFIG-RESTRUCTURE.md`; proposal is Jason's to approve, but
-  these measurements are settled and shouldn't be re-derived):
+- 2026-07-27 -- **Phase 25 config restructure: all ten decisions settled by
+  Jason the same day.** Authority is `CONFIG-RESTRUCTURE.md` §1 (D1-D10); do
+  not re-litigate. The load-bearing ones: **no backward compatibility at all**
+  (Jason has no production worlds -- no alias layer, no deprecation window, old
+  configs just stop loading, which is what keeps the code clean); **fully
+  schema-driven** rather than a mechanical class split, because "2400 lines in
+  any one class needs a very compelling reason"; split into
+  `config/jlt_worldz/` one file per world type; stop rewriting the user's
+  config file; convert *every* sentinel; named shared starter kits; drop
+  redundant unit suffixes ("blocks are not needed when the context is
+  obvious"); run before Phases 21-24. Plus one deliberate behavior change:
+  **strip world moves to an absolute width** (min 1 block, odd widths symmetric
+  about Z=0, even widths take the extra block on +Z, End portal on the corridor
+  mid-point) because "the radius never worked well" -- recorded as a GOALS 32
+  clarification, structures overflowing a narrow corridor explicitly accepted.
+
+- 2026-07-27 -- **Config-system facts, measured for the Phase 25 restructure**
+  (`CONFIG-RESTRUCTURE.md`; settled measurements, don't re-derive):
   1. **Config renames cannot break saved worlds.** `grep -l Codec` over
      `config/` returns zero files -- config POJOs never touch the world-save
      codecs; the `*Customization` records own that, with their own independent

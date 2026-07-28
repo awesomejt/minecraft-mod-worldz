@@ -534,6 +534,16 @@ item above as one coordinated config-schema pass.
 ### Strip-World Challenge — 1D Minecraft (approved 2026-07-16):
 
 32. The world is a narrow strip (configurable width in blocks or chunks) running along one axis; everything happens in that corridor. The stronghold/End portal must be reachable within the strip (progression guarantee — the existing fallback-portal machinery applies). Optionally apply the strip to the Nether as well. Composes with limited length (17) and the expanding/collapsing schedules (19–20).
+
+    **Clarified (2026-07-27):** the shipped half-width/radius form "never
+    worked well" — the width is to be an **absolute block count**, minimum
+    **1 block** if that is what the player asks for, not a radius that forces
+    an odd `2r + 1` corridor. Odd widths sit symmetrically about Z=0; even
+    widths take the extra block on the +Z side. The **End portal is centered
+    on the mid-point of the corridor's width**. Explicitly accepted, not a
+    defect: at very narrow widths the End portal and other structures will
+    overflow the corridor into the void — no clamping or structure-shrinking
+    is wanted. Implemented as TODO 25.9; design in `CONFIG-RESTRUCTURE.md` §5.
 36. Same as 32, but the strip passes through an ordered (or seed-randomized) sequence of biomes, changing every N chunks — plains for N chunks, then desert, then taiga, and so on. Bands select biomes over untouched vanilla terrain (like 33, but ordered instead of random), so the terrain stays natural. Band width, biome list, and order are configurable. (Added 2026-07-16 as a variation Jason suggested alongside 35.)
 
 ### Chaos-Biomes Challenge (approved 2026-07-16):
