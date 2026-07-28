@@ -30,8 +30,11 @@ world hazards). Java 25, Gradle wrapper, base package
 - **Jason (owner):** all in-game testing, phase approval, version/publishing
   decisions. Items marked **[Jason]** need a human — flag them in your
   report; never attempt, fake, or simulate their results.
-- **You (executor):** implement TODO tasks. Planning is settled; a separate
-  high-power model reviews the code between phases.
+- **You (orchestrator):** run the subagent pipeline below rather than doing
+  the work directly in the main session. Planning is settled at the
+  phase level in GOALS.md/TODO.md/DESIGN.md; a separate, heavier
+  `/code-review ultra` cloud review still checks the code between phases —
+  that is distinct from this repo's own lighter `code-reviewer` subagent.
 
 ## Subagents
 
@@ -39,51 +42,94 @@ User-level subagents are defined in `~/.claude/agents/` and available in
 every repo on this machine. Prefer delegating to them by role instead of
 doing everything in the main session:
 
-- **`planner`** (Opus, high effort) — research and design *within* a task
-  (e.g. verifying an unfamiliar 26.2 API before use, working out an
-  approach for a fiddly item). Read-only: no edits, no Bash, no commits.
-  This is separate from the phase-level planning already covered by
-  GOALS.md/TODO.md/DESIGN.md and the external review between phases.
+- **`project-manager`** (Sonnet) — selects the next task/phase to work on,
+  keeps TODO.md current, reads/updates MEMORY.md. Delegates the actual
+  investigation to `researcher` or `planner` rather than doing it itself.
+  No coding, no builds, no commits.
+- **`researcher`** (Sonnet) — surveys possible approaches for a task (prior
+  art, trade-offs) and verifies unfamiliar 26.2 APIs before use, via web
+  research and codebase/decompiled-source reading. Read-only, hands
+  findings back rather than choosing an approach. Use before `planner` when
+  the right approach isn't yet clear.
+- **`planner`** (Opus, high effort) — architecture and design once the
+  approach is understood, including design work *within* a task (e.g.
+  working out an approach for a fiddly item), separate from the phase-level
+  planning already covered by GOALS.md/TODO.md/DESIGN.md. Read-only: no
+  edits, no Bash, no commits. Produces DESIGN.md sections / checkbox
+  TODO.md sub-steps (see DESIGN §41/§42 for the pattern this project uses
+  when a task is too large to implement in one pass).
 - **`coder`** (Sonnet) — the default for implementing TODO items.
-- **`tester`** (Haiku, low effort) — runs `./gradlew build`, `javap`,
-  and other checks. Delegate these instead of running them inline. (Renamed
-  from `tool-runner` to match the other repos' agent set.)
+- **`tester`** (Haiku, low effort) — runs `./gradlew build`, `javap`, and
+  other checks right after `coder` finishes. Reports failures with actual
+  output and delegates back to `coder` to fix them; never lints (that's
+  `code-reviewer`) and never commits. (Renamed from `tool-runner` to match
+  the other repos' agent set.)
+- **`code-reviewer`** (Sonnet) — reviews quality after tests pass: runs
+  lint/static-analysis and filters signal from noise. Task-level scope is
+  the uncommitted diff, reported back for `coder` to fix. Phase-level scope
+  is the whole phase, logged into TODO.md and handed to `project-manager`.
+  Never fixes code itself. Distinct from the heavier `/code-review ultra`
+  cloud review command mentioned above.
+- **`documentor`** (Sonnet) — writes/updates README, example config and
+  `MANUAL_TESTING.md` for features just implemented (DESIGN §20 for design
+  tasks — design tasks commit their design *before* implementation). Hands
+  off to `committer` to finalize rather than committing itself.
+- **`release-manager`** (Haiku, low effort) — bumps the SemVer `version`
+  field per task/phase completion, updating the `ProjectMetadataTest`
+  contract in the same commit (see Ground rules below). MAJOR only on
+  explicit user request; MINOR once per new phase (resets PATCH); PATCH once
+  per task within a phase. Never commits, tags, or pushes itself.
 - **`committer`** (Haiku, low effort) — stages and commits **per task**
-  (step 7 below) once the build is green, following normal git safety
-  rules. Never pushes.
+  once the build is green, following normal git safety rules. Never pushes.
+
+`project-manager` and `code-reviewer` stay on Sonnet rather than Haiku: both
+make judgment calls (ambiguous task priority, deciding which memory facts
+are durable, filtering real defects from lint noise) that are a better fit
+for Sonnet-level reasoning than for the mechanical, rule-following work
+`tester`/`release-manager`/`committer` do.
 
 ## The loop (per task)
 
-1. Pick the next unchecked item in the **current phase only**. Skip [Jason]
-   items (flag them); if blocked on one, take a later *independent* task in
-   the same phase.
-2. Confirm you have everything the task needs. **Verify every vanilla
-   class/method against the actual 26.2 sources before use.** For questions
-   like "can I extend/override X", check `javap` on the real compiled jar —
+1. `project-manager` picks the next unchecked item in the **current phase
+   only**. Skip [Jason] items (flag them); if blocked on one, take a later
+   *independent* task in the same phase.
+2. Confirm the task has everything it needs. **Verify every vanilla
+   class/method against the actual 26.2 sources before use** — delegate to
+   `researcher` (survey/verify) or `planner` (design a fiddly approach, or
+   break an oversized task into sub-steps) as needed. For questions like
+   "can I extend/override X", check `javap` on the real compiled jar —
    decompiled source has misrendered modifiers before (see MEMORY.md,
    2026-07-16 `final` lesson).
-3. Implement. Keep pure logic in `common`, JUnit-testable without booting
-   Minecraft (the project's established pattern).
-4. Add/update **JUnit logic and component tests only** — no automated game
-   tests, ever.
-5. Update docs touched by the change (README, example config,
-   MANUAL_TESTING.md; DESIGN §20 for design tasks — design tasks commit
-   their design *before* implementation).
-6. Bookkeeping: newly discovered work → new TODO items (don't do it
+3. `coder` implements. Keep pure logic in `common`, JUnit-testable without
+   booting Minecraft (the project's established pattern).
+4. `coder` adds/updates **JUnit logic and component tests only** — no
+   automated game tests, ever.
+5. `tester` runs `./gradlew build` (all modules + tests); loops back to
+   `coder` on any failure with the actual output.
+6. `code-reviewer` reviews the task-level diff; loops back to `coder` on
+   real defects (not lint noise).
+7. `documentor` updates docs touched by the change (README, example config,
+   `MANUAL_TESTING.md`; DESIGN §20 for design tasks).
+8. Bookkeeping: newly discovered work → new TODO items (don't do it
    silently); departures from DESIGN/GOALS → TODO's Deviation log; durable
-   decisions/lessons → MEMORY.md; check off the completed box.
-7. `./gradlew build` green (all modules + tests), then **commit per task**:
-   first line is a brief summary, details in the body. **Never push.**
+   decisions/lessons → MEMORY.md; check off the completed box. Whichever
+   agent is doing the finishing pass for the task (usually `coder`) does
+   this inline rather than deferring it.
+9. `release-manager` bumps the version per Ground rules.
+10. `committer` commits **per task**: first line is a brief summary, details
+    in the body. **Never push.**
 
 ## Phase gates (hard rules)
 
 - **Stop at the end of the phase** — when every non-[Jason] item is done and
-  committed. Report: what changed, exactly what Jason should test in-game
-  (which `config/tests/` files map to which use cases), and any new
-  Questions/Deviations.
+  committed. Loop back to `project-manager` for phase-level review and
+  TODO/MEMORY upkeep, then report: what changed, exactly what Jason should
+  test in-game (which `config/tests/` files map to which use cases), and any
+  new Questions/Deviations.
 - **Never start the next phase without Jason's explicit permission.** He
-  tests each phase manually and has the code reviewed between phases — leave
-  the working tree clean and committed for that review.
+  tests each phase manually and has the code reviewed between phases (both
+  his own in-game pass and, separately, `/code-review ultra`) — leave the
+  working tree clean and committed for that review.
 - Genuine gameplay/scope questions: add to TODO.md "Questions for Jason" and
   stop that task; don't guess.
 
@@ -98,9 +144,9 @@ doing everything in the main session:
   must always build; give it a brief check whenever loader-level code
   (mixins, events, registration) changes.
 - Every phase ships at least one `config/tests/` YAML per covered use case.
-- Version bumps update the `ProjectMetadataTest` contract in the same
-  commit; releases get a clean build plus artifact inspection of both
-  loader jars.
+- Version bumps (see `release-manager` above) update the `ProjectMetadataTest`
+  contract in the same commit; releases get a clean build plus artifact
+  inspection of both loader jars.
 
 ## Build & environment
 
