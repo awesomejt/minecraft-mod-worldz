@@ -3821,7 +3821,7 @@ tests.
       `StripWorldSchema`. Proves all four list rules plus the `allowRivers`/
       `allowOceans`/`allowBeaches` trio and the `starterBiome`/
       `starterRadiusBlocks` pair that 25.6 will hoist into `naturalBiomes:`.
-- [ ] 25.2e Island sections (needs 25.2a). `OceanIslandSchema`,
+- [x] 25.2e Island sections (needs 25.2a). `OceanIslandSchema`,
       `SkyIslandSchema`, `FloatingIslandsSchema` (dependent `maxRadiusBlocks`
       bound, two advisory warnings — R4, overridden `summary`),
       `ChunkIslandSchema` (conditional summary segment). Proves the shared
@@ -4234,6 +4234,25 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-27 (Phase 25.2e, found not fixed) — **`SkyIslandConfig`'s own
+  `exclusionZoneEnabled`/`exclusionZoneRadiusBlocks` (defaults `true`/`128`,
+  distinct from the nested `floatingIslands` exclusion zone) are dead from
+  config's perspective**: `readSkyIslandConfig` never reads them and
+  `skyIslandMap` never writes them (both confirmed by reading the actual
+  methods), yet `skyIslandSummary` references them and `SkyIslandPlan`/
+  `SkyIslandCustomization` genuinely consume them at their hardcoded
+  defaults. Compare `oceanIsland`/`chunkIsland`/nested `floatingIslands`,
+  whose own exclusion-zone pairs all round-trip correctly — this is an
+  isolated gap on `skyIsland`'s own top-level pair, not a pattern. Not
+  documented in README's `skyIsland` example/table either (only
+  `floatingIslands`' copy is). **25.2e reproduces this exactly** (behavior-
+  preserving is this sub-step's hard constraint) rather than silently fixing
+  it. Flagged for Jason: fix now as a quick out-of-band bugfix (wire the two
+  missing `containsKey` blocks into `readSkyIslandConfig`/`skyIslandMap`), or
+  let 25.7 (file split, `world-types/sky-island.yaml`) pick it up as part of
+  that section's own rewrite? Either way it's a real functional gap, not
+  cosmetic — today's users cannot configure a documented-as-real setting.
 
 - 2026-07-26 (Phase 14b acceptance, fixed 0.3.3) — **`nether_start`
   spawned players far above the resolved site**, found via Jason's config

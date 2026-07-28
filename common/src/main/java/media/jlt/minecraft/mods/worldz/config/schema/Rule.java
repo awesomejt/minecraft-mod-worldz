@@ -200,6 +200,47 @@ public sealed interface Rule<S, T> {
         }
     }
 
+    /**
+     * Validates a single biome id like {@link BiomeId}, but -- if the resolved value is empty --
+     * warns a <em>second</em> time citing the pre-validation raw value and falls back to a fixed
+     * default, rather than silently returning {@code ""}. Two real call sites need this exact
+     * "silent-blank-then-loud-original-value" shape: {@code oceanIsland.islandBiome} (WorldzConfig
+     * {@code sanitizeOceanIsland} :437-442) and {@code skyIsland.islandBiome} (:487-492) -- distinct
+     * from {@code singleBiome.landBiome}'s single warning (DESIGN R7, modeled by composing
+     * {@link BiomeId} with {@link BlankFallback}), because the second warning here names the
+     * <em>original</em> input, not the post-{@link BiomeId} blank string, so {@link #of} composition
+     * (which only ever sees the previous stage's output) cannot express it; both stages must share
+     * one rule instead.
+     *
+     * @param invalidWarning one-arg template for a syntactically invalid, non-blank entry (the
+     *     trimmed raw value), or {@code null} to drop invalid entries silently (never used by
+     *     today's two call sites, both of which warn)
+     * @param defaultWarning one-arg template for falling back to {@code fallback} (the original,
+     *     untrimmed raw value), logged whenever the resolved id ends up empty either way
+     * @param fallback the concrete replacement id, a fresh value per call (DESIGN R11)
+     */
+    record BiomeIdOrDefault<S>(String invalidWarning, String defaultWarning, Supplier<String> fallback) implements Rule<S, String> {
+        @Override
+        public String apply(S owner, String value, String name, SanitizeContext ctx) {
+            String original = value == null ? "" : value;
+            String trimmed = original.trim();
+            String resolved = "";
+            if (!trimmed.isEmpty()) {
+                BiomeListSpec spec = BiomeListSpec.parse(List.of(trimmed));
+                if (spec.entries().size() == 1 && !spec.entries().getFirst().tag()) {
+                    resolved = spec.entries().getFirst().id();
+                } else if (invalidWarning != null) {
+                    ctx.logger().warn(invalidWarning, trimmed);
+                }
+            }
+            if (resolved.isEmpty()) {
+                ctx.logger().warn(defaultWarning, original);
+                return fallback.get();
+            }
+            return resolved;
+        }
+    }
+
     /** Trims each entry and drops the ones that become empty. */
     record TrimNonEmpty<S>() implements Rule<S, List<String>> {
         @Override

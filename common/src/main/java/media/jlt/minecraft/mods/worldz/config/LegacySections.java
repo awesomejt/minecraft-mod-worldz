@@ -138,6 +138,20 @@ public final class LegacySections {
         );
     }
 
+    /**
+     * {@code skyIsland.floatingIslands} is only reachable through {@link #skyIsland()} in
+     * production, but (like {@link #spawn}/{@link #starterKit}) gets its own adapter so the
+     * differential harness can exercise it directly.
+     */
+    public static SectionCodec<FloatingIslandsConfig> floatingIslands(String name) {
+        return new Adapter<>(
+            (raw, ctx) -> WorldzConfig.readFloatingIslandsConfig(raw, name, ctx.logger()),
+            (value, ctx) -> WorldzConfig.sanitizeFloatingIslands(value, ctx.logger()),
+            WorldzConfig::floatingIslandsMap,
+            WorldzConfig::floatingIslandsSummary
+        );
+    }
+
     public static SectionCodec<CaveConfig> cave() {
         return new Adapter<>(
             (raw, ctx) -> WorldzConfig.readCaveConfig(raw, "cave", ctx.logger()),

@@ -2,16 +2,20 @@ package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.config.BorderConfig;
 import media.jlt.minecraft.mods.worldz.config.ChaosBiomesConfig;
+import media.jlt.minecraft.mods.worldz.config.ChunkIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.DeepFlatConfig;
 import media.jlt.minecraft.mods.worldz.config.EndBorderConfig;
 import media.jlt.minecraft.mods.worldz.config.ExteriorConfig;
 import media.jlt.minecraft.mods.worldz.config.FlatConfig;
+import media.jlt.minecraft.mods.worldz.config.FloatingIslandsConfig;
 import media.jlt.minecraft.mods.worldz.config.ForeverNightConfig;
 import media.jlt.minecraft.mods.worldz.config.LayoutConfig;
 import media.jlt.minecraft.mods.worldz.config.LegacySections;
+import media.jlt.minecraft.mods.worldz.config.OceanIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.RisingLavaConfig;
 import media.jlt.minecraft.mods.worldz.config.SchemaSections;
 import media.jlt.minecraft.mods.worldz.config.SingleBiomeConfig;
+import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.SpawnConfig;
 import media.jlt.minecraft.mods.worldz.config.StackedConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterCapsuleConfig;
@@ -1145,6 +1149,305 @@ class ConfigSchemaDifferentialTest {
             Arguments.of("widthBlocks above maximum is clamped down", "widthBlocks: 999999"),
             Arguments.of("wrong type for the whole section", "true")
         );
+    }
+
+    // ---- TODO 25.2e: island sections. oceanIsland/skyIsland/chunkIsland have zero-arg factory
+    // methods on both registries (like TODO 25.2b/d's leaf sections), so they reuse
+    // assertSectionIdentical/corpusFor. floatingIslands is nested-only (reachable through
+    // skyIsland in production) and parameterized by name, like starterKit/stripBands, so it gets
+    // its own two-level miner and comparison helper. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("oceanIslandCorpus")
+    void oceanIslandSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.oceanIsland(), SchemaSections.oceanIsland(), OceanIslandConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> oceanIslandCorpus() throws IOException {
+        return corpusFor("oceanIsland");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("oceanIslandAdversarialFragments")
+    void oceanIslandSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.oceanIsland(), SchemaSections.oceanIsland(), OceanIslandConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> oceanIslandAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                islandSource: natural
+                fluid: lava
+                islandBiome: minecraft:desert
+                radiusBlocks: 256
+                shapeAmplitude: 0.4
+                shoreWidthBlocks: 20
+                oceanShallowWidthBlocks: 32
+                oceanDeepenWidthBlocks: 64
+                oceanShallowDepthBlocks: 4
+                oceanDeepDepthBlocks: 16
+                oceanRegionScaleBlocks: 64
+                exclusionZoneEnabled: true
+                exclusionZoneRadiusBlocks: 512
+                starterKit:
+                  essentials: ["minecraft:torch:1"]
+                """),
+            Arguments.of("blank islandBiome falls back to the default with one warning", "islandBiome: ''"),
+            Arguments.of("invalid islandBiome fires both warnings", "islandBiome: '#minecraft:is_overworld'"),
+            Arguments.of("radiusBlocks below minimum is clamped up", "radiusBlocks: 1"),
+            Arguments.of("radiusBlocks above maximum is clamped down", "radiusBlocks: 999999999"),
+            Arguments.of("shapeAmplitude above maximum is clamped down", "shapeAmplitude: 99.0"),
+            Arguments.of("shoreWidthBlocks below minimum is clamped up", "shoreWidthBlocks: 0"),
+            Arguments.of("oceanShallowWidthBlocks negative is clamped up", "oceanShallowWidthBlocks: -1"),
+            Arguments.of("oceanDeepenWidthBlocks negative is clamped up", "oceanDeepenWidthBlocks: -1"),
+            Arguments.of("oceanShallowDepthBlocks below minimum is clamped up", "oceanShallowDepthBlocks: 0"),
+            Arguments.of("oceanDeepDepthBlocks below minimum is clamped up", "oceanDeepDepthBlocks: 0"),
+            Arguments.of("oceanRegionScaleBlocks below minimum is clamped up", "oceanRegionScaleBlocks: 0"),
+            Arguments.of("exclusionZoneEnabled true renders the radius segment", "exclusionZoneEnabled: true"),
+            Arguments.of("exclusionZoneRadiusBlocks below minimum is clamped up", "exclusionZoneRadiusBlocks: 0"),
+            Arguments.of("invalid islandSource value", "islandSource: not-a-source"),
+            Arguments.of("invalid fluid value", "fluid: not-a-fluid"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("skyIslandCorpus")
+    void skyIslandSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(label, LegacySections.skyIsland(), SchemaSections.skyIsland(), SkyIslandConfig::new, rawValueOrNull);
+    }
+
+    static Stream<Arguments> skyIslandCorpus() throws IOException {
+        return corpusFor("skyIsland");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("skyIslandAdversarialFragments")
+    void skyIslandSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.skyIsland(), SchemaSections.skyIsland(), SkyIslandConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> skyIslandAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                islandBiome: minecraft:desert
+                radiusBlocks: 24
+                shapeAmplitude: 0.4
+                surfaceY: 80
+                thicknessBlocks: 10
+                chestTier: hard
+                easyKit:
+                  essentials: ["minecraft:torch:1"]
+                mediumKit:
+                  essentials: ["minecraft:torch:1"]
+                hardKit:
+                  essentials: ["minecraft:torch:1"]
+                applyToNether: true
+                floatingIslands:
+                  enabled: true
+                """),
+            Arguments.of("blank islandBiome falls back to the default with one warning", "islandBiome: ''"),
+            Arguments.of("invalid islandBiome fires both warnings", "islandBiome: '#minecraft:is_overworld'"),
+            Arguments.of("radiusBlocks below minimum is clamped up", "radiusBlocks: 1"),
+            Arguments.of("radiusBlocks above maximum is clamped down", "radiusBlocks: 999999999"),
+            Arguments.of("shapeAmplitude above maximum is clamped down", "shapeAmplitude: 99.0"),
+            Arguments.of("thicknessBlocks below minimum is clamped up", "thicknessBlocks: 0"),
+            Arguments.of("thicknessBlocks above maximum is clamped down", "thicknessBlocks: 9999"),
+            Arguments.of("invalid chestTier value", "chestTier: not-a-tier"),
+            Arguments.of(
+                "exclusionZoneEnabled/exclusionZoneRadiusBlocks are pre-existing gaps: writing them changes nothing",
+                "exclusionZoneEnabled: false\nexclusionZoneRadiusBlocks: 1"
+            ),
+            Arguments.of(
+                "undergroundBiome/undergroundBelowSurfaceBlocks are pre-existing gaps: writing them changes nothing",
+                "undergroundBiome: minecraft:lush_caves\nundergroundBelowSurfaceBlocks: 3"
+            ),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("chunkIslandCorpus")
+    void chunkIslandSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertSectionIdentical(
+            label, LegacySections.chunkIsland(), SchemaSections.chunkIsland(), ChunkIslandConfig::new, rawValueOrNull
+        );
+    }
+
+    static Stream<Arguments> chunkIslandCorpus() throws IOException {
+        return corpusFor("chunkIsland");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("chunkIslandAdversarialFragments")
+    void chunkIslandSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertSectionIdentical(
+            label, LegacySections.chunkIsland(), SchemaSections.chunkIsland(), ChunkIslandConfig::new, LOADER.load(fragment)
+        );
+    }
+
+    static Stream<Arguments> chunkIslandAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping (disabled by default)", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                enabled: true
+                spawnChance: 0.5
+                cellSizeChunks: 2
+                topOnly: true
+                topOnlyDepthBlocks: 8
+                exclusionZoneEnabled: true
+                exclusionZoneRadiusBlocks: 128
+                scatteredTopOnlyChance: 0.2
+                applyToNether: true
+                applyToEnd: true
+                geodeFeatureIds: ["minecraft:amethyst_geode"]
+                """),
+            Arguments.of("disabled: exclusionZone and topOnlyDepthBlocks never appear in the summary", """
+                enabled: false
+                topOnly: true
+                exclusionZoneEnabled: true
+                """),
+            Arguments.of("enabled without topOnly: topOnlyDepthBlocks is hidden from the summary", "enabled: true\ntopOnly: false"),
+            Arguments.of("enabled with topOnly: topOnlyDepthBlocks is shown in the summary", "enabled: true\ntopOnly: true"),
+            Arguments.of("spawnChance above maximum is clamped down", "enabled: true\nspawnChance: 5.0"),
+            Arguments.of("cellSizeChunks below minimum is clamped up", "enabled: true\ncellSizeChunks: 0"),
+            Arguments.of("topOnlyDepthBlocks below minimum is clamped up", "enabled: true\ntopOnly: true\ntopOnlyDepthBlocks: 0"),
+            Arguments.of("exclusionZoneRadiusBlocks negative is clamped up", "enabled: true\nexclusionZoneRadiusBlocks: -5"),
+            Arguments.of("scatteredTopOnlyChance above maximum is clamped down", "enabled: true\nscatteredTopOnlyChance: 5.0"),
+            Arguments.of("blank geodeFeatureIds entries are trimmed and dropped silently, no warning", """
+                enabled: true
+                geodeFeatureIds: ["  ", "minecraft:amethyst_geode", ""]
+                """),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    // ---- floatingIslands: nested-only (reachable only through skyIsland in production), mined
+    // from each corpus file's nested skyIsland.floatingIslands key like stripBandsCorpus, and
+    // parameterized by name like starterKit -- so it gets its own two-level miner and comparison
+    // helper rather than assertSectionIdentical/corpusFor. ----
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("floatingIslandsCorpus")
+    void floatingIslandsSectionMatchesLegacyAcrossCorpus(String label, Object rawValueOrNull) {
+        assertFloatingIslandsIdentical(label, rawValueOrNull);
+    }
+
+    static Stream<Arguments> floatingIslandsCorpus() throws IOException {
+        List<Arguments> arguments = new ArrayList<>();
+        for (Path file : testConfigFiles()) {
+            Object loaded = LOADER.load(Files.readString(file));
+            arguments.add(Arguments.of(file.getFileName().toString(), skyIslandFloatingIslandsValue(loaded)));
+        }
+        Object exampleLoaded = LOADER.load(Files.readString(Path.of("../config/jlt_worldz.example.yaml")));
+        arguments.add(Arguments.of("jlt_worldz.example.yaml", skyIslandFloatingIslandsValue(exampleLoaded)));
+        arguments.add(Arguments.of("defaults (absent)", null));
+        return arguments.stream();
+    }
+
+    private static Object skyIslandFloatingIslandsValue(Object loaded) {
+        Object skyIsland = loaded instanceof Map<?, ?> map ? map.get("skyIsland") : null;
+        return skyIsland instanceof Map<?, ?> map ? map.get("floatingIslands") : null;
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("floatingIslandsAdversarialFragments")
+    void floatingIslandsSectionMatchesLegacyForAdversarialFragments(String label, String fragment) {
+        assertFloatingIslandsIdentical(label, LOADER.load(fragment));
+    }
+
+    static Stream<Arguments> floatingIslandsAdversarialFragments() {
+        return Stream.of(
+            Arguments.of("empty mapping (disabled by default)", "{}"),
+            Arguments.of("fully specified, no warnings", """
+                enabled: true
+                minRadiusBlocks: 16
+                maxRadiusBlocks: 48
+                shapeAmplitude: 0.4
+                cellSizeBlocks: 128
+                spawnChance: 0.8
+                biomeVariety: true
+                islandBiomes: ["minecraft:plains", "minecraft:desert"]
+                exclusionZoneEnabled: true
+                exclusionZoneRadiusBlocks: 128
+                oreDepositsEnabled: true
+                oreFeatureIds: ["minecraft:ore_iron_small"]
+                lootChestEnabled: true
+                lootKit:
+                  essentials: ["minecraft:bread:1"]
+                naturalBiome: false
+                """),
+            Arguments.of(
+                "maxRadiusBlocks below minRadiusBlocks is floored at it (DESIGN R4)",
+                "enabled: true\nminRadiusBlocks: 64\nmaxRadiusBlocks: 32"
+            ),
+            Arguments.of("minRadiusBlocks below minimum is clamped up", "minRadiusBlocks: 1"),
+            Arguments.of("maxRadiusBlocks above maximum is clamped down", "maxRadiusBlocks: 999999999"),
+            Arguments.of("cellSizeBlocks below minimum is clamped up", "cellSizeBlocks: 1"),
+            Arguments.of("spawnChance above maximum is clamped down", "spawnChance: 5.0"),
+            Arguments.of("invalid biome entries are dropped, tags rejected", """
+                islandBiomes:
+                  - minecraft:plains
+                  - "#minecraft:is_overworld"
+                  - minecraft:desert@-1
+                """),
+            Arguments.of("biomeVariety with no usable biomes disables itself", "biomeVariety: true\nislandBiomes: []"),
+            Arguments.of(
+                "naturalBiome and biomeVariety both enabled: advisory warning, no value change",
+                "naturalBiome: true\nbiomeVariety: true"
+            ),
+            Arguments.of("naturalBiome alone: advisory warning, no value change", "naturalBiome: true\nbiomeVariety: false"),
+            Arguments.of(
+                "biomeVariety-disable and both naturalBiome advisories fire together, exercising postValidate's ordering",
+                "naturalBiome: true\nbiomeVariety: true\nislandBiomes: []"
+            ),
+            Arguments.of("exclusionZoneRadiusBlocks below minimum is clamped up", "exclusionZoneRadiusBlocks: 0"),
+            Arguments.of("oreDepositsEnabled with no usable feature ids disables itself", "oreDepositsEnabled: true\noreFeatureIds: []"),
+            Arguments.of("oreFeatureIds blank entries are trimmed and dropped silently, no warning", """
+                oreFeatureIds: ["  ", "minecraft:ore_coal"]
+                """),
+            Arguments.of(
+                "biomeVariety-disable and oreDepositsEnabled-disable fire together, exercising postValidate's ordering",
+                "biomeVariety: true\nislandBiomes: []\noreDepositsEnabled: true\noreFeatureIds: []"
+            ),
+            Arguments.of("enabled gates the whole summary line to <disabled>", "enabled: false\nminRadiusBlocks: 999"),
+            Arguments.of("wrong type for the whole section", "true")
+        );
+    }
+
+    private static void assertFloatingIslandsIdentical(String label, Object rawOrNull) {
+        String name = "skyIsland.floatingIslands";
+        RecordingLogger legacyLogger = new RecordingLogger();
+        RecordingLogger schemaLogger = new RecordingLogger();
+
+        var legacyCodec = LegacySections.floatingIslands(name);
+        var schemaCodec = SchemaSections.floatingIslands(name);
+
+        FloatingIslandsConfig legacyResult = runOrNull(() -> {
+            FloatingIslandsConfig parsed = rawOrNull == null
+                ? new FloatingIslandsConfig() : legacyCodec.read(rawOrNull, new ParseContext(legacyLogger));
+            return legacyCodec.sanitize(parsed, new SanitizeContext(legacyLogger, null));
+        });
+        FloatingIslandsConfig schemaResult = runOrNull(() -> {
+            FloatingIslandsConfig parsed = rawOrNull == null
+                ? new FloatingIslandsConfig() : schemaCodec.read(rawOrNull, new ParseContext(schemaLogger));
+            return schemaCodec.sanitize(parsed, new SanitizeContext(schemaLogger, null));
+        });
+
+        if (legacyResult == null || schemaResult == null) {
+            assertEquals(legacyResult == null, schemaResult == null, label + ": one side threw and the other didn't");
+            return;
+        }
+
+        assertEquals(DUMPER.dump(legacyCodec.toMap(legacyResult)), DUMPER.dump(schemaCodec.toMap(schemaResult)), label + ": toMap()");
+        assertEquals(legacyCodec.summary(legacyResult), schemaCodec.summary(schemaResult), label + ": summary()");
+        assertEquals(legacyLogger.warnings(), schemaLogger.warnings(), label + ": WARN lines");
     }
 
     // ---- error paths: a root-level non-mapping value must reject identically ----
