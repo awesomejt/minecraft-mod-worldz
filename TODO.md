@@ -1669,14 +1669,15 @@ tests.
       misfiled, naming `world-types/cave.yaml`; `layout.roleOverrides`'
       arbitrary sub-keys still don't trip it. `ConfigFixturesTest` itself
       is unchanged (fixtures stay bundle-shaped). — **done**.
-- [ ] 25.7d Docs: README.md config section (file tree, wrapped-vs-unwrapped,
+- [x] 25.7d Docs: README.md config section (file tree, wrapped-vs-unwrapped,
       the bundle, first written statement of F3's live-vs-baked split as
       it maps to `runtime.yaml` vs. everything else); `REFERENCE_HEADER`
       grows a file map (e.g. `# foreverNight/risingLava/structureDistance
       -> config/jlt_worldz/runtime.yaml`); one-line `config/tests/
       README.md` update for the new `cp` target
       (`config/jlt_worldz/all.yaml`). 25.10 still owns the generated
-      settings tables.
+      settings tables. — **done**. Note: `config/jlt_worldz.example.yaml`
+      header left stale (its first section layout block); will fix in 25.10.
 - [ ] 25.7e Close-out: Deviation log (strip file-level-only merge, key-level
       merge moved to 25.9; `kits.yaml` deferred to 25.8); amend 25.9's text
       to explicitly own the `strip`/`stripWorld` key-level merge and
