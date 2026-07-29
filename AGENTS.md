@@ -38,55 +38,59 @@ world hazards). Java 25, Gradle wrapper, base package
 
 ## Subagents
 
-User-level subagents are defined in `~/.claude/agents/` and available in
-every repo on this machine. Prefer delegating to them by role instead of
-doing everything in the main session:
+Use the role-matched user-level subagents available in the active tool rather
+than doing every step in the main session:
 
-- **`project-manager`** (Sonnet) — selects the next task/phase to work on,
+- **Claude Code:** `~/.claude/agents/*.md`
+- **Codex:** `~/.codex/agents/*.toml`
+
+Both configurations use the same role names and workflow below. Their model,
+reasoning-effort, tool, and sandbox settings are maintained in their own
+agent definitions; do not infer one tool's model settings for the other.
+
+- **`project-manager`** — selects the next task/phase to work on,
   keeps TODO.md current, reads/updates MEMORY.md. Delegates the actual
   investigation to `researcher` or `planner` rather than doing it itself.
   No coding, no builds, no commits.
-- **`researcher`** (Sonnet) — surveys possible approaches for a task (prior
+- **`researcher`** — surveys possible approaches for a task (prior
   art, trade-offs) and verifies unfamiliar 26.2 APIs before use, via web
   research and codebase/decompiled-source reading. Read-only, hands
   findings back rather than choosing an approach. Use before `planner` when
   the right approach isn't yet clear.
-- **`planner`** (Opus, high effort) — architecture and design once the
+- **`planner`** — architecture and design once the
   approach is understood, including design work *within* a task (e.g.
   working out an approach for a fiddly item), separate from the phase-level
-  planning already covered by GOALS.md/TODO.md/DESIGN.md. Read-only: no
-  edits, no Bash, no commits. Produces DESIGN.md sections / checkbox
+  planning already covered by GOALS.md/TODO.md/DESIGN.md. Read-only: no code
+  edits, builds, tests, or commits. Produces DESIGN.md sections / checkbox
   TODO.md sub-steps (see DESIGN §41/§42 for the pattern this project uses
   when a task is too large to implement in one pass).
-- **`coder`** (Sonnet) — the default for implementing TODO items.
-- **`tester`** (Haiku, low effort) — runs `./gradlew build`, `javap`, and
+- **`coder`** — the default for implementing TODO items.
+- **`tester`** — runs `./gradlew build`, `javap`, and
   other checks right after `coder` finishes. Reports failures with actual
   output and delegates back to `coder` to fix them; never lints (that's
   `code-reviewer`) and never commits. (Renamed from `tool-runner` to match
   the other repos' agent set.)
-- **`code-reviewer`** (Sonnet) — reviews quality after tests pass: runs
+- **`code-reviewer`** — reviews quality after tests pass: runs
   lint/static-analysis and filters signal from noise. Task-level scope is
   the uncommitted diff, reported back for `coder` to fix. Phase-level scope
   is the whole phase, logged into TODO.md and handed to `project-manager`.
   Never fixes code itself. Distinct from the heavier `/code-review ultra`
   cloud review command mentioned above.
-- **`documentor`** (Sonnet) — writes/updates README, example config and
+- **`documentor`** — writes/updates README, example config and
   `MANUAL_TESTING.md` for features just implemented (DESIGN §20 for design
   tasks — design tasks commit their design *before* implementation). Hands
   off to `committer` to finalize rather than committing itself.
-- **`release-manager`** (Haiku, low effort) — bumps the SemVer `version`
+- **`release-manager`** — bumps the SemVer `version`
   field per task/phase completion, updating the `ProjectMetadataTest`
   contract in the same commit (see Ground rules below). MAJOR only on
   explicit user request; MINOR once per new phase (resets PATCH); PATCH once
   per task within a phase. Never commits, tags, or pushes itself.
-- **`committer`** (Haiku, low effort) — stages and commits **per task**
+- **`committer`** — stages and commits **per task**
   once the build is green, following normal git safety rules. Never pushes.
 
-`project-manager` and `code-reviewer` stay on Sonnet rather than Haiku: both
-make judgment calls (ambiguous task priority, deciding which memory facts
-are durable, filtering real defects from lint noise) that are a better fit
-for Sonnet-level reasoning than for the mechanical, rule-following work
-`tester`/`release-manager`/`committer` do.
+`project-manager` and `code-reviewer` require more judgment than the
+mechanical `tester`, `release-manager`, and `committer` roles. Keep that
+distinction in each tool's agent configuration.
 
 ## The loop (per task)
 
