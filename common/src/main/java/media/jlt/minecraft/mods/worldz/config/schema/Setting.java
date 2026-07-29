@@ -136,7 +136,7 @@ public record Setting<S, T>(
         Unit unit = Unit.NONE;
         String rangeText = "";
         String defaultText = "";
-        Applicability applicability = Applicability.worldDefault();
+        Applicability applicability = Applicability.inherit();
         String summaryLabel;
         Function<T, String> summaryRender = String::valueOf;
         Predicate<S> summaryInclude = owner -> true;
@@ -179,6 +179,12 @@ public record Setting<S, T>(
             return this;
         }
 
+        /** Marks this setting as a world-creation default shared by every typed preset. */
+        public Builder<S, T> worldDefault() {
+            this.applicability = Applicability.worldDefault();
+            return this;
+        }
+
         /** Marks this setting as scoped to the given typed preset id(s); empty means the generic
          * {@code worldz} preset only. */
         public Builder<S, T> preset(String... presetIds) {
@@ -189,6 +195,12 @@ public record Setting<S, T>(
         /** Marks this setting as exposed on the in-game Customize screen. */
         public Builder<S, T> customizeExposed() {
             this.applicability = this.applicability.exposedInCustomize();
+            return this;
+        }
+
+        /** Marks every child of this section/group setting as exposed on Customize. */
+        public Builder<S, T> customizeChildrenExposed() {
+            this.applicability = this.applicability.descendantsExposedInCustomize();
             return this;
         }
 

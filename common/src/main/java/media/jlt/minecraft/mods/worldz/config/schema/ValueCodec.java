@@ -6,6 +6,16 @@ package media.jlt.minecraft.mods.worldz.config.schema;
  * byte-identical output achievable at all (DESIGN §41.1's ordering invariant).
  */
 public interface ValueCodec<T> {
+    /** Structural shape used by schema documentation and unknown-key walkers. */
+    default Shape shape() {
+        return Shape.LEAF;
+    }
+
+    /** Nested schema for SECTION, DYNAMIC_MAP and POLYMORPHIC shapes; {@code null} for leaves. */
+    default SectionCodec<?> nestedSchema() {
+        return null;
+    }
+
     /**
      * Converts a raw YAML-loaded value into {@code T}.
      *
@@ -26,4 +36,11 @@ public interface ValueCodec<T> {
      * @return the object to put into the emitted {@code LinkedHashMap}
      */
     Object write(T value);
+
+    enum Shape {
+        LEAF,
+        SECTION,
+        DYNAMIC_MAP,
+        POLYMORPHIC
+    }
 }

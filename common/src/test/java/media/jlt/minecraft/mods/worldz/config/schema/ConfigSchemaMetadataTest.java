@@ -37,6 +37,14 @@ class ConfigSchemaMetadataTest {
     void everySettingHasADocAUnitAndAnApplicability() {
         List<String> problems = new ArrayList<>();
         collectMetadataProblems(ROOT, problems);
+        for (SchemaDocumentation.Node leaf : SchemaDocumentation.create().leaves()) {
+            if (leaf.docs().doc().isBlank()) {
+                problems.add(leaf.path() + ": shared documentation model has no doc");
+            }
+            if (leaf.applicability().scope() == Applicability.Scope.INHERIT) {
+                problems.add(leaf.path() + ": shared documentation model retained INHERIT applicability");
+            }
+        }
         assertTrue(
             problems.isEmpty(),
             () -> problems.size() + " setting(s) with missing/incomplete metadata:\n" + String.join("\n", problems)
@@ -85,7 +93,7 @@ class ConfigSchemaMetadataTest {
         for (Setting<?, ?> setting : section.settings()) {
             String fullPath = childPath(section, setting.key());
             checkMetadata(setting, fullPath, problems);
-            if (setting.rule() instanceof Rule.Nested<?, ?> nested && nested.section() instanceof SchemaSection<?> child) {
+            if (setting.codec().nestedSchema() instanceof SchemaSection<?> child) {
                 collectMetadataProblems(child, problems);
             }
         }

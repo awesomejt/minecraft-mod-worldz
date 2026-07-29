@@ -118,11 +118,14 @@ class ConfigLayoutTest {
                         Applicability.Scope.WORLD_DEFAULT, applies.scope(), key + " should be a world default (world-defaults.yaml)"
                     );
                 } else if (file.relativePath().equals("kits.yaml")) {
-                    // Kit contents are read once, at first spawn, by StarterKitDeployment, for
-                    // whichever preset is active -- not re-read live like runtime.yaml's three
-                    // sections, and not scoped to one preset (DESIGN §44.4.4).
+                    // Kit contents are baked only for the presets with starter-kit references.
                     assertEquals(
-                        Applicability.Scope.WORLD_DEFAULT, applies.scope(), key + " should be a world default (kits.yaml)"
+                        Applicability.Scope.PRESET, applies.scope(), key + " should be preset-scoped (kits.yaml)"
+                    );
+                    assertEquals(
+                        Set.of("ocean_island", "sky_island", "cave", "nether_start", "end_start"),
+                        applies.presets(),
+                        "kits should name exactly the kit-bearing presets"
                     );
                 } else if (file.relativePath().startsWith("world-types/")) {
                     assertEquals(Applicability.Scope.PRESET, applies.scope(), key + " should be preset-scoped (" + file.relativePath() + ")");

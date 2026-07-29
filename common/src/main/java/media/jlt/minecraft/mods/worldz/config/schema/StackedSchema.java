@@ -31,7 +31,7 @@ public final class StackedSchema extends SchemaSection<StackedConfig> {
                 .build(),
             Setting.<StackedConfig>integer("worldSizeChunks", c -> c.worldSizeChunks, (c, v) -> c.worldSizeChunks = v)
                 .range(0, WorldzConfig.MAX_BORDER_RADIUS_BLOCKS / 16)
-                .unit(Unit.CHUNKS).preset("stacked").customizeExposed()
+                .unit(Unit.CHUNKS).preset("stacked")
                 .doc("Overworld exterior half-width in chunks; zero opts out to the shared exterior section.")
                 .build(),
             Setting.<StackedConfig>integer("relief", c -> c.reliefBlocks, (c, v) -> c.reliefBlocks = v)

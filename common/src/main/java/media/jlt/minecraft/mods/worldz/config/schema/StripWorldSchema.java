@@ -52,12 +52,12 @@ public final class StripWorldSchema extends SchemaSection<StripWorldConfig> {
                 .build(),
             Setting.<StripWorldConfig, SpawnConfig>section("spawn", c -> c.spawn, (c, v) -> c.spawn = v, spawnSchema)
                 .render(spawnSchema::summary)
-                .preset("strip_world").customizeExposed()
+                .preset("strip_world").customizeChildrenExposed()
                 .doc("Layout-origin and initial-spawn strategy.")
                 .build(),
             Setting.<StripWorldConfig, StripBandsConfig>section("bands", c -> c.bands, (c, v) -> c.bands = v, bandsSchema)
                 .render(bandsSchema::summary)
-                .preset("strip_world").customizeExposed()
+                .preset("strip_world").customizeChildrenExposed()
                 .doc("Optional ordered biome-band sequence along the strip's length.")
                 .build()
         );

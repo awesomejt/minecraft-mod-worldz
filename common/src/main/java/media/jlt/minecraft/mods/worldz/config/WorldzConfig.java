@@ -4,7 +4,6 @@ import media.jlt.minecraft.mods.worldz.config.schema.ParseContext;
 import media.jlt.minecraft.mods.worldz.config.schema.SanitizeContext;
 import media.jlt.minecraft.mods.worldz.config.schema.WorldzRootSchema;
 import org.slf4j.Logger;
-import org.slf4j.helpers.NOPLogger;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -65,38 +64,6 @@ public final class WorldzConfig {
 
     static final String YAML_EXTENSION = ".yaml";
     static final String REFERENCE_SUFFIX = ".reference" + YAML_EXTENSION;
-
-    /** Fixed comment header prepended to every generated reference file. */
-    private static final String REFERENCE_HEADER = """
-        # jlt_worldz reference config -- GENERATED, do not edit.
-        # Rewritten from the mod's schema on every launch; the mod never reads this file.
-        # Every setting is shown at its built-in default. Copy the parts you want into
-        # config/jlt_worldz/ (per-world-type files) or as a single
-        # config/jlt_worldz/all.yaml bundle -- the mod never rewrites what you put there.
-        #
-        # File map: which config/jlt_worldz/ file each setting below belongs in. The first
-        # line is re-read live and affects worlds that already exist; every other line is
-        # baked into the save only at world creation, like the rest of this mod's settings.
-        # foreverNight/risingLava/structureDistance -> config/jlt_worldz/runtime.yaml
-        # overworldBorder/netherBorder/endBorder/overworldExterior/netherExterior ->
-        #   config/jlt_worldz/world-defaults.yaml
-        # kits -> config/jlt_worldz/kits.yaml
-        # allowedBiomes/starter/naturalBiomes/layout/spawn -> config/jlt_worldz/world-types/worldz.yaml
-        # stripWorld -> config/jlt_worldz/world-types/strip-world.yaml
-        # singleBiome -> config/jlt_worldz/world-types/single-biome.yaml
-        # chaosBiomes -> config/jlt_worldz/world-types/chaos-biomes.yaml
-        # oceanIsland -> config/jlt_worldz/world-types/ocean-island.yaml
-        # skyIsland -> config/jlt_worldz/world-types/sky-island.yaml
-        # chunkIsland -> config/jlt_worldz/world-types/sky-chunk.yaml
-        # cave -> config/jlt_worldz/world-types/cave.yaml
-        # netherStart -> config/jlt_worldz/world-types/nether-start.yaml
-        # endStart -> config/jlt_worldz/world-types/end-start.yaml
-        # flat -> config/jlt_worldz/world-types/flat.yaml
-        # deepFlat -> config/jlt_worldz/world-types/deep-flat.yaml
-        # stacked -> config/jlt_worldz/world-types/stacked.yaml
-        # A file's own shape (wrapped vs. unwrapped) and the config/jlt_worldz/all.yaml bundle
-        # are documented in README.md's Configuration section.
-        """;
 
     /**
      * The root schema (DESIGN §41.7, TODO 25.2g): declares every top-level scalar and section, in
@@ -374,11 +341,13 @@ public final class WorldzConfig {
     }
 
     /**
-     * Renders the generated reference file's exact contents: fixed comment header + the schema's
-     * all-defaults YAML. Deterministic -- no timestamp, no version.
+     * Renders the generated reference file's exact contents from schema documentation metadata.
+     * Deterministic -- no timestamp, no version.
      */
     static String referenceYaml() {
-        return REFERENCE_HEADER + new WorldzConfig().sanitize(NOPLogger.NOP_LOGGER).toYaml();
+        return ConfigReferenceRenderer.render(
+            media.jlt.minecraft.mods.worldz.config.schema.SchemaDocumentation.create()
+        );
     }
 
     /**

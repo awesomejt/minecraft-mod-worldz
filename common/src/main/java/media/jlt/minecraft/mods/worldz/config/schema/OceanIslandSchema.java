@@ -52,25 +52,30 @@ public final class OceanIslandSchema extends SchemaSection<OceanIslandConfig> {
         return List.of(
             Setting.group("island", island)
                 .render(island::summary)
+                .customizeChildrenExposed()
                 .doc("How the island's land is sourced and shaped.")
                 .build(),
             Setting.<OceanIslandConfig, IslandFluid>enumeration(
                     "fluid", c -> c.fluid, (c, v) -> c.fluid = v,
                     IslandFluid::parse, IslandFluid::serializedName, IslandFluid.WATER
                 )
+                .customizeExposed()
                 .doc("The exterior/ocean gradient's fluid: water, lava, or none.")
                 .build(),
             Setting.<OceanIslandConfig>integer("shoreWidth", c -> c.shoreWidthBlocks, (c, v) -> c.shoreWidthBlocks = v)
                 .min(1)
                 .unit(Unit.BLOCKS)
+                .customizeExposed()
                 .doc("Width of the beach/stony-shore ring; also the terrain-height taper width.")
                 .build(),
             Setting.group("ocean", ocean)
                 .render(ocean::summary)
+                .customizeChildrenExposed()
                 .doc("The exterior ocean's shallow/deep gradient shape.")
                 .build(),
             Setting.group("exclusionZone", exclusionZone)
                 .render(exclusionZone::summary)
+                .customizeChildrenExposed()
                 .doc("Whether/where island and ocean shaping releases to the seed's own terrain.")
                 .build(),
             StarterKitSchema.<OceanIslandConfig>reference(

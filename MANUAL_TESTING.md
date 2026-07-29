@@ -49,8 +49,9 @@ Config lives at `<rundir>/config/jlt_worldz/` per run directory, as either the
 single-file `all.yaml` bundle or the 15 split files (see README.md's
 Configuration section). It is optional — absent means the mod's built-in
 defaults apply directly, and the mod never creates any of it for you (see
-[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for the
-documented reference to copy from). Worlds live in
+[`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for a
+curated illustrative bundle; README tables and the generated reference file
+are exhaustive). Worlds live in
 `<rundir>/saves/<world-name>/` (client) — delete the folder for a clean
 slate. A dedicated server's single world is `<rundir>/world/`.
 
@@ -1411,8 +1412,12 @@ intact") points at.
 3. Confirm `config/jlt_worldz/all.yaml` is byte-identical to what you wrote —
    comments intact, no other settings appended.
 4. Confirm a new `config/jlt_worldz.reference.yaml` appeared alongside it,
-   showing every setting at its built-in default. It's regenerated every
-   launch and safe to delete; the mod never reads it back.
+   showing every setting at its built-in default. Confirm each setting has
+   comments that identify its path, description/default, scope (live or baked),
+   and destination config file. It's regenerated every launch and safe to
+   delete; the mod never reads it back. Retain this check for Jason's TODO
+   25.12 acceptance context: the generated reference may change, while the
+   hand-commented `all.yaml` must remain byte-identical.
 
 ## Scenario table: seed-informed spawn (Phase 16)
 

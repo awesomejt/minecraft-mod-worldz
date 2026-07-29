@@ -1895,7 +1895,7 @@ tests.
       no findings on the second. **[Jason] manual acceptance of configs
       104-107 remains outstanding** (also recorded under 25.12 and Questions
       for Jason).
-- [ ] 25.10 Documentation (D3's second half). Generate README's settings tables
+- [x] 25.10 Documentation (D3's second half). Generate README's settings tables
       from the schema; add the completeness test covering every leaf setting
       (it would have caught F6 — 12 of 25 sections undocumented, and
       `README.md:71` claims the example file "documents every setting", which
@@ -1903,6 +1903,22 @@ tests.
       for the first time (F3): hazards are re-read from config and change
       existing worlds; borders, exteriors and preset sections are baked into
       the save at creation and do nothing to an existing world.
+      **Done (pre-bump 0.3.32):** the shared schema documentation model now
+      drives 20 marked README regions and deterministic annotated reference
+      YAML. `:common:updateConfigDocs` is the strict explicit update path;
+      normal builds are non-mutating. Exact-once schema-leaf completeness,
+      malformed/duplicate marker handling, and arbitrary map-key rendering
+      are covered, including the two defects found by the first task-level
+      review (malformed marker validation and map-key quoting/comment
+      placement); both were fixed and the second review had no findings.
+      README now states the live-vs-baked distinction and keeps
+      `config/jlt_worldz.example.yaml` as a curated example rather than a
+      second exhaustive reference. Documentation-focused gates passed
+      (4 README tests and 55 metadata tests). Final implementation gate so
+      far: 66 suites / 935 tests, zero failures/errors/skips, with Fabric and
+      NeoForge builds and pre-bump 0.3.32 artifacts green. No gameplay or
+      config-shape change required a new `config/tests` fixture; the total
+      remains 109. No Jason question or blocker was introduced by 25.10.
 - [ ] 25.11 **Scope reduced by DESIGN §43.8 (2026-07-28):** 25.6 migrated
       every renamed key across the then-103 `config/tests/*.yaml` fixtures
       (25.6a-h), 25.8 added two (105 total), and 25.9 migrated every affected

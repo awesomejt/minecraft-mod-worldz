@@ -71,6 +71,7 @@ public final class ChestSchema<S> extends SchemaSection<S> {
         if (enabled != null) {
             settings.add(
                 Setting.<S>flag("enabled", enabled.getter(), enabled.setter())
+                    .customizeExposed()
                     .doc("Whether the starter chest generates at all.")
                     .build()
             );
@@ -80,6 +81,7 @@ public final class ChestSchema<S> extends SchemaSection<S> {
                     "tier", tier.getter(), tier.setter(),
                     StarterKitTier::parse, StarterKitTier::serializedName, StarterKitTier.MEDIUM
                 )
+                .customizeExposed()
                 .doc("Which of the easy/medium/hard kits the starter chest uses.")
                 .build()
         );

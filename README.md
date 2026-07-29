@@ -67,12 +67,14 @@ For singleplayer:
 
 1. (Optional) Create `config/jlt_worldz/all.yaml` if you want different
    reusable defaults than the ones built into the mod — copy from
-   [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml), which
-   documents every setting with comments, then restart Minecraft. No config
+   [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml), a
+   curated illustrative `all.yaml` bundle, then restart Minecraft. No config
    at all is a normal, supported setup: the mod's own defaults apply directly
-   and it never creates any config file for you. You can also split settings
-   across the individual files under `config/jlt_worldz/` instead of one
-   `all.yaml` — see [Configuration](#configuration) below for both shapes.
+   and it never creates any config file for you. For the exhaustive setting
+   reference, use the generated tables in this README or the generated
+   `config/jlt_worldz.reference.yaml` described below. You can also split
+   settings across the individual files under `config/jlt_worldz/` instead of
+   one `all.yaml` — see [Configuration](#configuration) below for both shapes.
    The mod never rewrites a config file it read — comments and settings you
    didn't set are preserved across every launch. Instead, it writes
    `config/jlt_worldz.reference.yaml` on every launch: a generated, never-read,
@@ -138,15 +140,17 @@ singleBiome:
     beaches: false
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `biome` | `"minecraft:plains"` | The one biome that fills the entire world. |
-| `starter.biome` | `""` | Optional different biome forced in a circular zone around spawn; empty means no forced zone (the whole world is already `biome`). |
-| `starter.radius` | `256` | Starter-zone radius, only meaningful when `starter.biome` is set; clamped to `64..4096`. |
-| `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. `preferred_natural_biome` searches for a *natural* occurrence of `starter.biome` using the real seed and moves spawn there instead of forcing a zone at `(0, 0)` — the way to get a starter biome whose location (and, incidentally, whatever natural shape it has) comes from the seed rather than being placed arbitrarily. |
-| `naturalBiomes.rivers` | `false` | Let vanilla's own river biomes generate wherever vanilla would naturally place one, instead of `biome` applying there too. Terrain is untouched — the river channel is exactly vanilla's shape. Never overrides the starter zone, which always stays guaranteed land. |
-| `naturalBiomes.oceans` | `false` | Same idea for vanilla's own ocean biomes (every temperature and depth variant) — additive over `naturalBiomes.rivers`, so turning this on keeps rivers passing through too. Coastlines are exactly vanilla's: no straight edges, no height blending. |
-| `naturalBiomes.beaches` | `false` | Same idea for vanilla's own `beach`/`snowy_beach` biomes plus `stony_shore` (which has no dedicated vanilla tag, so it's checked directly) — independent of `naturalBiomes.rivers`/`.oceans`. |
+<!-- BEGIN GENERATED CONFIG TABLE: single-biome -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `singleBiome.biome` | `'minecraft:plains'` | biome id | Baked: single_biome; new worlds only; Customize | The one biome that fills the generated world. |
+| `singleBiome.starter.biome` | `''` | biome id | Baked: single_biome; new worlds only; Customize | Optional biome id forced in a circular zone around the starter origin; empty disables the starter zone. |
+| `singleBiome.starter.radius` | `256` | blocks; 64..4096 | Baked: single_biome; new worlds only; Customize | Starter-zone radius, only meaningful when biome is set. |
+| `singleBiome.spawn.strategy` | `'starter_at_origin'` | — | Baked: single_biome; new worlds only; Customize | How the layout origin and initial spawn are chosen. |
+| `singleBiome.naturalBiomes.rivers` | `false` | — | Baked: single_biome; new worlds only; Customize | Let vanilla's own river biomes generate where vanilla would place one. |
+| `singleBiome.naturalBiomes.oceans` | `false` | — | Baked: single_biome; new worlds only; Customize | Let vanilla's own river/ocean-family biomes generate naturally, additive over rivers. |
+| `singleBiome.naturalBiomes.beaches` | `false` | — | Baked: single_biome; new worlds only; Customize | Let vanilla's own beach/stony-shore biomes generate where vanilla would place one. |
+<!-- END GENERATED CONFIG TABLE: single-biome -->
 
 `allowedBiomes` (what structures/features see as possible biomes) is derived
 automatically from `biome` and `starter.biome` — there is nothing to keep
@@ -191,16 +195,18 @@ chaosBiomes:
     beaches: false
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `biomes` | desert/jungle/ice_spikes/badlands/taiga | Weighted land biome entries (`id` or `id@weight`, same syntax as the generic preset's `layout.biomes`), shuffled per region. At least one is required. |
-| `regionScale` | `512` | Grid-cell edge length in blocks; smaller means more frequent biome changes. Clamped to `16..8192`. |
-| `starter.biome` | `""` | Optional biome forced in a circular zone around spawn; empty means chaos starts immediately at spawn (GOALS 33's literal reading). Setting one gives a safe, guaranteed-land starting patch, exactly like `single_biome`'s. |
-| `starter.radius` | `256` | Starter-zone radius, only meaningful when `starter.biome` is set; clamped to `64..4096`. |
-| `spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
-| `naturalBiomes.rivers` | `false` | Same mechanism as `single_biome`'s `naturalBiomes.rivers` — vanilla's own river biomes pass through, terrain untouched. |
-| `naturalBiomes.oceans` | `false` | Same mechanism as `single_biome`'s `naturalBiomes.oceans` — additive over `naturalBiomes.rivers`. |
-| `naturalBiomes.beaches` | `false` | Same mechanism as `single_biome`'s `naturalBiomes.beaches` — vanilla's own beach/stony-shore biomes pass through, independent of `naturalBiomes.rivers`/`.oceans`. |
+<!-- BEGIN GENERATED CONFIG TABLE: chaos-biomes -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `chaosBiomes.biomes` | `['minecraft:desert', 'minecraft:jungle', 'minecraft:ice_spikes', 'minecraft:badlands', 'minecraft:taiga']` | biome id | Baked: chaos_biomes; new worlds only; Customize | Weighted land biome entries (id or id@weight) shuffled per region. |
+| `chaosBiomes.regionScale` | `512` | blocks; 16..8192 | Baked: chaos_biomes; new worlds only; Customize | Grid-cell edge length in blocks; smaller means more frequent biome changes. |
+| `chaosBiomes.starter.biome` | `''` | biome id | Baked: chaos_biomes; new worlds only; Customize | Optional biome id forced in a circular zone around the starter origin; empty disables the starter zone. |
+| `chaosBiomes.starter.radius` | `256` | blocks; 64..4096 | Baked: chaos_biomes; new worlds only; Customize | Starter-zone radius, only meaningful when biome is set. |
+| `chaosBiomes.spawn.strategy` | `'starter_at_origin'` | — | Baked: chaos_biomes; new worlds only; Customize | How the layout origin and initial spawn are chosen. |
+| `chaosBiomes.naturalBiomes.rivers` | `false` | — | Baked: chaos_biomes; new worlds only; Customize | Let vanilla's own river biomes generate where vanilla would place one. |
+| `chaosBiomes.naturalBiomes.oceans` | `false` | — | Baked: chaos_biomes; new worlds only; Customize | Let vanilla's own river/ocean-family biomes generate naturally, additive over rivers. |
+| `chaosBiomes.naturalBiomes.beaches` | `false` | — | Baked: chaos_biomes; new worlds only; Customize | Let vanilla's own beach/stony-shore biomes generate where vanilla would place one. |
+<!-- END GENERATED CONFIG TABLE: chaos-biomes -->
 
 `allowedBiomes` derives automatically from `biomes` plus `starter.biome`, the
 same way `single_biome`'s does.
@@ -240,13 +246,15 @@ stripWorld:
     strategy: starter_at_origin
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `stripWorld.enabled` | `false` | Whether the generic **Worldz** preset adds this corridor. The dedicated **Worldz: Strip World** preset always applies it in the Overworld. |
-| `stripWorld.width` | `65` | Absolute corridor width in blocks, minimum `1`. Odd widths are symmetric about Z=0; even widths put the extra column on +Z. |
-| `stripWorld.widthMode` | `void` | Terrain generated beyond the width: `void` or `ocean` (never `normal`). |
-| `stripWorld.applyToNether` | `false` | Whether the same corridor width also applies to the Nether — one shared width, not two independently configurable ones. |
-| `stripWorld.spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
+<!-- BEGIN GENERATED CONFIG TABLE: strip-world -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `stripWorld.enabled` | `false` | — | Baked: worldz; new worlds only | Whether the generic worldz preset applies this corridor; the dedicated strip_world preset always does. |
+| `stripWorld.width` | `65` | blocks; 1+ | Baked: worldz, strip_world; new worlds only; Customize | Absolute corridor width in blocks; even widths take the extra block on +Z. |
+| `stripWorld.widthMode` | `'void'` | — | Baked: worldz, strip_world; new worlds only; Customize | Terrain generated beyond the corridor -- void or ocean, never normal. |
+| `stripWorld.applyToNether` | `false` | — | Baked: worldz, strip_world; new worlds only; Customize | Whether the same corridor width also applies to the Nether. |
+| `stripWorld.spawn.strategy` | `'starter_at_origin'` | — | Baked: strip_world; new worlds only; Customize | How the layout origin and initial spawn are chosen. |
+<!-- END GENERATED CONFIG TABLE: strip-world -->
 
 For width `w`, the inclusive Z range is from `-(w - 1) / 2` through
 `w / 2`. Thus width 1 is `Z=0`, width 2 is `Z=0..1`, width 4 is
@@ -298,15 +306,17 @@ stripWorld:
       beaches: true
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `bands.enabled` | `false` | Whether the corridor passes through biome bands instead of ordinary vanilla terrain. |
-| `bands.biomes` | desert/jungle/ice_spikes/badlands/taiga | Ordered, unweighted biome ids walked along the strip's length. Concrete ids only, no `#tags`. At least one is required when `enabled` is set. |
-| `bands.width` | `128` | Band width in blocks along the strip's length axis. Clamped to `16..8192`. |
-| `bands.seedRandomOrder` | `false` | Shuffle `biomes` once — a fixed permutation baked in at world creation, not per-band randomness — instead of using the list in the order given. |
-| `bands.naturalBiomes.rivers` | `true` | Let vanilla's own river biomes pass through the band sequence wherever vanilla would naturally place one, same mechanism as `single_biome`'s `naturalBiomes.rivers`. Defaults **on** here — unlike `single_biome`/`chaos_biomes`, a band sequence is already a curated, restricted list, so without this a player would need to remember to add water biomes to every band configuration just to get them at all. |
-| `bands.naturalBiomes.oceans` | `true` | Same idea for vanilla's own ocean biomes — additive over `naturalBiomes.rivers`. Also defaults **on** for the same reason. |
-| `bands.naturalBiomes.beaches` | `true` | Same idea for vanilla's own beach/stony-shore biomes, independent of `naturalBiomes.rivers`/`.oceans`. Also defaults **on** for the same reason. |
+<!-- BEGIN GENERATED CONFIG TABLE: strip-bands -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `stripWorld.bands.enabled` | `false` | — | Baked: strip_world; new worlds only; Customize | Whether the strip passes through biome bands instead of ordinary vanilla terrain. |
+| `stripWorld.bands.biomes` | `[]` | biome id | Baked: strip_world; new worlds only; Customize | Ordered land biome ids walked along the strip's length; repeats once exhausted. |
+| `stripWorld.bands.width` | `128` | blocks; 16..8192 | Baked: strip_world; new worlds only; Customize | Band width in blocks along the strip's length axis. |
+| `stripWorld.bands.seedRandomOrder` | `false` | — | Baked: strip_world; new worlds only; Customize | Shuffle the sequence once (a fixed permutation) instead of using it as given. |
+| `stripWorld.bands.naturalBiomes.rivers` | `true` | — | Baked: strip_world; new worlds only; Customize | Let vanilla's own river biomes generate where vanilla would place one. |
+| `stripWorld.bands.naturalBiomes.oceans` | `true` | — | Baked: strip_world; new worlds only; Customize | Let vanilla's own river/ocean-family biomes generate naturally, additive over rivers. |
+| `stripWorld.bands.naturalBiomes.beaches` | `true` | — | Baked: strip_world; new worlds only; Customize | Let vanilla's own beach/stony-shore biomes generate where vanilla would place one. |
+<!-- END GENERATED CONFIG TABLE: strip-bands -->
 
 These three only matter when `bands.enabled` is set — the plain, band-free
 strip world already shows full vanilla biome variety (including rivers,
@@ -425,24 +435,24 @@ the inline block shown above — e.g. `starterKit: ocean-island-default` (its
 own shipped default) — see [Shared starter kits](#shared-starter-kits)
 below.
 
-| Setting | Default | Description |
-|---|---|---|
-| `island.source` | `"artificial"` | `artificial`, `natural`, or `chest_boat` — see above. |
-| `fluid` | `"water"` | `water`, `lava`, or `none` — see above. Independent of `island.source`. |
-| `island.biome` | `"minecraft:plains"` | The one biome that fills the island's interior (`artificial` only). |
-| `island.radius` | `128` | Configured (unperturbed) island radius (`artificial`), or the search-isolation/land radius around whatever the search finds (`natural`). Clamped to `8..65536` — deliberately far below the shared starter-radius bounds other presets use, since GOALS 01 explicitly wants sizes down to "16 blocks/1 chunk." |
-| `island.shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius (`artificial` only). `0` is a perfect circle; clamped to `0..0.6` so no combination of harmonics can produce a self-intersecting or negative-radius shape. |
-| `shoreWidth` | `12` | Width of the beach/stony-shore ring measured from the true coastline; also the terrain-height taper width from the island's full guaranteed height down to sea level. |
-| `ocean.shallowWidth` | `64` | Width of the shallow ocean band immediately beyond the shore ring. |
-| `ocean.deepenWidth` | `128` | Width over which the seabed smoothly ramps from shallow to deep. |
-| `ocean.shallowDepth` | `8` | Seabed depth below sea level in the shallow band. |
-| `ocean.deepDepth` | `32` | Seabed depth below sea level once fully deep — the ocean stays this deep forever beyond the deepening band ("endless ocean"). |
-| `ocean.regionScale` | `128` | Grid-cell edge length for the ocean biome's per-region pick, so the ocean reads as patches of variety rather than per-block dithering. |
-| `exclusionZone.enabled` | `false` | GOALS 04: when set, island/ocean shaping releases entirely beyond `exclusionZone.radius`, letting the seed's own natural terrain resume — small natural islands then occur wherever the seed's terrain noise happens to poke above sea level, far from the artificial island. Off by default, matching GOALS 01's core "endless ocean, no natural land ever" behavior. |
-| `exclusionZone.radius` | `2000` | Radius beyond which shaping releases, when enabled. |
-| `starterKit.essentials` | lily pad, dirt x4, grass block x2, oak sapling x3 | Always-included chest-boat items (`chest_boat` only). Each entry is `"<item id>"` (count 1) or `"<item id>:<count>"`. |
-| `starterKit.extras` | bread x3, wooden axe, wooden pickaxe, torch x8, water bucket | Candidate items the random picks draw from (`chest_boat` only, same shorthand format). |
-| `starterKit.extrasCount` | `2` | How many extras to pick, with replacement, deterministically from the world seed. |
+<!-- BEGIN GENERATED CONFIG TABLE: ocean-island -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `oceanIsland.island.source` | `'artificial'` | — | Baked: ocean_island; new worlds only; Customize | How the land is sourced: artificial, natural (seed), or chest-boat/none. |
+| `oceanIsland.island.biome` | `'minecraft:plains'` | biome id | Baked: ocean_island; new worlds only; Customize | The one biome that fills the island's interior. |
+| `oceanIsland.island.radius` | `128` | blocks; 8..65536 | Baked: ocean_island; new worlds only; Customize | Configured (unperturbed) island radius. |
+| `oceanIsland.island.shapeAmplitude` | `0.3` | factor; 0..0.6 | Baked: ocean_island; new worlds only; Customize | Coastline perturbation strength. |
+| `oceanIsland.fluid` | `'water'` | — | Baked: ocean_island; new worlds only; Customize | The exterior/ocean gradient's fluid: water, lava, or none. |
+| `oceanIsland.shoreWidth` | `12` | blocks; 1+ | Baked: ocean_island; new worlds only; Customize | Width of the beach/stony-shore ring; also the terrain-height taper width. |
+| `oceanIsland.ocean.shallowWidth` | `64` | blocks; 0+ | Baked: ocean_island; new worlds only; Customize | Width of the shallow ocean band immediately beyond the shore. |
+| `oceanIsland.ocean.deepenWidth` | `128` | blocks; 0+ | Baked: ocean_island; new worlds only; Customize | Width over which the seabed ramps from shallow to deep. |
+| `oceanIsland.ocean.shallowDepth` | `8` | blocks; 1+ | Baked: ocean_island; new worlds only; Customize | Seabed depth below sea level in the shallow band. |
+| `oceanIsland.ocean.deepDepth` | `32` | blocks; 1+ | Baked: ocean_island; new worlds only; Customize | Seabed depth below sea level once fully deep. |
+| `oceanIsland.ocean.regionScale` | `128` | blocks; 1+ | Baked: ocean_island; new worlds only; Customize | Grid-cell edge length for the ocean biome's per-region pick. |
+| `oceanIsland.exclusionZone.enabled` | `false` | — | Baked: ocean_island; new worlds only; Customize | Whether shaping/generation releases to the seed's own terrain beyond radius. |
+| `oceanIsland.exclusionZone.radius` | `2000` | blocks; 1+ | Baked: ocean_island; new worlds only; Customize | Radius beyond which the buffer ends, when enabled. |
+| `oceanIsland.starterKit` | `'ocean-island-default'` | — | Baked: ocean_island; new worlds only | Chest-boat starter kit, consulted only when islandSource is chest_boat. |
+<!-- END GENERATED CONFIG TABLE: ocean-island -->
 
 Not exposed on the Customize screen — YAML-only, matching every other
 variable-length list in this mod's config (biome lists, etc.).
@@ -565,19 +575,24 @@ skyIsland:
     belowSurface: 10
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `biome` | `"minecraft:plains"` | The one biome that fills the island's interior and drives its surface-block palette and starter-kit water item. |
-| `radius` | `16` | Configured (unperturbed) island radius. Clamped to `8..65536`, the same shared bound ocean island uses — Skyblock scale by default, much smaller than ocean island's own 128-block default. |
-| `shapeAmplitude` | `0.3` | Coastline perturbation strength as a fraction of the radius. `0` is a perfect circle; clamped to `0..0.6`. |
-| `surfaceY` | `64` | The island's walkable surface Y — GOALS 05's own default, chosen to avoid slimes. |
-| `thickness` | `6` | How many blocks of solid ground extend below `surfaceY` before hitting void. Clamped to `1..64`. |
-| `chest.tier` | `"medium"` | `easy`, `medium`, or `hard` — which of `chest.kits.easy`/`.medium`/`.hard` the starter chest uses. |
-| `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
-| `chest.kits.easy`/`.medium`/`.hard` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit` — or a bare name from the shared kit library instead (e.g. `easy: cave-easy`, its own shipped default). See [Shared starter kits](#shared-starter-kits). |
-| `exclusionZone.enabled`/`.radius` | `true`/`128` | Whether/how wide a buffer beyond the island's own edge keeps reporting `biome` before the real seed's own biome takes over — a purely cosmetic/F3 distinction; the terrain itself stays void either way. |
-| `underground.biome` | `""` (disabled) | Biome reported at/below `underground.belowSurface` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical setting. Blank disables the band entirely. Note the interaction with `thickness`: with the defaults (`thickness: 6`, `underground.belowSurface: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `underground.belowSurface` smaller than `thickness`. Config-only for now (not yet on the Customize screen). |
-| `underground.belowSurface` | `10` | How many blocks below `surfaceY` the underground band starts. Only takes effect when `underground.biome` is also set; `0` disables the band even with a biome configured. |
+<!-- BEGIN GENERATED CONFIG TABLE: sky-island -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `skyIsland.biome` | `'minecraft:plains'` | biome id | Baked: sky_island; new worlds only; Customize | The one biome that fills the island's interior. |
+| `skyIsland.radius` | `16` | blocks; 8..65536 | Baked: sky_island; new worlds only; Customize | Configured (unperturbed) island radius -- small by default, matching Skyblock's scale. |
+| `skyIsland.shapeAmplitude` | `0.3` | factor; 0..0.6 | Baked: sky_island; new worlds only; Customize | Coastline perturbation strength. |
+| `skyIsland.surfaceY` | `64` | Y level | Baked: sky_island; new worlds only; Customize | The island's walkable surface Y. |
+| `skyIsland.thickness` | `6` | blocks; 1..64 | Baked: sky_island; new worlds only; Customize | How many blocks of solid ground extend below surfaceY. |
+| `skyIsland.chest.tier` | `'medium'` | — | Baked: sky_island; new worlds only; Customize | Which of the easy/medium/hard kits the starter chest uses. |
+| `skyIsland.chest.kits.easy` | `'sky-island-easy'` | — | Baked: sky_island; new worlds only | Generous starter-chest contents. |
+| `skyIsland.chest.kits.medium` | `'sky-island-medium'` | — | Baked: sky_island; new worlds only | Middle-ground starter-chest contents. |
+| `skyIsland.chest.kits.hard` | `'sky-island-hard'` | — | Baked: sky_island; new worlds only | Bare-essentials starter-chest contents. |
+| `skyIsland.applyToNether` | `false` | — | Baked: sky_island; new worlds only; Customize | Whether the Nether is also a sky island, reusing this same shape. |
+| `skyIsland.exclusionZone.enabled` | `true` | — | Baked: sky_island; new worlds only; Customize | Whether shaping/generation releases to the seed's own terrain beyond radius. |
+| `skyIsland.exclusionZone.radius` | `128` | blocks; 1+ | Baked: sky_island; new worlds only; Customize | Radius beyond which the buffer ends, when enabled. |
+| `skyIsland.underground.biome` | `''` | biome id | Baked: sky_island; new worlds only | Biome reported below belowSurface blocks under the surface; blank disables the underground band entirely. |
+| `skyIsland.underground.belowSurface` | `10` | blocks; 0+ | Baked: sky_island; new worlds only | How many blocks below the surface the underground band starts; ignored (band never applies) at 0 even with a biome configured. |
+<!-- END GENERATED CONFIG TABLE: sky-island -->
 
 ### Floating resource islands (GOALS 07-08)
 
@@ -635,20 +650,25 @@ skyIsland:
         extrasCount: 2
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `enabled` | `false` | Whether scattered floating islands generate at all. |
-| `radius.min`/`radius.max` | `12`/`32` | Range a scattered island's radius is hash-picked from. Same shared `8..65536` bound as every other island radius. |
-| `shapeAmplitude` | `0.3` | Coastline perturbation strength, same shape as the starter island's own. |
-| `cellSize` | `256` | Grid-cell edge length — the primary "how far apart" knob. |
-| `spawnChance` | `0.6` | Probability (`0..1`) that a given grid cell holds an island, independent of spacing. |
-| `biomeVariety` | `true` | Whether each island hash-picks its own biome from `biomes`, instead of every scattered island sharing the starter island's single `biome`. |
-| `biomes` | plains/forest/desert/taiga/savanna | Candidate biome pool when `biomeVariety` is `true`. Concrete biome ids only, no `#tags`. |
-| `exclusionZone.enabled`/`.radius` | `true`/`256` | Void buffer around the starter island before scattered islands begin. |
-| `oreDeposits.enabled` | `false` | Whether each island gets one embedded vanilla ore-vein feature, hash-picked from `oreDeposits.featureIds` and placed once at the island's own center, clamped to its slab's thickness. |
-| `oreDeposits.featureIds` | coal/iron/gold/redstone/lapis/diamond/emerald | Candidate vanilla `ConfiguredFeature` ids (config-only, like `chest.kits.easy`/`.medium`/`.hard` above — not exposed on the Customize screen). |
-| `lootChest.enabled` | `false` | Whether each island gets one placed loot chest at the island's surface, reusing `lootChest.kit`. |
-| `lootChest.kit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `chest.kits.easy`/`.medium`/`.hard` above (config-only, not exposed on the Customize screen) — or a bare name from the shared kit library instead (default: `floating-islands-loot`). See [Shared starter kits](#shared-starter-kits). |
+<!-- BEGIN GENERATED CONFIG TABLE: floating-islands -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `skyIsland.floatingIslands.enabled` | `false` | — | Baked: sky_island; new worlds only; Customize | Whether scattered islands generate at all. |
+| `skyIsland.floatingIslands.radius.min` | `12` | blocks; 8..65536 | Baked: sky_island; new worlds only; Customize | Smallest hash-picked island radius. |
+| `skyIsland.floatingIslands.radius.max` | `32` | blocks; min..65536 | Baked: sky_island; new worlds only; Customize | Largest hash-picked island radius; floored at min (DESIGN R4). |
+| `skyIsland.floatingIslands.shapeAmplitude` | `0.3` | factor; 0..0.6 | Baked: sky_island; new worlds only; Customize | Coastline perturbation strength. |
+| `skyIsland.floatingIslands.cellSize` | `256` | blocks; 16..8192 | Baked: sky_island; new worlds only; Customize | Grid-cell edge length -- the primary "how far apart" knob. |
+| `skyIsland.floatingIslands.spawnChance` | `0.6` | chance; 0..1 | Baked: sky_island; new worlds only; Customize | Probability that a given cell holds an island, independent of spacing. |
+| `skyIsland.floatingIslands.biomeVariety` | `true` | — | Baked: sky_island; new worlds only; Customize | Whether each island hash-picks its own biome from biomes. |
+| `skyIsland.floatingIslands.biomes` | `['minecraft:plains', 'minecraft:forest', 'minecraft:desert', 'minecraft:taiga', 'minecraft:savanna']` | biome id | Baked: sky_island; new worlds only; Customize | Candidate biome pool when biomeVariety is true. |
+| `skyIsland.floatingIslands.exclusionZone.enabled` | `true` | — | Baked: sky_island; new worlds only; Customize | Whether shaping/generation releases to the seed's own terrain beyond radius. |
+| `skyIsland.floatingIslands.exclusionZone.radius` | `256` | blocks; 1+ | Baked: sky_island; new worlds only; Customize | Radius beyond which the buffer ends, when enabled. |
+| `skyIsland.floatingIslands.oreDeposits.enabled` | `false` | — | Baked: sky_island; new worlds only; Customize | Whether each island gets one embedded vanilla ore-vein feature. |
+| `skyIsland.floatingIslands.oreDeposits.featureIds` | `['minecraft:ore_coal', 'minecraft:ore_iron_small', 'minecraft:ore_gold_buried', 'minecraft:ore_redstone', 'minecraft:ore_lapis', 'minecraft:ore_diamond_small', 'minecraft:ore_emerald']` | — | Baked: sky_island; new worlds only | Candidate vanilla ore ConfiguredFeature ids one island's deposit is hash-picked from. |
+| `skyIsland.floatingIslands.lootChest.enabled` | `false` | — | Baked: sky_island; new worlds only; Customize | Whether each island gets one placed loot chest. |
+| `skyIsland.floatingIslands.lootChest.kit` | `'floating-islands-loot'` | — | Baked: sky_island; new worlds only | The loot chest's contents. |
+| `skyIsland.floatingIslands.naturalBiome` | `false` | — | Baked: sky_island; new worlds only; Customize | Whether each island reads the real underlying seed's own biome instead of biomeVariety's pool. |
+<!-- END GENERATED CONFIG TABLE: floating-islands -->
 
 **Guaranteed village (GOALS 07):** whenever `floatingIslands.enabled` is
 set, one specific scattered island beyond the exclusion zone is always a
@@ -744,17 +764,21 @@ chunkIsland:
     - 'minecraft:amethyst_geode'
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `enabled` | `false` | Whether chunk islands generate at all. |
-| `spawnChance` | `0.35` | Probability (`0..1`) that a given grid cell holds an island. |
-| `cellSizeChunks` | `1` | Grid-cell edge length in chunks — `1` rolls every chunk independently; larger groups chunks into multi-chunk landmasses. |
-| `topOnly.enabled` | `false` | Whether the starter island (and the guaranteed portal-room island) keep only their top `topOnly.depth`, voiding everything below. |
-| `topOnly.depth` | `5` | Depth kept below the real generated surface whenever an island resolves top-only. |
-| `exclusionZone.enabled`/`.radius` | `false`/`256` | Void buffer around the starter island before scattered islands begin. |
-| `topOnly.scatteredChance` | `0.0` | Probability (`0..1`) an ordinary scattered island (not the starter, not the guaranteed portal room) independently resolves top-only instead of full-column. |
-| `applyTo.nether`/`.end` | `false`/`false` | Mirrors the same chunk-grid mechanism into the Nether and/or the End. |
-| `geodeFeatureIds` | `['minecraft:amethyst_geode']` | Candidate vanilla `ConfiguredFeature` ids the forced geode cell is hash-picked from (config-only, not exposed on the Customize screen). |
+<!-- BEGIN GENERATED CONFIG TABLE: sky-chunk -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `chunkIsland.enabled` | `false` | — | Baked: sky_chunk; new worlds only | Whether chunk islands generate at all. |
+| `chunkIsland.spawnChance` | `0.35` | chance; 0..1 | Baked: sky_chunk; new worlds only; Customize | Probability that a given grid cell holds an island. |
+| `chunkIsland.cellSizeChunks` | `1` | chunks; 1..512 | Baked: sky_chunk; new worlds only; Customize | Grid-cell edge length in chunks; 1 rolls every chunk independently. |
+| `chunkIsland.topOnly.enabled` | `false` | — | Baked: sky_chunk; new worlds only; Customize | Whether a selected island keeps only its top depth, void below. |
+| `chunkIsland.topOnly.depth` | `5` | blocks; 1..14999992 | Baked: sky_chunk; new worlds only; Customize | Depth kept below the real generated surface when enabled. |
+| `chunkIsland.topOnly.scatteredChance` | `0` | chance; 0..1 | Baked: sky_chunk; new worlds only; Customize | Probability an ordinary scattered island independently resolves top-only. |
+| `chunkIsland.exclusionZone.enabled` | `false` | — | Baked: sky_chunk; new worlds only; Customize | Whether shaping/generation releases to the seed's own terrain beyond radius. |
+| `chunkIsland.exclusionZone.radius` | `256` | blocks; 0..14999992 | Baked: sky_chunk; new worlds only; Customize | Radius beyond which the buffer ends, when enabled. |
+| `chunkIsland.applyTo.nether` | `false` | — | Baked: sky_chunk; new worlds only; Customize | Whether the same chunk-island mechanism also applies to the Nether. |
+| `chunkIsland.applyTo.end` | `false` | — | Baked: sky_chunk; new worlds only; Customize | Whether the same chunk-island mechanism also applies to the End. |
+| `chunkIsland.geodeFeatureIds` | `['minecraft:amethyst_geode']` | — | Baked: sky_chunk; new worlds only | Candidate configured-feature ids force-placed on the reserved geode showcase cell. |
+<!-- END GENERATED CONFIG TABLE: sky-chunk -->
 
 Not exposed on the Customize screen beyond the fields listed above —
 `geodeFeatureIds` is YAML-only, matching every other variable-length
@@ -814,16 +838,23 @@ cave:
     tier: medium
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `spawnY` | `-32` | Target Y for the underground spawn-cavity search. |
-| `sealedSurface.enabled` | `false` | Whether a solid roof seals off sky access everywhere. |
-| `sealedSurface.y` | `128` | The roof's Y, meaningful only when `sealedSurface.enabled` is set. |
-| `cavern.enabled` | `false` | Whether the mega-cavern is carved around spawn. |
-| `cavern.radius` | `48` | The mega-cavern's horizontal half-width in blocks (`8`-`256`). |
-| `cavern.height` | `24` | The mega-cavern's vertical half-height in blocks (`8`-`256`). |
-| `chest.enabled` | `false` | Whether a starter chest is placed at spawn. |
-| `chest.tier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
+<!-- BEGIN GENERATED CONFIG TABLE: cave -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `cave.spawnY` | `-32` | Y level | Baked: cave; new worlds only; Customize | Target Y for the underground spawn-cavity search. |
+| `cave.sealedSurface.enabled` | `false` | — | Baked: cave; new worlds only; Customize | Whether a solid roof seals off sky access everywhere. |
+| `cave.sealedSurface.y` | `128` | Y level; -32+ | Baked: cave; new worlds only; Customize | The roof's Y; only meaningful when enabled is set. |
+| `cave.sealedSurface.block` | `'stone'` | — | Baked: cave; new worlds only | The roof's block: stone, deepslate or bedrock. |
+| `cave.sealedSurface.thickness` | `5` | blocks; 1..64 | Baked: cave; new worlds only | The roof's thickness. |
+| `cave.cavern.enabled` | `false` | — | Baked: cave; new worlds only; Customize | Whether the mega-cavern is carved around spawn. |
+| `cave.cavern.radius` | `48` | blocks; 8..256 | Baked: cave; new worlds only; Customize | The mega-cavern's horizontal half-width. |
+| `cave.cavern.height` | `24` | blocks; 8..256 | Baked: cave; new worlds only; Customize | The mega-cavern's vertical half-height. |
+| `cave.chest.enabled` | `false` | — | Baked: cave; new worlds only; Customize | Whether the starter chest generates at all. |
+| `cave.chest.tier` | `'medium'` | — | Baked: cave; new worlds only; Customize | Which of the easy/medium/hard kits the starter chest uses. |
+| `cave.chest.kits.easy` | `'cave-easy'` | — | Baked: cave; new worlds only | Generous starter-chest contents. |
+| `cave.chest.kits.medium` | `'cave-medium'` | — | Baked: cave; new worlds only | Middle-ground starter-chest contents. |
+| `cave.chest.kits.hard` | `'cave-hard'` | — | Baked: cave; new worlds only | Bare-essentials starter-chest contents. |
+<!-- END GENERATED CONFIG TABLE: cave -->
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
@@ -856,12 +887,14 @@ centered (chest in the middle), once the room is big enough to hold them
 without crowding your own spawn point in the center. Its size, light
 source, and light spacing are all configurable:
 
-| Setting | Default | Description |
-|---|---|---|
-| `capsule.size` | `7` | Total exterior footprint, walls included (must be odd); the room you actually stand in is this minus 2 — the default `7` means a 5x5 interior. |
-| `capsule.height` | `3` | Interior height (already "as seen from inside" — no adjustment needed). |
-| `capsule.light.source` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen`. Torches/glowstone/shroomlight each light the north/east/west walls with one fixture centered on that wall (more, symmetric about the center, if the wall is long enough for the configured spacing); lanterns always hang from the ceiling in a grid instead; `glow_lichen` ignores spacing and coats the entire interior surface. The south wall (where the chest/furnace/crafting table sit) never gets a wall fixture. A room with either interior dimension at 6 or more also gets ceiling/floor lights in addition to the walls (floor-standing only for `torch` — there's no vanilla ceiling-mounted torch). |
-| `capsule.light.spacing` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
+<!-- BEGIN GENERATED CONFIG TABLE: nether-start-capsule -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `netherStart.capsule.size` | `7` | blocks; 3..15; odd | Baked: nether_start; new worlds only | Total exterior footprint width/depth, walls included; must stay odd. |
+| `netherStart.capsule.height` | `3` | blocks; 2..8 | Baked: nether_start; new worlds only | Interior height. |
+| `netherStart.capsule.light.source` | `'glowstone'` | — | Baked: nether_start; new worlds only | Which block lights the capsule. |
+| `netherStart.capsule.light.spacing` | `5` | blocks; 1..15 | Baked: nether_start; new worlds only | Spacing between embedded/hung light sources. |
+<!-- END GENERATED CONFIG TABLE: nether-start-capsule -->
 
 **Death and respawn work like this:** the world's own default spawn point
 is redirected to the resolved Nether site at world creation, so both your
@@ -901,11 +934,16 @@ netherStart:
       spacing: 5
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `spawnY` | `32` | Target Y for the safe-site search. |
-| `chest.tier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
-| `forceCapsule` | `false` | Always build the guaranteed capsule instead of only falling back to it when the natural search fails. |
+<!-- BEGIN GENERATED CONFIG TABLE: nether-start -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `netherStart.spawnY` | `32` | Y level; 1..120 | Baked: nether_start; new worlds only; Customize | Target Y for the safe-site search. |
+| `netherStart.chest.tier` | `'medium'` | — | Baked: nether_start; new worlds only; Customize | Which of the easy/medium/hard kits the starter chest uses. |
+| `netherStart.chest.kits.easy` | `'nether-start-easy'` | — | Baked: nether_start; new worlds only | Generous starter-chest contents. |
+| `netherStart.chest.kits.medium` | `'nether-start-medium'` | — | Baked: nether_start; new worlds only | Middle-ground starter-chest contents. |
+| `netherStart.chest.kits.hard` | `'nether-start-hard'` | — | Baked: nether_start; new worlds only | Bare-essentials starter-chest contents. |
+| `netherStart.forceCapsule` | `false` | — | Baked: nether_start; new worlds only | Whether to always build the guaranteed capsule instead of only falling back to it. |
+<!-- END GENERATED CONFIG TABLE: nether-start -->
 
 **Not yet available:** `forceCapsule` and the `capsule:` settings are
 config-only for now — the in-game Customize screen doesn't expose them
@@ -975,13 +1013,18 @@ endStart:
       spacing: 5
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `chest.tier` | `medium` | Which starter-chest kit (`easy`/`medium`/`hard`) to use. |
-| `capsule.size` | `7` | Total *exterior* footprint width/depth, walls included (must be odd) — `7` means a 5x5 interior. |
-| `capsule.height` | `3` | Interior height (already "as seen from inside"). |
-| `capsule.light.source` | `glowstone` | `torch`, `lantern`, `soul_lantern`, `glowstone`, `shroomlight`, or `glow_lichen` — same placement rules as Nether-start's own `netherStart.capsule.light.source` (see above). The south wall (where the chest sits) never gets a wall fixture. |
-| `capsule.light.spacing` | `5` | Spacing between light fixtures (ignored by `glow_lichen`). |
+<!-- BEGIN GENERATED CONFIG TABLE: end-start -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `endStart.chest.tier` | `'medium'` | — | Baked: end_start; new worlds only; Customize | Which of the easy/medium/hard kits the starter chest uses. |
+| `endStart.chest.kits.easy` | `'end-start-easy'` | — | Baked: end_start; new worlds only | Generous starter-chest contents. |
+| `endStart.chest.kits.medium` | `'end-start-medium'` | — | Baked: end_start; new worlds only | Middle-ground starter-chest contents. |
+| `endStart.chest.kits.hard` | `'end-start-hard'` | — | Baked: end_start; new worlds only | Bare-essentials starter-chest contents. |
+| `endStart.capsule.size` | `7` | blocks; 3..15; odd | Baked: end_start; new worlds only | Total exterior footprint width/depth, walls included; must stay odd. |
+| `endStart.capsule.height` | `3` | blocks; 2..8 | Baked: end_start; new worlds only | Interior height. |
+| `endStart.capsule.light.source` | `'glowstone'` | — | Baked: end_start; new worlds only | Which block lights the capsule. |
+| `endStart.capsule.light.spacing` | `5` | blocks; 1..15 | Baked: end_start; new worlds only | Spacing between embedded/hung light sources. |
+<!-- END GENERATED CONFIG TABLE: end-start -->
 
 **New worlds only**, same restriction as every other typed preset here: no
 save-compat obligations for worlds created by an older mod version.
@@ -1018,14 +1061,16 @@ flat:
     belowSurface: 10
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `layers` | 128 blocks total (bedrock, 123 stone, 3 dirt, grass) | Ordered bottom-to-top layer list, each entry `"<block id>"` (height 1) or `"<block id>:<height>"`. A bedrock floor is just whether the bottom entry is `minecraft:bedrock` — there is no separate toggle. |
-| `biome` | `minecraft:plains` | The single biome reported everywhere. |
-| `decoration` | `false` | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs, matching vanilla flat's own all-or-nothing `features` flag. Structures are unaffected either way (0.3.7 fix, see below) — this only ever toggled tree/flower/ore-vein placement. |
-| `structureOverrides` | `["minecraft:villages", "minecraft:strongholds"]` | Structure sets eligible to place; empty means every registered set is eligible, matching vanilla's own default. |
-| `underground.biome` | `""` (disabled) | Biome reported at/below `underground.belowSurface` blocks under the surface (GOAL 42) — a single fixed biome, not sampled variety, matching `biome`'s own single-fixed-value design. Blank disables the band entirely; `biome` is then reported at every depth, unchanged from before this setting existed. Config-only for now (not yet on the Customize screen). |
-| `underground.belowSurface` | `10` | How many blocks below the flat surface the underground band starts. Only takes effect when `underground.biome` is also set; `0` disables the band even with a biome configured. |
+<!-- BEGIN GENERATED CONFIG TABLE: flat -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `flat.layers` | `['minecraft:bedrock:1', 'minecraft:stone:123', 'minecraft:dirt:3', 'minecraft:grass_block:1']` | — | Baked: flat; new worlds only; Customize | Ordered bottom-to-top layer list. |
+| `flat.biome` | `'minecraft:plains'` | biome id | Baked: flat; new worlds only; Customize | Single fixed biome for the whole world. |
+| `flat.decoration` | `false` | — | Baked: flat; new worlds only; Customize | Whether ordinary biome decoration (trees, flowers, ore veins, etc.) runs. |
+| `flat.structureOverrides` | `['minecraft:villages', 'minecraft:strongholds']` | — | Baked: flat; new worlds only; Customize | Structure sets eligible to place; empty means every registered set is eligible. |
+| `flat.underground.biome` | `''` | biome id | Baked: flat; new worlds only | Biome reported below belowSurface blocks under the surface; blank disables the underground band entirely. |
+| `flat.underground.belowSurface` | `10` | blocks; 0+ | Baked: flat; new worlds only | How many blocks below the surface the underground band starts; ignored (band never applies) at 0 even with a biome configured. |
+<!-- END GENERATED CONFIG TABLE: flat -->
 
 **Bug fixed (0.3.7):** `decoration: false` (the default) used to silently skip real structure
 placement too, not just ordinary biome decoration — a village or stronghold's *site* would still
@@ -1150,12 +1195,14 @@ deepFlat:
     exclusionRadius: 512
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `surfaceY` | `64` | The flat cap height — everything above clears to air, real terrain below stays. |
-| `capLayers` | `["minecraft:dirt:3", "minecraft:grass_block:1"]` | Land-cap layer stack, painted immediately below `surfaceY`, same `block` or `block:height` shorthand as classic flat's `layers`. |
-| `rivers.enabled` | `true` | Whether a river/ocean biome column gets a water surface instead of the land cap. |
-| `rivers.exclusionRadius` | `512` | Radius around spawn within which river/ocean columns always get the land cap regardless of `rivers.enabled` — GOAL 16's "far away from spawn" option. |
+<!-- BEGIN GENERATED CONFIG TABLE: deep-flat -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `deepFlat.surfaceY` | `64` | Y level; -32..256 | Baked: deep_flat; new worlds only; Customize | The flat cap height -- everything above clears to air, real terrain below stays. |
+| `deepFlat.capLayers` | `['minecraft:dirt:3', 'minecraft:grass_block:1']` | — | Baked: deep_flat; new worlds only; Customize | Land-cap layer stack, painted immediately below surfaceY. |
+| `deepFlat.rivers.enabled` | `true` | — | Baked: deep_flat; new worlds only; Customize | Whether a river/ocean biome column gets a water-surface cap instead of the land cap. |
+| `deepFlat.rivers.exclusionRadius` | `512` | blocks; 0+ | Baked: deep_flat; new worlds only; Customize | Radius around the origin within which river/ocean columns always get the land cap. |
+<!-- END GENERATED CONFIG TABLE: deep-flat -->
 
 **Known first-pass limitation, not yet fixed:** a water-capped river/ocean
 column's water sits directly on whatever real terrain is immediately
@@ -1210,13 +1257,15 @@ stacked:
   forceTopVillage: false
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `layers` | 8 bands, 324 blocks total | Ordered bottom-to-top layer list. Each entry is either the full `"<biome>;<blocks>;<air gap>"` shorthand (`<blocks>` reuses `flat.layers`' own comma-separated `block`/`block:height` shorthand for that layer's own material stack; `<biome>` is the layer's reported biome, drives decoration/ore feature selection, not block choice; `<air gap>` is the open headroom above the block stack) — or just a bare biome id (e.g. `"minecraft:jungle"`), which expands to that biome's own standard block composition and a 30-block air gap. A biome not specifically tuned falls back to a generic stone/dirt/grass composition rather than failing — any biome id works. The simplified form never bakes in stack-position choices like bedrock or extra depth; the shipped default's bottom/top layers use the full form for exactly that reason. |
-| `seedRandomizedOrder` | `false` | Shuffles the configured layer order, deterministically from the real world seed, instead of using it as written. |
-| `worldSizeChunks` | `4` | Overworld border half-width in chunks (a 64-block radius by default) plus a matching `VOID` exterior beyond it, applied automatically — independent of the shared `overworldBorder`/`overworldExterior` sections. `0` restores an unlimited world (the original behavior). |
-| `relief` | `4` | Maximum per-column height bump on each layer's own surface, traded out of that layer's own air gap so biome-band boundaries never move. `0` restores perfectly flat layers. |
-| `forceTopVillage` | `false` | Always force-generates a real vanilla village near spawn on the top layer's own surface, provided that layer's biome is village-compatible (silently skipped, logged at `INFO`, if not) — never a natural-search-first attempt, since natural placement isn't reliable to land anywhere reachable in a small, bounded stacked world. **Known risk with the default border:** the default 64-block-radius border is smaller than a real village's typical footprint, so the forced village may visibly clip the border/void wall — not yet resolved, report back what you actually see. |
+<!-- BEGIN GENERATED CONFIG TABLE: stacked -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `stacked.layers` | `['minecraft:taiga;minecraft:bedrock:1,minecraft:stone:43;30', 'minecraft:desert', 'minecraft:badlands', 'minecraft:swamp', 'minecraft:jungle', 'minecraft:savanna', 'minecraft:snowy_taiga', 'minecraft:plains;minecraft:stone:6,minecraft:dirt:3,minecraft:grass_block:1;0']` | — | Baked: stacked; new worlds only; Customize | Ordered bottom-to-top layer list: eight bands, deep taiga through surface plains. |
+| `stacked.seedRandomizedOrder` | `false` | — | Baked: stacked; new worlds only; Customize | Whether the configured layer order is shuffled, seeded off the real world seed. |
+| `stacked.worldSizeChunks` | `4` | chunks; 0..937499 | Baked: stacked; new worlds only | Overworld exterior half-width in chunks; zero opts out to the shared exterior section. |
+| `stacked.relief` | `4` | blocks; 0..16 | Baked: stacked; new worlds only; Customize | Maximum per-column height bump applied to each layer's own surface. |
+| `stacked.forceTopVillage` | `false` | — | Baked: stacked; new worlds only; Customize | Whether a real vanilla village is always force-generated near spawn on the top layer. |
+<!-- END GENERATED CONFIG TABLE: stacked -->
 
 The stack's vertical center lands around Y98 with the default layer list
 (not exactly Y64) — an 8-layer stack with 30-block gaps and a genuinely
@@ -1282,11 +1331,13 @@ foreverNight:
   relaxInsomnia: false
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `enabled` | `false` | Whether night eventually locks permanently. |
-| `lockAfterDays` | `0` | In-game days before locking; `0` locks immediately at world creation. |
-| `relaxInsomnia` | `false` | `false` keeps vanilla phantom rules (sleeping still resets a player's own insomnia timer even though it won't skip time). `true` actively suppresses phantoms for players who don't want that pressure in a night that never ends. |
+<!-- BEGIN GENERATED CONFIG TABLE: forever-night -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `foreverNight.enabled` | `false` | — | Live; existing worlds after relaunch | Whether night eventually locks permanently. |
+| `foreverNight.lockAfterDays` | `0` | days; 0..1000000 | Live; existing worlds after relaunch | In-game days before night locks; zero locks immediately at world creation. |
+| `foreverNight.relaxInsomnia` | `false` | — | Live; existing worlds after relaunch | Whether phantom/insomnia pressure is suppressed once night is locked. |
+<!-- END GENERATED CONFIG TABLE: forever-night -->
 
 **Known limitation:** locking night can freeze part of an `overworldBorder`
 resize schedule in the Overworld — Minecraft 26.2 ties this mod's own
@@ -1321,13 +1372,16 @@ risingLava:
     days: 1
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `enabled` | `false` | Whether the lava level rises over time. |
-| `delayDays` | `3` | In-game days before the level starts rising. |
-| `startY` | `-64` | Y the lava level starts at (the dimension's own real min Y) — everything at or below this converts as soon as the hazard activates. |
-| `maxY` | `64` | Y the lava level stops rising at (sea level by default). |
-| `rate.blocks` / `rate.days` | `1` / `1` | The level rises `rate.blocks` every `rate.days` — one block per in-game day by default, a deliberately slow first-pass number. |
+<!-- BEGIN GENERATED CONFIG TABLE: rising-lava -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `risingLava.enabled` | `false` | — | Live; existing worlds after relaunch | Whether the lava level rises over time. |
+| `risingLava.delayDays` | `3` | days; 0..1000000 | Live; existing worlds after relaunch | In-game days before the level starts rising. |
+| `risingLava.startY` | `-64` | Y level; -64..319 | Live; existing worlds after relaunch | Y the lava level starts at, before any rise. |
+| `risingLava.maxY` | `64` | Y level; -64..319 | Live; existing worlds after relaunch | Y the lava level stops rising at. |
+| `risingLava.rate.blocks` | `1` | blocks; 1..14999992 | Live; existing worlds after relaunch | Blocks the level rises per rate.days. |
+| `risingLava.rate.days` | `1` | days; 1..1000000 | Live; existing worlds after relaunch | In-game days per rate.blocks of rise. |
+<!-- END GENERATED CONFIG TABLE: rising-lava -->
 
 No special handling for floating/void-based world types (sky island, sky
 chunk, chunk island) — the rule is uniform everywhere air or water exists,
@@ -1357,11 +1411,13 @@ structureDistance:
   exemptStructureSets: []
 ```
 
-| Setting | Default | Description |
-|---|---|---|
-| `enabled` | `false` | Whether structures are held back from spawn at all. |
-| `minDistance` | `2000` | Minimum distance from spawn before a restricted structure set may generate. |
-| `exemptStructureSets` | `[]` | Structure set ids (e.g. `minecraft:strongholds`) always allowed at their normal vanilla distance, regardless of `minDistance`. |
+<!-- BEGIN GENERATED CONFIG TABLE: structure-distance -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `structureDistance.enabled` | `false` | — | Live; existing worlds after relaunch | Whether vanilla structure sets are held back from spawn at all. |
+| `structureDistance.minDistance` | `2000` | blocks; 0..14999992 | Live; existing worlds after relaunch | Minimum block distance (Chebyshev) from spawn. |
+| `structureDistance.exemptStructureSets` | `[]` | — | Live; existing worlds after relaunch | Structure set ids always allowed at their normal vanilla distance. |
+<!-- END GENERATED CONFIG TABLE: structure-distance -->
 
 Vanilla's `/locate structure` predicts a candidate position from the
 structure's own placement math and has no idea this mod suppressed
@@ -1374,16 +1430,18 @@ structure, exactly like any other suppressed structure set.
 The mod reads configuration from `config/jlt_worldz/` at startup if present;
 every file in it is entirely optional and the mod never creates or requires
 any of them. These values are the defaults for the singleplayer Customize
-screen and the direct inputs for dedicated-server world creation. A complete,
-comment-documented reference — the way to discover every available setting —
-lives at [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml);
-copy the parts you want into `config/jlt_worldz/` (see
-[Config file layout](#config-file-layout) below for the two shapes it can
-take). The mod never rewrites a config file it read, so any comments or
-settings you leave out stay untouched; it writes
-`config/jlt_worldz.reference.yaml` on every launch instead — a sibling of
-`config/jlt_worldz/`, not a file inside it, generated, never read back, safe
-to delete, and always showing every setting at its current built-in default.
+screen and the direct inputs for dedicated-server world creation. The generated
+settings tables in this README and the runtime-generated
+`config/jlt_worldz.reference.yaml` are the exhaustive references for every
+available setting. [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml)
+is instead a curated, illustrative `all.yaml` bundle: copy and adapt its
+examples, but do not treat it as a complete listing. See [Config file
+layout](#config-file-layout) below for the two shapes the live config can take.
+The mod never rewrites a config file it read, so any comments or settings you
+leave out stay untouched; it writes `config/jlt_worldz.reference.yaml` on every
+launch instead — a sibling of `config/jlt_worldz/`, not a file inside it,
+generated, never read back, safe to delete, and always showing every setting at
+its current built-in default.
 
 ### Config file layout
 
@@ -1499,6 +1557,14 @@ an untouched config resolves to exactly the same kit contents it always has:
 | `ocean-island-default` | `oceanIsland.starterKit` |
 | `floating-islands-loot` | `skyIsland.floatingIslands.lootChest.kit` |
 
+<!-- BEGIN GENERATED CONFIG TABLE: shared-kits -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `kits.<name>.essentials` | `varies by named entry` | item list | Baked: ocean_island, sky_island, cave, nether_start, end_start; new worlds only | Always-included items. |
+| `kits.<name>.extras` | `varies by named entry` | item list | Baked: ocean_island, sky_island, cave, nether_start, end_start; new worlds only | Candidate items the random picks draw from. |
+| `kits.<name>.extrasCount` | `varies by named entry` | count; 0+ | Baked: ocean_island, sky_island, cave, nether_start, end_start; new worlds only | How many extras to pick, with replacement. |
+<!-- END GENERATED CONFIG TABLE: shared-kits -->
+
 A user's own `kits.yaml` (or `kits:` block in `all.yaml`) **merges over**
 this set — adding new names, or overriding a shipped one by reusing its
 name — rather than replacing it wholesale; the 14 shipped names are never
@@ -1523,31 +1589,58 @@ editing one line.
 Which file a setting lives in also says when it takes effect:
 
 - **`runtime.yaml`** (`foreverNight`, `risingLava`, `structureDistance`) is
-  re-read live: the mod checks these world-hazard rules continuously, so
-  editing one and relaunching changes behavior in worlds that already exist,
-  not just newly created ones. See [World hazards](#world-hazards) above.
-- **Everything else** — `world-defaults.yaml`'s borders/exteriors and every
-  `world-types/*.yaml` preset section — is baked into the save only at world
-  creation, like every other setting this mod has (see the warning at the
-  top of this README). Editing them after a world already exists has no
-  effect on that world; the new values only apply to worlds created
-  afterward.
+  re-read after relaunch: these runtime hazard rules affect worlds that already
+  exist, not just newly created ones. See [World hazards](#world-hazards) above.
+- **Everything else** — `world-defaults.yaml`'s borders and exteriors,
+  `kits.yaml`'s shared kits, the generic defaults in `world-types/worldz.yaml`,
+  and every typed `world-types/*.yaml` preset section — is copied into (baked
+  into) a world when it is created. Editing that YAML cannot retrofit an
+  existing world; the new values apply only to worlds created afterward.
 
-| Setting | Default | Description |
-|---|---|---|
-| `allowedBiomes` | desert/badlands/cave mix | Biome ids and/or `#` biome-tag ids. A single biome produces a single-biome overworld. See [`config/jlt_worldz.example.yaml`](config/jlt_worldz.example.yaml) for the exact default list. |
-| `starter.biome` | `"minecraft:plains"` | Biome id forced around the origin; empty disables the starter zone. Tags are not accepted here. |
-| `starter.radius` | `256` | Inclusive circular radius, clamped to `64..4096` blocks. |
-| `starter.land.enabled` | `true` | Raise low natural terrain beneath a selected starter biome; has no effect when the starter biome is empty. |
-| `starter.land.transition` | `128` | Smooth blend beyond the starter radius back to natural terrain, clamped to `0..4096`. |
-| `starter.land.foundationDepth` | `48` | Depth repaired below the natural ocean floor, clamped to `0..384`. |
-| `overworldBorder` | disabled | Optional square overworld border and resize schedule. |
-| `netherBorder` | disabled | Optional independent Nether border and resize schedule. |
-| `endBorder` | disabled | Option to carry the Overworld's eventual radius into the End, clamped up to `minimumRadius` so the dragon fight stays winnable. |
-| `overworldExterior` | normal | Terrain outside a central square: `normal`, `ocean`, or `void`. |
-| `netherExterior` | normal | Nether terrain outside a central square: `normal` or `void`. |
-| `layout` | `legacy` | Coordinated land/ocean/beach terrain layout; `legacy` keeps today's climate-filter-only behavior. See [Coordinated world layouts](#coordinated-world-layouts). |
-| `spawn` | `strategy: starter_at_origin` | How the layout origin and initial spawn are chosen: `starter_at_origin` (today's behavior), `preferred_natural_biome` (search near the origin for `starter.biome` using the real seed and move the layout origin there), or `vanilla_spawn` (unmodified vanilla spawn selection). See [Seed-informed spawn](#seed-informed-spawn). |
+<!-- BEGIN GENERATED CONFIG TABLE: generic-and-world-defaults -->
+| Setting | Default | Unit / range | Applies | Description |
+|---|---|---|---|---|
+| `allowedBiomes` | `['minecraft:desert', 'minecraft:beach', 'minecraft:river', 'minecraft:badlands', 'minecraft:eroded_badlands', 'minecraft:wooded_badlands', 'minecraft:stony_shore', 'minecraft:dripstone_caves', 'minecraft:lush_caves', 'minecraft:deep_dark', 'minecraft:sulfur_caves']` | biome id | Baked: worldz; new worlds only; Customize | Biome ids and biome-tag ids allowed in new Worldz worlds. |
+| `starter.biome` | `'minecraft:plains'` | biome id | Baked: worldz; new worlds only; Customize | Optional biome id forced in a circular zone around the starter origin; empty disables the starter zone. |
+| `starter.radius` | `256` | blocks; 64..4096 | Baked: worldz; new worlds only; Customize | Starter-zone radius, only meaningful when biome is set. |
+| `starter.land.enabled` | `true` | — | Baked: worldz; new worlds only; Customize | Whether low terrain beneath a starter biome is raised into usable land. |
+| `starter.land.transition` | `128` | blocks; 0..4096 | Baked: worldz; new worlds only; Customize | Outward distance used to blend reinforced land into natural terrain. |
+| `starter.land.foundationDepth` | `48` | blocks; 0..384 | Baked: worldz; new worlds only; Customize | Depth below the natural ocean floor repaired as solid foundation. |
+| `naturalBiomes.rivers` | `false` | — | Baked: worldz; new worlds only | Let vanilla's own river biomes generate where vanilla would place one. |
+| `naturalBiomes.oceans` | `false` | — | Baked: worldz; new worlds only | Let vanilla's own river/ocean-family biomes generate naturally, additive over rivers. |
+| `overworldBorder.enabled` | `false` | — | Baked: all presets; new worlds only; Customize | Whether this dimension receives a limited border. |
+| `overworldBorder.initialRadius` | `512` | blocks; 1..14999992 | Baked: all presets; new worlds only; Customize | Border half-width when the world is created. |
+| `overworldBorder.finalRadius` | `512` | blocks; 1..14999992 | Baked: all presets; new worlds only; Customize | Border half-width after the configured resize period. |
+| `overworldBorder.resize.days` | `0` | days; 0..1000000 | Baked: all presets; new worlds only; Customize | In-game days used for the linear transition from initial to final radius. |
+| `overworldBorder.resize.delayDays` | `0` | days; 0..1000000 | Baked: all presets; new worlds only; Customize | In-game days to hold the initial radius before resizing. |
+| `overworldBorder.resize.style` | `'continuous'` | — | Baked: all presets; new worlds only; Customize | Whether the rate fields drive one smooth lerp or abrupt jumps. |
+| `overworldBorder.resize.rate.blocks` | `0` | blocks; 0..14999992 | Baked: all presets; new worlds only; Customize | Radius blocks traversed per rate interval, or zero to use resize.days. |
+| `overworldBorder.resize.rate.days` | `0` | days; 0..1000000 | Baked: all presets; new worlds only; Customize | In-game days per rate interval, or zero to use resize.days. |
+| `overworldBorder.ensureEndPortal` | `true` | — | Baked: all presets; new worlds only; Customize | Whether the dimension's progression objective must be reachable inside the final border. |
+| `netherBorder.enabled` | `false` | — | Baked: all presets; new worlds only; Customize | Whether this dimension receives a limited border. |
+| `netherBorder.initialRadius` | `512` | blocks; 1..14999992 | Baked: all presets; new worlds only; Customize | Border half-width when the world is created. |
+| `netherBorder.finalRadius` | `512` | blocks; 1..14999992 | Baked: all presets; new worlds only; Customize | Border half-width after the configured resize period. |
+| `netherBorder.resize.days` | `0` | days; 0..1000000 | Baked: all presets; new worlds only; Customize | In-game days used for the linear transition from initial to final radius. |
+| `netherBorder.resize.delayDays` | `0` | days; 0..1000000 | Baked: all presets; new worlds only; Customize | In-game days to hold the initial radius before resizing. |
+| `netherBorder.resize.style` | `'continuous'` | — | Baked: all presets; new worlds only; Customize | Whether the rate fields drive one smooth lerp or abrupt jumps. |
+| `netherBorder.resize.rate.blocks` | `0` | blocks; 0..14999992 | Baked: all presets; new worlds only; Customize | Radius blocks traversed per rate interval, or zero to use resize.days. |
+| `netherBorder.resize.rate.days` | `0` | days; 0..1000000 | Baked: all presets; new worlds only; Customize | In-game days per rate interval, or zero to use resize.days. |
+| `netherBorder.ensureBlazeAccess` | `true` | — | Baked: all presets; new worlds only; Customize | Whether the dimension's progression objective must be reachable inside the final border. |
+| `endBorder.carryFromOverworld` | `false` | — | Baked: all presets; new worlds only; Customize | Whether the End receives a border matching the Overworld's eventual (final) radius. |
+| `endBorder.minimumRadius` | `256` | blocks; 1..14999992 | Baked: all presets; new worlds only; Customize | Smallest End border half-width regardless of the carried Overworld radius. |
+| `overworldExterior.mode` | `'normal'` | — | Baked: all presets; new worlds only; Customize | Terrain generated outside the central envelope: normal, ocean or void. |
+| `overworldExterior.boundaryRadius` | `0` | blocks; 0..14999992 | Baked: all presets; new worlds only; Customize | Outer envelope half-width, or zero to derive it from an enabled border. |
+| `overworldExterior.oceanTransitionWidth` | `128` | blocks; 0..14999992 | Baked: all presets; new worlds only; Customize | Ocean width inside the outer boundary; ignored by normal and void modes. |
+| `netherExterior.mode` | `'normal'` | — | Baked: all presets; new worlds only; Customize | Terrain generated outside the central envelope: normal, ocean or void. |
+| `netherExterior.boundaryRadius` | `0` | blocks; 0..14999992 | Baked: all presets; new worlds only; Customize | Outer envelope half-width, or zero to derive it from an enabled border. |
+| `netherExterior.oceanTransitionWidth` | `128` | blocks; 0..14999992 | Baked: all presets; new worlds only; Customize | Ocean width inside the outer boundary; ignored by normal and void modes. |
+| `layout.mode` | `'legacy'` | — | Baked: worldz; new worlds only; Customize | Layout mode; legacy preserves pre-Phase-15 climate-filter-only behavior. |
+| `layout.biomes` | `[]` | biome id | Baked: worldz; new worlds only; Customize | Weighted candidate biome ids, id or id@weight; tags are not accepted. |
+| `layout.regionScale` | `512` | blocks; 16..8192 | Baked: worldz; new worlds only; Customize | Grid-cell edge length in blocks. |
+| `layout.singleBiome` | `''` | biome id | Baked: worldz; new worlds only; Customize | SINGLE_BIOME mode only: the one biome id filling the world. |
+| `layout.roleOverrides` | `{}` | — | Baked: worldz; new worlds only; Customize | Explicit biome id to role (land/ocean/beach) overrides. |
+| `spawn.strategy` | `'starter_at_origin'` | — | Baked: worldz; new worlds only; Customize | How the layout origin and initial spawn are chosen. |
+<!-- END GENERATED CONFIG TABLE: generic-and-world-defaults -->
 
 Short ids use the `minecraft` namespace, so `plains` and `minecraft:plains` are
 equivalent. Examples:

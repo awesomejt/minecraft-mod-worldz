@@ -66,23 +66,28 @@ public final class ChunkIslandSchema extends SchemaSection<ChunkIslandConfig> {
             Setting.<ChunkIslandConfig>decimal("spawnChance", c -> c.spawnChance, (c, v) -> c.spawnChance = v)
                 .range(0.0, 1.0)
                 .unit(Unit.CHANCE)
+                .customizeExposed()
                 .doc("Probability that a given grid cell holds an island.")
                 .build(),
             Setting.<ChunkIslandConfig>integer("cellSizeChunks", c -> c.cellSizeChunks, (c, v) -> c.cellSizeChunks = v)
                 .range(1, WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS / 16)
                 .unit(Unit.CHUNKS)
+                .customizeExposed()
                 .doc("Grid-cell edge length in chunks; 1 rolls every chunk independently.")
                 .build(),
             Setting.group("topOnly", topOnly)
                 .render(topOnly::summary)
+                .customizeChildrenExposed()
                 .doc("Whether/how deep a selected island keeps only its top slice, void below.")
                 .build(),
             Setting.group("exclusionZone", exclusionZone)
                 .hiddenFromSummary()
+                .customizeChildrenExposed()
                 .doc("Whether a void buffer precedes scattered islands around the starter.")
                 .build(),
             Setting.group("applyTo", applyTo)
                 .render(applyTo::summary)
+                .customizeChildrenExposed()
                 .doc("Whether the same chunk-island mechanism also applies to the Nether/End.")
                 .build(),
             Setting.<ChunkIslandConfig>stringList("geodeFeatureIds", c -> c.geodeFeatureIds, (c, v) -> c.geodeFeatureIds = v)

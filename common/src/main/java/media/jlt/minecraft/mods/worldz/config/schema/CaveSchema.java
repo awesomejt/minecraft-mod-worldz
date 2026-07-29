@@ -51,6 +51,7 @@ public final class CaveSchema extends SchemaSection<CaveConfig> {
         return List.of(
             Setting.<CaveConfig>integer("spawnY", c -> c.spawnDepthY, (c, v) -> c.spawnDepthY = v)
                 .unit(Unit.Y_LEVEL)
+                .customizeExposed()
                 .doc("Target Y for the underground spawn-cavity search.")
                 .build(),
             Setting.group("sealedSurface", sealedSurface)
@@ -59,6 +60,7 @@ public final class CaveSchema extends SchemaSection<CaveConfig> {
                 .build(),
             Setting.group("cavern", cavern)
                 .render(cavern::summary)
+                .customizeChildrenExposed()
                 .doc("Whether/how a large cavern is carved around spawn.")
                 .build(),
             Setting.group("chest", chest)
@@ -84,11 +86,13 @@ public final class CaveSchema extends SchemaSection<CaveConfig> {
         protected List<Setting<CaveConfig, ?>> declare() {
             return List.of(
                 Setting.<CaveConfig>flag("enabled", c -> c.sealedSurface, (c, v) -> c.sealedSurface = v)
+                    .customizeExposed()
                     .doc("Whether a solid roof seals off sky access everywhere.")
                     .build(),
                 Setting.<CaveConfig>integer("y", c -> c.sealedSurfaceY, (c, v) -> c.sealedSurfaceY = v)
                     .min(CaveConfig.MIN_SEALED_SURFACE_Y).when(c -> c.sealedSurface)
                     .unit(Unit.Y_LEVEL)
+                    .customizeExposed()
                     .doc("The roof's Y; only meaningful when enabled is set.")
                     .build(),
                 Setting.<CaveConfig, SealedSurfaceBlock>enumeration(

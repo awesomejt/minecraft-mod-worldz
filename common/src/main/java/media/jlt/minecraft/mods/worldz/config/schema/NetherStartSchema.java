@@ -48,6 +48,7 @@ public final class NetherStartSchema extends SchemaSection<NetherStartConfig> {
             Setting.<NetherStartConfig>integer("spawnY", c -> c.spawnY, (c, v) -> c.spawnY = v)
                 .range(NetherStartPlan.MIN_SPAWN_Y, NetherStartPlan.MAX_SPAWN_Y)
                 .unit(Unit.Y_LEVEL)
+                .customizeExposed()
                 .doc("Target Y for the safe-site search.")
                 .build(),
             Setting.group("chest", chest)

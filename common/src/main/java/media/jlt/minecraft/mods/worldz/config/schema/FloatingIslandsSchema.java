@@ -67,40 +67,48 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
     protected List<Setting<FloatingIslandsConfig, ?>> declare() {
         return List.of(
             Setting.<FloatingIslandsConfig>flag("enabled", c -> c.enabled, (c, v) -> c.enabled = v)
+                .customizeExposed()
                 .doc("Whether scattered islands generate at all.")
                 .build(),
             Setting.group("radius", radius)
                 .render(radius::summary)
+                .customizeChildrenExposed()
                 .doc("The range a scattered island's radius is hash-picked from.")
                 .build(),
             Setting.<FloatingIslandsConfig>decimal("shapeAmplitude", c -> c.shapeAmplitude, (c, v) -> c.shapeAmplitude = v)
                 .range(0.0, IslandShapeProfile.MAX_AMPLITUDE)
                 .unit(Unit.FACTOR)
+                .customizeExposed()
                 .doc("Coastline perturbation strength.")
                 .build(),
             Setting.<FloatingIslandsConfig>integer("cellSize", c -> c.cellSizeBlocks, (c, v) -> c.cellSizeBlocks = v)
                 .range(WorldzConfig.MIN_LAYOUT_REGION_SCALE_BLOCKS, WorldzConfig.MAX_LAYOUT_REGION_SCALE_BLOCKS)
                 .unit(Unit.BLOCKS)
+                .customizeExposed()
                 .doc("Grid-cell edge length -- the primary \"how far apart\" knob.")
                 .build(),
             Setting.<FloatingIslandsConfig>decimal("spawnChance", c -> c.spawnChance, (c, v) -> c.spawnChance = v)
                 .range(0.0, 1.0)
                 .unit(Unit.CHANCE)
+                .customizeExposed()
                 .doc("Probability that a given cell holds an island, independent of spacing.")
                 .build(),
             // From here on, sanitize order diverges from declare/map order (class Javadoc): every
             // remaining setting stays a plain, rule-less declaration and the real logic -- in the
             // original imperative sequence -- lives in postValidate below.
             Setting.<FloatingIslandsConfig>flag("biomeVariety", c -> c.biomeVariety, (c, v) -> c.biomeVariety = v)
+                .customizeExposed()
                 .doc("Whether each island hash-picks its own biome from biomes.")
                 .build(),
             Setting.<FloatingIslandsConfig>stringList("biomes", c -> c.islandBiomes, (c, v) -> c.islandBiomes = v)
                 .unit(Unit.BIOME_ID)
+                .customizeExposed()
                 .doc("Candidate biome pool when biomeVariety is true.")
                 .build(),
             Setting.group("exclusionZone", exclusionZone)
                 .rule(new Rule.None<>())
                 .render(exclusionZone::summary)
+                .customizeChildrenExposed()
                 .doc("Whether a void buffer surrounds the starter island before scattered islands begin.")
                 .build(),
             Setting.group("oreDeposits", oreDeposits)
@@ -114,6 +122,7 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
                 .doc("Whether each island gets one placed loot chest.")
                 .build(),
             Setting.<FloatingIslandsConfig>flag("naturalBiome", c -> c.naturalBiome, (c, v) -> c.naturalBiome = v)
+                .customizeExposed()
                 .doc("Whether each island reads the real underlying seed's own biome instead of biomeVariety's pool.")
                 .build()
         );
@@ -250,6 +259,7 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
         protected List<Setting<FloatingIslandsConfig, ?>> declare() {
             return List.of(
                 Setting.<FloatingIslandsConfig>flag("enabled", c -> c.oreDepositsEnabled, (c, v) -> c.oreDepositsEnabled = v)
+                    .customizeExposed()
                     .doc("Whether each island gets one embedded vanilla ore-vein feature.")
                     .build(),
                 Setting.<FloatingIslandsConfig>stringList("featureIds", c -> c.oreFeatureIds, (c, v) -> c.oreFeatureIds = v)
@@ -296,6 +306,7 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
         protected List<Setting<FloatingIslandsConfig, ?>> declare() {
             return List.of(
                 Setting.<FloatingIslandsConfig>flag("enabled", c -> c.lootChestEnabled, (c, v) -> c.lootChestEnabled = v)
+                    .customizeExposed()
                     .doc("Whether each island gets one placed loot chest.")
                     .build(),
                 StarterKitSchema.<FloatingIslandsConfig>reference(

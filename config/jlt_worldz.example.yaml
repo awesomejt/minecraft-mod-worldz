@@ -1,8 +1,11 @@
-# Documented reference for config/jlt_worldz.yaml. This file is never read or
-# written by the mod -- copy the settings you want into your own
-# jlt_worldz.yaml (create it if it doesn't exist; an absent file means all
-# defaults apply). See README.md for how the mod-level file relates to
-# per-world settings chosen in the Customize screen.
+# Curated, illustrative config/jlt_worldz/all.yaml bundle. This repository
+# example is never read or written by the mod: copy and adapt the sections you
+# want into config/jlt_worldz/all.yaml (create it if it does not exist; an
+# absent config means all defaults apply). It is intentionally not exhaustive.
+# The generated README settings tables and runtime-generated
+# config/jlt_worldz.reference.yaml document every setting. For the alternative
+# split-file layout under config/jlt_worldz/, see README.md. See README.md too
+# for how mod-level defaults relate to per-world Customize selections.
 
 # Named, reusable starter kits (DESIGN §44) -- shipped with 14 defaults
 # (cave-easy/medium/hard, sky-island-easy/medium/hard, nether-start-

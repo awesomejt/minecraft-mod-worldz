@@ -128,18 +128,19 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
                     "Named, reusable starter kits (D6); every preset's chest kit either names one of "
                         + "these or defines its own inline. User entries merge over the shipped set."
                 )
+                .preset("ocean_island", "sky_island", "cave", "nether_start", "end_start")
                 .build(),
             Setting.<WorldzConfig>stringList("allowedBiomes", c -> c.allowedBiomes, (c, v) -> c.allowedBiomes = v)
                 .rule(new Rule.BiomeIdList<>(
                     Rule.BiomeIdList.Mode.ALLOW_TAGS, "Ignoring invalid allowed biome or tag '{}'.", null, null, null
                 ))
                 .unit(Unit.BIOME_ID)
-                .preset()
+                .preset().customizeExposed()
                 .doc("Biome ids and biome-tag ids allowed in new Worldz worlds.")
                 .build(),
             Setting.group("starter", starter)
                 .render(starter::summary)
-                .preset()
+                .preset().customizeChildrenExposed()
                 .doc("Optional biome forced around the origin, and whether/how low terrain beneath it is reinforced.")
                 .build(),
             Setting.group("naturalBiomes", naturalBiomes)
@@ -150,46 +151,51 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
             Setting.<WorldzConfig, BorderConfig>section(
                     "overworldBorder", c -> c.overworldBorder, (c, v) -> c.overworldBorder = v, overworldBorder
                 )
+                .worldDefault().customizeChildrenExposed()
                 .doc("Optional overworld border and End-portal reachability settings.")
                 .build(),
             Setting.<WorldzConfig, BorderConfig>section(
                     "netherBorder", c -> c.netherBorder, (c, v) -> c.netherBorder = v, netherBorder
                 )
+                .worldDefault().customizeChildrenExposed()
                 .doc("Optional Nether border and blaze-access settings.")
                 .build(),
             Setting.<WorldzConfig, EndBorderConfig>section(
                     "endBorder", c -> c.endBorder, (c, v) -> c.endBorder = v, endBorder
                 )
+                .worldDefault().customizeChildrenExposed()
                 .doc("Optional End border carried from the Overworld's final radius (GOALS 17).")
                 .build(),
             Setting.<WorldzConfig, ExteriorConfig>section(
                     "overworldExterior", c -> c.overworldExterior, (c, v) -> c.overworldExterior = v, overworldExterior
                 )
+                .worldDefault().customizeChildrenExposed()
                 .doc("Optional Overworld terrain outside a central square.")
                 .build(),
             Setting.<WorldzConfig, ExteriorConfig>section(
                     "netherExterior", c -> c.netherExterior, (c, v) -> c.netherExterior = v, netherExterior
                 )
+                .worldDefault().customizeChildrenExposed()
                 .doc("Optional Nether terrain outside a central square.")
                 .build(),
             Setting.<WorldzConfig, LayoutConfig>section("layout", c -> c.layout, (c, v) -> c.layout = v, layout)
-                .preset()
+                .preset().customizeChildrenExposed()
                 .doc("Optional coordinated terrain-layout composition.")
                 .build(),
             Setting.<WorldzConfig, SpawnConfig>section("spawn", c -> c.spawn, (c, v) -> c.spawn = v, spawn)
-                .preset()
+                .preset().customizeChildrenExposed()
                 .doc("Layout-origin and initial-spawn strategy.")
                 .build(),
             Setting.<WorldzConfig, SingleBiomeConfig>section(
                     "singleBiome", c -> c.singleBiome, (c, v) -> c.singleBiome = v, singleBiome
                 )
-                .preset("single_biome")
+                .preset("single_biome").customizeChildrenExposed()
                 .doc("Defaults for the jlt_worldz:single_biome typed preset (DESIGN §20.2).")
                 .build(),
             Setting.<WorldzConfig, ChaosBiomesConfig>section(
                     "chaosBiomes", c -> c.chaosBiomes, (c, v) -> c.chaosBiomes = v, chaosBiomes
                 )
-                .preset("chaos_biomes")
+                .preset("chaos_biomes").customizeChildrenExposed()
                 .doc("Defaults for the jlt_worldz:chaos_biomes typed preset (DESIGN §20.11).")
                 .build(),
             Setting.<WorldzConfig, StripWorldConfig>section(

@@ -3308,3 +3308,36 @@ Durable decisions, verified API notes, and rationale that should survive across 
   reconstructs from current customization state; keep a reopen/round-trip
   test whenever a screen setting controls whether a dimension-specific
   generator wrapper exists.
+
+- 2026-07-29 — **TODO 25.10 made schema metadata the single source of truth
+  for configuration documentation.** One shared schema-documentation model
+  feeds both the README setting tables and the annotated generated reference;
+  documentation renderers must not maintain a parallel hand-written setting
+  inventory. Nested settings inherit their enclosing applicability unless
+  they explicitly narrow it, while root leaf settings must declare
+  applicability explicitly so an omitted scope cannot silently become
+  universal.
+
+  README generation owns only the 20 marked setting-table regions; the
+  surrounding challenge-oriented prose remains curated. The explicit,
+  strict `:common:updateConfigDocs` task rewrites those regions
+  deterministically, while an ordinary build only verifies them and never
+  modifies tracked files. Marker validation is intentionally strict:
+  malformed, missing, duplicate, or mismatched regions fail rather than
+  producing a partial rewrite. Completeness is exact-once per schema leaf,
+  not merely "mentioned somewhere."
+
+  The generated `jlt_worldz.reference.yaml` is deterministic, annotated from
+  the same schema metadata, regenerated on launch, and never read as input.
+  Arbitrary user-defined map keys are YAML-quoted when required, and the
+  setting-level documentation belongs once at the map itself rather than
+  being repeated as though each arbitrary key were a declared schema leaf.
+  `config/jlt_worldz.example.yaml` is deliberately a small curated,
+  hand-commented example; it is not an exhaustive second reference.
+
+  Scope wording is part of the documentation contract: runtime hazards are
+  re-read and can change existing worlds, whereas borders, exteriors, and
+  preset sections are world-creation defaults baked into the save and do
+  nothing when edited for an existing world. Because 25.10 changed
+  documentation generation rather than gameplay or accepted YAML, it added
+  no manual fixture; the Phase 25 fixture set remains 109.

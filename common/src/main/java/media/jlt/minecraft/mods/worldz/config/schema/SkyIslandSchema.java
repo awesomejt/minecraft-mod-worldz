@@ -77,25 +77,30 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
                     () -> new SkyIslandConfig().islandBiome
                 ))
                 .unit(Unit.BIOME_ID)
+                .customizeExposed()
                 .doc("The one biome that fills the island's interior.")
                 .build(),
             Setting.<SkyIslandConfig>integer("radius", c -> c.radiusBlocks, (c, v) -> c.radiusBlocks = v)
                 .range(WorldzConfig.MIN_ISLAND_RADIUS_BLOCKS, WorldzConfig.MAX_ISLAND_RADIUS_BLOCKS)
                 .unit(Unit.BLOCKS)
+                .customizeExposed()
                 .doc("Configured (unperturbed) island radius -- small by default, matching Skyblock's scale.")
                 .build(),
             Setting.<SkyIslandConfig>decimal("shapeAmplitude", c -> c.shapeAmplitude, (c, v) -> c.shapeAmplitude = v)
                 .range(0.0, IslandShapeProfile.MAX_AMPLITUDE)
                 .unit(Unit.FACTOR)
+                .customizeExposed()
                 .doc("Coastline perturbation strength.")
                 .build(),
             Setting.<SkyIslandConfig>integer("surfaceY", c -> c.surfaceY, (c, v) -> c.surfaceY = v)
                 .unit(Unit.Y_LEVEL)
+                .customizeExposed()
                 .doc("The island's walkable surface Y.")
                 .build(),
             Setting.<SkyIslandConfig>integer("thickness", c -> c.thicknessBlocks, (c, v) -> c.thicknessBlocks = v)
                 .range(SkyIslandPlan.MIN_THICKNESS_BLOCKS, SkyIslandPlan.MAX_THICKNESS_BLOCKS)
                 .unit(Unit.BLOCKS)
+                .customizeExposed()
                 .doc("How many blocks of solid ground extend below surfaceY.")
                 .build(),
             Setting.group("chest", chest)
@@ -103,10 +108,12 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
                 .doc("The starter chest's difficulty tier and easy/medium/hard kit contents.")
                 .build(),
             Setting.<SkyIslandConfig>flag("applyToNether", c -> c.applyToNether, (c, v) -> c.applyToNether = v)
+                .customizeExposed()
                 .doc("Whether the Nether is also a sky island, reusing this same shape.")
                 .build(),
             Setting.group("exclusionZone", exclusionZone)
                 .render(exclusionZone::summary)
+                .customizeChildrenExposed()
                 .doc("Whether/where the starter island's own biome-pinning buffer releases to the seed's own biomes.")
                 .build(),
             Setting.group("underground", underground)

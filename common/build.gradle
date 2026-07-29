@@ -45,6 +45,15 @@ test {
 	useJUnitPlatform()
 }
 
+tasks.register('updateConfigDocs', JavaExec) {
+	group = 'documentation'
+	description = 'Regenerates schema-driven configuration tables in README.md.'
+	dependsOn testClasses
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'media.jlt.minecraft.mods.worldz.config.ConfigDocumentationTool'
+	args rootProject.file('README.md').absolutePath
+}
+
 dependencies {
 	implementation "org.yaml:snakeyaml:${snakeyaml_version}"
 

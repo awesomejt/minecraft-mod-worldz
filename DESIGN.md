@@ -8404,3 +8404,46 @@ Implementation sequence:
    generator's `StripPlan.enabled()`, not the always-enabled Overworld plan.
 5. Update logic/config/layout/source-contract tests, the reference-defaults
    golden, existing strip fixtures, and new manual scenarios 104-107.
+
+## 46. Schema-derived configuration documentation (TODO 25.10)
+
+TODO 25.10 makes the schema the single source for exhaustive configuration
+documentation without making a normal build mutate documentation. A shared
+`SchemaDocumentation` model walks `WorldzRootSchema` in declaration order and
+gives both renderers the same leaf metadata: dotted path, sanitized default,
+description, unit/range, owning config file, effective applicability, and
+Customize exposure. It also represents the dynamic `kits.<name>` map and the
+reference-or-inline kit sites explicitly, so neither renderer needs a separate
+hand-maintained settings inventory.
+
+`Applicability` is inherited: root declarations state whether a setting is
+live, a generic world default, or a typed-preset value; nested leaves inherit
+that scope unless they deliberately narrow it. This metadata is documentation
+only. The effective scope explains the real lifecycle: `runtime.yaml` hazards
+are re-read after relaunch and affect existing worlds, while borders,
+exteriors, shared kits, generic defaults, and typed-preset settings are copied
+into a newly created world and cannot retrofit an existing save.
+
+The README remains challenge-first. Its prose and examples stay handwritten,
+while its 20 named generated regions contain schema-derived settings tables.
+`ConfigReadmeRenderer` produces the region bodies; the test-source
+`ConfigDocumentationTool` is the only writer and is invoked explicitly with
+`./gradlew :common:updateConfigDocs`. The updater rejects malformed, unknown,
+duplicate, nested, missing, and reversed markers. Normal `build`/`test` never
+writes README or any user configuration.
+
+`ConfigReferenceRenderer` regenerates the sibling
+`config/jlt_worldz.reference.yaml` as a valid standalone `all.yaml` bundle on
+launch. It is deterministic, never read back, and annotates every key with its
+documentation, effective scope, and split-file destination; map keys are
+quoted safely and annotated individually. The repo's
+`config/jlt_worldz.example.yaml` is deliberately retained as a curated,
+illustrative bundle rather than expanded into an exhaustive second reference.
+
+Completeness is mechanical: tests require every schema leaf to appear exactly
+once across the README partitions, validate the generated marker regions and
+updater idempotence, check the reference YAML round-trips to defaults, and
+exercise dynamic kits, inline-kit compatibility, map-key escaping, comments,
+file ownership, applicability inheritance, and Customize exposure. This keeps
+schema, README, and generated runtime reference aligned while preserving the
+user's hand-written config files untouched.

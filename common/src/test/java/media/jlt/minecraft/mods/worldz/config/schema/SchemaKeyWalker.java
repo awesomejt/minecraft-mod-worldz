@@ -98,14 +98,14 @@ final class SchemaKeyWalker {
                 unknownKeys.add(childPath(section, key));
                 continue;
             }
-            Object rule = matching.rule();
-            if (rule instanceof Rule.Nested nested && nested.section() instanceof SchemaSection childSchema
+            ValueCodec codec = matching.codec();
+            if (codec.shape() == ValueCodec.Shape.SECTION && codec.nestedSchema() instanceof SchemaSection childSchema
                 && entry.getValue() instanceof Map<?, ?> childMap) {
                 findUnknownKeys(childSchema, childMap, unknownKeys);
-            } else if (rule instanceof Rule.NestedMap nestedMap && nestedMap.entry() instanceof SchemaSection childSchema
+            } else if (codec.shape() == ValueCodec.Shape.DYNAMIC_MAP && codec.nestedSchema() instanceof SchemaSection childSchema
                 && entry.getValue() instanceof Map<?, ?> namedMap) {
                 findUnknownKeysInEntries(childSchema, namedMap, unknownKeys);
-            } else if (rule instanceof Rule.KitReference kitReference && kitReference.inline() instanceof SchemaSection childSchema
+            } else if (codec.shape() == ValueCodec.Shape.POLYMORPHIC && codec.nestedSchema() instanceof SchemaSection childSchema
                 && entry.getValue() instanceof Map<?, ?> inlineMap) {
                 findUnknownKeys(childSchema, inlineMap, unknownKeys);
             }
@@ -204,10 +204,10 @@ final class SchemaKeyWalker {
         if (matching == null) {
             return;
         }
-        Object rule = matching.rule();
-        if (rule instanceof Rule.Nested nested && nested.section() instanceof SchemaSection childSchema) {
+        ValueCodec codec = matching.codec();
+        if (codec.shape() == ValueCodec.Shape.SECTION && codec.nestedSchema() instanceof SchemaSection childSchema) {
             findUnknownKeys(childSchema, childMap, unknownKeys);
-        } else if (rule instanceof Rule.NestedMap nestedMap && nestedMap.entry() instanceof SchemaSection childSchema) {
+        } else if (codec.shape() == ValueCodec.Shape.DYNAMIC_MAP && codec.nestedSchema() instanceof SchemaSection childSchema) {
             // kits.yaml (unwrapped) hands this method the whole name-to-kit-body map directly, never
             // wrapped under a "kits" key -- so childMap here already is the map Rule.NestedMap.apply
             // itself sanitizes, and findUnknownKeysInEntries applies the same "names aren't checked,

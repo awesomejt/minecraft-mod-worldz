@@ -217,15 +217,16 @@ class WorldzConfigTest {
     }
 
     @Test
-    void referenceFileBodyMatchesTheCapturedSchemaDefaults() throws IOException {
+    void annotatedReferenceMatchesTheCapturedSchemaDefaults() throws IOException {
         String defaults = Files.readString(Path.of("src/test/resources/config/reference-defaults.yaml"));
         String reference = WorldzConfig.referenceYaml();
 
-        assertTrue(reference.endsWith(defaults));
-        String header = reference.substring(0, reference.length() - defaults.length());
-        for (String line : header.lines().toList()) {
-            assertTrue(line.startsWith("#"));
-        }
+        Object expected = YAML.load(defaults);
+        Object actual = YAML.load(reference);
+        assertEquals(expected, actual);
+        assertTrue(reference.startsWith("# jlt_worldz reference config -- GENERATED, do not edit."));
+        assertTrue(reference.contains("# Path: allowedBiomes"));
+        assertTrue(reference.contains("# Split file: config/jlt_worldz/world-types/worldz.yaml"));
     }
 
     @Test

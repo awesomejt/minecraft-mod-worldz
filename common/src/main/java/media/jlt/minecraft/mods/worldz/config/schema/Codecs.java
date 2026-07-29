@@ -185,6 +185,16 @@ public final class Codecs {
     public static <C> ValueCodec<C> section(SectionCodec<C> section) {
         return new ValueCodec<>() {
             @Override
+            public Shape shape() {
+                return Shape.SECTION;
+            }
+
+            @Override
+            public SectionCodec<?> nestedSchema() {
+                return section;
+            }
+
+            @Override
             public C read(Object raw, ParseContext ctx) {
                 return section.read(raw, ctx);
             }
@@ -215,6 +225,16 @@ public final class Codecs {
     ) {
         return new ValueCodec<>() {
             @Override
+            public Shape shape() {
+                return Shape.POLYMORPHIC;
+            }
+
+            @Override
+            public SectionCodec<?> nestedSchema() {
+                return section;
+            }
+
+            @Override
             public C read(Object raw, ParseContext ctx) {
                 if (raw instanceof String name) {
                     return fromName.apply(name.trim());
@@ -241,6 +261,16 @@ public final class Codecs {
      */
     public static <C> ValueCodec<Map<String, C>> sectionMap(SectionCodec<C> entry) {
         return new ValueCodec<>() {
+            @Override
+            public Shape shape() {
+                return Shape.DYNAMIC_MAP;
+            }
+
+            @Override
+            public SectionCodec<?> nestedSchema() {
+                return entry;
+            }
+
             @Override
             public Map<String, C> read(Object raw, ParseContext ctx) {
                 if (!(raw instanceof Map<?, ?> map)) {
