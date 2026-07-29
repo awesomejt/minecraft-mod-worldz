@@ -66,7 +66,7 @@ class ConfigFixturesTest {
     // rather than a fixture that used to exist; flagged for Jason rather than silently reconciled
     // (TODO Deviation log, 2026-07-28). TODO 25.8g added configs 102/103 (kits-library cross-site
     // sharing and unknown-name fallback, DESIGN §44.8 row g), bringing the real count to 105.
-    private static final int EXPECTED_FIXTURE_COUNT = 105;
+    private static final int EXPECTED_FIXTURE_COUNT = 109;
 
     private static final Map<String, Set<String>> KNOWN_UNKNOWN_KEYS = Map.of();
 

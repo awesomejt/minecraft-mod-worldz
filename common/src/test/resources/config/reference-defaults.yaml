@@ -201,11 +201,6 @@ netherExterior:
   mode: normal
   boundaryRadius: 0
   oceanTransitionWidth: 128
-strip:
-  enabled: false
-  widthRadiusBlocks: 32
-  widthMode: void
-  applyToNether: false
 layout:
   mode: legacy
   biomes: [
@@ -245,6 +240,10 @@ chaosBiomes:
     oceans: false
     beaches: false
 stripWorld:
+  enabled: false
+  width: 65
+  widthMode: void
+  applyToNether: false
   spawn:
     strategy: starter_at_origin
   bands:

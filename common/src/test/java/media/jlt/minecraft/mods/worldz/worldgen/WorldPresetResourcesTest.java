@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +29,7 @@ class WorldPresetResourcesTest {
         assertEquals("minecraft:overworld", overworld.get("type").getAsString());
         assertEquals("jlt_worldz:enveloped", generator.get("type").getAsString());
         assertEquals("overworld", generator.get("dimension").getAsString());
+        assertEquals("worldz", generator.get("world_type").getAsString());
         assertEquals("minecraft:noise", delegate.get("type").getAsString());
         assertEquals("minecraft:overworld", delegate.get("settings").getAsString());
         assertFalse(generator.has("exterior"));
@@ -48,6 +50,7 @@ class WorldPresetResourcesTest {
         JsonObject delegate = netherGenerator.getAsJsonObject("delegate");
         assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
         assertEquals("nether", netherGenerator.get("dimension").getAsString());
+        assertEquals("worldz", netherGenerator.get("world_type").getAsString());
         assertEquals("minecraft:nether", delegate.get("settings").getAsString());
         assertEquals("minecraft:multi_noise", delegate.getAsJsonObject("biome_source").get("type").getAsString());
         assertEquals("minecraft:nether", delegate.getAsJsonObject("biome_source").get("preset").getAsString());
@@ -115,17 +118,38 @@ class WorldPresetResourcesTest {
         JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/strip_world.json")
             .getAsJsonObject("dimensions");
         assertEquals(Set.of("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"), dimensions.keySet());
-        JsonObject biomeSource = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator")
-            .getAsJsonObject("delegate").getAsJsonObject("biome_source");
+        JsonObject overworldGenerator = dimensions.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator");
+        JsonObject biomeSource = overworldGenerator.getAsJsonObject("delegate").getAsJsonObject("biome_source");
 
         assertEquals(2, biomeSource.size());
         assertEquals("jlt_worldz:limited", biomeSource.get("type").getAsString());
         assertEquals("strip_world", biomeSource.get("world_type").getAsString());
+        assertEquals("strip_world", overworldGenerator.get("world_type").getAsString());
 
         JsonObject netherGenerator = dimensions.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator");
         assertEquals("jlt_worldz:enveloped", netherGenerator.get("type").getAsString());
+        assertEquals("strip_world", netherGenerator.get("world_type").getAsString());
         JsonObject endGenerator = dimensions.getAsJsonObject("minecraft:the_end").getAsJsonObject("generator");
         assertEquals("minecraft:the_end", endGenerator.getAsJsonObject("biome_source").get("type").getAsString());
+    }
+
+    @Test
+    void unrelatedTypedPresetResourcesCannotClaimGenericOrDedicatedStripDefaults() throws IOException {
+        for (String preset : List.of(
+            "single_biome", "chaos_biomes", "ocean_island", "sky_island", "sky_chunk", "cave",
+            "nether_start", "end_start", "flat", "deep_flat", "stacked"
+        )) {
+            JsonObject dimensions = resource("/data/jlt_worldz/worldgen/world_preset/" + preset + ".json")
+                .getAsJsonObject("dimensions");
+            for (String dimension : dimensions.keySet()) {
+                JsonObject generator = dimensions.getAsJsonObject(dimension).getAsJsonObject("generator");
+                if (!generator.has("world_type")) {
+                    continue;
+                }
+                String hint = generator.get("world_type").getAsString();
+                assertFalse(hint.equals("worldz") || hint.equals("strip_world"), preset + " " + dimension);
+            }
+        }
     }
 
     @Test
@@ -365,7 +389,8 @@ class WorldPresetResourcesTest {
         assertTrue(language.has("jlt_worldz.chaos_biomes.allow_oceans"));
         assertEquals("Worldz: Strip World", language.get("generator.jlt_worldz.strip_world").getAsString());
         assertTrue(language.has("jlt_worldz.strip_world.title"));
-        assertTrue(language.has("jlt_worldz.strip_world.width_radius"));
+        assertEquals("Corridor width", language.get("jlt_worldz.strip_world.width").getAsString());
+        assertFalse(language.has("jlt_worldz.strip_world.width_radius"));
         assertTrue(language.has("jlt_worldz.strip_world.width_mode"));
         assertTrue(language.has("jlt_worldz.strip_world.apply_to_nether"));
         assertEquals("Worldz: Ocean Island", language.get("generator.jlt_worldz.ocean_island").getAsString());

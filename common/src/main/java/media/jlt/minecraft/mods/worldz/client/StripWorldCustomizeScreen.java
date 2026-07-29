@@ -4,6 +4,7 @@ import media.jlt.minecraft.mods.worldz.logic.ExteriorMode;
 import media.jlt.minecraft.mods.worldz.logic.RadiusUnit;
 import media.jlt.minecraft.mods.worldz.logic.SpawnStrategy;
 import media.jlt.minecraft.mods.worldz.logic.StripWorldCustomization;
+import media.jlt.minecraft.mods.worldz.logic.StripWidthUnits;
 import media.jlt.minecraft.mods.worldz.logic.WorldzCustomization;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
@@ -30,10 +31,10 @@ final class StripWorldCustomizeScreen extends Screen implements
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
     private final CreateWorldScreen parent;
-    private final int initialWidthRadiusBlocks;
+    private final int initialWidth;
     private RadiusUnit unit = RadiusUnit.BLOCKS;
     private Button unitButton;
-    private EditBox widthRadiusBlocks;
+    private EditBox width;
     private ExteriorMode widthMode;
     private Button widthModeButton;
     private boolean applyToNether;
@@ -59,7 +60,7 @@ final class StripWorldCustomizeScreen extends Screen implements
     StripWorldCustomizeScreen(CreateWorldScreen parent, StripWorldCustomization initial) {
         super(TITLE);
         this.parent = parent;
-        this.initialWidthRadiusBlocks = initial.widthRadiusBlocks();
+        this.initialWidth = initial.width();
         this.widthMode = initial.widthMode();
         this.applyToNether = initial.applyToNether();
         this.bandsEnabled = initial.bandsEnabled();
@@ -87,12 +88,13 @@ final class StripWorldCustomizeScreen extends Screen implements
         this.unitButton = Button.builder(RadiusUnitLabel.of(this.unit), button -> cycleUnit()).width(FORM_WIDTH).build();
         form.addChild(this.unitButton);
 
-        this.widthRadiusBlocks = textField(
-            Component.translatable("jlt_worldz.strip_world.width_radius"),
-            this.unit.toDisplayText(this.initialWidthRadiusBlocks)
+        this.width = textField(
+            Component.translatable("jlt_worldz.strip_world.width"),
+            StripWidthUnits.toDisplayText(this.initialWidth, this.unit)
         );
+        this.width.setMaxLength(16);
         form.addChild(CommonLayouts.labeledElement(
-            this.font, this.widthRadiusBlocks, Component.translatable("jlt_worldz.strip_world.width_radius")
+            this.font, this.width, Component.translatable("jlt_worldz.strip_world.width")
         ));
 
         this.widthModeButton = Button.builder(widthModeLabel(this.widthMode), button -> cycleWidthMode())
@@ -203,7 +205,7 @@ final class StripWorldCustomizeScreen extends Screen implements
 
     private void cycleUnit() {
         RadiusUnit next = this.unit.next();
-        this.widthRadiusBlocks.setValue(this.unit.convert(this.widthRadiusBlocks.getValue(), next));
+        this.width.setValue(StripWidthUnits.convert(this.width.getValue(), this.unit, next));
         this.unit = next;
         this.unitButton.setMessage(RadiusUnitLabel.of(this.unit));
     }
@@ -229,7 +231,7 @@ final class StripWorldCustomizeScreen extends Screen implements
     private void apply() {
         try {
             StripWorldCustomization customization = StripWorldCustomization.fromText(
-                this.unit.toBlocksText(this.widthRadiusBlocks.getValue()),
+                StripWidthUnits.toBlocksText(this.width.getValue(), this.unit),
                 this.widthMode.serializedName(),
                 this.applyToNether,
                 this.bandsEnabled,

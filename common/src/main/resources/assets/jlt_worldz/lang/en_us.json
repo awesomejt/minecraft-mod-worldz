@@ -22,7 +22,7 @@
   "jlt_worldz.chaos_biomes.allow_oceans": "Allow natural rivers and oceans to generate",
   "jlt_worldz.chaos_biomes.allow_beaches": "Allow natural beaches and stony shores to generate",
   "jlt_worldz.strip_world.title": "Customize Worldz: Strip World",
-  "jlt_worldz.strip_world.width_radius": "Corridor half-width in blocks",
+  "jlt_worldz.strip_world.width": "Corridor width",
   "jlt_worldz.strip_world.width_mode": "Beyond the width: %s",
   "jlt_worldz.strip_world.apply_to_nether": "Apply the same corridor width to the Nether",
   "jlt_worldz.strip_world.bands_enabled": "Pass through an ordered biome-band sequence",

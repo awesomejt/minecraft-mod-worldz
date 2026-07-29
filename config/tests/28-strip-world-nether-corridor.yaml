@@ -1,4 +1,4 @@
-# GOALS 32's optional Nether strip: `strip.applyToNether: true` gives the
+# GOALS 32's optional Nether strip: `stripWorld.applyToNether: true` gives the
 # Nether the SAME corridor width as the Overworld (one shared width, not two
 # independently configurable ones -- DESIGN §23/TODO 6.2a). **Select
 # "Worldz: Strip World"** on the creation screen.
@@ -13,11 +13,13 @@
 #  4. Confirm a compact fallback blaze-spawner site exists somewhere
 #     reachable inside the Nether corridor (natural fortresses are unlikely
 #     to fit a border this small) and blaze rods are obtainable.
-strip:
+stripWorld:
   enabled: true
-  widthRadiusBlocks: 64
+  width: 129
   widthMode: void
   applyToNether: true
+  spawn:
+    strategy: starter_at_origin
 overworldBorder:
   enabled: true
   initialRadius: 2048
@@ -28,5 +30,3 @@ netherBorder:
   initialRadius: 512
   finalRadius: 512
   ensureBlazeAccess: true
-spawn:
-  strategy: starter_at_origin

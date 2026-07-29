@@ -132,10 +132,14 @@ public final class StripWorldPresetEditor implements PresetEditor {
         var exterior = source.exteriorPlan();
         WorldLayoutPlan layout = source.worldLayoutPlan();
         boolean bandsEnabled = layout.mode() == LayoutMode.STRIP_BANDS;
+        LevelStem nether = settings.selectedDimensions().dimensions().get(LevelStem.NETHER);
+        boolean applyToNether = nether != null
+            && nether.generator() instanceof EnvelopedChunkGenerator netherEnveloped
+            && netherEnveloped.strip().enabled();
         return new StripWorldCustomization(
-            strip.widthRadiusBlocks(),
+            strip.width(),
             strip.widthMode(),
-            strip.enabled(),
+            applyToNether,
             bandsEnabled,
             bandsEnabled ? layout.bandBiomes() : List.of(),
             bandsEnabled ? layout.regionScaleBlocks() : WorldzCommon.config().stripWorld.bands.widthBlocks,

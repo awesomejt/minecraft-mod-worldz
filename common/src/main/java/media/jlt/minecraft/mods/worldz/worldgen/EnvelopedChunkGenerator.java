@@ -137,11 +137,10 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         FlatCodecs.PLAN_CODEC.optionalFieldOf("flat").forGetter(generator -> Optional.of(generator.flat)),
         DeepFlatCodecs.PLAN_CODEC.optionalFieldOf("deep_flat").forGetter(generator -> Optional.of(generator.deepFlat)),
         StackedCodecs.PLAN_CODEC.optionalFieldOf("stacked").forGetter(generator -> Optional.of(generator.stacked)),
-        // Fieldless-preset hint only (DESIGN §30.1), mirroring LimitedBiomeSource's own
-        // write-never "world_type" field exactly: lets a never-customized `jlt_worldz:cave`/
-        // `jlt_worldz:nether_start` world default its plan from live config (below) without
-        // leaking that default into every other preset's Overworld/Nether, which never sets
-        // this field.
+        // Fieldless-preset hint only (DESIGN §30.1/§45), mirroring LimitedBiomeSource's own
+        // write-never "world_type" field exactly. Plan resolution below is deliberately
+        // allow-listed by identity: no typed preset inherits another preset's config merely
+        // because both happen to use this wrapper.
         Codec.STRING.optionalFieldOf("world_type").forGetter(generator -> Optional.<String>empty())
     ).apply(instance, EnvelopedChunkGenerator::resolve));
 
@@ -1005,9 +1004,9 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
             // island branch in effectiveModeAt, ahead of this envelope ever being consulted.
             case END -> ExteriorPlan.DimensionEnvelope.normal();
         });
-        StripPlan strip = encodedStrip.orElseGet(
-            () -> StripPlan.fromConfig(WorldzCommon.config().strip, dimension == Dimension.OVERWORLD)
-        );
+        StripPlan strip = encodedStrip.orElseGet(() -> StripPlan.fromPresetConfig(
+            sharedConfig.stripWorld, dimension == Dimension.OVERWORLD, worldType.orElse("")
+        ));
         SkyIslandPlan netherSkyIsland = encodedNetherSkyIsland.orElseGet(() -> {
             var skyIslandConfig = WorldzCommon.config().skyIsland;
             return dimension == Dimension.NETHER && skyIslandConfig.applyToNether
@@ -2336,7 +2335,7 @@ public final class EnvelopedChunkGenerator extends ChunkGenerator {
         result.add("Worldz exterior: " + this.envelope.mode().serializedName());
         if (this.strip.enabled()) {
             result.add(
-                "Worldz strip: widthRadius=" + this.strip.widthRadiusBlocks()
+                "Worldz strip: width=" + this.strip.width()
                     + ", widthMode=" + this.strip.widthMode().serializedName()
             );
         }

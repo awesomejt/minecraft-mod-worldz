@@ -44,6 +44,23 @@ class SchemaKeyWalkerFileTest {
     }
 
     @Test
+    void flatStripWorldFileIsCheckedAgainstTheMergedStripWorldSchema() {
+        ConfigFile stripFile = ConfigLayout.owning("stripWorld").orElseThrow();
+        Map<String, Object> stripMap = Map.of(
+            "width", 4,
+            "spawn", Map.of("strategy", "starter_at_origin"),
+            "notARealStripSetting", true
+        );
+        List<String> unknown = new ArrayList<>();
+        List<String> misfiled = new ArrayList<>();
+
+        SchemaKeyWalker.findUnknownKeysInFile(ROOT, stripFile, stripMap, unknown, misfiled);
+
+        assertEquals(List.of("stripWorld.notARealStripSetting"), unknown);
+        assertTrue(misfiled.isEmpty(), () -> "unexpected misfiled: " + misfiled);
+    }
+
+    @Test
     void wrappedFileKeyOwnedByAnotherFileIsReportedAsMisfiledNamingTheRightFile() {
         ConfigFile runtimeFile = fileNamed("runtime.yaml");
         // A user writes "cave:" straight into runtime.yaml instead of world-types/cave.yaml.

@@ -49,7 +49,7 @@ class ProjectMetadataTest {
 
         assertTrue(settings.contains("rootProject.name = 'mod-worldz'"));
         assertEquals("media.jlt.minecraft.mods", properties.getProperty("group"));
-        assertEquals("0.3.31", properties.getProperty("version"));
+        assertEquals("0.3.32", properties.getProperty("version"));
         assertEquals("jlt_worldz", properties.getProperty("mod_id"));
         assertEquals("JLT Worldz", properties.getProperty("mod_name"));
         assertEquals("25", properties.getProperty("java_version"));
@@ -829,10 +829,56 @@ class ProjectMetadataTest {
             "ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX() - originX, natural.getZ() - originZ)"
         ));
         assertTrue(guarantees.contains(
-            "ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, zRadius, NATURAL_STRUCTURE_MARGIN)"
+            "layoutPlan, relativeX, radius, zBounds, NATURAL_STRUCTURE_MARGIN"
         ));
         assertTrue(manager.contains("limitedSource.worldLayoutPlan()"));
         assertTrue(manager.contains("limitedSource.originBlockX()"));
+    }
+
+    @Test
+    void stripCustomizeReopenReadsThePersistedNetherStripState() throws IOException {
+        String editor = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/StripWorldPresetEditor.java"
+        ));
+
+        assertTrue(editor.contains("nether.generator() instanceof EnvelopedChunkGenerator netherEnveloped"));
+        assertTrue(editor.contains("netherEnveloped.strip().enabled()"));
+        assertTrue(editor.contains("strip.width()"));
+        assertFalse(editor.contains("strip.widthRadiusBlocks()"));
+    }
+
+    @Test
+    void stripCustomizeUsesLosslessAbsoluteWidthUnitConversion() throws IOException {
+        String screen = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/client/StripWorldCustomizeScreen.java"
+        ));
+
+        assertTrue(screen.contains("StripWidthUnits.convert(this.width.getValue(), this.unit, next)"));
+        assertTrue(screen.contains("StripWidthUnits.toBlocksText(this.width.getValue(), this.unit)"));
+        assertFalse(screen.contains("this.unit.convert(this.width.getValue(), next)"));
+    }
+
+    @Test
+    void stripCodecPersistsAbsoluteWidthWithoutARadiusAlias() throws IOException {
+        String codecs = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/StripCodecs.java"
+        ));
+
+        assertTrue(codecs.contains("Codec.INT.fieldOf(\"width\").forGetter(StripPlan::width)"));
+        assertFalse(codecs.contains("width_radius"));
+    }
+
+    @Test
+    void fieldlessStripResolutionUsesTheExplicitPresetHintContract() throws IOException {
+        String generator = Files.readString(ROOT.resolve(
+            "common/src/main/java/media/jlt/minecraft/mods/worldz/worldgen/EnvelopedChunkGenerator.java"
+        ));
+
+        assertTrue(generator.contains("StripPlan.fromPresetConfig("));
+        assertTrue(generator.contains("worldType.orElse(\"\")"));
+        assertFalse(generator.contains(
+            "StripPlan.fromConfig(sharedConfig.stripWorld, dimension == Dimension.OVERWORLD)"
+        ));
     }
 
     @Test

@@ -24,7 +24,7 @@ public final class SkyIslandConfig {
     /**
      * Whether the Nether is also a sky island (GOALS 06), reusing this same radius/shapeAmplitude/
      * surfaceY/thicknessBlocks shape -- one corridor-width-style toggle, not independently
-     * configurable Nether dimensions (DESIGN §27.6, mirroring {@code StripConfig.applyToNether}).
+     * configurable Nether dimensions (DESIGN §27.6, mirroring {@code StripWorldConfig.applyToNether}).
      */
     public boolean applyToNether = false;
     /**

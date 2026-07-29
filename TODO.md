@@ -1643,7 +1643,7 @@ tests.
       `underground` at 25.6g), and dropped every `Blocks` suffix except the
       one deliberately deferred to 25.9 — with zero POJO/`logic/`/`client/`
       changes throughout, exactly per DESIGN §42's hard constraint.
-- [ ] 25.7 Split into `config/jlt_worldz/` (D2, D10). Biggest single win is
+- [x] 25.7 Split into `config/jlt_worldz/` (D2, D10). Biggest single win is
       moving the 11 generic-preset-only top-level keys (`allowedBiomes`,
       `starterBiome`, `layout`, `strip`, …) into `world-types/worldz.yaml`
       where they stop masquerading as global (F3), and merging the
@@ -1720,10 +1720,14 @@ tests.
       started, and both still accurately describe what 25.7a-d actually
       shipped. **Not covered by this check-off:** the full `./gradlew build`
       all-modules run, the NeoForge brief check, and the Prism redeploy —
-      that portion of 25.7e is being handled separately by `tester`.
-      **TODO 25.7 (all of 25.7a-25.7e) is now complete**, pending only
-      `tester`'s build/deploy verification.
-- [ ] 25.8 Named shared starter kits (D6): pull the 14 starter-kit item lists
+      the automated portion was handled later by `tester`; Prism deployment
+      remains Jason-only.
+      **TODO 25.7 (all of 25.7a-25.7e) is complete.** Automated gate
+      subsequently passed under Temurin 25: full `./gradlew build`, 902 tests
+      green, clean-tree verification at that point, and both Fabric and
+      NeoForge artifacts present. **[Jason]** Prism redeployment remains
+      outstanding and is not implied by this check-off.
+- [x] 25.8 Named shared starter kits (D6): pull the 14 starter-kit item lists
       (not 12 — F2 miscounted, see Deviation log) out of their preset
       sections into a new named library, referenceable by name, inline
       definitions still legal. **Design pass done, DESIGN §44** (2026-07-28):
@@ -1834,11 +1838,16 @@ tests.
       but had not actually added), all citing DESIGN §44.1/§44.2/§44.9;
       25.8a-25.8g reverified as accurately checked off. The
       `./gradlew build`/NeoForge-check/Prism-redeploy portion of this
-      sub-step is being handled separately by `tester` in parallel and is
-      not covered by this check-off. **TODO 25.8 (all of 25.8a-25.8h) is now
-      complete**, pending only `tester`'s build/deploy pass and Jason's
-      in-game acceptance already noted under 25.8g.
-- [ ] 25.9 **Strip world absolute width (D9 — the one behavior change).**
+      sub-step was not covered by this bookkeeping check-off; the automated
+      portion was handled later by `tester`, while Prism deployment remains
+      Jason-only. **TODO 25.8 (all of 25.8a-25.8h) is
+      complete.** The outstanding automated gate subsequently passed under
+      Temurin 25: full `./gradlew build`, 902 tests green, clean-tree
+      verification at that point, and both Fabric and NeoForge artifacts
+      present. **[Jason]** Prism redeployment and in-game acceptance of
+      configs 102-103 remain outstanding; neither is implied by this
+      check-off.
+- [x] 25.9 **Strip world absolute width (D9 — the one behavior change).**
       Design and width/portal table in `CONFIG-RESTRUCTURE.md` §5. `width`
       replaces `widthRadiusBlocks`, minimum 1 block; odd widths symmetric about
       Z=0, even widths take the extra block on +Z; End portal and the Nether
@@ -1857,6 +1866,35 @@ tests.
       symmetric, so it must return a centre plus half-extent. Jason has already
       accepted that structures overflow the corridor at very narrow widths;
       no clamping work is in scope. Separate commit, own test configs.
+      **Done (0.3.32):** merged all four former `StripConfig` fields
+      (`enabled`, `widthRadiusBlocks`→absolute `width`, `widthMode`,
+      `applyToNether`) into `StripWorldConfig`/`StripWorldSchema`; deleted
+      `StripConfig`/`StripSchema`; and unwrapped
+      `world-types/strip-world.yaml` to one `stripWorld:` owner. Width now
+      defaults to 65 and floors at 1: `minZ = -(width - 1) / 2`,
+      `maxZ = width / 2`, giving odd widths symmetric bounds and even widths
+      their extra +Z column. The old config key and old persisted strip-codec
+      radius shape are intentionally unsupported under D1/new-worlds-only.
+      `ObjectiveSite.ZBounds(center, negativeExtent, positiveExtent)` now
+      carries the asymmetric corridor through the End-portal, Nether-blaze,
+      and stacked-village placement paths instead of collapsing it back to a
+      radius.
+
+      Two review findings and one existing Customize bug were fixed in scope,
+      not deferred: explicit generator hints keep generic `worldz`'s
+      `stripWorld.enabled` opt-in from leaking into typed presets while the
+      dedicated `strip_world` preset remains always active; block/chunk UI
+      display is lossless for non-chunk-aligned widths (for example 65 blocks
+      displays as 4.0625 chunks) and review coverage protects typed-preset
+      isolation plus unit toggling; reopening Customize now reconstructs the
+      Nether generator from the edited `applyToNether` state instead of
+      retaining the stale entry-time generator. Fixtures 26-29a were migrated
+      to the merged shape. Added sequenced manual configs 104-107 and raised
+      the fixture count from 105 to 109. Final gate: 63 suites / 922 tests,
+      Fabric and NeoForge artifacts green; two task-level review passes, with
+      no findings on the second. **[Jason] manual acceptance of configs
+      104-107 remains outstanding** (also recorded under 25.12 and Questions
+      for Jason).
 - [ ] 25.10 Documentation (D3's second half). Generate README's settings tables
       from the schema; add the completeness test covering every leaf setting
       (it would have caught F6 — 12 of 25 sections undocumented, and
@@ -1865,23 +1903,31 @@ tests.
       for the first time (F3): hazards are re-read from config and change
       existing worlds; borders, exteriors and preset sections are baked into
       the save at creation and do nothing to an existing world.
-- [ ] 25.11 **Scope reduced by DESIGN §43.8 (2026-07-28):** 25.6 already
-      migrated every renamed key across all 103 `config/tests/*.yaml`
-      fixtures (25.6a-h), and 25.7's file split moves no keys and keeps
+- [ ] 25.11 **Scope reduced by DESIGN §43.8 (2026-07-28):** 25.6 migrated
+      every renamed key across the then-103 `config/tests/*.yaml` fixtures
+      (25.6a-h), 25.8 added two (105 total), and 25.9 migrated every affected
+      strip fixture plus added four more (109 total). 25.7's file split moves
+      no keys and keeps
       fixtures single-file (`config/jlt_worldz/all.yaml`-shaped, per the
       kept bundle) — so there is no fixture content left to migrate here.
-      What remains: mechanically update fixtures whose keys 25.9 actually
-      renames (`strip.widthRadiusBlocks`→`width`, the `strip`/`stripWorld`
-      key-level merge) — should land with 25.9 itself, not deferred here,
-      same "no alias fallback" reasoning as before; and a prose-only pass
-      over `config/tests/README.md`/`MANUAL_TESTING.md` for anything 25.7d
-      didn't already cover. Gate: `ConfigFixturesTest` (already exists,
-      25.6a) stays green throughout.
+      There is therefore no fixture content left to migrate here: 25.9's
+      `strip.widthRadiusBlocks`→`stripWorld.width` and key-level merge landed
+      with 25.9 itself, under the same "no alias fallback" reasoning as the
+      earlier migrations. What remains is a prose-only pass over
+      `config/tests/README.md`/`MANUAL_TESTING.md` for anything 25.7d/25.9
+      did not already cover. Gate: `ConfigFixturesTest` (already exists,
+      25.6a) stays green throughout at 109 fixtures.
 - [ ] 25.12 Full multiloader build green, both Prism instances redeployed, then
       close the phase. **[Jason] acceptance:** a hand-commented config survives
       a launch intact (25.4); a stacked world with no `worldSizeChunks: 0`
       opt-out behaves as configured (25.5); and a 1-block-wide strip world
       generates with the End portal on the corridor mid-point (25.9).
+      **[Jason] Phase 25.9 sequence still outstanding:** config 104
+      (one-block `Z=0` corridor, usable midpoint portal, accepted overflow);
+      105 (four columns exactly `Z=-1..2`, midpoint portal); 106 (two columns
+      `Z=0..1` in Overworld and Nether, midpoint blaze fallback); and 107
+      (lossless Blocks/Chunks display plus width/mode/Apply-to-Nether
+      persistence after closing and reopening Customize).
 
 ---
 
@@ -1992,6 +2038,15 @@ tests.
 ## Questions for Jason (running list)
 
 (Add here when blocked; don't guess on gameplay/scope questions.)
+
+- **2026-07-28 — Phase 25.9 manual acceptance outstanding (not a design
+  question):** run sequenced configs 104-107 on fresh "Worldz: Strip World"
+  worlds. Verify the one-block and even-width ranges, End-portal and
+  Nether-blaze midpoint placement with accepted narrow-corridor overflow,
+  and Customize's lossless Blocks/Chunks display plus width/mode/
+  Apply-to-Nether persistence across close/reopen. Automated coverage is
+  green (63 suites / 922 tests; both loader artifacts), but this in-game
+  acceptance remains **[Jason]** and must not be marked complete by an agent.
 
 - **2026-07-28 — Phase 25.6: five documented settings the mod has never
   read. ANSWERED same day: wire them up.** `skyIsland.exclusionZoneEnabled`/

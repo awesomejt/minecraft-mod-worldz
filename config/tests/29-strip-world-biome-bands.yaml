@@ -10,12 +10,12 @@
 # changes band to band, never the height/shape -- exactly like chaos_biomes
 # (GOALS 33) but ordered along X instead of scattered in a 2D grid.
 #
-# With width: 256 and five configured biomes, walking along X should
+# With width: 256 and six configured biomes, walking along X should
 # cross into a new biome roughly every 256 blocks, repeating (wrapping) the
-# five-biome sequence once exhausted.
+# six-biome sequence once exhausted.
 #
 # bands.naturalBiomes.rivers/.oceans/.beaches default to true (GOALS 36
-# follow-up, Jason 2026-07-19) specifically for bands -- none of the five
+# follow-up, Jason 2026-07-19) specifically for bands -- none of the six
 # configured biomes are water/beach biomes, so wherever vanilla's own
 # terrain would naturally put a river, ocean, beach, or stony shore, that
 # should still show through instead of being overridden by the band's land
@@ -32,21 +32,20 @@
 #  3. Walk along -X from spawn; confirm the same sequence appears in
 #     reverse (band index wraps via floor division, so negative X is
 #     consistent with positive X, not mirrored oddly).
-#  4. Confirm Z still behaves like an ordinary strip world: terrain ends
-#     into void at approximately 64 blocks out either side.
+#  4. Confirm Z still behaves like an ordinary strip world: the 65-block
+#     corridor spans exactly Z=-32..32, with void immediately outside.
 #  5. Look for a natural river, ocean, beach, or stony shore along the
 #     corridor (F3 to check biome); confirm it shows through as its real
 #     vanilla biome rather than being relabeled to the current band's biome.
-strip:
-  enabled: true
-  widthRadiusBlocks: 32
-  widthMode: void
 overworldBorder:
   enabled: true
   initialRadius: 2048
   finalRadius: 2048
   ensureEndPortal: true
 stripWorld:
+  enabled: true
+  width: 65
+  widthMode: void
   spawn:
     strategy: starter_at_origin
   bands:

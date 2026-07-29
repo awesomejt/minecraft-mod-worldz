@@ -35,7 +35,7 @@ import java.util.List;
  * topOnlyDepthBlocks} a conditional trailing segment shown only when {@code topOnly} is set
  * (:2121) -- both the gate and the conditional segment could, in isolation, use {@code
  * includeInSummaryWhen}, but since the top-level gate itself has no generic mechanism in this
- * framework (see {@code StripSchema}/{@code StripBandsSchema}'s own overrides), the whole line is
+ * framework (see {@code StripWorldSchema}/{@code StripBandsSchema}'s own overrides), the whole line is
  * simplest written by hand, verbatim against {@code chunkIslandSummary}. Unchanged by TODO 25.6d
  * beyond path strings, since it reads {@link ChunkIslandConfig}'s own (unrenamed) POJO fields
  * directly.

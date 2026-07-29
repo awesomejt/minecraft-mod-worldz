@@ -87,6 +87,35 @@ class ConfigDirectoryLoadTest {
     }
 
     @Test
+    void flatStripWorldFileLoadsTheMergedSection() throws IOException {
+        Files.createDirectories(modDir().resolve("world-types"));
+        Files.writeString(modDir().resolve("world-types/strip-world.yaml"), """
+            enabled: true
+            width: 4
+            widthMode: ocean
+            applyToNether: true
+            spawn:
+              strategy: preferred_natural_biome
+            bands:
+              enabled: true
+              biomes:
+                - minecraft:desert
+              width: 256
+            """);
+
+        WorldzConfig config = WorldzConfig.load(temporaryDirectory, "jlt_worldz", LOGGER);
+
+        assertTrue(config.stripWorld.enabled);
+        assertEquals(4, config.stripWorld.width);
+        assertEquals("ocean", config.stripWorld.widthMode.serializedName());
+        assertTrue(config.stripWorld.applyToNether);
+        assertEquals("preferred_natural_biome", config.stripWorld.spawn.strategy.serializedName());
+        assertTrue(config.stripWorld.bands.enabled);
+        assertEquals(List.of("minecraft:desert"), config.stripWorld.bands.biomes);
+        assertEquals(256, config.stripWorld.bands.widthBlocks);
+    }
+
+    @Test
     void blankSplitFileIsSkippedSilentlyWithoutWarning() throws IOException {
         CapturingLogger logger = new CapturingLogger();
         Files.createDirectories(modDir());

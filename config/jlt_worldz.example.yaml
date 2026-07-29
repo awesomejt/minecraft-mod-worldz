@@ -182,6 +182,31 @@ chaosBiomes:
     oceans: false
     beaches: false
 
+# Optional narrow corridor for the generic `worldz` preset and defaults for
+# the dedicated `jlt_worldz:strip_world` preset (GOALS 32/36). `enabled`
+# opts the generic preset into the corridor; the dedicated Strip World preset
+# always applies its Overworld corridor. width is an absolute block count
+# (default 65), not a radius: odd widths are symmetric about Z=0 and even
+# widths use the extra column on +Z. applyToNether mirrors the same width into
+# the Nether. The compact portal/blaze fallback targets Z=0; at very narrow
+# widths its structure may visibly extend beyond the corridor by design.
+stripWorld:
+  enabled: false
+  width: 65
+  widthMode: void
+  applyToNether: false
+  spawn:
+    strategy: starter_at_origin
+  bands:
+    enabled: false
+    biomes: []
+    width: 128
+    seedRandomOrder: false
+    naturalBiomes:
+      rivers: true
+      oceans: true
+      beaches: true
+
 # World-hazard "forever night" module (GOAL 30, DESIGN §35.1) -- a shared
 # runtime rule, not a typed preset, composable with any world type.
 # lockAfterDays: 0 locks night immediately at world creation; a positive

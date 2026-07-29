@@ -33,10 +33,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
    `01`-`09`, `13`, `20`-`25`) reads the flat top-level config fields;
    "Worldz: Single Biome" (files `10`-`12`, `14`-`15`) reads only the
    `singleBiome:` section; "Worldz: Chaos Biomes" (files `16`-`19`) reads
-   only the `chaosBiomes:` section; "Worldz: Strip World" (files `26`-`29`)
-   reads the shared top-level `strip:` section (corridor width, same as
-   any other Worldz preset) plus its own `stripWorld:` section (spawn
-   strategy and the optional `bands:` biome-sequence subsection, GOALS 36);
+   only the `chaosBiomes:` section; "Worldz: Strip World" (files `26`-`29`,
+   `27a`, `29a`, `104`-`107`) reads the single `stripWorld:` section
+   (corridor settings, spawn strategy, and the optional `bands:` biome-sequence
+   subsection, GOALS 32/36). Its Overworld corridor is always active;
+   `stripWorld.enabled` is instead the opt-in gate when plain "Worldz"
+   composes a corridor.
    "Worldz: Ocean Island" (files `30`-`37`) reads only its own
    `oceanIsland:` section (GOALS 01, 02, 03, 04, 28, 31) plus the shared
    `overworldBorder`/`netherBorder`/`endBorder`/`netherExterior` sections
@@ -203,10 +205,12 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `23-end-border-carry-over.yaml` | GOALS 17: Overworld border pinned to the 64-block minimum, `endBorder.carryFromOverworld: true` with `minimumRadiusBlocks: 256` — confirms the floor overrides the tiny carried radius so the End border is 256, not 64, keeping the dragon fight winnable. |
 | `24-border-stepped-expanding.yaml` | GOALS 19, **stepped** style (Phase 5b, DESIGN §21.1): border holds at 8 for a 2-day delay, then jumps abruptly by 1 block/day up to 1024 — snaps, not a creep. Requires 0.2.16+. |
 | `25-border-stepped-collapsing.yaml` | GOALS 20, **stepped** style: border holds at 1024 for a 10-day delay, then jumps abruptly by 2 blocks/day down to a 32 minimum — snaps, not a creep; spawn stays centered so it's always safe. Requires 0.2.16+. |
-| `26-strip-world-basic.yaml` | GOALS 32 (Phase 6.2): a narrow strip world — corridor width (Z axis, void beyond) is new strip machinery; corridor length (X axis) is the ordinary square border, unmodified. **Select "Worldz: Strip World"**, not plain "Worldz". Requires 0.2.22+. |
-| `27-strip-world-narrow-fallback-portal.yaml` | GOALS 32: a deliberately narrow corridor (32-block width radius) exercising the fallback End-portal Z-candidate fix found during 6.1's spike — confirms the compact portal lands inside the corridor, not at a Z candidate the border's own (larger) radius would have wrongly allowed. **Select "Worldz: Strip World"**. |
-| `28-strip-world-nether-corridor.yaml` | GOALS 32's optional Nether strip: `strip.applyToNether: true` mirrors the same corridor width into the Nether, with its own independent length border and a compact fallback blaze site. **Select "Worldz: Strip World"**. |
-| `29-strip-world-biome-bands.yaml` | GOALS 36: `stripWorld.bands` walks an ordered biome sequence along the corridor's length, wrapping once exhausted; terrain stays ordinary vanilla shape throughout. Applies straight from "Create World", no Customize visit needed (fixed in 0.2.27 — see [`MEMORY.md`](../../MEMORY.md)). **Select "Worldz: Strip World"**. Requires 0.2.27+. |
+| `26-strip-world-basic.yaml` | GOALS 32 (Phase 6.2): a 129-block strip (`Z=-64..64`) — corridor width (Z axis, void beyond) is strip machinery; corridor length (X axis) is the ordinary square border, unmodified. **Select "Worldz: Strip World"**, not plain "Worldz". Requires 0.2.22+. |
+| `27-strip-world-narrow-fallback-portal.yaml` | GOALS 32: a 65-block corridor (`Z=-32..32`) exercising compact End-portal placement at Z=0 instead of an off-corridor candidate allowed by the border alone. **Select "Worldz: Strip World"**. |
+| `27a-strip-world-narrow-fallback-portal.yaml` | GOALS 32: the five-times-narrower companion to 27, a 13-block corridor (`Z=-6..6`) whose portal target stays Z=0 even though the usable room may overflow. **Select "Worldz: Strip World"**. |
+| `28-strip-world-nether-corridor.yaml` | GOALS 32's optional Nether strip: `stripWorld.applyToNether: true` mirrors the same 129-block corridor width into the Nether, with its own independent length border and a compact fallback blaze site. **Select "Worldz: Strip World"**. |
+| `29-strip-world-biome-bands.yaml` | GOALS 36: `stripWorld.bands` walks an ordered biome sequence along a 65-block corridor's length, wrapping once exhausted; terrain stays ordinary vanilla shape throughout. Applies straight from "Create World", no Customize visit needed (fixed in 0.2.27 — see [`MEMORY.md`](../../MEMORY.md)). **Select "Worldz: Strip World"**. Requires 0.2.27+. |
+| `29a-strip-world-biome-bands.yaml` | GOALS 36: Customize-reconstruction companion to 29. Opening Customize must retain its five-block corridor, configured band list, and band settings; bands do not require Customize to activate. **Select "Worldz: Strip World"**. |
 | `30-ocean-island-default.yaml` | GOALS 01 (Phase 7.2): a default-sized (128-block radius) natural-looking ocean island — non-circular coastline, narrow beach/stony-shore ring, and a shallow-to-deep ocean gradient drawing from all nine vanilla ocean biomes further out. **Select "Worldz: Ocean Island"**. Requires 0.2.29+. |
 | `31-ocean-island-tiny.yaml` | GOALS 01's "1 chunk" floor: an 8-block-radius island. Exercises the documented tiny-island trade-off — the compact fallback End portal consumes most of the surface, since its safety margin can never "fit" at this scale. **Select "Worldz: Ocean Island"**. |
 | `32-ocean-island-huge.yaml` | GOALS 01's "huge" ceiling: a 4096-block-radius island, where the default 30% coastline perturbation should read as dramatic bays/headlands rather than a slightly-uneven circle. **Select "Worldz: Ocean Island"**. |
@@ -278,6 +282,10 @@ Every field not mentioned in a file falls back to Worldz's documented default
 | `98-sky-island-underground-biome-band.yaml` | GOAL 42 (Phase 21.4b): same idea as `96`, applied to sky island's own thin slab — `undergroundBelowSurfaceBlocks: 3` (smaller than the default `10`) keeps the band within the slab's own diggable ground instead of the void beneath it. Config-only (create the world directly, don't open Customize). **Select "Worldz: Sky Island"**. Requires 0.3.16+. |
 | `99-stacked-force-top-village.yaml` | GOAL 35 follow-up (DESIGN §34.9): `stacked.forceTopVillage: true` on config 72's own default stack (top layer plains, village-compatible) — a real vanilla village always force-generated near spawn on the top layer's surface. Also the real test of the border-clipping risk flagged in DESIGN §34.9 (default 64-block border vs. a village's typical footprint). **Select "Worldz: Stacked"**. Requires 0.3.20+. |
 | `100-stacked-force-top-village-incompatible-biome.yaml` | GOAL 35 follow-up (DESIGN §34.9): same as `99`, but the top layer is swamp (not village-compatible) — confirms the silent-skip negative path, an `INFO` log line, no village, no warning. **Select "Worldz: Stacked"**. Requires 0.3.20+. |
+| `104-strip-world-width-one.yaml` | TODO 25.9 / GOALS 32: minimum one-block corridor (`Z=0`) with accepted End-portal room overflow; the portal target remains Z=0. **Select "Worldz: Strip World"**. |
+| `105-strip-world-width-even.yaml` | TODO 25.9 / GOALS 32: four-block corridor exactly `Z=-1..2`; proves that even absolute widths put their extra column on +Z and the portal target is Z=0. **Select "Worldz: Strip World"**. |
+| `106-strip-world-nether-even-width.yaml` | TODO 25.9 / GOALS 32: two-block corridor `Z=0..1` in both Overworld and Nether through `stripWorld.applyToNether: true`, with blaze fallback targeting Z=0. **Select "Worldz: Strip World"**. |
+| `107-strip-world-customize-absolute-width.yaml` | TODO 25.9 / GOALS 32: Customize persistence for a 64-block width; check Blocks/Chunks, mode, and Apply to Nether survive closing and reopening before creating. **Select "Worldz: Strip World"**. |
 
 ### Why `01` showed ocean labeled as river
 

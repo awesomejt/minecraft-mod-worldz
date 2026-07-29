@@ -82,7 +82,7 @@ public final class WorldzConfig {
         #   config/jlt_worldz/world-defaults.yaml
         # kits -> config/jlt_worldz/kits.yaml
         # allowedBiomes/starter/naturalBiomes/layout/spawn -> config/jlt_worldz/world-types/worldz.yaml
-        # strip/stripWorld -> config/jlt_worldz/world-types/strip-world.yaml
+        # stripWorld -> config/jlt_worldz/world-types/strip-world.yaml
         # singleBiome -> config/jlt_worldz/world-types/single-biome.yaml
         # chaosBiomes -> config/jlt_worldz/world-types/chaos-biomes.yaml
         # oceanIsland -> config/jlt_worldz/world-types/ocean-island.yaml
@@ -146,8 +146,6 @@ public final class WorldzConfig {
     public ExteriorConfig overworldExterior = new ExteriorConfig();
     /** Optional Nether terrain outside a central square. */
     public ExteriorConfig netherExterior = new ExteriorConfig();
-    /** Optional narrow strip-world corridor (GOALS 32). */
-    public StripConfig strip = new StripConfig();
     /** Optional coordinated terrain-layout composition. */
     public LayoutConfig layout = new LayoutConfig();
     /** Layout-origin and initial-spawn strategy. */
@@ -156,7 +154,7 @@ public final class WorldzConfig {
     public SingleBiomeConfig singleBiome = new SingleBiomeConfig();
     /** Defaults for the {@code jlt_worldz:chaos_biomes} typed preset (DESIGN §20.11). */
     public ChaosBiomesConfig chaosBiomes = new ChaosBiomesConfig();
-    /** Defaults for the {@code jlt_worldz:strip_world} typed preset (GOALS 32, DESIGN §23). */
+    /** Generic strip opt-in and defaults for the {@code jlt_worldz:strip_world} preset. */
     public StripWorldConfig stripWorld = new StripWorldConfig();
     /** Defaults for the {@code jlt_worldz:ocean_island} typed preset (GOALS 01, 04; DESIGN §24). */
     public OceanIslandConfig oceanIsland = new OceanIslandConfig();

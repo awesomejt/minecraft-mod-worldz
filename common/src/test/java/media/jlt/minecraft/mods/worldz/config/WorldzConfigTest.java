@@ -598,37 +598,52 @@ class WorldzConfigTest {
     @Test
     void stripSettingsLoadAndSanitize() {
         WorldzConfig config = WorldzConfig.parse("""
-            strip:
+            stripWorld:
               enabled: true
-              widthRadiusBlocks: 0
+              width: 0
               widthMode: ocean
               applyToNether: true
             """, LOGGER).sanitize(LOGGER);
 
-        assertTrue(config.strip.enabled);
-        assertEquals(1, config.strip.widthRadiusBlocks);
-        assertEquals(ExteriorMode.OCEAN, config.strip.widthMode);
-        assertTrue(config.strip.applyToNether);
+        assertTrue(config.stripWorld.enabled);
+        assertEquals(1, config.stripWorld.width);
+        assertEquals(ExteriorMode.OCEAN, config.stripWorld.widthMode);
+        assertTrue(config.stripWorld.applyToNether);
     }
 
     @Test
     void stripDefaultsToDisabledWithAVoidWidthMode() {
         WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
 
-        assertFalse(config.strip.enabled);
-        assertEquals(ExteriorMode.VOID, config.strip.widthMode);
-        assertFalse(config.strip.applyToNether);
+        assertFalse(config.stripWorld.enabled);
+        assertEquals(65, config.stripWorld.width);
+        assertEquals(ExteriorMode.VOID, config.stripWorld.widthMode);
+        assertFalse(config.stripWorld.applyToNether);
     }
 
     @Test
     void stripWidthModeCannotBeNormal() {
         WorldzConfig config = WorldzConfig.parse("""
-            strip:
+            stripWorld:
               enabled: true
               widthMode: normal
             """, LOGGER).sanitize(LOGGER);
 
-        assertEquals(ExteriorMode.VOID, config.strip.widthMode);
+        assertEquals(ExteriorMode.VOID, config.stripWorld.widthMode);
+    }
+
+    @Test
+    void oldStripSectionAndRadiusKeyAreNotCompatibilityAliases() {
+        WorldzConfig config = WorldzConfig.parse("""
+            strip:
+              enabled: true
+              widthRadiusBlocks: 7
+            stripWorld:
+              widthRadiusBlocks: 9
+            """, LOGGER).sanitize(LOGGER);
+
+        assertFalse(config.stripWorld.enabled);
+        assertEquals(65, config.stripWorld.width);
     }
 
     @Test
@@ -855,7 +870,6 @@ class WorldzConfigTest {
                 + ", naturalBiomes=rivers=false, oceans=false"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>, endBorder=<disabled>"
                 + ", overworldExterior=<normal>, netherExterior=<normal>"
-                + ", strip=<disabled>"
                 + ", layout=<legacy>"
                 + ", spawn=starter_at_origin"
                 + ", singleBiome=biome=minecraft:plains, starter=biome=<none>, radius=256"
@@ -864,7 +878,8 @@ class WorldzConfigTest {
                 + ", chaosBiomes=biomes=[minecraft:desert, minecraft:jungle, minecraft:ice_spikes,"
                 + " minecraft:badlands, minecraft:taiga], regionScale=512, starter=biome=<none>, radius=256"
                 + ", spawn=starter_at_origin, naturalBiomes=rivers=false, oceans=false, beaches=false"
-                + ", stripWorld=spawn=starter_at_origin, bands=<disabled>"
+                + ", stripWorld=enabled=false, width=65, widthMode=void, applyToNether=false"
+                + ", spawn=starter_at_origin, bands=<disabled>"
                 + ", oceanIsland=island=source=artificial, biome=minecraft:plains, radius=128, shapeAmplitude=0.3"
                 + ", fluid=water, shoreWidth=12"
                 + ", ocean=shallowWidth=64, deepenWidth=128, shallowDepth=8, deepDepth=32, regionScale=128"

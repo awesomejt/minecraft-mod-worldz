@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ObjectiveSiteTest {
@@ -87,6 +88,12 @@ class ObjectiveSiteTest {
     }
 
     @Test
+    void supportiveFallbackCandidatesAreRelativeToTheBoundsCenter() {
+        ObjectiveSite.ZBounds bounds = new ObjectiveSite.ZBounds(100, 32, 32);
+        assertEquals(100, ObjectiveSite.supportiveFallbackZ(WorldLayoutPlan.legacy(), 32, 512, bounds, 16));
+    }
+
+    @Test
     void supportiveFallbackZFallsBackToZeroWhenNothingIsSupportive() {
         WorldLayoutPlan oceanPlan = new WorldLayoutPlan(
             LayoutMode.OCEAN, 1L, 512, List.of(), List.of(new WorldLayoutPlan.BiomeWeight("minecraft:ocean", 1.0)),
@@ -98,9 +105,11 @@ class ObjectiveSiteTest {
 
     @Test
     void fitsInsideRespectsIndependentAxisBounds() {
-        assertTrue(ObjectiveSite.fitsInside(32, 32, 512, 64, 16));
-        assertFalse(ObjectiveSite.fitsInside(32, 49, 512, 64, 16));
-        assertTrue(ObjectiveSite.fitsInside(400, 32, 512, 64, 16));
+        ObjectiveSite.ZBounds bounds = new ObjectiveSite.ZBounds(10, 64, 65);
+        assertTrue(ObjectiveSite.fitsInside(32, 11, 512, bounds, 16));
+        assertFalse(ObjectiveSite.fitsInside(32, -39, 512, bounds, 16));
+        assertFalse(ObjectiveSite.fitsInside(32, 60, 512, bounds, 16));
+        assertTrue(ObjectiveSite.fitsInside(400, 11, 512, bounds, 16));
     }
 
     @Test
@@ -112,21 +121,41 @@ class ObjectiveSiteTest {
 
         // Every candidate is "supportive" under LEGACY/VOID-equivalent plans, but a strip
         // width of 32 rules out the 64/-64/128/-128 candidates -- only 0 fits.
-        assertEquals(0, ObjectiveSite.supportiveFallbackZ(WorldLayoutPlan.legacy(), 32, 512, 32, 16));
-        assertEquals(0, ObjectiveSite.supportiveFallbackZ(oceanPlan, 32, 512, 32, 16));
+        ObjectiveSite.ZBounds bounds = new ObjectiveSite.ZBounds(0, 16, 16);
+        assertEquals(0, ObjectiveSite.supportiveFallbackZ(WorldLayoutPlan.legacy(), 32, 512, bounds, 16));
+        assertEquals(0, ObjectiveSite.supportiveFallbackZ(oceanPlan, 32, 512, bounds, 16));
     }
 
     @Test
-    void narrowForStripUsesTheTighterOfBorderAndStripWidth() {
-        StripPlan strip = new StripPlan(true, 32, ExteriorMode.VOID);
-
-        assertEquals(32, ObjectiveSite.narrowForStrip(512, strip));
-        assertEquals(16, ObjectiveSite.narrowForStrip(16, strip));
+    void narrowForStripProducesExactAsymmetricBounds() {
+        assertEquals(new ObjectiveSite.ZBounds(0, 0, 0), ObjectiveSite.narrowForStrip(512, strip(1)));
+        assertEquals(new ObjectiveSite.ZBounds(0, 0, 1), ObjectiveSite.narrowForStrip(512, strip(2)));
+        assertEquals(new ObjectiveSite.ZBounds(0, 1, 2), ObjectiveSite.narrowForStrip(512, strip(4)));
     }
 
     @Test
-    void narrowForStripLeavesTheRadiusUnchangedWhenDisabled() {
-        assertEquals(512, ObjectiveSite.narrowForStrip(512, StripPlan.disabled()));
+    void narrowForStripIntersectsEachExtentWithTheSquareRadius() {
+        assertEquals(new ObjectiveSite.ZBounds(0, 1, 1), ObjectiveSite.narrowForStrip(1, strip(4)));
+        assertEquals(new ObjectiveSite.ZBounds(0, 512, 512), ObjectiveSite.narrowForStrip(512, StripPlan.disabled()));
+    }
+
+    @Test
+    void oneBlockStripFallsBackToCenterEvenWhenTheStructureCannotFit() {
+        ObjectiveSite.ZBounds bounds = ObjectiveSite.narrowForStrip(512, strip(1));
+        assertFalse(ObjectiveSite.fitsInside(32, 0, 512, bounds, 16));
+        assertEquals(0, ObjectiveSite.supportiveFallbackZ(WorldLayoutPlan.legacy(), 32, 512, bounds, 16));
+    }
+
+    @Test
+    void zBoundsArithmeticHandlesExtremeCentersAndRejectsNegativeExtents() {
+        ObjectiveSite.ZBounds bounds = new ObjectiveSite.ZBounds(Integer.MIN_VALUE, 2, 3);
+        assertEquals((long)Integer.MIN_VALUE - 2L, bounds.minInclusive());
+        assertEquals((long)Integer.MIN_VALUE + 3L, bounds.maxInclusive());
+        assertThrows(IllegalArgumentException.class, () -> new ObjectiveSite.ZBounds(0, -1, 0));
+    }
+
+    private static StripPlan strip(int width) {
+        return new StripPlan(true, width, ExteriorMode.VOID);
     }
 
     @Test

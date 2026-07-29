@@ -1,6 +1,6 @@
 package media.jlt.minecraft.mods.worldz.logic;
 
-import media.jlt.minecraft.mods.worldz.config.StripConfig;
+import media.jlt.minecraft.mods.worldz.config.StripWorldConfig;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,19 +9,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class StripPlanTest {
     @Test
     void disabledPlanNeverClassifiesAnyColumn() {
-        assertEquals(ExteriorMode.NORMAL, StripPlan.disabled().modeAt(0));
-        assertEquals(ExteriorMode.NORMAL, StripPlan.disabled().modeAt(999_999));
+        assertEquals(ExteriorMode.NORMAL, StripPlan.disabled().modeAt(Integer.MIN_VALUE));
+        assertEquals(ExteriorMode.NORMAL, StripPlan.disabled().modeAt(Integer.MAX_VALUE));
     }
 
     @Test
-    void enabledPlanClassifiesOnlyBeyondTheWidthRadius() {
-        StripPlan strip = new StripPlan(true, 32, ExteriorMode.VOID);
-
-        assertEquals(ExteriorMode.NORMAL, strip.modeAt(0));
-        assertEquals(ExteriorMode.NORMAL, strip.modeAt(32));
-        assertEquals(ExteriorMode.NORMAL, strip.modeAt(-32));
-        assertEquals(ExteriorMode.VOID, strip.modeAt(33));
-        assertEquals(ExteriorMode.VOID, strip.modeAt(-33));
+    void absoluteWidthsHaveTheRequiredOddAndEvenRanges() {
+        assertRange(1, 0, 0);
+        assertRange(2, 0, 1);
+        assertRange(3, -1, 1);
+        assertRange(4, -1, 2);
+        assertRange(16, -7, 8);
     }
 
     @Test
@@ -33,22 +31,21 @@ class StripPlanTest {
     }
 
     @Test
-    void fromConfigResolvesTheOverworldWheneverEnabled() {
-        StripConfig config = new StripConfig();
+    void fromConfigResolvesTheGenericOverworldWheneverEnabled() {
+        StripWorldConfig config = new StripWorldConfig();
         config.enabled = true;
-        config.widthRadiusBlocks = 48;
+        config.width = 48;
         config.widthMode = ExteriorMode.OCEAN;
-        config.applyToNether = false;
 
         StripPlan overworld = StripPlan.fromConfig(config, true);
         assertEquals(true, overworld.enabled());
-        assertEquals(48, overworld.widthRadiusBlocks());
+        assertEquals(48, overworld.width());
         assertEquals(ExteriorMode.OCEAN, overworld.widthMode());
     }
 
     @Test
     void fromConfigOnlyResolvesTheNetherWhenApplyToNetherIsSet() {
-        StripConfig config = new StripConfig();
+        StripWorldConfig config = new StripWorldConfig();
         config.enabled = true;
 
         assertEquals(StripPlan.disabled(), StripPlan.fromConfig(config, false));
@@ -58,11 +55,50 @@ class StripPlanTest {
     }
 
     @Test
-    void fromConfigIsDisabledWhenTheConfigItselfIsDisabled() {
-        StripConfig config = new StripConfig();
+    void fromConfigIsDisabledWhenTheGenericOptInIsDisabled() {
+        StripWorldConfig config = new StripWorldConfig();
         config.applyToNether = true;
 
         assertEquals(StripPlan.disabled(), StripPlan.fromConfig(config, true));
         assertEquals(StripPlan.disabled(), StripPlan.fromConfig(config, false));
+    }
+
+    @Test
+    void dedicatedPresetAlwaysEnablesOverworldButStillHonorsNetherToggle() {
+        StripWorldConfig config = new StripWorldConfig();
+        assertEquals(true, StripPlan.fromDedicatedConfig(config, true).enabled());
+        assertEquals(65, StripPlan.fromDedicatedConfig(config, true).width());
+        assertEquals(StripPlan.disabled(), StripPlan.fromDedicatedConfig(config, false));
+
+        config.applyToNether = true;
+        assertEquals(true, StripPlan.fromDedicatedConfig(config, false).enabled());
+    }
+
+    @Test
+    void fieldlessPresetResolutionIsExplicitlyIsolatedByWorldType() {
+        StripWorldConfig config = new StripWorldConfig();
+        config.enabled = true;
+        config.applyToNether = true;
+        config.width = 7;
+
+        assertEquals(new StripPlan(true, 7, ExteriorMode.VOID), StripPlan.fromPresetConfig(config, true, "worldz"));
+        assertEquals(new StripPlan(true, 7, ExteriorMode.VOID), StripPlan.fromPresetConfig(config, false, "worldz"));
+        assertEquals(new StripPlan(true, 7, ExteriorMode.VOID), StripPlan.fromPresetConfig(config, true, "strip_world"));
+        assertEquals(new StripPlan(true, 7, ExteriorMode.VOID), StripPlan.fromPresetConfig(config, false, "strip_world"));
+
+        for (String unrelated : new String[] {"single_biome", "chaos_biomes", "ocean_island", "cave", ""}) {
+            assertEquals(StripPlan.disabled(), StripPlan.fromPresetConfig(config, true, unrelated), unrelated);
+            assertEquals(StripPlan.disabled(), StripPlan.fromPresetConfig(config, false, unrelated), unrelated);
+        }
+    }
+
+    private static void assertRange(int width, int minZ, int maxZ) {
+        StripPlan strip = new StripPlan(true, width, ExteriorMode.VOID);
+        assertEquals(minZ, strip.minZ());
+        assertEquals(maxZ, strip.maxZ());
+        assertEquals(ExteriorMode.VOID, strip.modeAt(minZ - 1));
+        assertEquals(ExteriorMode.NORMAL, strip.modeAt(minZ));
+        assertEquals(ExteriorMode.NORMAL, strip.modeAt(maxZ));
+        assertEquals(ExteriorMode.VOID, strip.modeAt(maxZ + 1));
     }
 }

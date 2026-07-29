@@ -11,7 +11,7 @@ final class StripCodecs {
 
     static final Codec<StripPlan> PLAN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
         Codec.BOOL.fieldOf("enabled").forGetter(StripPlan::enabled),
-        Codec.INT.fieldOf("width_radius").forGetter(StripPlan::widthRadiusBlocks),
+        Codec.INT.fieldOf("width").forGetter(StripPlan::width),
         WIDTH_MODE_CODEC.fieldOf("width_mode").forGetter(StripPlan::widthMode)
     ).apply(instance, StripPlan::new));
 

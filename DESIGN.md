@@ -8358,3 +8358,49 @@ pre-named (§3's `ocean-island-default` example, 44.2); merge-vs-replace for use
 `kits.yaml` (forced by "behavior byte-identical", 44.4.2); unknown-name leniency
 (`Rule.BiomeId`/`BlankFallback` precedent, 44.6); `floating-islands-loot`'s name
 (one string, trivially changed, 44.5).
+
+## 45. Strip world absolute width and section merge (D9/D10, TODO 25.9)
+
+TODO 25.9 deliberately combines the only Phase 25 behavior change with the
+`strip`/`stripWorld` key-level merge deferred by §43.3. The final model has one
+`StripWorldConfig` and one root key, `stripWorld`. Its four corridor settings
+are `enabled`, `width`, `widthMode`, and `applyToNether`, followed by the
+existing `spawn` and `bands` sections. `enabled` is the generic `worldz`
+preset's opt-in gate; the dedicated `strip_world` preset always applies its
+Overworld corridor. The default absolute width is 65, preserving the old
+radius-32 default's generated geometry. `world-types/strip-world.yaml` is
+therefore a normal one-key unwrapped file. There are no old-key or wrapped-file
+aliases.
+
+For a valid width `w >= 1`, the inclusive corridor is:
+
+```text
+minZ = -(w - 1) / 2
+maxZ = w / 2
+```
+
+Thus widths 1, 2, 4, and 16 produce `0`, `0..1`, `-1..2`, and `-7..8`.
+`StripPlan` persists `width` (not `width_radius`); old disposable worlds are
+intentionally incompatible under the project's new-world-only rule.
+
+Progression placement cannot represent an even-width corridor as one radius.
+`ObjectiveSite.narrowForStrip` therefore returns `ZBounds(center,
+negativeExtent, positiveExtent)`. Natural strongholds and fortresses must fit
+inside those asymmetric bounds including their safety margin. Deterministic
+fallback candidates are offsets from `center`; if none fits, the fallback
+returns the center (Z=0). That last rule intentionally permits compact End
+portal, blaze, and forced-village structures to overflow very narrow terrain,
+as GOALS 32 explicitly accepts.
+
+Implementation sequence:
+
+1. Merge the POJO/schema/root/file-layout ownership and remove
+   `StripConfig`/`StripSchema`.
+2. Convert `StripPlan`, its codec, generic/dedicated preset plumbing, logs,
+   Customize values, and translation key to absolute width.
+3. Propagate asymmetric `ZBounds` through End portal, blaze, and stacked
+   village placement.
+4. Reconstruct Customize's Nether checkbox from the persisted Nether
+   generator's `StripPlan.enabled()`, not the always-enabled Overworld plan.
+5. Update logic/config/layout/source-contract tests, the reference-defaults
+   golden, existing strip fixtures, and new manual scenarios 104-107.

@@ -31,13 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConfigSchemaMetadataTest {
     private static final WorldzRootSchema ROOT = new WorldzRootSchema();
 
-    // TODO 25.6's own naming sweep (§2/§42.3) drops `Blocks` from every leaf key it touches --
-    // `Chunks`/`Days`/`Y`/`Chance` stay, because they're units/axis-names, not the banned suffix.
-    // `strip.widthRadiusBlocks` is the sole deliberate holdout (DESIGN §42.1: renaming it now, then
-    // again to `width` with new absolute semantics at TODO 25.9, would cost two fixture migrations
-    // for a key whose meaning is about to change anyway) -- allow-listed here rather than exempting
-    // `strip` wholesale, so any other stray `Blocks` leaf still fails this test.
-    private static final Set<String> BLOCKS_SUFFIX_ALLOW_LIST = Set.of("strip.widthRadiusBlocks");
+    private static final Set<String> BLOCKS_SUFFIX_ALLOW_LIST = Set.of();
 
     @Test
     void everySettingHasADocAUnitAndAnApplicability() {

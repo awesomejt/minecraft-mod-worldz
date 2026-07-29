@@ -15,6 +15,33 @@ public final class ObjectiveSite {
     }
 
     /**
+     * Inclusive asymmetric Z-axis bounds around a center. Extents are measured outward from the
+     * center and may differ for even-width strip corridors.
+     */
+    public record ZBounds(int center, int negativeExtent, int positiveExtent) {
+        public ZBounds {
+            if (negativeExtent < 0 || positiveExtent < 0) {
+                throw new IllegalArgumentException("Z extents must not be negative");
+            }
+        }
+
+        public long minInclusive() {
+            return (long)center - negativeExtent;
+        }
+
+        public long maxInclusive() {
+            return (long)center + positiveExtent;
+        }
+
+        public static ZBounds symmetric(int radiusBlocks) {
+            if (radiusBlocks < 0) {
+                throw new IllegalArgumentException("Z radius must not be negative");
+            }
+            return new ZBounds(0, radiusBlocks, radiusBlocks);
+        }
+    }
+
+    /**
      * Tests whether an Overworld layout (if active) classifies a column as
      * land-supportive rather than open ocean. Modes the wrapper does not
      * terrain-adjust ({@code LEGACY}, and {@code VOID} — bounded by its own
@@ -45,7 +72,7 @@ public final class ObjectiveSite {
      * @return a Z offset that fits inside the radius, preferring a supportive column
      */
     public static int supportiveFallbackZ(WorldLayoutPlan plan, int x, int radiusBlocks, int structureMarginBlocks) {
-        return supportiveFallbackZ(plan, x, radiusBlocks, radiusBlocks, structureMarginBlocks);
+        return supportiveFallbackZ(plan, x, radiusBlocks, ZBounds.symmetric(radiusBlocks), structureMarginBlocks);
     }
 
     /**
@@ -56,20 +83,24 @@ public final class ObjectiveSite {
      * @param plan the world's coordinated-layout plan
      * @param x chosen fallback X coordinate
      * @param xRadiusBlocks supportive X bound (see {@link #supportiveRadius})
-     * @param zRadiusBlocks supportive Z bound -- a strip's width radius, or the same as
-     *     {@code xRadiusBlocks} for a square world
+     * @param zBounds supportive asymmetric Z bounds
      * @param structureMarginBlocks required structure extent around the point
      * @return a Z offset that fits inside the bounds, preferring a supportive column
      */
     public static int supportiveFallbackZ(
-        WorldLayoutPlan plan, int x, int xRadiusBlocks, int zRadiusBlocks, int structureMarginBlocks
+        WorldLayoutPlan plan, int x, int xRadiusBlocks, ZBounds zBounds, int structureMarginBlocks
     ) {
-        for (int z : FALLBACK_Z_CANDIDATES) {
-            if (fitsInside(x, z, xRadiusBlocks, zRadiusBlocks, structureMarginBlocks) && isSupportiveColumn(plan, x, z)) {
-                return z;
+        for (int offset : FALLBACK_Z_CANDIDATES) {
+            long candidate = (long)zBounds.center() + offset;
+            if (candidate >= Integer.MIN_VALUE && candidate <= Integer.MAX_VALUE) {
+                int z = (int)candidate;
+                if (fitsInside(x, z, xRadiusBlocks, zBounds, structureMarginBlocks)
+                    && isSupportiveColumn(plan, x, z)) {
+                    return z;
+                }
             }
         }
-        return 0;
+        return zBounds.center();
     }
 
     /**
@@ -83,7 +114,7 @@ public final class ObjectiveSite {
      * @return whether the structure is safely reachable
      */
     public static boolean fitsInside(int x, int z, int radiusBlocks, int structureMarginBlocks) {
-        return fitsInside(x, z, radiusBlocks, radiusBlocks, structureMarginBlocks);
+        return fitsInside(x, z, radiusBlocks, ZBounds.symmetric(radiusBlocks), structureMarginBlocks);
     }
 
     /**
@@ -94,16 +125,16 @@ public final class ObjectiveSite {
      * @param x structure X coordinate
      * @param z structure Z coordinate
      * @param xRadiusBlocks X bound (a square border's radius, or a strip's length)
-     * @param zRadiusBlocks Z bound -- a strip's width radius, or the same as
-     *     {@code xRadiusBlocks} for a square world
+     * @param zBounds asymmetric Z bounds
      * @param structureMarginBlocks required structure extent around the point
      * @return whether the structure is safely reachable
      */
-    public static boolean fitsInside(int x, int z, int xRadiusBlocks, int zRadiusBlocks, int structureMarginBlocks) {
+    public static boolean fitsInside(int x, int z, int xRadiusBlocks, ZBounds zBounds, int structureMarginBlocks) {
         long usableXRadius = (long)xRadiusBlocks - structureMarginBlocks;
-        long usableZRadius = (long)zRadiusBlocks - structureMarginBlocks;
-        return usableXRadius >= 0L && usableZRadius >= 0L
-            && Math.abs((long)x) <= usableXRadius && Math.abs((long)z) <= usableZRadius;
+        long usableMinZ = zBounds.minInclusive() + structureMarginBlocks;
+        long usableMaxZ = zBounds.maxInclusive() - structureMarginBlocks;
+        return usableXRadius >= 0L && usableMinZ <= usableMaxZ
+            && Math.abs((long)x) <= usableXRadius && z >= usableMinZ && z <= usableMaxZ;
     }
 
     /**
@@ -207,16 +238,22 @@ public final class ObjectiveSite {
     }
 
     /**
-     * Narrows an X-axis supportive radius to also respect a strip world's width (GOALS 32),
-     * whose Z bound is normally much smaller than the border/envelope's own radius. The
+     * Converts an X-axis supportive radius into the strip world's possibly asymmetric Z bounds
+     * (GOALS 32), whose width is normally much smaller than the border/envelope's own radius. The
      * strip's length (X axis) already rides the same {@link #supportiveRadius} unmodified.
      *
      * @param radiusBlocks the X-axis supportive radius (see {@link #supportiveRadius})
      * @param strip the world's strip plan
-     * @return the tighter of the two bounds when the strip is enabled, otherwise
-     *     {@code radiusBlocks} unchanged
+     * @return bounds centered at zero, clipped independently on each side by the supportive radius
      */
-    public static int narrowForStrip(int radiusBlocks, StripPlan strip) {
-        return strip.enabled() ? Math.min(radiusBlocks, strip.widthRadiusBlocks()) : radiusBlocks;
+    public static ZBounds narrowForStrip(int radiusBlocks, StripPlan strip) {
+        if (!strip.enabled()) {
+            return ZBounds.symmetric(radiusBlocks);
+        }
+        return new ZBounds(
+            0,
+            Math.min(radiusBlocks, (strip.width() - 1) / 2),
+            Math.min(radiusBlocks, strip.width() / 2)
+        );
     }
 }

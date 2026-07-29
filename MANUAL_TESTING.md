@@ -338,8 +338,8 @@ Requires 0.2.16+ (the `resizeStyle`/stepped driver did not exist before it).
 
 ## Phase 6 acceptance (strip world, GOALS 32/36, TODO 6.2c/6.3)
 
-Uses configs `26`-`29` (see [`config/tests/README.md`](config/tests/README.md)).
-**Select "Worldz: Strip World"** on the creation screen for all four, not
+Uses configs `26`-`29` plus `27a`/`29a` (see [`config/tests/README.md`](config/tests/README.md)).
+**Select "Worldz: Strip World"** on the creation screen for all of them, not
 plain "Worldz". Requires 0.2.22+ (the dedicated preset did not exist before
 it); test 5 requires 0.2.27+ (biome bands, GOALS 36, including the
 fieldless-creation fix -- 0.2.24-0.2.26 needed Customize opened at least
@@ -347,27 +347,30 @@ once for bands to apply at all).
 
 1. **Basic strip**, `26-strip-world-basic.yaml`. Confirm: ordinary vanilla
    terrain and full biome variety (this preset does not restrict biomes);
-   walking along Z (the narrow axis) the terrain ends into void at roughly
-   64 blocks out with no collision (you can walk off the edge and fall);
+   walking along Z (the narrow axis) terrain is exactly `Z=-64..64` and
+   becomes void immediately outside, with no collision (you can walk off the
+   edge and fall);
    walking along X (the long axis) the ordinary square border stops you at
    2048 blocks with vanilla's usual invisible-wall push-back; a compact
    fallback End portal exists and the dragon fight is winnable.
 2. **Narrow strip, fallback-portal fix**, `27-strip-world-narrow-fallback-portal.yaml`.
-   Confirm the corridor is narrow (~32 blocks either side of center) and
+   Confirm the 65-block corridor is exactly `Z=-32..32` and
    the compact fallback End portal sits inside it (roughly Z=0), not at one
    of the wider candidate offsets (64/-64/128/-128) the border's own
    radius alone would have wrongly allowed pre-fix. Confirm the dragon
    fight is winnable.
 3. **Nether corridor**, `28-strip-world-nether-corridor.yaml`. Confirm the
    Overworld corridor as in test 1, then confirm the Nether is *also* a
-   narrow corridor (void beyond ~64 blocks in Z) with its own independent
+   129-block corridor (`Z=-64..64`, void immediately outside) with its own independent
    length border (512 blocks) and a compact fallback blaze site reachable
    inside it.
 4. **Customize screen sanity.** Open "Worldz: Strip World"'s Customize
-   screen: confirm the Blocks/Chunks radius-unit toggle, the Void/Ocean
-   width-mode toggle, the Nether checkbox, spawn strategy, and the Border/
-   End Border/Exterior buttons all work and a customized world reflects
-   the chosen values in-game.
+   screen: confirm the field is **Corridor width**, not a radius; the
+   Blocks/Chunks toggle preserves exact widths (65 blocks displays as
+   `4.0625` chunks and returns to 65); the Void/Ocean width-mode toggle,
+   Apply to Nether checkbox, spawn strategy, and Border/End Border/Exterior
+   buttons all work. Close and reopen Customize after changing Apply to
+   Nether; confirm its checked state, width, and mode are reconstructed.
 5. **Biome bands, config-only (no Customize)**, `29-strip-world-biome-bands.yaml`
    (GOALS 36). Copy the config, then go straight from selecting "Worldz:
    Strip World" to **Create World** without opening Customize at all. This
@@ -375,19 +378,45 @@ once for bands to apply at all).
    0.2.27+ to apply without ever opening Customize. Confirm terrain stays
    ordinary vanilla shape (only the biome changes); walking along +X in
    ~256-block increments the biome should cycle desert → jungle →
-   ice_spikes → badlands → taiga → back to desert; walking along -X from
+   badlands → taiga → plains → forest → back to desert; walking along -X from
    spawn should show the same sequence in reverse (band index wraps via
    floor division, not mirrored oddly at X=0); confirm Z still ends into
-   void at ~64 blocks out either side, unchanged from the plain strip
+   void immediately outside `Z=-32..32`, unchanged from the plain strip
    world; look for a natural river, ocean, beach, or stony shore along the
    corridor and confirm it shows through as its real vanilla biome instead
    of being relabeled to the current band's biome.
-6. **Biome bands, via Customize.** Same config, but this time open
-   Customize before creating. Confirm the "Pass through an ordered
-   biome-band sequence" checkbox, the band-biomes list, band width,
-   shuffle-once checkbox, and the three river/ocean/beach pass-through
-   checkboxes (all checked by default) are all present and pre-filled from
-   the config, and the resulting world matches test 5's expectations.
+6. **Biome bands, via Customize**, `29a-strip-world-biome-bands.yaml`.
+   Open Customize before creating. Confirm its five-block corridor,
+   "Pass through an ordered biome-band sequence" checkbox, five biome ids,
+   band width, shuffle-once checkbox, and the three river/ocean/beach
+   pass-through checkboxes (all checked by default) are present and
+   pre-filled from the config. Create the world and confirm the narrow
+   `Z=-2..2` corridor and band behavior remain intact.
+
+## Phase 25.9 acceptance (absolute strip width and merged section, GOALS 32)
+
+Uses configs `104`-`107`. **Select "Worldz: Strip World"** and create a new
+world for each; these tests cover the absolute-width behavior and the one
+merged `stripWorld:` configuration section.
+
+1. **One-block corridor**, `104-strip-world-width-one.yaml`. Confirm ordinary
+   terrain exists only at `Z=0`; `Z=-1` and `Z=1` are void. Confirm the compact
+   End portal targets `Z=0`, works, and may visibly extend past the one-block
+   terrain corridor without treating that intentional overflow as a defect.
+2. **Even width**, `105-strip-world-width-even.yaml`. Confirm ordinary terrain
+   is exactly `Z=-1, 0, 1, 2`, while `Z=-2` and `Z=3` are void. This proves the
+   extra column for an even width belongs on +Z. Confirm the portal targets
+   `Z=0` and remains usable if its room crosses the terrain edge.
+3. **Even width in the Nether**, `106-strip-world-nether-even-width.yaml`.
+   Confirm both the Overworld and Nether have terrain only at `Z=0..1`, with
+   void at `Z=-1` and `Z=2`. Confirm the compact blaze fallback targets `Z=0`,
+   may overflow the two-block corridor, and still yields obtainable blaze rods.
+4. **Customize persistence**, `107-strip-world-customize-absolute-width.yaml`.
+   Confirm **Corridor width** starts at 64 blocks; Blocks → Chunks shows `4`
+   and switching back restores 64. Select Ocean and enable Apply to Nether,
+   close Customize, reopen it, and confirm width, mode, and Apply to Nether
+   remain selected. Create the world and confirm the 64 columns are exactly
+   `Z=-31..32`, including the +Z extra column.
 
 ## Phase 7 acceptance (ocean island, GOALS 01/04, TODO 7.2-7.4)
 

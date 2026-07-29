@@ -67,20 +67,24 @@ final class ProgressionGuarantees {
             return;
         }
         int radius = supportiveRadius.getAsInt();
-        int zRadius = ObjectiveSite.narrowForStrip(radius, strip);
+        ObjectiveSite.ZBounds zBounds = ObjectiveSite.narrowForStrip(radius, strip);
 
         BlockPos natural = overworld.findNearestMapStructure(
             StructureTags.EYE_OF_ENDER_LOCATED, new BlockPos(originX, 0, originZ), 100, false
         );
         if (natural != null
-            && ObjectiveSite.fitsInside(natural.getX() - originX, natural.getZ() - originZ, radius, zRadius, NATURAL_STRUCTURE_MARGIN)
+            && ObjectiveSite.fitsInside(
+                natural.getX() - originX, natural.getZ() - originZ, radius, zBounds, NATURAL_STRUCTURE_MARGIN
+            )
             && ObjectiveSite.isSupportiveColumn(layoutPlan, natural.getX() - originX, natural.getZ() - originZ)) {
             WorldzCommon.LOGGER.info("Natural stronghold at {} fits inside the Worldz supportive radius {}.", natural, radius);
             return;
         }
 
         int relativeX = ObjectiveSite.fallbackX(radius);
-        int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, zRadius, NATURAL_STRUCTURE_MARGIN);
+        int relativeZ = ObjectiveSite.supportiveFallbackZ(
+            layoutPlan, relativeX, radius, zBounds, NATURAL_STRUCTURE_MARGIN
+        );
         int x = originX + relativeX;
         int z = originZ + relativeZ;
         // This runs at world creation, before the fallback site's own chunk has ever loaded --
@@ -111,7 +115,7 @@ final class ProgressionGuarantees {
             return;
         }
         int radius = supportiveRadius.getAsInt();
-        int zRadius = ObjectiveSite.narrowForStrip(radius, strip);
+        ObjectiveSite.ZBounds zBounds = ObjectiveSite.narrowForStrip(radius, strip);
 
         Holder<Structure> fortress = nether.registryAccess()
             .lookupOrThrow(Registries.STRUCTURE)
@@ -121,7 +125,7 @@ final class ProgressionGuarantees {
             .getGenerator()
             .findNearestMapStructure(nether, HolderSet.direct(fortress), BlockPos.ZERO, searchRadius, false);
         if (natural != null && ObjectiveSite.fitsInside(
-            natural.getFirst().getX(), natural.getFirst().getZ(), radius, zRadius, NATURAL_STRUCTURE_MARGIN
+            natural.getFirst().getX(), natural.getFirst().getZ(), radius, zBounds, NATURAL_STRUCTURE_MARGIN
         )) {
             WorldzCommon.LOGGER.info(
                 "Natural Nether fortress at {} fits inside the Worldz supportive radius {}.", natural.getFirst(), radius
@@ -129,7 +133,7 @@ final class ProgressionGuarantees {
             return;
         }
 
-        BlockPos spawner = new BlockPos(ObjectiveSite.fallbackX(radius), 64, 0);
+        BlockPos spawner = new BlockPos(ObjectiveSite.fallbackX(radius), 64, zBounds.center());
         buildBlazeSite(nether, spawner);
         WorldzCommon.LOGGER.info(
             "Created compact blaze-spawner site at {} because no natural fortress safely fits radius {}.", spawner, radius

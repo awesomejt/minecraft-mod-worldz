@@ -114,9 +114,11 @@ final class StackedVillageDeployment {
         // rather than picking something degenerate.
         OptionalInt supportiveRadius = ObjectiveSite.supportiveRadius(limit.enabled(), limit.finalRadiusBlocks(), envelope);
         int radius = supportiveRadius.orElse(Integer.MAX_VALUE);
-        int zRadius = ObjectiveSite.narrowForStrip(radius, strip);
+        ObjectiveSite.ZBounds zBounds = ObjectiveSite.narrowForStrip(radius, strip);
         int relativeX = ObjectiveSite.fallbackX(radius);
-        int relativeZ = ObjectiveSite.supportiveFallbackZ(layoutPlan, relativeX, radius, zRadius, VILLAGE_MARGIN_BLOCKS);
+        int relativeZ = ObjectiveSite.supportiveFallbackZ(
+            layoutPlan, relativeX, radius, zBounds, VILLAGE_MARGIN_BLOCKS
+        );
         int siteX = originX + relativeX;
         int siteZ = originZ + relativeZ;
         int surfaceY = StackedPlan.surfaceY(resolved, overworld.getMinY(), overworld.getHeight());

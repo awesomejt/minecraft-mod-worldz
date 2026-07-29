@@ -4,7 +4,7 @@
 #
 # Before the fix, the compact fallback End portal's Z-candidate search
 # (`{0, 64, -64, 128, -128}`) used the SAME radius for both axes -- so with
-# a corridor this narrow (widthRadiusBlocks: 32), a candidate like Z=64
+# a corridor this narrow (width: 65, spanning Z=-32..32), a candidate like Z=64
 # would have been wrongly accepted (it fits the border's own 128-block
 # radius) and the portal placed in the void well outside the corridor.
 # `ObjectiveSite.narrowForStrip` now clamps the Z bound to the strip's own
@@ -20,14 +20,14 @@
 #     the corridor (roughly Z=0, not Z=64/-64/128/-128 -- check its
 #     coordinates are within about 32 blocks of the center line).
 #  3. Confirm the dragon fight is normal and winnable.
-strip:
+stripWorld:
   enabled: true
-  widthRadiusBlocks: 32
+  width: 65
   widthMode: void
+  spawn:
+    strategy: starter_at_origin
 overworldBorder:
   enabled: true
   initialRadius: 128
   finalRadius: 128
   ensureEndPortal: true
-spawn:
-  strategy: starter_at_origin

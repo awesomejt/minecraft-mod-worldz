@@ -1,0 +1,25 @@
+# TODO 25.9 / GOALS 32: even-width corridor shared with the Nether. Select
+# "Worldz: Strip World", create a new world, then enter the Nether.
+#
+# Verify:
+#  1. Overworld and Nether ordinary terrain both occupy exactly Z=0..1.
+#  2. Z=-1 and Z=2 are void in both dimensions.
+#  3. The compact blaze fallback targets Z=0, may visibly overflow this
+#     two-block corridor, and still provides obtainable blaze rods.
+stripWorld:
+  enabled: true
+  width: 2
+  widthMode: void
+  applyToNether: true
+  spawn:
+    strategy: starter_at_origin
+overworldBorder:
+  enabled: true
+  initialRadius: 128
+  finalRadius: 128
+  ensureEndPortal: true
+netherBorder:
+  enabled: true
+  initialRadius: 96
+  finalRadius: 96
+  ensureBlazeAccess: true

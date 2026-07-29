@@ -11,9 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StripWorldCustomizationTest {
-    private static StripWorldCustomization create(int widthRadiusBlocks, ExteriorMode widthMode, boolean applyToNether) {
+    private static StripWorldCustomization create(int width, ExteriorMode widthMode, boolean applyToNether) {
         return new StripWorldCustomization(
-            widthRadiusBlocks, widthMode, applyToNether, false, List.of(), 128, false, false, false, false,
+            width, widthMode, applyToNether, false, List.of(), 128, false, false, false, false,
             SpawnStrategy.STARTER_AT_ORIGIN,
             defaultBorder(), defaultBorder(), WorldzCustomization.EndBorderSettings.disabled(),
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
@@ -39,7 +39,8 @@ class StripWorldCustomizationTest {
 
         StripWorldCustomization customization = StripWorldCustomization.fromConfig(config);
 
-        assertEquals(config.strip.widthRadiusBlocks, customization.widthRadiusBlocks());
+        assertEquals(65, customization.width());
+        assertEquals(config.stripWorld.width, customization.width());
         assertEquals(ExteriorMode.VOID, customization.widthMode());
         assertFalse(customization.applyToNether());
         assertEquals(SpawnStrategy.STARTER_AT_ORIGIN, customization.spawnStrategy());
@@ -64,7 +65,7 @@ class StripWorldCustomizationTest {
     }
 
     @Test
-    void constructorRejectsNonPositiveWidthRadius() {
+    void constructorRejectsNonPositiveWidth() {
         assertThrows(IllegalArgumentException.class, () -> create(0, ExteriorMode.VOID, false));
         assertThrows(IllegalArgumentException.class, () -> create(-1, ExteriorMode.VOID, false));
     }
@@ -79,7 +80,7 @@ class StripWorldCustomizationTest {
         StripWorldCustomization customization = create(32, ExteriorMode.VOID, false);
 
         assertTrue(customization.stripPlan(true).enabled());
-        assertEquals(32, customization.stripPlan(true).widthRadiusBlocks());
+        assertEquals(32, customization.stripPlan(true).width());
         assertEquals(ExteriorMode.VOID, customization.stripPlan(true).widthMode());
     }
 
@@ -90,7 +91,7 @@ class StripWorldCustomizationTest {
 
         StripWorldCustomization enabled = create(32, ExteriorMode.VOID, true);
         assertTrue(enabled.stripPlan(false).enabled());
-        assertEquals(32, enabled.stripPlan(false).widthRadiusBlocks());
+        assertEquals(32, enabled.stripPlan(false).width());
     }
 
     @Test
@@ -102,7 +103,7 @@ class StripWorldCustomizationTest {
             WorldzCustomization.ExteriorSettings.normal(), WorldzCustomization.ExteriorSettings.normal()
         );
 
-        assertEquals(48, customization.widthRadiusBlocks());
+        assertEquals(48, customization.width());
         assertEquals(ExteriorMode.OCEAN, customization.widthMode());
         assertTrue(customization.applyToNether());
         assertEquals(SpawnStrategy.PREFERRED_NATURAL_BIOME, customization.spawnStrategy());

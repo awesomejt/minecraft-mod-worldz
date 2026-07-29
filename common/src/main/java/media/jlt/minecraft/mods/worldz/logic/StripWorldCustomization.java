@@ -13,7 +13,7 @@ import java.util.Map;
  * Customize screen's. The corridor's length uses the ordinary border/exterior machinery
  * (below) unmodified; only the width is strip-specific.
  *
- * @param widthRadiusBlocks half-width from the origin; the corridor is twice this wide
+ * @param width absolute corridor width in blocks
  * @param widthMode terrain generated beyond the width -- void or ocean, never normal
  * @param applyToNether whether the same corridor width also applies to the Nether
  * @param bandsEnabled whether the strip passes through an ordered biome-band sequence (GOALS 36)
@@ -31,7 +31,7 @@ import java.util.Map;
  * @param netherExterior Nether exterior-terrain selection beyond the length
  */
 public record StripWorldCustomization(
-    int widthRadiusBlocks,
+    int width,
     ExteriorMode widthMode,
     boolean applyToNether,
     boolean bandsEnabled,
@@ -50,8 +50,8 @@ public record StripWorldCustomization(
 ) {
     /** Validates and canonicalizes customization values. */
     public StripWorldCustomization {
-        if (widthRadiusBlocks <= 0) {
-            throw new IllegalArgumentException("Strip width radius must be positive.");
+        if (width <= 0) {
+            throw new IllegalArgumentException("Strip width must be positive.");
         }
         if (widthMode == null || widthMode == ExteriorMode.NORMAL) {
             throw new IllegalArgumentException("Strip width mode must be void or ocean.");
@@ -98,9 +98,9 @@ public record StripWorldCustomization(
      */
     public static StripWorldCustomization fromConfig(WorldzConfig config) {
         return new StripWorldCustomization(
-            config.strip.widthRadiusBlocks,
-            config.strip.widthMode,
-            config.strip.applyToNether,
+            config.stripWorld.width,
+            config.stripWorld.widthMode,
+            config.stripWorld.applyToNether,
             config.stripWorld.bands.enabled,
             config.stripWorld.bands.biomes,
             config.stripWorld.bands.widthBlocks,
@@ -120,7 +120,7 @@ public record StripWorldCustomization(
     /**
      * Parses client text/toggle fields into validated customization values.
      *
-     * @param widthRadiusBlocks decimal half-width
+     * @param width decimal absolute width
      * @param widthMode void or ocean
      * @param applyToNether whether the same corridor width also applies to the Nether
      * @param bandsEnabled whether the strip passes through an ordered biome-band sequence
@@ -139,7 +139,7 @@ public record StripWorldCustomization(
      * @return canonical immutable customization values
      */
     public static StripWorldCustomization fromText(
-        String widthRadiusBlocks,
+        String width,
         String widthMode,
         boolean applyToNether,
         boolean bandsEnabled,
@@ -161,7 +161,7 @@ public record StripWorldCustomization(
             .filter(value -> !value.isEmpty())
             .toList();
         return new StripWorldCustomization(
-            parseInteger(widthRadiusBlocks, "Strip width radius"),
+            parseInteger(width, "Strip width"),
             ExteriorMode.parse(widthMode),
             applyToNether,
             bandsEnabled,
@@ -187,7 +187,7 @@ public record StripWorldCustomization(
      * @return resolved plan, disabled for the Nether unless {@link #applyToNether} is set
      */
     public StripPlan stripPlan(boolean overworld) {
-        return overworld || applyToNether ? new StripPlan(true, widthRadiusBlocks, widthMode) : StripPlan.disabled();
+        return overworld || applyToNether ? new StripPlan(true, width, widthMode) : StripPlan.disabled();
     }
 
     /**

@@ -95,8 +95,8 @@ public final class WorldzPresetEditor implements PresetEditor {
         var exterior = customization.exteriorPlan();
         // Strip worlds (GOALS 32) have no dedicated Customize screen yet (TODO 6.2b) --
         // reachable through the generic Worldz preset via top-level YAML config only.
-        StripPlan overworldStrip = StripPlan.fromConfig(WorldzCommon.config().strip, true);
-        StripPlan netherStrip = StripPlan.fromConfig(WorldzCommon.config().strip, false);
+        StripPlan overworldStrip = StripPlan.fromConfig(WorldzCommon.config().stripWorld, true);
+        StripPlan netherStrip = StripPlan.fromConfig(WorldzCommon.config().stripWorld, false);
         var replaced = new LinkedHashMap<>(dimensions.dimensions());
         LevelStem overworld = replaced.get(LevelStem.OVERWORLD);
         replaced.put(

@@ -75,7 +75,7 @@ public final class StackedConfig {
     /**
      * Resolves the Overworld exterior this stacked world should actually use: a {@code VOID} wall
      * at {@link #worldSizeChunks}'s own boundary when nonzero and the shared sections are
-     * untouched (mirrors {@code StripConfig.widthMode}'s own "wall off with void" default
+     * untouched (mirrors {@code StripWorldConfig.widthMode}'s own "wall off with void" default
      * precedent), or the passed-in shared config unchanged otherwise (DESIGN §34.7, TODO 25.5). The
      * boundary is set explicitly here rather than left to derive from an enabled border (DESIGN
      * §34.10): since §34.7 no longer forces the Overworld border on, the void wall must carry its

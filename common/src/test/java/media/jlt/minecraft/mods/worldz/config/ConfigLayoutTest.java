@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Proves {@link ConfigLayout#FILES} totally and correctly partitions {@link
- * WorldzRootSchema#declare()}'s 27 root keys (DESIGN §43.9 row a, TODO 25.7a; {@code kits} added
+ * WorldzRootSchema#declare()}'s 26 root keys (DESIGN §43.9 row a/§45, TODO 25.7a/25.9; {@code kits} added
  * at TODO 25.8b). No load-path change is exercised here -- that is TODO 25.7b's {@code
  * ConfigDirectoryLoadTest}.
  */
@@ -44,7 +44,7 @@ class ConfigLayoutTest {
             new LinkedHashSet<>(owned).size(), owned.size(), "ConfigLayout.FILES owns a root key more than once"
         );
         assertEquals(
-            new LinkedHashSet<>(rootKeys), new LinkedHashSet<>(owned), "ConfigLayout.FILES does not exactly partition the 27 root keys"
+            new LinkedHashSet<>(rootKeys), new LinkedHashSet<>(owned), "ConfigLayout.FILES does not exactly partition the 26 root keys"
         );
     }
 
@@ -142,6 +142,9 @@ class ConfigLayoutTest {
     private static Set<String> expectedPresets(ConfigFile file) {
         if (file.relativePath().equals("world-types/worldz.yaml")) {
             return Set.of();
+        }
+        if (file.relativePath().equals("world-types/strip-world.yaml")) {
+            return Set.of("worldz", "strip_world");
         }
         return Set.of(presetIdFromFilename(file));
     }

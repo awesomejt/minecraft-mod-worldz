@@ -1,0 +1,19 @@
+# TODO 25.9 / GOALS 32: even absolute width takes the extra block on +Z.
+# Select "Worldz: Strip World" and create a new world.
+#
+# Verify:
+#  1. The four ordinary-terrain columns are exactly Z=-1, 0, 1, and 2.
+#  2. Z=-2 and Z=3 are void, proving the +Z side receives the extra column.
+#  3. The compact fallback End portal targets the corridor midpoint at Z=0
+#     and remains usable even if the room extends past the terrain edge.
+stripWorld:
+  enabled: true
+  width: 4
+  widthMode: void
+  spawn:
+    strategy: starter_at_origin
+overworldBorder:
+  enabled: true
+  initialRadius: 128
+  finalRadius: 128
+  ensureEndPortal: true

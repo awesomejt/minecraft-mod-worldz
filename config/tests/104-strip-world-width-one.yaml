@@ -1,0 +1,21 @@
+# TODO 25.9 / GOALS 32: minimum absolute strip width and accepted structure
+# overflow. Select "Worldz: Strip World", create a new world, and use F3 plus
+# coordinates to inspect the Z axis.
+#
+# Verify:
+#  1. Ordinary terrain exists only at Z=0. Z=-1 and Z=1 are void.
+#  2. The compact fallback End portal targets Z=0.
+#  3. The portal room is allowed to extend outside the one-block terrain
+#     corridor; that visible overflow is intentional, not a failure.
+#  4. The portal works and the dragon fight remains winnable.
+stripWorld:
+  enabled: true
+  width: 1
+  widthMode: void
+  spawn:
+    strategy: starter_at_origin
+overworldBorder:
+  enabled: true
+  initialRadius: 128
+  finalRadius: 128
+  ensureEndPortal: true

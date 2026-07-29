@@ -12,8 +12,7 @@ import java.util.List;
  * root, keyed as today (e.g. {@code runtime.yaml}'s {@code foreverNight:}/{@code risingLava:}/
  * {@code structureDistance:} blocks). {@link ConfigLayout#FILES} enforces the "unwrapped owns
  * exactly one key" invariant declaratively rather than deriving {@link #unwrapped} from {@code
- * rootKeys.size()} -- {@code strip-world.yaml} owns two keys ({@code strip}/{@code stripWorld},
- * D10) yet is wrapped, so file-count alone can't distinguish the two shapes.
+ * rootKeys.size()}.
  *
  * @param relativePath path under {@code config/jlt_worldz/}, forward-slash separated (e.g. {@code
  *     "world-types/cave.yaml"})

@@ -1,0 +1,27 @@
+# TODO 25.9 / GOALS 32: Customize screen persistence for absolute width.
+# Select "Worldz: Strip World" and open Customize before creating the world.
+#
+# Verify:
+#  1. The field label is "Corridor width" and starts at 64 blocks.
+#  2. Switching Blocks -> Chunks displays 4, and switching back displays 64.
+#  3. Select Ocean width mode and enable Apply to Nether, close Customize,
+#     reopen it, and confirm width/mode/Nether state all remain selected.
+#  4. Create the world and confirm exactly 64 corridor columns exist:
+#     Z=-31..32, with the extra column on +Z.
+stripWorld:
+  enabled: true
+  width: 64
+  widthMode: void
+  applyToNether: false
+  spawn:
+    strategy: starter_at_origin
+overworldBorder:
+  enabled: true
+  initialRadius: 512
+  finalRadius: 512
+  ensureEndPortal: true
+netherBorder:
+  enabled: true
+  initialRadius: 256
+  finalRadius: 256
+  ensureBlazeAccess: true

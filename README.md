@@ -223,30 +223,44 @@ axis) is new: a soft edge with no collision at all — terrain simply ends
 into void (or ocean) beyond the configured width, and you can walk or fall
 past it, the same philosophy as a [void exterior](#ocean-and-void-exteriors).
 
-Configure it with the shared top-level `strip:` section (the corridor width
-applies the same way regardless of which Worldz preset reads it — see
-[Limited-world borders](#limited-world-borders) for how `overworldBorder`/
-`netherBorder` supply the corridor's length) plus a `stripWorld:` section
-for this preset's own defaults:
+Configure it with one `stripWorld:` section. On the generic **Worldz**
+preset, `enabled` is the opt-in switch for adding a corridor to that preset;
+on **Worldz: Strip World**, the Overworld corridor always applies and this
+section supplies its settings. No other typed preset reads these settings.
+`overworldBorder`/`netherBorder` still supply the corridor's length (see
+[Limited-world borders](#limited-world-borders)).
 
 ```yaml
-strip:
+stripWorld:
   enabled: true
-  widthRadiusBlocks: 64
+  width: 65
   widthMode: void
   applyToNether: false
-stripWorld:
   spawn:
     strategy: starter_at_origin
 ```
 
 | Setting | Default | Description |
 |---|---|---|
-| `strip.enabled` | `false` | Whether the corridor's width constraint applies. |
-| `strip.widthRadiusBlocks` | `32` | Half-width from the origin; the corridor is twice this wide. Clamped to `1..14999992`. |
-| `strip.widthMode` | `void` | Terrain generated beyond the width: `void` or `ocean` (never `normal`). |
-| `strip.applyToNether` | `false` | Whether the same corridor width also applies to the Nether — one shared width, not two independently configurable ones. |
+| `stripWorld.enabled` | `false` | Whether the generic **Worldz** preset adds this corridor. The dedicated **Worldz: Strip World** preset always applies it in the Overworld. |
+| `stripWorld.width` | `65` | Absolute corridor width in blocks, minimum `1`. Odd widths are symmetric about Z=0; even widths put the extra column on +Z. |
+| `stripWorld.widthMode` | `void` | Terrain generated beyond the width: `void` or `ocean` (never `normal`). |
+| `stripWorld.applyToNether` | `false` | Whether the same corridor width also applies to the Nether — one shared width, not two independently configurable ones. |
 | `stripWorld.spawn.strategy` | `starter_at_origin` | Same three values as the shared [Seed-informed spawn](#seed-informed-spawn) setting. |
+
+For width `w`, the inclusive Z range is from `-(w - 1) / 2` through
+`w / 2`. Thus width 1 is `Z=0`, width 2 is `Z=0..1`, width 4 is
+`Z=-1..2`, and the default width 65 is `Z=-32..32`. The compact End-portal
+and blaze fallback targets the corridor midpoint at Z=0. At very narrow
+widths their rooms may visibly extend into the exterior; that overflow is
+intentional so the structures remain usable.
+
+The Strip World Customize screen edits an absolute **Corridor width**. Its
+Blocks/Chunks display is lossless: a non-chunk-aligned width is shown exactly
+(for example, 65 blocks as `4.0625` chunks) and returns to the same block
+count when switched back. The Apply to Nether checkbox, width, and width mode
+are reconstructed from the selected world's persisted settings when the
+screen is reopened.
 
 The corridor's length, End border, and exteriors all use the same shared
 `overworldBorder`/`netherBorder`/`endBorder`/`overworldExterior`/
@@ -1386,7 +1400,7 @@ Settings live under `config/jlt_worldz/`, in either of two shapes:
     kits.yaml              # kits (see Shared starter kits below)
     world-types/
       worldz.yaml          # allowedBiomes, starter, naturalBiomes, layout, spawn
-      strip-world.yaml     # strip, stripWorld
+      strip-world.yaml     # stripWorld
       single-biome.yaml    # singleBiome
       chaos-biomes.yaml    # chaosBiomes
       ocean-island.yaml    # oceanIsland
@@ -1413,19 +1427,20 @@ Settings live under `config/jlt_worldz/`, in either of two shapes:
   so there's never anything to reconcile between the two shapes, and it's
   what every `config/tests/*.yaml` fixture in this repo is shaped like.
 
-Most of the split files are **unwrapped**: the eleven single-preset files
-under `world-types/` (every one except `worldz.yaml` and `strip-world.yaml`,
-which each hold more than one section) only ever hold that one section, so
-their root mapping *is* that section's body directly, with no wrapper key at
-all — `world-types/cave.yaml` starts straight at `spawnY: -32`, not
-`cave: {spawnY: -32}`. `kits.yaml` is unwrapped the same way: its root
-mapping *is* the name-to-kit map directly, not `kits: {...}` — see [Shared
-starter kits](#shared-starter-kits) below. The remaining four files
-(`runtime.yaml`, `world-defaults.yaml`, `world-types/worldz.yaml`,
-`world-types/strip-world.yaml`) are **wrapped** instead: their root mapping
-is a slice of the same `key: {...}` shape the settings tables below and the
-single-bundle form use (e.g. `runtime.yaml` still starts with a
-`foreverNight:` block).
+Most of the split files are **unwrapped**: the twelve one-section files under
+`world-types/` (every one except `worldz.yaml`, which holds more than one
+section) only ever hold that one section, so their root mapping *is* that
+section's body directly, with no wrapper key at all —
+`world-types/cave.yaml` starts straight at `spawnY: -32`, not
+`cave: {spawnY: -32}`. `world-types/strip-world.yaml` is likewise flat:
+it starts with `enabled: false`, `width: 65`, and its other `stripWorld`
+fields, not a `stripWorld:` wrapper. `kits.yaml` is unwrapped the same way:
+its root mapping *is* the name-to-kit map directly, not `kits: {...}` — see
+[Shared starter kits](#shared-starter-kits) below. The remaining three files
+(`runtime.yaml`, `world-defaults.yaml`, `world-types/worldz.yaml`) are
+**wrapped** instead: their root mapping is a slice of the same `key: {...}`
+shape the settings tables below and the single-bundle form use (e.g.
+`runtime.yaml` still starts with a `foreverNight:` block).
 
 ### Shared starter kits
 

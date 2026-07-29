@@ -5,6 +5,7 @@
       "generator": {
         "type": "jlt_worldz:enveloped",
         "dimension": "overworld",
+        "world_type": "worldz",
         "delegate": {
           "type": "minecraft:noise",
           "biome_source": {
@@ -29,6 +30,7 @@
       "generator": {
         "type": "jlt_worldz:enveloped",
         "dimension": "nether",
+        "world_type": "worldz",
         "delegate": {
           "type": "minecraft:noise",
           "biome_source": {

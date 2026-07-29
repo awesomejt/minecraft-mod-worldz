@@ -20,7 +20,6 @@ import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.SpawnConfig;
 import media.jlt.minecraft.mods.worldz.config.StackedConfig;
 import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
-import media.jlt.minecraft.mods.worldz.config.StripConfig;
 import media.jlt.minecraft.mods.worldz.config.StripWorldConfig;
 import media.jlt.minecraft.mods.worldz.config.StructureDistanceConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
@@ -32,8 +31,7 @@ import java.util.Map;
  * Root schema for {@link WorldzConfig} itself (DESIGN §41.7; TODO 25.2g). Declares the {@code
  * kits} library first of all (TODO 25.8b, DESIGN §44.4.3 -- load-bearing declaration order), one
  * top-level scalar ({@code allowedBiomes}), the {@code starter}/{@code naturalBiomes} groups
- * (TODO 25.6b), then a {@code Setting.section(...)} entry for each of the 23 already-converted
- * sections, in
+ * (TODO 25.6b), then a {@code Setting.section(...)} entry for each of the 22 current sections, in
  * today's exact {@code toYaml()} emit order (DESIGN §41.1's ordering invariant) -- the same order
  * {@code WorldzConfig.parse} checked {@code containsKey} in and {@code WorldzConfig.sanitize}
  * processed fields in (re-verified against the current code, not DESIGN's line numbers, which
@@ -89,7 +87,6 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
         SchemaSections.exterior("overworldExterior", c -> c.overworldBorder, true);
     private final SectionCodec<ExteriorConfig> netherExterior =
         SchemaSections.exterior("netherExterior", c -> c.netherBorder, false);
-    private final SectionCodec<StripConfig> strip = SchemaSections.strip();
     private final SectionCodec<LayoutConfig> layout = SchemaSections.layout();
     private final SectionCodec<SpawnConfig> spawn = SchemaSections.spawn("spawn");
     private final SectionCodec<SingleBiomeConfig> singleBiome = SchemaSections.singleBiome();
@@ -175,10 +172,6 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
                 )
                 .doc("Optional Nether terrain outside a central square.")
                 .build(),
-            Setting.<WorldzConfig, StripConfig>section("strip", c -> c.strip, (c, v) -> c.strip = v, strip)
-                .preset("strip_world")
-                .doc("Optional narrow strip-world corridor (GOALS 32).")
-                .build(),
             Setting.<WorldzConfig, LayoutConfig>section("layout", c -> c.layout, (c, v) -> c.layout = v, layout)
                 .preset()
                 .doc("Optional coordinated terrain-layout composition.")
@@ -202,8 +195,8 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
             Setting.<WorldzConfig, StripWorldConfig>section(
                     "stripWorld", c -> c.stripWorld, (c, v) -> c.stripWorld = v, stripWorld
                 )
-                .preset("strip_world")
-                .doc("Defaults for the jlt_worldz:strip_world typed preset (GOALS 32, DESIGN §23).")
+                .preset("worldz", "strip_world")
+                .doc("Generic strip opt-in and defaults for the jlt_worldz:strip_world typed preset (GOALS 32, DESIGN §45).")
                 .build(),
             Setting.<WorldzConfig, OceanIslandConfig>section(
                     "oceanIsland", c -> c.oceanIsland, (c, v) -> c.oceanIsland = v, oceanIsland
@@ -294,7 +287,6 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
             + ", endBorder=" + endBorder.summary(value.endBorder)
             + ", overworldExterior=" + overworldExterior.summary(value.overworldExterior)
             + ", netherExterior=" + netherExterior.summary(value.netherExterior)
-            + ", strip=" + strip.summary(value.strip)
             + ", layout=" + layout.summary(value.layout)
             + ", spawn=" + spawn.summary(value.spawn)
             + ", singleBiome=" + singleBiome.summary(value.singleBiome)

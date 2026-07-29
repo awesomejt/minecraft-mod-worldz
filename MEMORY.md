@@ -3263,3 +3263,48 @@ Durable decisions, verified API notes, and rationale that should survive across 
   the 11 generic-preset-only top-level keys into `world-types/worldz.yaml`
   and merge the `strip`/`stripWorld` split-brain into one file), the next
   unstarted item in Phase 25.
+
+- 2026-07-28 — **TODO 25.9 settled the strip-world ownership and absolute-width
+  semantics.** The old split ownership is gone: all four corridor fields
+  (`enabled`, `width`, `widthMode`, `applyToNether`) now belong to
+  `StripWorldConfig`/`StripWorldSchema`; `StripConfig`/`StripSchema` were
+  deleted, and split config uses one unwrapped
+  `world-types/strip-world.yaml`. `enabled` remains meaningful only as the
+  generic **Worldz** preset's opt-in; the dedicated **Worldz: Strip World**
+  preset always enables its Overworld corridor. Preserve that distinction
+  through the explicit generator/preset hint when adding another typed
+  preset: a fieldless generator reconstructed from shared defaults must not
+  infer strip identity merely because every preset can see `stripWorld`
+  config.
+
+  Width is an absolute positive block count, default **65**, minimum **1**.
+  Relative bounds are inclusive:
+  `minZ = -(width - 1) / 2`, `maxZ = width / 2`. Thus odd widths are
+  symmetric around Z=0; even widths receive the extra column on +Z (2 →
+  `0..1`, 4 → `-1..2`, 64 → `-31..32`). Progression placement must retain
+  those asymmetric bounds. `ObjectiveSite.ZBounds(center, negativeExtent,
+  positiveExtent)` exists for that reason: a scalar radius would silently
+  re-symmetrize even corridors. End-portal, Nether-blaze, and stacked-village
+  paths all consume `ZBounds`; they target center Z=0, while structure
+  overflow at very narrow widths remains Jason's accepted behavior.
+
+  The Customize width field has different conversion requirements from the
+  older radius controls. Width is canonical whole blocks, but chunk display
+  is exact and may be fractional (65 blocks = 4.0625 chunks); toggling units
+  must never round, reinterpret, or lose the original block width. Invalid or
+  non-integral-back-conversion text remains visible for validation rather
+  than being silently coerced.
+
+  D1/new-worlds-only applies at both configuration and save-codec boundaries:
+  `strip.widthRadiusBlocks` and the old persisted radius-shaped strip codec
+  are intentionally unsupported; there is no alias or migration layer.
+  Fixtures 26-29a use the merged `stripWorld` shape, and configs 104-107 are
+  the sequenced in-game acceptance set.
+
+  **Customize reconstruction lesson:** closing and reopening the strip
+  Customize screen must rebuild the Nether generator from the *edited*
+  `applyToNether` value. Reusing the entry-time Nether generator leaves stale
+  corridor state even though the UI record itself is correct. The 25.9 fix
+  reconstructs from current customization state; keep a reopen/round-trip
+  test whenever a screen setting controls whether a dimension-specific
+  generator wrapper exists.

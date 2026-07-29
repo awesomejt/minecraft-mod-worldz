@@ -23,19 +23,18 @@ import media.jlt.minecraft.mods.worldz.config.schema.StackedSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StarterCapsuleSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StarterKitSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StripBandsSchema;
-import media.jlt.minecraft.mods.worldz.config.schema.StripSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StripWorldSchema;
 import media.jlt.minecraft.mods.worldz.config.schema.StructureDistanceSchema;
 
 /**
  * Registry of {@link SectionCodec}s used by {@link WorldzConfig}'s four orchestration methods
- * (DESIGN §41.8): every one of the 25 sections is now schema-driven (TODO 25.2a-h). This class is
- * the sole indirection between the orchestration methods (which never construct a section class
- * directly) and the {@code config/schema} package.
+ * (DESIGN §41.8/§45): every one of the 24 current section codecs is schema-driven (TODO
+ * 25.2a-h/25.9). This class is the sole indirection between the orchestration methods (which never
+ * construct a section class directly) and the {@code config/schema} package.
  *
  * <p>TODO 25.2a converted three sections: {@link #spawn}, {@link #starterKit} and
- * {@link #starterCapsule}. TODO 25.2b converted eight more simple leaf sections: {@link
- * #endBorder}, {@link #strip}, {@link #foreverNight}, {@link #risingLava}, {@link
+ * {@link #starterCapsule}. TODO 25.2b converted the simple leaf sections: {@link
+ * #endBorder}, {@link #foreverNight}, {@link #risingLava}, {@link
  * #structureDistance}, {@link #deepFlat}, {@link #stacked}, {@link #flat}. TODO 25.2c converted
  * the two hardest shapes: {@link #border} (one POJO field, two YAML key names, DESIGN R1) and
  * {@link #exterior} (the one cross-section rule, DESIGN R2). TODO 25.2d converted the five
@@ -78,10 +77,6 @@ public final class SchemaSections {
         String name, java.util.function.Function<WorldzConfig, BorderConfig> border, boolean oceanAllowed
     ) {
         return new ExteriorSchema(name, border, oceanAllowed);
-    }
-
-    public static SectionCodec<StripConfig> strip() {
-        return new StripSchema("strip");
     }
 
     public static SectionCodec<LayoutConfig> layout() {
