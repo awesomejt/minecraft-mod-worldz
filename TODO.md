@@ -874,10 +874,30 @@ a behavior change gets dropped from this phase and raised as its own item.
       preset-specific behavior Jason iterated on in-game across 0.3.2-0.3.6.
       Land it only with those presets' manual configs re-run; drop it from
       the phase rather than risk regressing them.
-- [ ] 24.5 Consider consolidating the duplicated `NetherStartPlan`/
-      `EndStartPlan` capsule config fields (DESIGN §32 recorded them as
-      "duplicated rather than shared per this goal's own 'true cross-preset
-      sharing later' precedent" — this is that "later").
+- [ ] 24.5 Consolidate the duplicated `NetherStartPlan`/`EndStartPlan` capsule
+      fields (DESIGN §32 recorded them as "duplicated rather than shared per
+      this goal's own 'true cross-preset sharing later' precedent" — this is
+      that "later"). **Un-folded back here from TODO 25.8 (2026-07-28, Jason
+      confirmed)** — `CONFIG-RESTRUCTURE.md` §7 assumed this overlapped 25.8's
+      named-kits work and folded it in, but DESIGN §44.1 found that overlap
+      doesn't exist: the *config*-layer duplication this item names was
+      already fixed by 25.2a (shared `StarterCapsuleSchema`) and 25.6e (its
+      `light` nest) — there is nothing left in the config layer to
+      consolidate. What remains is entirely in `logic/`: four flat record
+      components, nine `MIN`/`MAX`/`DEFAULT_CAPSULE_*` constants, four
+      validation blocks and `centeredCapsuleOffsets(int, int)`, duplicated
+      byte-for-byte between `NetherStartPlan.java` and `EndStartPlan.java`
+      (full inventory in DESIGN §44.1.2). These records are codec-persisted
+      (`NetherStartCodecs`/`EndStartCodecs` → `EnvelopedChunkGenerator`'s own
+      codec) but DESIGN §44.1.3 verified a shared `StarterCapsulePlan`
+      component forces **no** persisted-shape change — `RecordCodecBuilder`
+      binds `fieldOf` to arbitrary getters, so the four flat field names
+      (`capsule_size`/`capsule_height`/`capsule_light_source`/
+      `capsule_light_spacing`) stay exactly as they serialize today. Pair
+      this with 24.4 (its real sibling — a shared `StarterCapsulePlan` is the
+      parameter object 24.4's shared capsule builder would take; doing them
+      apart means 24.4 re-opens the same files 24.5 just touched) rather than
+      with 25.8, which shares zero files with this item.
 - [ ] 24.6 Re-run the full manual acceptance configs for every preset
       touched, plus the full multiloader build, before closing the phase.
 
@@ -1703,11 +1723,111 @@ tests.
       that portion of 25.7e is being handled separately by `tester`.
       **TODO 25.7 (all of 25.7a-25.7e) is now complete**, pending only
       `tester`'s build/deploy verification.
-- [ ] 25.8 Named shared starter kits (D6). 145 of the 384 generated config
-      lines (38%) are 12 near-duplicate kit blocks. Ship the current 12
-      pre-named so behavior is byte-identical; keep inline definitions legal.
-      **Fold Phase 24.5 into this** (duplicated `NetherStartPlan`/`EndStartPlan`
-      capsule config fields) rather than doing it twice.
+- [ ] 25.8 Named shared starter kits (D6): pull the 14 starter-kit item lists
+      (not 12 — F2 miscounted, see Deviation log) out of their preset
+      sections into a new named library, referenceable by name, inline
+      definitions still legal. **Design pass done, DESIGN §44** (2026-07-28):
+      polymorphic ref-or-inline leaf (`Codecs.namedOrSection`/
+      `Rule.KitReference`), a new `kits` root section (`config/jlt_worldz/
+      kits.yaml`, merges over the shipped defaults rather than replacing
+      them), 14 pre-named shipped kits (`cave-easy`, `ocean-island-default`,
+      etc. — full table in DESIGN §44.5), resolution as a same-pass
+      cross-*section* read (`SanitizeContext.root`), not a cross-file lookup
+      (25.7's merge-before-walk already put every file in one map).
+      **Jason confirmed 2026-07-28 (all three questions in DESIGN §44.9):**
+      (1) proceed even though named kits *relocate* rather than shrink the
+      config — no two of the 14 kits share contents, so nothing merges; the
+      real wins are locality (`cave.yaml` drops ~41→~14 lines) and one-line
+      kit swapping, not size reduction; (2) the generated
+      `jlt_worldz.reference.yaml` emits all 14 kits' **full contents**
+      inline (stays a valid standalone `all.yaml` bundle), not just names;
+      (3) **old TODO 24.5 (capsule-field consolidation) is un-folded back to
+      Phase 24**, merged with 24.4 — the assumed overlap with this item
+      never existed (DESIGN §44.1, and see the rewritten 24.5 above). Broken
+      into 25.8a-25.8h below, each independently buildable/testable/
+      committable; `a`→`b`→`c`→`d` is a hard chain, `e` needs `b`, `f`/`g`
+      need `d`, `h` last.
+- [ ] 25.8a Framework only (DESIGN §44.3, §44.4.2): `StarterKitConfig.ref` +
+      `reference(...)`; `Codecs.namedOrSection`; `Rule.KitReference` +
+      `Rule.NestedMap`; `Codecs.sectionMap`; `StarterKitSchema.reference(...)`
+      helper. No site converted, no `kits` root key added yet. New
+      `KitReferenceTest` on a synthetic two-site POJO (mirrors
+      `SettingGroupTest`'s style). Proves: an inline mapping round-trips
+      byte-identically through the new codec; a string reads as a reference;
+      a non-string/non-map still throws today's exact message.
+      **`reference-defaults.yaml` must not change** — if it does, (a) has a
+      bug.
+- [ ] 25.8b The library (DESIGN §44.4): `KitLibrary` with the 14 shipped
+      entries moved **verbatim** (not retyped) from `CaveConfig`/
+      `SkyIslandConfig`/`NetherStartConfig`/`EndStartConfig`'s private
+      `*Defaults()` methods and `FloatingIslandsConfig.lootKitDefaults`;
+      `WorldzConfig.kits`; the `kits` root `Setting` declared **first** in
+      `WorldzRootSchema.declare()` (load-bearing — pin with an assertion,
+      DESIGN §44.4.3) with a merging (not replacing) setter; new
+      `ConfigLayout.FILES` entry for `kits.yaml` (unwrapped) +
+      `ConfigLayoutTest` branch; `REFERENCE_HEADER` gains the `kits` line.
+      Sites still inline — nothing depends on the library yet. Proves: the
+      library parses/sanitizes/merges-over-defaults/emits correctly in
+      isolation; golden file gains only a leading `kits:` block, every
+      preset block byte-unchanged; a user `kits.yaml` entry overrides a
+      shipped name or adds a new one without deleting the 14; the setter's
+      self-`putAll` is a no-op (assert explicitly, per the 25.6a
+      `Setting.group` caution DESIGN §44.4.2 cites).
+- [ ] 25.8c The 12 tiered sites (DESIGN §44.3.5, §44.5 rows 1-12):
+      `ChestSchema.KitsSchema` binds `StarterKitSchema.reference(...)`;
+      `CaveConfig`/`SkyIslandConfig`/`NetherStartConfig`/`EndStartConfig` kit
+      fields become `reference("cave-easy")` etc.; their 12 `*Defaults()`
+      methods deleted. Confirm `config/tests/90-nether-start-custom-kit.yaml`
+      (inline) still parses **unchanged** — that it does is itself the
+      proof inline stays legal. Proves: zero-kit-key configs resolve to
+      byte-identical `essentials`/`extras`/`extrasCount` per site (assert
+      against pre-25.8 values, not just "it parses"); an unknown kit name
+      warns and falls back to that site's own shipped default. Golden file
+      regenerated + hand-diffed (25.6f's technique — capture real `toYaml()`
+      output from the failing test, don't hand-transcribe).
+- [ ] 25.8d The last 2 sites (DESIGN §44.5 rows 13-14): `oceanIsland
+      .starterKit` and `skyIsland.floatingIslands.lootChest.kit`;
+      `FloatingIslandsConfig.lootKitDefaults` deleted; `ocean-island-default`
+      = `new StarterKitConfig()` with constructor defaults **unchanged**
+      (DESIGN §44.3.2 — load-bearing for partial-inline kits). Confirm
+      fixtures 34 and 47 (both inline) still parse unchanged. Proves: all 14
+      sites converted; a test writing only `extrasCount:` inline still
+      inherits the constructor's `essentials`/`extras` (the partial-inline
+      case).
+- [ ] 25.8e Unknown-key gate (DESIGN §44.6 error-classification table,
+      needs 25.8b): `NestedMap` branches added to `SchemaKeyWalker
+      .findUnknownKeys`/`recurseIfNested` so `kits.yaml`'s arbitrary *names*
+      are tolerated while each kit body's `essentials`/`extras`/
+      `extrasCount` keys **are** checked. New `SchemaKeyWalkerFileTest`
+      cases: a typo'd `essentails:` inside a named kit is caught; an
+      arbitrary kit name is not flagged; `layout.roleOverrides`'s guard
+      still holds. `ConfigFixturesTest` stays green, `KNOWN_UNKNOWN_KEYS`
+      still empty.
+- [ ] 25.8f Docs (needs 25.8d): new README "Shared starter kits" subsection
+      (the two forms, the 14 shipped names, merge-over-defaults, unknown-name
+      fallback) + updated kit rows in the ocean-island/cave/sky-island/
+      floating-islands tables; a short `kits:` example added to
+      `config/jlt_worldz.example.yaml` (it covers none of these sections
+      today — confirm via grep before editing; the full rewrite stays
+      25.10's). `config/tests/README.md`/`MANUAL_TESTING.md` stay deferred
+      to 25.11, same as every prior 25.7/25.8 sub-step.
+- [ ] 25.8g Test configs (needs 25.8d) — **the first Phase 25 sub-step that
+      warrants one**, since this is the first time the YAML users actually
+      write changes (25.1-25.7 correctly shipped none). Two new
+      `config/tests/*.yaml`: (i) one kit defined once in `kits.yaml`,
+      referenced by two different presets' chests — proves real
+      cross-preset sharing in-game; (ii) a misspelled kit name — proves the
+      WARN + fallback is visible and the world still generates. Update
+      `ConfigFixturesTest.EXPECTED_FIXTURE_COUNT` (103 → 105).
+      **[Jason]** in-game acceptance of both.
+- [ ] 25.8h Close-out: Deviation log (F2's 12-vs-14 miscount and the "named
+      kits relocate, don't shrink" correction, DESIGN §44.2; 24.5 un-folded
+      back to Phase 24, already reflected in 24.5's rewritten text above —
+      just cross-reference it here rather than re-logging); full
+      `./gradlew build` all modules; NeoForge brief check (no loader-level
+      code expected — `WorldzCommon.java:30-31`'s `load` signature is
+      unchanged). **[Jason]** redeploy both Prism instances before
+      requesting test (memory: deploy-jar-before-requesting-test).
 - [ ] 25.9 **Strip world absolute width (D9 — the one behavior change).**
       Design and width/portal table in `CONFIG-RESTRUCTURE.md` §5. `width`
       replaces `widthRadiusBlocks`, minimum 1 block; odd widths symmetric about
