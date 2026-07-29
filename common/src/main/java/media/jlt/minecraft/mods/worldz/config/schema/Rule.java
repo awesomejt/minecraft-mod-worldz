@@ -1,11 +1,15 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
+import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.WeightedBiomeListSpec;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
@@ -320,6 +324,80 @@ public sealed interface Rule<S, T> {
         @Override
         public C apply(S owner, C value, String name, SanitizeContext ctx) {
             return section.sanitize(value, ctx);
+        }
+    }
+
+    /** A {@code Codecs.sectionMap(...)} entry's implicit rule (DESIGN §44.4.2): sanitize each named
+     * value in place through {@code entry}'s own {@link SectionCodec#sanitize}, the map-of-many
+     * analogue of {@link Nested}'s single-section recursion -- the {@code kits} library's own rule,
+     * once TODO 25.8b binds it as the root {@code Setting}. A {@code null} map sanitizes to an
+     * empty one rather than failing, matching every other {@code Setting} whose value can be
+     * legitimately absent. */
+    record NestedMap<S, C>(SectionCodec<C> entry) implements Rule<S, Map<String, C>> {
+        @Override
+        public Map<String, C> apply(S owner, Map<String, C> value, String name, SanitizeContext ctx) {
+            Map<String, C> sanitized = value == null ? new LinkedHashMap<>() : value;
+            for (Map.Entry<String, C> mapEntry : sanitized.entrySet()) {
+                mapEntry.setValue(entry.sanitize(mapEntry.getValue(), ctx));
+            }
+            return sanitized;
+        }
+    }
+
+    /**
+     * Resolves a {@link StarterKitConfig} that may be a bare reference into the {@code kits}
+     * library or an inline definition (DESIGN §44.3.4). Materializes the referenced kit's contents
+     * <em>onto the referring instance</em> rather than swapping the reference, so every downstream
+     * consumer keeps reading {@code essentials}/{@code extras}/{@code extrasCount} with zero
+     * change; {@code ref} survives on the instance purely so {@link Codecs#namedOrSection}'s
+     * {@code write} can re-emit the name. Materialized contents are fresh copies (DESIGN R11,
+     * never aliased) of an already-sanitized library entry, so they are not re-sanitized here --
+     * running {@code StarterKitSchema.postValidate} a second time would double-warn. An unknown
+     * name warns and falls back to {@code defaultName} (the referring site's own shipped default,
+     * not a generic blank kit); if {@code defaultName} is itself undefined, warns once more and
+     * falls back to sanitizing {@code value} as an inline definition instead.
+     *
+     * <p>{@code library} resolves the sanitized {@code kits} map given a {@link SanitizeContext} --
+     * deliberately <strong>not</strong> hardcoded to {@code ctx.root().kits} here, the exact
+     * expression DESIGN §44.3.4 specifies, because {@link SanitizeContext#root()} is concretely
+     * typed to {@code WorldzConfig} and {@code WorldzConfig} has no {@code kits} field until TODO
+     * 25.8b -- that expression cannot compile yet. TODO 25.8b's real call sites (once {@code
+     * WorldzConfig.kits} exists) supply {@code ctx -> ctx.root().kits} for {@code library}; until
+     * then, {@code StarterKitSchema.reference} plugs in an always-empty placeholder (no 25.8a call
+     * site invokes it -- no site is converted yet), and {@code KitReferenceTest} exercises this
+     * resolve/fallback/materialize logic for real against a synthetic supplier standing in for the
+     * eventual root coupling.
+     */
+    record KitReference<S>(
+        SectionCodec<StarterKitConfig> inline, Function<SanitizeContext, Map<String, StarterKitConfig>> library, String defaultName
+    ) implements Rule<S, StarterKitConfig> {
+        @Override
+        public StarterKitConfig apply(S owner, StarterKitConfig value, String name, SanitizeContext ctx) {
+            StarterKitConfig config = value == null ? StarterKitConfig.reference(defaultName) : value;
+            if (config.ref == null) {
+                return inline.sanitize(config, ctx);
+            }
+            Map<String, StarterKitConfig> kits = library.apply(ctx);
+            StarterKitConfig entry = kits.get(config.ref);
+            if (entry == null) {
+                ctx.logger().warn(
+                    "Unknown starter kit '{}' at {}; using '{}' instead. Defined kits: {}.",
+                    config.ref, name, defaultName, kits.keySet()
+                );
+                config.ref = defaultName;
+                entry = kits.get(defaultName);
+                if (entry == null) {
+                    ctx.logger().warn(
+                        "Default starter kit '{}' at {} is also undefined; using its own inline definition instead.",
+                        defaultName, name
+                    );
+                    return inline.sanitize(config, ctx);
+                }
+            }
+            config.essentials = new ArrayList<>(entry.essentials);
+            config.extras = new ArrayList<>(entry.extras);
+            config.extrasCount = entry.extrasCount;
+            return config;
         }
     }
 }

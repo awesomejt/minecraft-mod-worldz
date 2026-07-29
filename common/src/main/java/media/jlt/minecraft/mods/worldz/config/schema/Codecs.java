@@ -195,4 +195,77 @@ public final class Codecs {
             }
         };
     }
+
+    /**
+     * Builds a codec for a polymorphic leaf that is either a bare name (a reference into a shared
+     * library, e.g. {@code kits}) or an inline mapping -- {@code StarterKitSchema.reference}'s
+     * mechanism (DESIGN §44.3.3). A raw {@link String} value parses via {@code fromName}; anything
+     * else (typically a {@link java.util.Map}) falls through to {@code section.read}, unchanged
+     * from today -- including the "must be a mapping" exception a non-string/non-map value still
+     * throws. Write mirrors this: {@code nameOf} returning non-{@code null} emits the bare name,
+     * otherwise {@code section.toMap} emits the inline mapping exactly as today.
+     *
+     * @param section the inline definition's own codec, used verbatim for both read and write
+     * @param fromName builds a reference-only value from the trimmed name
+     * @param nameOf returns the name to re-emit for a referenced value, or {@code null} for an
+     *     inline one
+     */
+    public static <C> ValueCodec<C> namedOrSection(
+        SectionCodec<C> section, Function<String, C> fromName, Function<C, String> nameOf
+    ) {
+        return new ValueCodec<>() {
+            @Override
+            public C read(Object raw, ParseContext ctx) {
+                if (raw instanceof String name) {
+                    return fromName.apply(name.trim());
+                }
+                return section.read(raw, ctx);
+            }
+
+            @Override
+            public Object write(C value) {
+                String name = nameOf.apply(value);
+                return name != null ? name : section.toMap(value);
+            }
+        };
+    }
+
+    /**
+     * Builds a codec for a dynamic-key section -- a name-to-entry map where every value shares one
+     * entry shape, e.g. the {@code kits} library (DESIGN §44.4.2). Each raw map key becomes a name
+     * in the returned {@link Map}; each raw value parses through {@code entry.read}, scoped one
+     * level deeper via {@link ParseContext#child(String)} so per-entry warnings/exceptions carry
+     * the entry's own name; presence is recorded for the full dotted path of each name.
+     *
+     * @param entry the shared entry shape's own codec, used verbatim for both read and write
+     */
+    public static <C> ValueCodec<Map<String, C>> sectionMap(SectionCodec<C> entry) {
+        return new ValueCodec<>() {
+            @Override
+            public Map<String, C> read(Object raw, ParseContext ctx) {
+                if (!(raw instanceof Map<?, ?> map)) {
+                    throw new IllegalArgumentException(ctx.path() + " must be a mapping");
+                }
+                Map<String, C> values = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> mapEntry : map.entrySet()) {
+                    if (!(mapEntry.getKey() instanceof String name)) {
+                        throw new IllegalArgumentException(ctx.path() + " keys must be strings");
+                    }
+                    ParseContext child = ctx.child(name);
+                    values.put(name, entry.read(mapEntry.getValue(), child));
+                    child.markPresent(child.path());
+                }
+                return values;
+            }
+
+            @Override
+            public Object write(Map<String, C> value) {
+                Map<String, Object> values = new LinkedHashMap<>();
+                for (Map.Entry<String, C> mapEntry : value.entrySet()) {
+                    values.put(mapEntry.getKey(), entry.toMap(mapEntry.getValue()));
+                }
+                return values;
+            }
+        };
+    }
 }

@@ -1747,7 +1747,7 @@ tests.
       into 25.8a-25.8h below, each independently buildable/testable/
       committable; `a`→`b`→`c`→`d` is a hard chain, `e` needs `b`, `f`/`g`
       need `d`, `h` last.
-- [ ] 25.8a Framework only (DESIGN §44.3, §44.4.2): `StarterKitConfig.ref` +
+- [x] 25.8a Framework only (DESIGN §44.3, §44.4.2): `StarterKitConfig.ref` +
       `reference(...)`; `Codecs.namedOrSection`; `Rule.KitReference` +
       `Rule.NestedMap`; `Codecs.sectionMap`; `StarterKitSchema.reference(...)`
       helper. No site converted, no `kits` root key added yet. New
