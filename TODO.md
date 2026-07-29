@@ -1794,7 +1794,7 @@ tests.
       sites converted; a test writing only `extrasCount:` inline still
       inherits the constructor's `essentials`/`extras` (the partial-inline
       case).
-- [ ] 25.8e Unknown-key gate (DESIGN §44.6 error-classification table,
+- [x] 25.8e Unknown-key gate — **Done (0.3.29):** restored unknown-key checking for named-kit sections (DESIGN §44.6 error-classification table,
       needs 25.8b): `NestedMap` branches added to `SchemaKeyWalker
       .findUnknownKeys`/`recurseIfNested` so `kits.yaml`'s arbitrary *names*
       are tolerated while each kit body's `essentials`/`extras`/

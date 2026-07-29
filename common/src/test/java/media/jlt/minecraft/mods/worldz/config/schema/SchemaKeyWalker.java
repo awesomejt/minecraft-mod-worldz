@@ -67,6 +67,19 @@ final class SchemaKeyWalker {
      * whose YAML value is itself a mapping with arbitrary user-defined keys, and must not be mistaken
      * for a nested section whose sub-keys need their own declaring settings.
      *
+     * <p>Two more recursion shapes, both TODO 25.8e (DESIGN §44.8 row e):
+     *
+     * <ul>
+     *   <li>{@link Rule.NestedMap} (the {@code kits} library): the map's own keys are arbitrary
+     *       user-chosen names (same posture as {@code layout.roleOverrides}) and are never checked,
+     *       but each value that is itself a mapping is recursed into via {@link
+     *       #findUnknownKeysInEntries}, checking only its contents against the shared entry schema.
+     *   <li>{@link Rule.KitReference} (an inline kit at one of the 14 sites): a {@code String} value
+     *       is a bare reference into the {@code kits} library with no sub-keys to check; a {@code
+     *       Map} value is an inline definition, recursed into against {@link Rule.KitReference
+     *       #inline}'s own schema exactly like {@link Rule.Nested} recurses into a single section.
+     * </ul>
+     *
      * @param section the schema section to walk
      * @param fileMap the raw map loaded from a fixture at this same nesting level
      * @param unknownKeys collects the full dotted path of every file key the schema does not declare
@@ -89,6 +102,34 @@ final class SchemaKeyWalker {
             if (rule instanceof Rule.Nested nested && nested.section() instanceof SchemaSection childSchema
                 && entry.getValue() instanceof Map<?, ?> childMap) {
                 findUnknownKeys(childSchema, childMap, unknownKeys);
+            } else if (rule instanceof Rule.NestedMap nestedMap && nestedMap.entry() instanceof SchemaSection childSchema
+                && entry.getValue() instanceof Map<?, ?> namedMap) {
+                findUnknownKeysInEntries(childSchema, namedMap, unknownKeys);
+            } else if (rule instanceof Rule.KitReference kitReference && kitReference.inline() instanceof SchemaSection childSchema
+                && entry.getValue() instanceof Map<?, ?> inlineMap) {
+                findUnknownKeys(childSchema, inlineMap, unknownKeys);
+            }
+        }
+    }
+
+    /**
+     * The {@link Rule.NestedMap} half of {@link #findUnknownKeys}'s two TODO 25.8e branches, factored
+     * out because it is called both there and from {@link #recurseIfNested} (the {@code kits.yaml}
+     * unwrapped-file case, where the raw map handed in already <em>is</em> the name-to-kit-body map,
+     * never wrapped under a {@code "kits"} key). The map's own keys ({@code namedMap.keySet()}) are
+     * never checked -- they are arbitrary user-chosen names, the same posture {@code
+     * layout.roleOverrides} already has -- only each value that is itself a mapping is checked, and
+     * only against {@code childSchema} (the one shared entry schema every named kit reuses).
+     *
+     * @param childSchema the {@link Rule.NestedMap#entry()} schema shared by every named entry
+     * @param namedMap the raw name-to-value map (e.g. {@code kits.yaml}'s whole body)
+     * @param unknownKeys collects the full dotted path of every unknown key inside any entry's value
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void findUnknownKeysInEntries(SchemaSection childSchema, Map<?, ?> namedMap, List<String> unknownKeys) {
+        for (Object value : namedMap.values()) {
+            if (value instanceof Map<?, ?> entryMap) {
+                findUnknownKeys(childSchema, entryMap, unknownKeys);
             }
         }
     }
@@ -166,6 +207,12 @@ final class SchemaKeyWalker {
         Object rule = matching.rule();
         if (rule instanceof Rule.Nested nested && nested.section() instanceof SchemaSection childSchema) {
             findUnknownKeys(childSchema, childMap, unknownKeys);
+        } else if (rule instanceof Rule.NestedMap nestedMap && nestedMap.entry() instanceof SchemaSection childSchema) {
+            // kits.yaml (unwrapped) hands this method the whole name-to-kit-body map directly, never
+            // wrapped under a "kits" key -- so childMap here already is the map Rule.NestedMap.apply
+            // itself sanitizes, and findUnknownKeysInEntries applies the same "names aren't checked,
+            // bodies are" split findUnknownKeys uses when NestedMap appears mid-tree instead (TODO 25.8e).
+            findUnknownKeysInEntries(childSchema, childMap, unknownKeys);
         }
     }
 

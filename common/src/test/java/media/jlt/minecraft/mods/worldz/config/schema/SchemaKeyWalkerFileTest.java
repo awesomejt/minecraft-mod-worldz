@@ -18,6 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * file's real keys as unknown. {@link ConfigFixturesTest} is deliberately untouched by this task --
  * it exercises the original whole-root method against the bundle-shaped {@code config/tests/*.yaml}
  * fixtures and stays that way (25.7c's own constraint).
+ *
+ * <p>Also the home for TODO 25.8e's (DESIGN §44.8 row e) two new recursion shapes: {@code kits.yaml}
+ * (unwrapped, {@link Rule.NestedMap}) tolerates its own arbitrary kit names while still checking each
+ * kit body, and an inline kit at a site ({@link Rule.KitReference}) has its sub-keys checked against
+ * {@link StarterKitSchema} -- both exercised here rather than in a fresh file, matching this file's
+ * own existing per-file-walk precedent.
  */
 class SchemaKeyWalkerFileTest {
     private static final WorldzRootSchema ROOT = new WorldzRootSchema();
@@ -61,6 +67,58 @@ class SchemaKeyWalkerFileTest {
         SchemaKeyWalker.findUnknownKeysInFile(ROOT, runtimeFile, runtimeMap, unknown, misfiled);
 
         assertEquals(List.of("notARealRootKeyAtAll"), unknown);
+        assertTrue(misfiled.isEmpty(), () -> "unexpected misfiled: " + misfiled);
+    }
+
+    @Test
+    void typoedKeyInsideAnInlineKitAtASiteIsCaughtAgainstStarterKitSchema() {
+        ConfigFile oceanIslandFile = fileNamed("world-types/ocean-island.yaml");
+        Map<String, Object> oceanIslandMap = Map.of(
+            "starterKit", Map.of("essentails", List.of("minecraft:bread:1"))
+        );
+        List<String> unknown = new ArrayList<>();
+        List<String> misfiled = new ArrayList<>();
+
+        SchemaKeyWalker.findUnknownKeysInFile(ROOT, oceanIslandFile, oceanIslandMap, unknown, misfiled);
+
+        // "oceanIsland.starterKit.": proof the typo was checked against StarterKitSchema specifically
+        // (Rule.KitReference's inline schema, TODO 25.8e), not skipped now that the leaf is polymorphic.
+        assertEquals(List.of("oceanIsland.starterKit.essentails"), unknown);
+        assertTrue(misfiled.isEmpty(), () -> "unexpected misfiled: " + misfiled);
+    }
+
+    @Test
+    void kitsYamlArbitraryKitNameIsNotFlaggedButItsOwnBodyStillIs() {
+        ConfigFile kitsFile = fileNamed("kits.yaml");
+        Map<String, Object> kitsMap = Map.of(
+            "my-brutal-kit", Map.of(
+                "essentials", List.of("minecraft:stick:1"),
+                "extras", List.of(),
+                "extrasCount", 0
+            )
+        );
+        List<String> unknown = new ArrayList<>();
+        List<String> misfiled = new ArrayList<>();
+
+        SchemaKeyWalker.findUnknownKeysInFile(ROOT, kitsFile, kitsMap, unknown, misfiled);
+
+        // "my-brutal-kit" itself (a user-chosen name, Rule.NestedMap) must never appear here.
+        assertTrue(unknown.isEmpty(), () -> "an arbitrary kit name must not be flagged: " + unknown);
+        assertTrue(misfiled.isEmpty(), () -> "unexpected misfiled: " + misfiled);
+    }
+
+    @Test
+    void kitsYamlTypoedKeyInsideANamedKitsBodyIsStillCaught() {
+        ConfigFile kitsFile = fileNamed("kits.yaml");
+        Map<String, Object> kitsMap = Map.of("cave-easy", Map.of("essentails", List.of("minecraft:bread:1")));
+        List<String> unknown = new ArrayList<>();
+        List<String> misfiled = new ArrayList<>();
+
+        SchemaKeyWalker.findUnknownKeysInFile(ROOT, kitsFile, kitsMap, unknown, misfiled);
+
+        // The name ("cave-easy") is never part of the reported path -- only the shared kits entry
+        // schema's own path ("kits"), since every named kit body shares the one StarterKitSchema.
+        assertEquals(List.of("kits.essentails"), unknown);
         assertTrue(misfiled.isEmpty(), () -> "unexpected misfiled: " + misfiled);
     }
 
