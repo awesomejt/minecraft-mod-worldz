@@ -37,8 +37,9 @@ public final class OceanIslandConfig {
     public boolean exclusionZoneEnabled;
     /** Radius beyond which shaping releases, when enabled. */
     public int exclusionZoneRadiusBlocks = IslandPlan.DEFAULT_EXCLUSION_ZONE_RADIUS_BLOCKS;
-    /** Chest-boat starter kit, consulted only when {@link #islandSource} is {@code CHEST_BOAT}. */
-    public StarterKitConfig starterKit = new StarterKitConfig();
+    /** Chest-boat starter kit, consulted only when {@link #islandSource} is {@code CHEST_BOAT}
+     *  (DESIGN §44.5: {@code ocean-island-default} in the {@code kits} library). */
+    public StarterKitConfig starterKit = StarterKitConfig.reference("ocean-island-default");
 
     /** Creates a config populated with defaults. */
     public OceanIslandConfig() {

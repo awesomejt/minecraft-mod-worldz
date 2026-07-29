@@ -1785,7 +1785,7 @@ tests.
       warns and falls back to that site's own shipped default. Golden file
       regenerated + hand-diffed (25.6f's technique — capture real `toYaml()`
       output from the failing test, don't hand-transcribe).
-- [ ] 25.8d The last 2 sites (DESIGN §44.5 rows 13-14): `oceanIsland
+- [x] 25.8d — **done**. The last 2 sites (DESIGN §44.5 rows 13-14): `oceanIsland
       .starterKit` and `skyIsland.floatingIslands.lootChest.kit`;
       `FloatingIslandsConfig.lootKitDefaults` deleted; `ocean-island-default`
       = `new StarterKitConfig()` with constructor defaults **unchanged**

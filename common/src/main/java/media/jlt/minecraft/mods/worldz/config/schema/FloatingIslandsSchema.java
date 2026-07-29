@@ -1,7 +1,6 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.config.FloatingIslandsConfig;
-import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.BiomeListSpec;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -276,9 +275,11 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
 
     /**
      * {@code floatingIslands.lootChest} (TODO 25.6d): {@code enabled}/{@code kit}, a private
-     * (non-shared) group over this section's own {@link FloatingIslandsConfig} type. {@code kit}
-     * keeps its default automatic {@code Setting.section} sanitize (unconditional, regardless of
-     * {@code enabled}, matching the pre-25.6d {@code lootKit} setting's own unconditional sanitize)
+     * (non-shared) group over this section's own {@link FloatingIslandsConfig} type. {@code kit} is
+     * bound through {@link StarterKitSchema#reference} (DESIGN §44.3.5, TODO 25.8d) -- a bare
+     * {@code kits} library name (defaulting to {@code floating-islands-loot}) or a full inline
+     * definition, either legal -- and keeps its default automatic sanitize (unconditional, regardless
+     * of {@code enabled}, matching the pre-25.6d {@code lootKit} setting's own unconditional sanitize)
      * -- no {@link #postValidate} override needed, since there is no cross-field check here at all,
      * only the parent section's manual {@code lootChest.sanitize(value, ctx)} call to place it at
      * the original imperative position rather than this group's own declare-order position.
@@ -297,10 +298,10 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
                 Setting.<FloatingIslandsConfig>flag("enabled", c -> c.lootChestEnabled, (c, v) -> c.lootChestEnabled = v)
                     .doc("Whether each island gets one placed loot chest.")
                     .build(),
-                Setting.<FloatingIslandsConfig, StarterKitConfig>section(
-                        "kit", c -> c.lootKit, (c, v) -> c.lootKit = v, kitSchema
+                StarterKitSchema.<FloatingIslandsConfig>reference(
+                        "kit", c -> c.lootKit, (c, v) -> c.lootKit = v, kitSchema, "floating-islands-loot"
                     )
-                    .render(kitSchema::summary)
+                    .render(kitSchema::summaryOrReference)
                     .doc("The loot chest's contents.")
                     .build()
             );
@@ -308,7 +309,7 @@ public final class FloatingIslandsSchema extends SchemaSection<FloatingIslandsCo
 
         @Override
         public String summary(FloatingIslandsConfig value) {
-            return value.lootChestEnabled ? kitSchema.summary(value.lootKit) : "<disabled>";
+            return value.lootChestEnabled ? kitSchema.summaryOrReference(value.lootKit) : "<disabled>";
         }
     }
 }

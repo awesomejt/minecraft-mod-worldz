@@ -58,7 +58,8 @@ public final class StarterKitSchema extends SchemaSection<StarterKitConfig> {
     /**
      * The real {@code kits} library, resolved through the root config each sanitize call (DESIGN
      * §44.3.4, §44.4.1; wired at TODO 25.8b once {@code WorldzConfig.kits} existed to compile
-     * against). Still unused by any real site until TODO 25.8c/d converts one.
+     * against). Consulted by all 14 sites since TODO 25.8c (the 12 tiered sites) and 25.8d
+     * ({@code oceanIsland.starterKit}/{@code skyIsland.floatingIslands.lootChest.kit}).
      */
     private static final Function<SanitizeContext, Map<String, StarterKitConfig>> LIBRARY = ctx -> ctx.root().kits;
 
@@ -68,8 +69,8 @@ public final class StarterKitSchema extends SchemaSection<StarterKitConfig> {
      * mapping, parsed/emitted via {@link Codecs#namedOrSection} and resolved/materialized at
      * sanitize time via {@link Rule.KitReference}. Kit-specific, not a general {@link Setting}
      * factory -- {@code Setting}'s own factories stay value-shape generic; this is the one call
-     * site {@code ChestSchema.KitsSchema}, {@code OceanIslandSchema} and {@code
-     * FloatingIslandsSchema} bind (TODO 25.8c/d).
+     * site {@code ChestSchema.KitsSchema} (TODO 25.8c), {@code OceanIslandSchema} and {@code
+     * FloatingIslandsSchema} (TODO 25.8d) bind.
      *
      * @param inline the site's own inline schema, used for both the inline path and as the
      *     fallback when neither the referenced name nor {@code defaultName} resolves

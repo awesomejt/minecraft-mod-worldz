@@ -32,25 +32,6 @@ class KitLibraryTest {
     }
 
     /**
-     * {@code floatingIslands.lootKit} is the sole remaining site still carrying its own inline
-     * default (TODO 25.8d's job) -- verified against the still-in-place original {@code
-     * lootKitDefaults()} factory (DESIGN §44.8 row b) by comparing to the owner config's own field,
-     * not by hand-retyping the expected values a second time. The 12 tiered sites converted at
-     * TODO 25.8c (DESIGN §44.8 row c) no longer carry their own inline copies to compare against --
-     * their unsanitized fields are now bare {@link StarterKitConfig#reference} stubs -- so the
-     * "does the library still match the original values" regression for those 12 moved to {@code
-     * WorldzConfigTest}'s zero-kit-key resolution tests, which compare each site's *sanitized*
-     * (materialized) contents against this same {@link KitLibrary#shipped()} entry instead.
-     */
-    @Test
-    void floatingIslandsLootKitMatchesItsStillInPlaceOriginalFactory() {
-        LinkedHashMap<String, StarterKitConfig> kits = KitLibrary.shipped();
-        FloatingIslandsConfig floatingIslands = new FloatingIslandsConfig();
-
-        assertKitEquals(floatingIslands.lootKit, kits.get("floating-islands-loot"));
-    }
-
-    /**
      * {@code ocean-island-default} is deliberately not a moved factory method at all (DESIGN
      * §44.3.2/§44.4.1) -- it is the existing no-arg {@link StarterKitConfig} constructor's own
      * defaults, load-bearing for partial-inline kits.

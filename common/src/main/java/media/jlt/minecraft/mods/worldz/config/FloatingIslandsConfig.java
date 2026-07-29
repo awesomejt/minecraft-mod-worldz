@@ -61,22 +61,12 @@ public final class FloatingIslandsConfig {
     /**
      * The loot chest's contents, reusing {@link StarterKitPlan}'s essentials+extras shape --
      * config-only like {@link #oreFeatureIds}, not threaded through {@code FloatingIslandsPlan}'s
-     * codec.
+     * codec (DESIGN §44.5: {@code floating-islands-loot} in the {@code kits} library).
      */
-    public StarterKitConfig lootKit = lootKitDefaults();
+    public StarterKitConfig lootKit = StarterKitConfig.reference("floating-islands-loot");
 
     /** Creates a config populated with defaults. */
     public FloatingIslandsConfig() {
-    }
-
-    private static StarterKitConfig lootKitDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:bread:2");
-        config.extras = list(
-            "minecraft:iron_ingot:2", "minecraft:emerald:1", "minecraft:arrow:8", "minecraft:golden_apple:1", "minecraft:ender_pearl:1"
-        );
-        config.extrasCount = 2;
-        return config;
     }
 
     private static List<String> list(String... values) {

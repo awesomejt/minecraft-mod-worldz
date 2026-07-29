@@ -15,9 +15,11 @@ import java.util.List;
  * method at all, but the existing no-arg {@link StarterKitConfig} constructor's own defaults
  * (DESIGN §44.3.2/§44.4.1), load-bearing for partial-inline kits.
  *
- * <p>Those 14 original private factory methods stay in place, still called by their still-inline
- * sites (TODO 25.8b, DESIGN §44.8 row b) -- deleting them is TODO 25.8c/25.8d's job, once each site
- * actually converts to {@code StarterKitSchema.reference(...)}.
+ * <p>All 14 original sites now reference this library by name instead of defining their own inline
+ * default: the 12 tiered sites converted in TODO 25.8c, the last 2
+ * ({@code oceanIsland.starterKit}/{@code skyIsland.floatingIslands.lootChest.kit}) in TODO 25.8d.
+ * Their original private {@code *Defaults()} factory methods were deleted at each of those
+ * sub-steps -- this class is now the sole authoritative source for all 14 shipped kits.
  */
 public final class KitLibrary {
     private KitLibrary() {

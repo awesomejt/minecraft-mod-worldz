@@ -274,19 +274,7 @@ oceanIsland:
   exclusionZone:
     enabled: false
     radius: 2000
-  starterKit:
-    essentials:
-    - minecraft:lily_pad:1
-    - minecraft:dirt:4
-    - minecraft:grass_block:2
-    - minecraft:oak_sapling:3
-    extras:
-    - minecraft:bread:3
-    - minecraft:wooden_axe:1
-    - minecraft:wooden_pickaxe:1
-    - minecraft:torch:8
-    - minecraft:water_bucket:1
-    extrasCount: 2
+  starterKit: ocean-island-default
 skyIsland:
   biome: minecraft:plains
   radius: 16
@@ -336,16 +324,7 @@ skyIsland:
       - minecraft:ore_emerald
     lootChest:
       enabled: false
-      kit:
-        essentials:
-        - minecraft:bread:2
-        extras:
-        - minecraft:iron_ingot:2
-        - minecraft:emerald:1
-        - minecraft:arrow:8
-        - minecraft:golden_apple:1
-        - minecraft:ender_pearl:1
-        extrasCount: 2
+      kit: floating-islands-loot
     naturalBiome: false
 chunkIsland:
   enabled: false

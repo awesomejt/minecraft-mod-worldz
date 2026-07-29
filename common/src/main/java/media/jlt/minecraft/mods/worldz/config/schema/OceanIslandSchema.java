@@ -1,7 +1,6 @@
 package media.jlt.minecraft.mods.worldz.config.schema;
 
 import media.jlt.minecraft.mods.worldz.config.OceanIslandConfig;
-import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 import media.jlt.minecraft.mods.worldz.logic.IslandFluid;
 import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
@@ -74,10 +73,10 @@ public final class OceanIslandSchema extends SchemaSection<OceanIslandConfig> {
                 .render(exclusionZone::summary)
                 .doc("Whether/where island and ocean shaping releases to the seed's own terrain.")
                 .build(),
-            Setting.<OceanIslandConfig, StarterKitConfig>section(
-                    "starterKit", c -> c.starterKit, (c, v) -> c.starterKit = v, starterKitSchema
+            StarterKitSchema.<OceanIslandConfig>reference(
+                    "starterKit", c -> c.starterKit, (c, v) -> c.starterKit = v, starterKitSchema, "ocean-island-default"
                 )
-                .render(starterKitSchema::summary)
+                .render(starterKitSchema::summaryOrReference)
                 .doc("Chest-boat starter kit, consulted only when islandSource is chest_boat.")
                 .build()
         );

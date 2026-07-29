@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -363,6 +364,77 @@ class WorldzConfigTest {
         assertEquals(caveEasy.essentials, fallenBack.essentials);
         assertEquals(caveEasy.extras, fallenBack.extras);
         assertEquals(caveEasy.extrasCount, fallenBack.extrasCount);
+    }
+
+    /**
+     * The last 2 sites' own regression gate for TODO 25.8d (DESIGN §44.8 row d), the same proof
+     * {@link #zeroKitKeyConfigsResolveToByteIdenticalContentsForEveryTieredSite} already gives the
+     * 12 tiered sites: a config with zero kit-related keys at {@code oceanIsland.starterKit} or
+     * {@code skyIsland.floatingIslands.lootChest.kit} must resolve to byte-identical {@code
+     * essentials}/{@code extras}/{@code extrasCount} to the pre-25.8 values. {@code
+     * ocean-island-default}'s comparison target is {@code new StarterKitConfig()} itself (DESIGN
+     * §44.3.2 -- it is not a moved factory), already proved equal to {@code KitLibrary.shipped()
+     * .get("ocean-island-default")} by {@code KitLibraryTest
+     * .oceanIslandDefaultIsTheBareConstructorDefaultNotAMovedFactory}.
+     */
+    @Test
+    void zeroKitKeyConfigsResolveToByteIdenticalContentsForOceanIslandAndFloatingIslands() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+        Map<String, StarterKitConfig> shipped = KitLibrary.shipped();
+
+        assertKitMatchesLibraryEntry(config.oceanIsland.starterKit, shipped.get("ocean-island-default"));
+        assertKitMatchesLibraryEntry(config.skyIsland.floatingIslands.lootKit, shipped.get("floating-islands-loot"));
+    }
+
+    /**
+     * An unknown kit name at either of the last 2 sites (DESIGN §44.3.4/§44.6, TODO 25.8d) warns and
+     * falls back to that site's own shipped default -- the same posture {@link
+     * #unknownKitNameAtATieredSiteWarnsAndFallsBackToItsOwnShippedDefault} already proves for the 12
+     * tiered sites.
+     */
+    @Test
+    void unknownKitNameAtOceanIslandOrFloatingIslandsWarnsAndFallsBackToItsOwnShippedDefault() {
+        WorldzConfig oceanConfig = WorldzConfig.parse("""
+            oceanIsland:
+              starterKit: nonexistent-kit
+            """, LOGGER).sanitize(LOGGER);
+        WorldzConfig floatingConfig = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                lootChest:
+                  kit: nonexistent-kit
+            """, LOGGER).sanitize(LOGGER);
+
+        StarterKitConfig oceanFallenBack = oceanConfig.oceanIsland.starterKit;
+        StarterKitConfig oceanDefault = KitLibrary.shipped().get("ocean-island-default");
+        assertEquals("ocean-island-default", oceanFallenBack.ref, "the unknown name is rewritten to the site's own default name");
+        assertKitMatchesLibraryEntry(oceanFallenBack, oceanDefault);
+
+        StarterKitConfig floatingFallenBack = floatingConfig.skyIsland.floatingIslands.lootKit;
+        StarterKitConfig floatingDefault = KitLibrary.shipped().get("floating-islands-loot");
+        assertEquals("floating-islands-loot", floatingFallenBack.ref, "the unknown name is rewritten to the site's own default name");
+        assertKitMatchesLibraryEntry(floatingFallenBack, floatingDefault);
+    }
+
+    /**
+     * The completeness half of DESIGN §44.5's own test recommendation ("every one of the 14 sites'
+     * default ref resolves in that map") -- {@code KitLibraryTest
+     * .shippedHasExactlyTheFourteenNamesInOrder} already proves the library holds exactly these 14
+     * names; this proves every site's own unsanitized default actually names one of them. Provable
+     * only now that TODO 25.8d converts the last 2 sites, completing all 14 (DESIGN §44.8 row d).
+     */
+    @Test
+    void everySitesDefaultRefNamesARealShippedKitLibraryEntry() {
+        WorldzConfig config = new WorldzConfig();
+        Set<String> siteDefaultRefs = Set.of(
+            config.cave.easyKit.ref, config.cave.mediumKit.ref, config.cave.hardKit.ref,
+            config.skyIsland.easyKit.ref, config.skyIsland.mediumKit.ref, config.skyIsland.hardKit.ref,
+            config.netherStart.easyKit.ref, config.netherStart.mediumKit.ref, config.netherStart.hardKit.ref,
+            config.endStart.easyKit.ref, config.endStart.mediumKit.ref, config.endStart.hardKit.ref,
+            config.oceanIsland.starterKit.ref, config.skyIsland.floatingIslands.lootKit.ref
+        );
+
+        assertEquals(KitLibrary.shipped().keySet(), siteDefaultRefs, "every site's own default ref must name a real shipped kit");
     }
 
     @Test
@@ -797,9 +869,7 @@ class WorldzConfigTest {
                 + ", fluid=water, shoreWidth=12"
                 + ", ocean=shallowWidth=64, deepenWidth=128, shallowDepth=8, deepDepth=32, regionScale=128"
                 + ", exclusionZone=<disabled>"
-                + ", starterKit=essentials=[minecraft:lily_pad:1, minecraft:dirt:4, minecraft:grass_block:2,"
-                + " minecraft:oak_sapling:3], extras=[minecraft:bread:3, minecraft:wooden_axe:1,"
-                + " minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:water_bucket:1], extrasCount=2"
+                + ", starterKit=ocean-island-default"
                 + ", skyIsland=biome=minecraft:plains, radius=16, shapeAmplitude=0.3"
                 + ", surfaceY=64, thickness=6, chest=tier=medium"
                 + ", kits=easy=sky-island-easy, medium=sky-island-medium, hard=sky-island-hard"
@@ -2032,6 +2102,30 @@ class WorldzConfigTest {
         assertFalse(config.skyIsland.floatingIslands.lootKit.essentials.isEmpty());
     }
 
+    /**
+     * DESIGN §44.3.2's load-bearing partial-inline case, proved directly at {@code
+     * skyIsland.floatingIslands.lootChest.kit} (TODO 25.8d): writing only {@code extrasCount:}
+     * inline (no {@code essentials}/{@code extras}) must still inherit {@link StarterKitConfig}'s
+     * own no-arg constructor defaults for the two untouched fields -- the same guarantee {@link
+     * #starterKitPartialInlineExtrasCountOnlyInheritsConstructorEssentialsAndExtras} proves at {@code
+     * oceanIsland.starterKit}.
+     */
+    @Test
+    void floatingIslandsLootKitPartialInlineExtrasCountOnlyInheritsConstructorEssentialsAndExtras() {
+        WorldzConfig config = WorldzConfig.parse("""
+            skyIsland:
+              floatingIslands:
+                lootChest:
+                  kit:
+                    extrasCount: 1
+            """, LOGGER).sanitize(LOGGER);
+        StarterKitConfig constructorDefaults = new StarterKitConfig();
+
+        assertEquals(constructorDefaults.essentials, config.skyIsland.floatingIslands.lootKit.essentials);
+        assertEquals(constructorDefaults.extras, config.skyIsland.floatingIslands.lootKit.extras);
+        assertEquals(1, config.skyIsland.floatingIslands.lootKit.extrasCount);
+    }
+
     @Test
     void floatingIslandsMaxRadiusIsClampedToAtLeastMinRadius() {
         WorldzConfig config = WorldzConfig.parse("""
@@ -2179,6 +2273,28 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(0, config.oceanIsland.starterKit.extrasCount);
+    }
+
+    /**
+     * DESIGN §44.3.2's load-bearing partial-inline case, proved directly at {@code
+     * oceanIsland.starterKit}: writing only {@code extrasCount:} inline (no {@code essentials}/
+     * {@code extras}) must still inherit {@link StarterKitConfig}'s own no-arg constructor defaults
+     * for the two untouched fields -- {@code SchemaSection.read} builds a fresh instance from {@code
+     * factory.get()} and sets only the keys present, unaffected by TODO 25.8d's reference conversion
+     * since an inline mapping still parses through the inline path exactly as before.
+     */
+    @Test
+    void starterKitPartialInlineExtrasCountOnlyInheritsConstructorEssentialsAndExtras() {
+        WorldzConfig config = WorldzConfig.parse("""
+            oceanIsland:
+              starterKit:
+                extrasCount: 1
+            """, LOGGER).sanitize(LOGGER);
+        StarterKitConfig constructorDefaults = new StarterKitConfig();
+
+        assertEquals(constructorDefaults.essentials, config.oceanIsland.starterKit.essentials);
+        assertEquals(constructorDefaults.extras, config.oceanIsland.starterKit.extras);
+        assertEquals(1, config.oceanIsland.starterKit.extrasCount);
     }
 
     @Test
