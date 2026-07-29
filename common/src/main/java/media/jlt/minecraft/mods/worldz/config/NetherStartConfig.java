@@ -4,9 +4,6 @@ import media.jlt.minecraft.mods.worldz.logic.LightSource;
 import media.jlt.minecraft.mods.worldz.logic.NetherStartPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Defaults for the {@code jlt_worldz:nether_start} typed preset (GOALS 27, DESIGN §31), consulted
  * only when that preset resolves without explicit Customize-screen values.
@@ -16,12 +13,14 @@ public final class NetherStartConfig {
     public int spawnY = NetherStartPlan.DEFAULT_SPAWN_Y;
     /** Which of {@link #easyKit}/{@link #mediumKit}/{@link #hardKit} the starter chest uses. */
     public StarterKitTier chestTier = StarterKitTier.MEDIUM;
-    /** Generous starter-chest contents (DESIGN §31.6): a full portal, ready to use. */
-    public StarterKitConfig easyKit = easyDefaults();
-    /** Middle-ground starter-chest contents: a full frame's worth of obsidian, no ignition. */
-    public StarterKitConfig mediumKit = mediumDefaults();
-    /** Bare-essentials starter-chest contents: no guaranteed obsidian at all. */
-    public StarterKitConfig hardKit = hardDefaults();
+    /** Generous starter-chest contents (DESIGN §31.6): a full portal, ready to use ({@code
+     * nether-start-easy} in the {@code kits} library, DESIGN §44.5). */
+    public StarterKitConfig easyKit = StarterKitConfig.reference("nether-start-easy");
+    /** Middle-ground starter-chest contents: a full frame's worth of obsidian, no ignition
+     * ({@code nether-start-medium}). */
+    public StarterKitConfig mediumKit = StarterKitConfig.reference("nether-start-medium");
+    /** Bare-essentials starter-chest contents: no guaranteed obsidian at all ({@code nether-start-hard}). */
+    public StarterKitConfig hardKit = StarterKitConfig.reference("nether-start-hard");
     /**
      * Whether to always build the guaranteed capsule instead of only falling back to it when the
      * natural safe-site search comes up empty (GOALS 41.1, DESIGN §31.9).
@@ -34,41 +33,9 @@ public final class NetherStartConfig {
     public NetherStartConfig() {
     }
 
-    private static StarterKitConfig easyDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list(
-            "minecraft:obsidian:10", "minecraft:flint_and_steel:1", "minecraft:bread:8", "minecraft:wooden_pickaxe:1"
-        );
-        config.extras = list(
-            "minecraft:golden_pickaxe:1", "minecraft:golden_sword:1", "minecraft:gold_ingot:8", "minecraft:torch:16"
-        );
-        config.extrasCount = 3;
-        return config;
-    }
-
-    private static StarterKitConfig mediumDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:obsidian:10", "minecraft:bread:4", "minecraft:wooden_pickaxe:1");
-        config.extras = list("minecraft:gold_ingot:4", "minecraft:torch:8", "minecraft:iron_sword:1");
-        config.extrasCount = 2;
-        return config;
-    }
-
-    private static StarterKitConfig hardDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:bread:2", "minecraft:wooden_pickaxe:1");
-        config.extras = list("minecraft:gold_ingot:2", "minecraft:torch:4");
-        config.extrasCount = 1;
-        return config;
-    }
-
     private static StarterCapsuleConfig capsuleDefaults() {
         StarterCapsuleConfig config = new StarterCapsuleConfig();
         config.lightSource = LightSource.GLOWSTONE;
         return config;
-    }
-
-    private static List<String> list(String... values) {
-        return new ArrayList<>(List.of(values));
     }
 }

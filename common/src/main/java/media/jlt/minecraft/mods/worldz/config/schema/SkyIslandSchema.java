@@ -50,7 +50,8 @@ public final class SkyIslandSchema extends SchemaSection<SkyIslandConfig> {
             new Accessor<>(c -> c.chestTier, (c, v) -> c.chestTier = v),
             new Accessor<>(c -> c.easyKit, (c, v) -> c.easyKit = v),
             new Accessor<>(c -> c.mediumKit, (c, v) -> c.mediumKit = v),
-            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v)
+            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v),
+            "sky-island-easy", "sky-island-medium", "sky-island-hard"
         );
         this.exclusionZone = new ExclusionZoneSchema<>(
             path() + ".exclusionZone", SkyIslandConfig::new,

@@ -86,4 +86,16 @@ public final class StarterKitSchema extends SchemaSection<StarterKitConfig> {
             new Rule.KitReference<>(inline, LIBRARY, defaultName)
         );
     }
+
+    /**
+     * The render function every {@code reference(...)} call site's {@code .render(...)} passes
+     * (DESIGN §44.7): a referenced kit's summary segment is the bare name, not its materialized
+     * contents -- the WARN for an unknown name already lists the defined names, so the summary is
+     * the other place a user checks what exists. An inline definition (still legal at every site)
+     * keeps rendering its full contents exactly as before, via this same schema instance's own
+     * inherited {@link #summary}.
+     */
+    public String summaryOrReference(StarterKitConfig value) {
+        return value.ref != null ? value.ref : summary(value);
+    }
 }

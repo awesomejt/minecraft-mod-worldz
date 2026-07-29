@@ -310,6 +310,61 @@ class WorldzConfigTest {
         assertTrue(config.kits.containsKey("floating-islands-loot"), "the shipped 14 must survive a user addition");
     }
 
+    /**
+     * The core regression gate for TODO 25.8c (DESIGN §44.8 row c): a config with zero kit-related
+     * keys at any of the 12 tiered sites must resolve to byte-identical {@code essentials}/{@code
+     * extras}/{@code extrasCount} to the pre-25.8 values -- not just "it parses". The comparison
+     * target is {@link KitLibrary#shipped()}'s own entry, which {@code KitLibraryTest} (TODO 25.8b)
+     * already proved matches the original {@code *Defaults()} factories verbatim, so this test is
+     * what actually proves the 12 now-deleted factories' values still reach each site.
+     */
+    @Test
+    void zeroKitKeyConfigsResolveToByteIdenticalContentsForEveryTieredSite() {
+        WorldzConfig config = new WorldzConfig().sanitize(LOGGER);
+        Map<String, StarterKitConfig> shipped = KitLibrary.shipped();
+
+        assertKitMatchesLibraryEntry(config.cave.easyKit, shipped.get("cave-easy"));
+        assertKitMatchesLibraryEntry(config.cave.mediumKit, shipped.get("cave-medium"));
+        assertKitMatchesLibraryEntry(config.cave.hardKit, shipped.get("cave-hard"));
+        assertKitMatchesLibraryEntry(config.skyIsland.easyKit, shipped.get("sky-island-easy"));
+        assertKitMatchesLibraryEntry(config.skyIsland.mediumKit, shipped.get("sky-island-medium"));
+        assertKitMatchesLibraryEntry(config.skyIsland.hardKit, shipped.get("sky-island-hard"));
+        assertKitMatchesLibraryEntry(config.netherStart.easyKit, shipped.get("nether-start-easy"));
+        assertKitMatchesLibraryEntry(config.netherStart.mediumKit, shipped.get("nether-start-medium"));
+        assertKitMatchesLibraryEntry(config.netherStart.hardKit, shipped.get("nether-start-hard"));
+        assertKitMatchesLibraryEntry(config.endStart.easyKit, shipped.get("end-start-easy"));
+        assertKitMatchesLibraryEntry(config.endStart.mediumKit, shipped.get("end-start-medium"));
+        assertKitMatchesLibraryEntry(config.endStart.hardKit, shipped.get("end-start-hard"));
+    }
+
+    private static void assertKitMatchesLibraryEntry(StarterKitConfig resolved, StarterKitConfig libraryEntry) {
+        assertEquals(libraryEntry.essentials, resolved.essentials);
+        assertEquals(libraryEntry.extras, resolved.extras);
+        assertEquals(libraryEntry.extrasCount, resolved.extrasCount);
+    }
+
+    /**
+     * An unknown kit name at one of the 12 tiered sites (DESIGN §44.3.4/§44.6) warns and falls back
+     * to that site's own shipped default -- not a crash, not an empty kit.
+     */
+    @Test
+    void unknownKitNameAtATieredSiteWarnsAndFallsBackToItsOwnShippedDefault() {
+        WorldzConfig config = WorldzConfig.parse("""
+            cave:
+              chest:
+                kits:
+                  easy: nonexistent-kit
+            """, LOGGER).sanitize(LOGGER);
+
+        StarterKitConfig fallenBack = config.cave.easyKit;
+        StarterKitConfig caveEasy = KitLibrary.shipped().get("cave-easy");
+
+        assertEquals("cave-easy", fallenBack.ref, "the unknown name is rewritten to the site's own default name");
+        assertEquals(caveEasy.essentials, fallenBack.essentials);
+        assertEquals(caveEasy.extras, fallenBack.extras);
+        assertEquals(caveEasy.extrasCount, fallenBack.extrasCount);
+    }
+
     @Test
     void radiusIsClampedAtBothBounds() {
         WorldzConfig below = WorldzConfig.parse("starter:\n  radius: -1", LOGGER).sanitize(LOGGER);
@@ -747,15 +802,7 @@ class WorldzConfigTest {
                 + " minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:water_bucket:1], extrasCount=2"
                 + ", skyIsland=biome=minecraft:plains, radius=16, shapeAmplitude=0.3"
                 + ", surfaceY=64, thickness=6, chest=tier=medium"
-                + ", kits=easy=essentials=[minecraft:oak_sapling:4, minecraft:bread:8, minecraft:crafting_table:1,"
-                + " minecraft:lava_bucket:1],"
-                + " extras=[minecraft:wooden_pickaxe:1, minecraft:wooden_axe:1, minecraft:torch:16,"
-                + " minecraft:cobblestone:32], extrasCount=3"
-                + ", medium=essentials=[minecraft:oak_sapling:3, minecraft:bread:4, minecraft:lava_bucket:1],"
-                + " extras=[minecraft:wooden_pickaxe:1, minecraft:torch:8, minecraft:cobblestone:16], extrasCount=2"
-                + ", hard=essentials=[minecraft:oak_sapling:2, minecraft:lava_bucket:1],"
-                + " extras=[minecraft:bread:2, minecraft:torch:4],"
-                + " extrasCount=1"
+                + ", kits=easy=sky-island-easy, medium=sky-island-medium, hard=sky-island-hard"
                 + ", applyToNether=false"
                 + ", exclusionZone=radius=128"
                 + ", underground=biome=<none>, belowSurface=10"
@@ -764,33 +811,13 @@ class WorldzConfigTest {
                 + ", cave=spawnY=-32, sealedSurface=enabled=false, y=128, block=stone, thickness=5"
                 + ", cavern=enabled=false, radius=48, height=24"
                 + ", chest=enabled=false, tier=medium"
-                + ", kits=easy=essentials=[minecraft:oak_log:4, minecraft:bread:6, minecraft:wheat_seeds:4,"
-                + " minecraft:oak_sapling:3, minecraft:torch:16, minecraft:dirt:8],"
-                + " extras=[minecraft:cobblestone:16, minecraft:coal:8], extrasCount=2"
-                + ", medium=essentials=[minecraft:torch:8, minecraft:oak_log:2, minecraft:dirt:4],"
-                + " extras=[minecraft:coal:4], extrasCount=1"
-                + ", hard=essentials=[minecraft:torch:1, minecraft:wooden_pickaxe:1], extras=[], extrasCount=0"
+                + ", kits=easy=cave-easy, medium=cave-medium, hard=cave-hard"
                 + ", netherStart=spawnY=32, chest=tier=medium"
-                + ", kits=easy=essentials=[minecraft:obsidian:10, minecraft:flint_and_steel:1, minecraft:bread:8,"
-                + " minecraft:wooden_pickaxe:1],"
-                + " extras=[minecraft:golden_pickaxe:1, minecraft:golden_sword:1, minecraft:gold_ingot:8,"
-                + " minecraft:torch:16], extrasCount=3"
-                + ", medium=essentials=[minecraft:obsidian:10, minecraft:bread:4, minecraft:wooden_pickaxe:1],"
-                + " extras=[minecraft:gold_ingot:4, minecraft:torch:8, minecraft:iron_sword:1], extrasCount=2"
-                + ", hard=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
-                + " extras=[minecraft:gold_ingot:2, minecraft:torch:4], extrasCount=1"
+                + ", kits=easy=nether-start-easy, medium=nether-start-medium, hard=nether-start-hard"
                 + ", forceCapsule=false"
                 + ", capsule=size=7, height=3, light=source=glowstone, spacing=5"
                 + ", endStart=chest=tier=medium"
-                + ", kits=easy=essentials=[minecraft:firework_rocket:16, minecraft:cobblestone:64, minecraft:bread:8,"
-                + " minecraft:bow:1, minecraft:arrow:32, minecraft:iron_sword:1, minecraft:copper_pickaxe:1],"
-                + " extras=[minecraft:iron_chestplate:1, minecraft:iron_helmet:1, minecraft:golden_apple:2,"
-                + " minecraft:ender_pearl:4], extrasCount=3"
-                + ", medium=essentials=[minecraft:firework_rocket:8, minecraft:cobblestone:32, minecraft:bread:4,"
-                + " minecraft:iron_sword:1, minecraft:stone_pickaxe:1], extras=[minecraft:arrow:16, minecraft:bow:1,"
-                + " minecraft:ender_pearl:2], extrasCount=2"
-                + ", hard=essentials=[minecraft:bread:2, minecraft:wooden_pickaxe:1],"
-                + " extras=[minecraft:arrow:8, minecraft:ender_pearl:1], extrasCount=1"
+                + ", kits=easy=end-start-easy, medium=end-start-medium, hard=end-start-hard"
                 + ", capsule=size=7, height=3, light=source=glowstone, spacing=5"
                 + ", flat=layers=[minecraft:bedrock:1, minecraft:stone:123, minecraft:dirt:3, minecraft:grass_block:1],"
                 + " biome=minecraft:plains, decoration=false,"
@@ -1455,8 +1482,10 @@ class WorldzConfigTest {
 
         assertEquals(List.of("minecraft:bread:10"), config.netherStart.easyKit.essentials);
         assertEquals(List.of("minecraft:oak_sapling:1"), config.netherStart.hardKit.essentials);
-        // Untouched kit keeps its own defaults.
-        assertEquals(new NetherStartConfig().mediumKit.essentials, config.netherStart.mediumKit.essentials);
+        // Untouched kit keeps resolving its own shipped kits-library default (TODO 25.8c: the raw
+        // field is now a bare reference stub, not an inline copy, so the pre-25.8 comparison target
+        // is KitLibrary's own entry, not `new NetherStartConfig().mediumKit`).
+        assertEquals(KitLibrary.shipped().get("nether-start-medium").essentials, config.netherStart.mediumKit.essentials);
     }
 
     @Test
@@ -2088,8 +2117,10 @@ class WorldzConfigTest {
 
         assertEquals(List.of("minecraft:bread:10"), config.skyIsland.easyKit.essentials);
         assertEquals(List.of("minecraft:oak_sapling:1"), config.skyIsland.hardKit.essentials);
-        // Untouched kit keeps its own defaults.
-        assertEquals(new SkyIslandConfig().mediumKit.essentials, config.skyIsland.mediumKit.essentials);
+        // Untouched kit keeps resolving its own shipped kits-library default (TODO 25.8c: the raw
+        // field is now a bare reference stub, not an inline copy, so the pre-25.8 comparison target
+        // is KitLibrary's own entry, not `new SkyIslandConfig().mediumKit`).
+        assertEquals(KitLibrary.shipped().get("sky-island-medium").essentials, config.skyIsland.mediumKit.essentials);
     }
 
     @Test

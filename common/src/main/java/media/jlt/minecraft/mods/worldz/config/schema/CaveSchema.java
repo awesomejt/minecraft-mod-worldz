@@ -41,7 +41,8 @@ public final class CaveSchema extends SchemaSection<CaveConfig> {
             new Accessor<>(c -> c.chestTier, (c, v) -> c.chestTier = v),
             new Accessor<>(c -> c.easyKit, (c, v) -> c.easyKit = v),
             new Accessor<>(c -> c.mediumKit, (c, v) -> c.mediumKit = v),
-            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v)
+            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v),
+            "cave-easy", "cave-medium", "cave-hard"
         );
     }
 

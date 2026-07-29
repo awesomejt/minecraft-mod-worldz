@@ -1773,7 +1773,7 @@ tests.
       shipped name or adds a new one without deleting the 14; the setter's
       self-`putAll` is a no-op (assert explicitly, per the 25.6a
       `Setting.group` caution DESIGN §44.4.2 cites).
-- [ ] 25.8c The 12 tiered sites (DESIGN §44.3.5, §44.5 rows 1-12):
+- [x] 25.8c — **done** (kits library reference applied to 12 tiered starter-kit sites, method deletions, reference-defaults.yaml regenerated) The 12 tiered sites (DESIGN §44.3.5, §44.5 rows 1-12):
       `ChestSchema.KitsSchema` binds `StarterKitSchema.reference(...)`;
       `CaveConfig`/`SkyIslandConfig`/`NetherStartConfig`/`EndStartConfig` kit
       fields become `reference("cave-easy")` etc.; their 12 `*Defaults()`

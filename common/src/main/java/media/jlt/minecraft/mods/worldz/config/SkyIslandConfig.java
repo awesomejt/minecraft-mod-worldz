@@ -4,9 +4,6 @@ import media.jlt.minecraft.mods.worldz.logic.IslandShapeProfile;
 import media.jlt.minecraft.mods.worldz.logic.SkyIslandPlan;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Defaults for the {@code jlt_worldz:sky_island} typed preset (GOALS 05, DESIGN §27), consulted
  * only when that preset resolves without explicit Customize-screen values.
@@ -46,48 +43,17 @@ public final class SkyIslandConfig {
     /** How many blocks below {@link #surfaceY} the underground band starts; only takes effect
      * when {@link #undergroundBiome} is also set. Ignored (band never applies) at {@code 0}. */
     public int undergroundBelowSurfaceBlocks = 10;
-    /** Generous starter-chest contents (DESIGN §27.8). */
-    public StarterKitConfig easyKit = easyDefaults();
-    /** Middle-ground starter-chest contents. */
-    public StarterKitConfig mediumKit = mediumDefaults();
-    /** Bare-essentials starter-chest contents. */
-    public StarterKitConfig hardKit = hardDefaults();
+    /** Generous starter-chest contents (DESIGN §27.8; §44.5: {@code sky-island-easy} in the
+     * {@code kits} library). */
+    public StarterKitConfig easyKit = StarterKitConfig.reference("sky-island-easy");
+    /** Middle-ground starter-chest contents ({@code sky-island-medium}). */
+    public StarterKitConfig mediumKit = StarterKitConfig.reference("sky-island-medium");
+    /** Bare-essentials starter-chest contents ({@code sky-island-hard}). */
+    public StarterKitConfig hardKit = StarterKitConfig.reference("sky-island-hard");
     /** Scattered floating islands beyond the starter island's own footprint (GOALS 07-08, DESIGN §28). */
     public FloatingIslandsConfig floatingIslands = new FloatingIslandsConfig();
 
     /** Creates a config populated with defaults. */
     public SkyIslandConfig() {
-    }
-
-    private static StarterKitConfig easyDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list(
-            "minecraft:oak_sapling:4", "minecraft:bread:8", "minecraft:crafting_table:1", "minecraft:lava_bucket:1"
-        );
-        config.extras = list(
-            "minecraft:wooden_pickaxe:1", "minecraft:wooden_axe:1", "minecraft:torch:16", "minecraft:cobblestone:32"
-        );
-        config.extrasCount = 3;
-        return config;
-    }
-
-    private static StarterKitConfig mediumDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:oak_sapling:3", "minecraft:bread:4", "minecraft:lava_bucket:1");
-        config.extras = list("minecraft:wooden_pickaxe:1", "minecraft:torch:8", "minecraft:cobblestone:16");
-        config.extrasCount = 2;
-        return config;
-    }
-
-    private static StarterKitConfig hardDefaults() {
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:oak_sapling:2", "minecraft:lava_bucket:1");
-        config.extras = list("minecraft:bread:2", "minecraft:torch:4");
-        config.extrasCount = 1;
-        return config;
-    }
-
-    private static List<String> list(String... values) {
-        return new ArrayList<>(List.of(values));
     }
 }

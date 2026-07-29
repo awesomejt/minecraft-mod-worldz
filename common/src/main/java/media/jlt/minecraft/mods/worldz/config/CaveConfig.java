@@ -4,9 +4,6 @@ import media.jlt.minecraft.mods.worldz.logic.CavePlan;
 import media.jlt.minecraft.mods.worldz.logic.SealedSurfaceBlock;
 import media.jlt.minecraft.mods.worldz.logic.StarterKitTier;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Defaults for the {@code jlt_worldz:cave} typed preset (GOALS 25-26, DESIGN §30), consulted
  * only when that preset resolves without explicit Customize-screen values.
@@ -35,54 +32,14 @@ public final class CaveConfig {
     public boolean chestEnabled = false;
     /** Which of {@link #easyKit}/{@link #mediumKit}/{@link #hardKit} the starter chest uses. */
     public StarterKitTier chestTier = StarterKitTier.MEDIUM;
-    /** Generous starter-chest contents. */
-    public StarterKitConfig easyKit = easyDefaults();
-    /** Middle-ground starter-chest contents. */
-    public StarterKitConfig mediumKit = mediumDefaults();
-    /** Bare-essentials starter-chest contents. */
-    public StarterKitConfig hardKit = hardDefaults();
+    /** Generous starter-chest contents (DESIGN §44.5: {@code cave-easy} in the {@code kits} library). */
+    public StarterKitConfig easyKit = StarterKitConfig.reference("cave-easy");
+    /** Middle-ground starter-chest contents ({@code cave-medium}). */
+    public StarterKitConfig mediumKit = StarterKitConfig.reference("cave-medium");
+    /** Bare-essentials starter-chest contents ({@code cave-hard}). */
+    public StarterKitConfig hardKit = StarterKitConfig.reference("cave-hard");
 
     /** Creates a config populated with defaults. */
     public CaveConfig() {
-    }
-
-    private static StarterKitConfig easyDefaults() {
-        // Enough to never need to find a mineshaft or reach the surface (GOALS 25): raw wood --
-        // not a pre-made table/pickaxe -- so the player crafts their own start, food, a crop and
-        // saplings toward self-sufficiency, torches to secure the immediate area, and dirt to
-        // plant into (Jason, 2026-07-24).
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list(
-            "minecraft:oak_log:4", "minecraft:bread:6", "minecraft:wheat_seeds:4",
-            "minecraft:oak_sapling:3", "minecraft:torch:16", "minecraft:dirt:8"
-        );
-        config.extras = list("minecraft:cobblestone:16", "minecraft:coal:8");
-        config.extrasCount = 2;
-        return config;
-    }
-
-    private static StarterKitConfig mediumDefaults() {
-        // Dialed down from easy (Jason, 2026-07-24): still some light and a way to make a
-        // pickaxe, plus dirt to grow something -- no guaranteed food or saplings.
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:torch:8", "minecraft:oak_log:2", "minecraft:dirt:4");
-        config.extras = list("minecraft:coal:4");
-        config.extrasCount = 1;
-        return config;
-    }
-
-    private static StarterKitConfig hardDefaults() {
-        // Bare minimum (Jason, 2026-07-24): a torch to hold and a wood pickaxe -- everything
-        // else, including any wood at all, must come from finding a mineshaft or reaching the
-        // surface.
-        StarterKitConfig config = new StarterKitConfig();
-        config.essentials = list("minecraft:torch:1", "minecraft:wooden_pickaxe:1");
-        config.extras = list();
-        config.extrasCount = 0;
-        return config;
-    }
-
-    private static List<String> list(String... values) {
-        return new ArrayList<>(List.of(values));
     }
 }

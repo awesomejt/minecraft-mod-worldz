@@ -31,7 +31,8 @@ public final class NetherStartSchema extends SchemaSection<NetherStartConfig> {
             new Accessor<>(c -> c.chestTier, (c, v) -> c.chestTier = v),
             new Accessor<>(c -> c.easyKit, (c, v) -> c.easyKit = v),
             new Accessor<>(c -> c.mediumKit, (c, v) -> c.mediumKit = v),
-            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v)
+            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v),
+            "nether-start-easy", "nether-start-medium", "nether-start-hard"
         );
         this.capsuleSchema = new StarterCapsuleSchema(
             path() + ".capsule",

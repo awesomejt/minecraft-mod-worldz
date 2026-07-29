@@ -32,7 +32,8 @@ public final class EndStartSchema extends SchemaSection<EndStartConfig> {
             new Accessor<>(c -> c.chestTier, (c, v) -> c.chestTier = v),
             new Accessor<>(c -> c.easyKit, (c, v) -> c.easyKit = v),
             new Accessor<>(c -> c.mediumKit, (c, v) -> c.mediumKit = v),
-            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v)
+            new Accessor<>(c -> c.hardKit, (c, v) -> c.hardKit = v),
+            "end-start-easy", "end-start-medium", "end-start-hard"
         );
         this.capsuleSchema = new StarterCapsuleSchema(
             path() + ".capsule",

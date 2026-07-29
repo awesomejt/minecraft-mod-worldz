@@ -32,32 +32,21 @@ class KitLibraryTest {
     }
 
     /**
-     * Every entry's contents are verified against the still-in-place original {@code *Defaults()}
-     * factory (DESIGN §44.8 row b: "the library reads the same values those methods produce") by
-     * comparing to the sibling owner config's own field, which those private factories still
-     * populate today -- not by hand-retyping the expected values a second time.
+     * {@code floatingIslands.lootKit} is the sole remaining site still carrying its own inline
+     * default (TODO 25.8d's job) -- verified against the still-in-place original {@code
+     * lootKitDefaults()} factory (DESIGN §44.8 row b) by comparing to the owner config's own field,
+     * not by hand-retyping the expected values a second time. The 12 tiered sites converted at
+     * TODO 25.8c (DESIGN §44.8 row c) no longer carry their own inline copies to compare against --
+     * their unsanitized fields are now bare {@link StarterKitConfig#reference} stubs -- so the
+     * "does the library still match the original values" regression for those 12 moved to {@code
+     * WorldzConfigTest}'s zero-kit-key resolution tests, which compare each site's *sanitized*
+     * (materialized) contents against this same {@link KitLibrary#shipped()} entry instead.
      */
     @Test
-    void everyEntryMatchesItsStillInPlaceOriginalFactory() {
+    void floatingIslandsLootKitMatchesItsStillInPlaceOriginalFactory() {
         LinkedHashMap<String, StarterKitConfig> kits = KitLibrary.shipped();
-        CaveConfig cave = new CaveConfig();
-        SkyIslandConfig skyIsland = new SkyIslandConfig();
-        NetherStartConfig netherStart = new NetherStartConfig();
-        EndStartConfig endStart = new EndStartConfig();
         FloatingIslandsConfig floatingIslands = new FloatingIslandsConfig();
 
-        assertKitEquals(cave.easyKit, kits.get("cave-easy"));
-        assertKitEquals(cave.mediumKit, kits.get("cave-medium"));
-        assertKitEquals(cave.hardKit, kits.get("cave-hard"));
-        assertKitEquals(skyIsland.easyKit, kits.get("sky-island-easy"));
-        assertKitEquals(skyIsland.mediumKit, kits.get("sky-island-medium"));
-        assertKitEquals(skyIsland.hardKit, kits.get("sky-island-hard"));
-        assertKitEquals(netherStart.easyKit, kits.get("nether-start-easy"));
-        assertKitEquals(netherStart.mediumKit, kits.get("nether-start-medium"));
-        assertKitEquals(netherStart.hardKit, kits.get("nether-start-hard"));
-        assertKitEquals(endStart.easyKit, kits.get("end-start-easy"));
-        assertKitEquals(endStart.mediumKit, kits.get("end-start-medium"));
-        assertKitEquals(endStart.hardKit, kits.get("end-start-hard"));
         assertKitEquals(floatingIslands.lootKit, kits.get("floating-islands-loot"));
     }
 
