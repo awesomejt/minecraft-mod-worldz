@@ -7757,3 +7757,604 @@ recorded above rather than asked: the section-to-file mapping, wrapped vs
 unwrapped, merge-before-walk, per-file optionality, YAML-level-only error
 isolation, `kits.yaml` deferral, the single generated reference, and the
 `strip` key-level merge going to 25.9.
+
+## 44. Named shared starter kits (D6, TODO 25.8) — design pass
+
+25.6 moved the *keys*; 25.7 moved the *files*. 25.8 is the last structural move
+in Phase 25: pulling the starter-kit item lists out of the world-type sections
+into a named library, referenceable by name, with inline definitions still
+legal (`CONFIG-RESTRUCTURE.md` D6, §6 item 6).
+
+**Hard constraint for 25.8, narrowed from §42/§43's:** no `*Customization`
+change, no world-save-codec change, no Customize-screen change, no gameplay
+change. Unlike 25.6/25.7 this task *does* change config POJOs
+(`StarterKitConfig` gains one field; six `*Config` classes lose their private
+`*Defaults()` methods) and *does* change `toYaml()` output — that is the point
+of the task. `logic/` and `client/` must not appear in any 25.8 diff.
+
+### 44.1 Resolving the folded-in Phase 24.5 (capsule consolidation)
+
+TODO 25.8 says "**Fold Phase 24.5 into this** (duplicated
+`NetherStartPlan`/`EndStartPlan` capsule config fields)", on the authority of
+`CONFIG-RESTRUCTURE.md` §7's risk row *"Phase 24.5's capsule-config
+consolidation overlaps D6 → fold 24.5 into this phase rather than doing it
+twice."* `project-manager` flagged (TODO 25.8's annotation, 2026-07-28) that
+this looks like a world-save-codec change and therefore violates Phase 25's own
+"behavior-preserving except 25.9 … no other … world-save-codec change"
+constraint. Re-read end to end against the real tree; four findings, in order
+of weight.
+
+#### 44.1.1 The *config*-layer duplication 24.5 names no longer exists
+
+24.5's own wording — "duplicated … capsule **config** fields" — is stale.
+`NetherStartConfig.capsule` (`NetherStartConfig.java:31`) and
+`EndStartConfig.capsule` (`EndStartConfig.java:37`) are **already one shared
+class**, `StarterCapsuleConfig` (`StarterCapsuleConfig.java:12-31`), whose own
+Javadoc records that it was named generically for exactly this reason. Both
+sites bind **one shared schema class**, `StarterCapsuleSchema`
+(`StarterCapsuleSchema.java:24-43`), parameterized per parent on the six
+size/height/spacing bounds (DESIGN R3) and carrying the nested `light: {source,
+spacing}` group 25.6e added (`StarterCapsuleSchema.java:72-100`). The bindings
+are `NetherStartSchema`'s and `EndStartSchema`'s single constructor calls.
+
+So the config half of 24.5 was already delivered — by 25.2a (shared
+`StarterCapsuleSchema`) and 25.6e (the `light` nest). There is **nothing left
+for 25.8 to consolidate in the config layer.**
+
+#### 44.1.2 The remaining duplication is entirely in `logic/`
+
+| What is duplicated | Nether-start | End-start |
+|---|---|---|
+| Four flat record components (`capsuleSizeBlocks`, `capsuleHeightBlocks`, `capsuleLightSource`, `capsuleLightSpacingBlocks`) | `NetherStartPlan.java:34-37` | `EndStartPlan.java:34-37` |
+| Nine `MIN`/`MAX`/`DEFAULT_CAPSULE_*` constants, identical values | `NetherStartPlan.java:56-72` | `EndStartPlan.java:40-56` |
+| Four compact-constructor validation blocks, identical except the message noun | `NetherStartPlan.java:82-103` | `EndStartPlan.java:63-84` |
+| `centeredCapsuleOffsets(int, int)`, byte-identical bodies | `NetherStartPlan.java:164-172` | `EndStartPlan.java:123-131` |
+
+`EndStartPlan`'s own class Javadoc (`EndStartPlan.java:17-20`) states the
+duplication and cites GOALS 41.1's "revisit … true cross-preset sharing later"
+as the reason — that citation is what TODO 24.5 calls "this is that *later*".
+
+#### 44.1.3 Those records *are* codec-persisted — but consolidation does **not** force a shape change
+
+Verified, not assumed: `NetherStartCodecs.PLAN_CODEC`
+(`NetherStartCodecs.java:14-23`) and `EndStartCodecs.PLAN_CODEC`
+(`EndStartCodecs.java:14-21`) are `RecordCodecBuilder`s over these records,
+mounted on `EnvelopedChunkGenerator`'s own codec at
+`EnvelopedChunkGenerator.java:134-136` under the field names `nether_start` /
+`end_start`. The four capsule values persist as four **flat** fields:
+`capsule_size`, `capsule_height`, `capsule_light_source`,
+`capsule_light_spacing`.
+
+`project-manager`'s worry was that introducing a shared `StarterCapsulePlan`
+component would renest those into `capsule: {…}` in the save. It would not have
+to. `RecordCodecBuilder.instance().group(...)` binds each `fieldOf` to an
+arbitrary **getter lambda**, and `apply` takes an arbitrary construction
+function — neither is tied to the record's component list. Keeping the six/eight
+flat `fieldOf` names while pointing their getters at `plan.capsule().size()` and
+constructing via
+`(enabled, tier, size, height, light, spacing) -> new EndStartPlan(enabled, tier, new StarterCapsulePlan(size, height, light, spacing))`
+leaves the serialized NBT **byte-identical**. So the answer to
+`project-manager`'s (a)-or-(b) is: neither cleanly — the config half is already
+done, and the logic half is achievable with **zero** persisted-shape change.
+
+**Blast radius, measured** (`grep` for the four accessor names plus
+`centeredCapsuleOffsets` across the repo): 8 files — `NetherStartPlan.java`,
+`EndStartPlan.java`, `NetherStartCodecs.java`, `EndStartCodecs.java`,
+`NetherStartDeployment.java`, `EndStartDeployment.java`,
+`NetherStartPlanTest.java`, `EndStartPlanTest.java`. **No `client/` file and no
+`*Customization` record** — the capsule fields are config-only and are not on
+any Customize screen.
+
+#### 44.1.4 Decision: un-fold 24.5 from 25.8; return it to Phase 24, merged with 24.4
+
+Reasons, in order:
+
+1. **The stated overlap is false.** §7's risk row justified the fold with
+   "overlaps D6". D6 is about `StarterKitConfig`; 24.5 is about
+   `StarterCapsuleConfig`/`StarterCapsulePlan`. The two touch **disjoint file
+   sets** — 25.8 as designed below touches zero files from 44.1.2's table, and
+   24.5 touches zero of 25.8's. There is no work saved by doing them together
+   and no work paid twice by doing them apart.
+2. **24.4 is 24.5's real pair.** TODO 24.4 is "shared capsule *builder*
+   consolidating `buildCaveCapsule`/`buildNetherStartCapsule`/`buildEndPlatform`
+   — highest value (GOALS 41.1 asks for it)". A shared `StarterCapsulePlan`
+   record is precisely the parameter object that shared builder takes. Doing
+   24.5 now means 24.4 re-opens the same six files later; doing them together
+   is one pass.
+3. **Phase 25 promised not to touch this.** TODO's Phase 25 intro is explicit:
+   "No other gameplay, generation, Customize-screen or world-save-codec
+   change." Even a byte-preserving codec edit puts `*Codecs.java` under the
+   knife in a phase whose whole risk story (`CONFIG-RESTRUCTURE.md` F8, "`grep
+   -l Codec` over the config package returns zero files") rests on never doing
+   that. Declining a scope *expansion* is the conservative direction.
+4. **Precedent.** 25.6 deferred `strip.width*` to 25.9 and 25.7 deferred
+   `kits.yaml` to 25.8, both logged as Deviations without a Jason sign-off
+   round. This is the same shape of move and the same paperwork.
+
+**No Jason sign-off is required to decline the fold-in** (nothing changes; the
+work simply stays where TODO already has it). Sub-step **h** logs the Deviation
+and rewrites TODO 24.5's text with 44.1.1-44.1.3's findings so Phase 24 does
+not re-derive them. Flag it in the phase report so Jason can veto in his own
+review; if he wants it inside Phase 25 after all, 44.1.3 shows the codec
+question is moot and D1's "no production worlds" reasoning is not even needed.
+
+### 44.2 Inventory: there are **14** kit blocks, not 12, and none is a duplicate of another
+
+`CONFIG-RESTRUCTURE.md` F2 says *"145 of the 384 generated lines are 12
+near-identical `easyKit`/`mediumKit`/`hardKit`/`starterKit`/`lootKit` blocks."*
+Re-measured against the current golden file
+(`common/src/test/resources/config/reference-defaults.yaml`, 428 lines as
+25.6h/25.7 left it):
+
+| # | Site (post-25.6 dotted path) | POJO field | Golden lines |
+|---|---|---|---|
+| 1-3 | `cave.chest.kits.{easy,medium,hard}` | `CaveConfig.easyKit/mediumKit/hardKit` (`CaveConfig.java:39-43`) | 262-288 |
+| 4-6 | `skyIsland.chest.kits.{easy,medium,hard}` | `SkyIslandConfig.java:50-54` | 153-182 |
+| 7-9 | `netherStart.chest.kits.{easy,medium,hard}` | `NetherStartConfig.java:20-24` | 294-323 |
+| 10-12 | `endStart.chest.kits.{easy,medium,hard}` | `EndStartConfig.java:26-30` | 335-369 |
+| 13 | `oceanIsland.starterKit` | `OceanIslandConfig.java:41` | 131-143 |
+| 14 | `skyIsland.floatingIslands.lootChest.kit` | `FloatingIslandsConfig.java:66` | 220-229 |
+
+**Two corrections to F2, both material to this task's design:**
+
+1. **The count is 14, not 12.** F2's *line* count (~146 by the table above vs.
+   its "145") is right; its *block* count is wrong — it lists `starterKit` and
+   `lootKit` among the shapes but then totals only the 4×3 tiered ones.
+   `CONFIG-RESTRUCTURE.md` §3's own worked example already assumes the 13th is
+   named (`starterKit: ocean-island-default`), so §3 and F2 contradict each
+   other. **§3 wins**: all 14 are pre-named (44.5).
+
+2. **"Near-identical" is structural, not semantic — nothing merges.** Compared
+   field by field, **no two of the 14 have the same contents.** The closest
+   pair is `netherStart.hard` vs `endStart.hard`, whose `essentials` are both
+   `[bread:2, wooden_pickaxe:1]` (`NetherStartConfig.java:59`,
+   `EndStartConfig.java:69`) but whose `extras` differ
+   (`[gold_ingot:2, torch:4]` vs `[arrow:8, ender_pearl:1]`). What is
+   "near-identical" is the **three-field shape**, which 25.2a already shares via
+   one `StarterKitSchema`.
+
+**Consequence — say this out loud rather than let it surprise Jason:** D6 does
+**not** remove 38% of the config's bulk. The 146 lines of item lists do not
+disappear; they *move* into `kits:`. Arithmetically the generated reference goes
+from 428 lines to roughly **443** — 146 lines leave the preset sections, 14
+one-line references replace them, and the library re-adds ~147 (one `kits:`
+header, 14 name headers, ~132 content lines at one indent level shallower). See
+44.9 Q1.
+
+What D6 *does* buy, all of it real:
+
+- **Locality (D2's actual goal).** `world-types/cave.yaml` drops from ~41 lines
+  to ~14; `nether-start.yaml` from ~42 to ~15; `sky-island.yaml` and
+  `end-start.yaml` likewise. The kit lists live in one file the user opens only
+  when editing kits.
+- **Reuse for the user.** One `kits.yaml` entry can back four presets — which is
+  the duplication Jason actually described (GOALS.md:74-78: "several sections
+  already share near-identical `easyKit`/`mediumKit`/`hardKit` shapes … should
+  consolidate into a common/shared section instead of being redeclared per
+  preset").
+- **Swap by name.** `tier: hard` plus `kits: {hard: my-brutal-kit}` is a
+  one-line change instead of a 10-line block.
+- **A shorter startup log.** Today `WorldzConfig.summary()` renders every item
+  of all 14 kits into one line; with references it renders 14 short names
+  (44.7).
+
+### 44.3 The reference mechanism: a polymorphic leaf
+
+#### 44.3.1 Target shape (fixed by `CONFIG-RESTRUCTURE.md` §3, not invented here)
+
+```yaml
+# world-types/cave.yaml
+chest:
+  enabled: false
+  tier: medium
+  kits: { easy: cave-easy, medium: cave-medium, hard: cave-hard }
+```
+
+```yaml
+# world-types/ocean-island.yaml
+starterKit: ocean-island-default
+```
+
+Both put a **bare string in the exact key position that holds a mapping
+today**. That settles the mechanism question: the leaf is polymorphic —
+`String` ⇒ named reference, `Map` ⇒ inline definition. A sibling-key
+convention (`kit:`/`kitRef:` next to the inline block) is *rejected*: it
+contradicts §3's two worked examples, doubles the key count at every one of the
+14 sites, and creates an undefined "both present" state.
+
+#### 44.3.2 `StarterKitConfig` gains exactly one field
+
+```java
+// StarterKitConfig.java
+/** Names a `kits` entry supplying this kit's contents; null means the
+ *  essentials/extras/extrasCount below are the definition. A blank or unknown
+ *  name warns and falls back to this site's own shipped default kit. */
+public String ref = null;
+
+/** A reference-only kit: no inline contents, resolved from the library at
+ *  sanitize time (DESIGN §44.4). */
+public static StarterKitConfig reference(String name) { … }   // ref = name; empty lists; extrasCount = 0
+```
+
+`null`, not `""`, distinguishes "inline" from "referenced" — a blank string
+must remain a *nameable* (and therefore diagnosable) state, not silently mean
+"inline with constructor defaults".
+
+**`StarterKitConfig`'s no-arg constructor defaults stay exactly as they are**
+(the ocean-island lily-pad/dirt/grass/sapling essentials,
+`StarterKitConfig.java:22-39`). They are load-bearing for *partial* inline
+kits: `SchemaSection.read` (`SchemaSection.java:84-96`) builds a fresh instance
+from `factory.get()` and sets only the keys present, so a user who writes only
+`extrasCount:` inline gets those constructor defaults for the other two fields
+today. Changing them would be a silent behavior change. Instead, the library's
+`ocean-island-default` entry **is** `new StarterKitConfig()`, so the list is
+still written once.
+
+`ref` is deliberately **not** a `Setting` — it is never a YAML key of its own.
+
+#### 44.3.3 The codec: `Codecs.namedOrSection`
+
+```java
+// Codecs.java — generic, ~12 lines, sits next to Codecs.section (:185-197)
+public static <C> ValueCodec<C> namedOrSection(
+    SectionCodec<C> section, Function<String, C> fromName, Function<C, String> nameOf
+) {
+    read(raw, ctx)  = raw instanceof String s ? fromName.apply(s.trim()) : section.read(raw, ctx);
+    write(value)    = nameOf.apply(value) == null ? section.toMap(value) : nameOf.apply(value);
+}
+```
+
+Round-trip properties that matter:
+
+- An inline mapping reads and writes **exactly as today** (`nameOf` is `null`
+  ⇒ `section.toMap`), so a pre-25.8 config with inline kits is byte-identical
+  through the new codec. That is what makes sub-steps (a)/(b) provable before
+  any site converts.
+- A non-`String`, non-`Map` value falls through to `section.read`, which throws
+  `path + " must be a mapping"` (`SchemaSection.java:85-87`) — today's message,
+  unchanged.
+- Presence (25.3) needs no change: `SchemaSection.readOne`
+  (`SchemaSection.java:98-104`) marks `cave.chest.kits.easy` present in both
+  forms. In the reference form the sub-leaves
+  (`cave.chest.kits.easy.essentials`) are correctly *not* marked — the user did
+  not write them.
+
+#### 44.3.4 The rule: `Rule.KitReference`
+
+`Rule` is a sealed interface (`Rule.java:21`), so the new step is a nested
+record there, alongside `Rule.Nested` (`:319-324`):
+
+```java
+record KitReference<S>(SectionCodec<StarterKitConfig> inline, String defaultName)
+        implements Rule<S, StarterKitConfig> {
+    apply(owner, value, name, ctx):
+        value = (value == null) ? StarterKitConfig.reference(defaultName) : value;
+        if (value.ref == null) return inline.sanitize(value, ctx);        // today's path, verbatim
+        StarterKitConfig entry = ctx.root().kits.get(value.ref);
+        if (entry == null) {
+            ctx.logger().warn("Unknown starter kit '{}' at {}; using '{}' instead. Defined kits: {}.",
+                              value.ref, name, defaultName, ctx.root().kits.keySet());
+            value.ref = defaultName;
+            entry = ctx.root().kits.get(defaultName);
+            if (entry == null) { warn once more; return inline.sanitize(value, ctx); }
+        }
+        value.essentials  = new ArrayList<>(entry.essentials);   // fresh copies — DESIGN R11, never alias
+        value.extras      = new ArrayList<>(entry.extras);
+        value.extrasCount = entry.extrasCount;
+        return value;
+}
+```
+
+Three deliberate points:
+
+1. **Materialize into the referring instance rather than swap the reference.**
+   Every downstream consumer keeps working with **zero change**:
+   `StarterKitDeployment.resolvePlan(WorldzCommon.config().cave.easyKit)`
+   (`StarterKitDeployment.java:81-87,128-134,175,220,286,303`) and
+   `EnvelopedChunkGenerator.java:1673` all read the POJO's `essentials`/
+   `extras`/`extrasCount` directly. `ref` survives on the instance purely so
+   `toMap` can re-emit the name.
+2. **The materialized contents are not re-sanitized.** They are copied from a
+   library entry that `kits`' own rule already sanitized (44.4), so
+   `StarterKitSchema.postValidate`'s `extrasCount`-vs-empty-`extras` clamp
+   (`StarterKitSchema.java:46-53`) has already fired at the library site. Running
+   it again would double-warn.
+3. **Fallback is the *site's own shipped default name*, not a generic blank
+   kit.** "Warn and fall back to defaults" reads literally as "the default this
+   field would have had", which for `cave.chest.kits.easy` is `cave-easy`. An
+   empty chest would be a silent gameplay surprise; the ocean-island lily-pad
+   constructor default would be nonsense underground.
+
+#### 44.3.5 Binding it: a static helper on `StarterKitSchema`, no new public `Setting` factory
+
+```java
+// StarterKitSchema.java
+public static <S> Setting.PlainBuilder<S, StarterKitConfig> reference(
+    String key, Function<S, StarterKitConfig> get, BiConsumer<S, StarterKitConfig> set,
+    StarterKitSchema inline, String defaultName
+)
+```
+
+`Setting.PlainBuilder`'s four-arg constructor is package-private
+(`Setting.java:338`) and `StarterKitSchema` is in the same package, so this
+needs no widening. *Rejected: a `Setting.namedOrInline(...)` public factory* —
+`Setting`'s factories are deliberately value-*shape* generic (`integer`, `flag`,
+`text`, `stringList`, `section`, `group`, `Setting.java:35-123`); a
+starter-kit-specific entry point there would be the first domain concept in the
+framework's public surface. The generic half (`Codecs.namedOrSection`) *does*
+live in the framework, so a second polymorphic leaf later costs one helper, not
+a redesign.
+
+Three call sites bind it: `ChestSchema.KitsSchema.declare()`
+(`ChestSchema.java:113-129`, the 12 tiered kits — the schema instance is
+already per-owner, so each of the four owners passes its own three default
+names), `OceanIslandSchema.java:77` and `FloatingIslandsSchema.java:300`.
+
+### 44.4 The library: `kits` root section and `kits.yaml`
+
+#### 44.4.1 Model
+
+```java
+// WorldzConfig.java — new field, declared first in the schema (44.4.3)
+/** Named, reusable starter kits (D6); every preset's chest kit either names one
+ *  of these or defines its own inline. User entries merge over the shipped set. */
+public Map<String, StarterKitConfig> kits = KitLibrary.shipped();
+```
+
+`KitLibrary` (new, `config/KitLibrary.java`) holds the 14 shipped entries as a
+`LinkedHashMap`, populated by moving — verbatim, not retyped — the bodies of
+`CaveConfig.easyDefaults/mediumDefaults/hardDefaults`
+(`CaveConfig.java:49-83`), the same trio in `SkyIslandConfig.java:62-88`,
+`NetherStartConfig.java:37-63` and `EndStartConfig.java:43-73`,
+`FloatingIslandsConfig.lootKitDefaults` (`FloatingIslandsConfig.java:72-80`),
+and `new StarterKitConfig()` for `ocean-island-default` (44.3.2). Those seven
+private factory methods are then deleted and the fields become
+`StarterKitConfig.reference("cave-easy")` and so on.
+
+*Rejected: a `KitLibraryConfig` wrapper POJO.* A bare
+`Map<String, StarterKitConfig>` is the whole section; a wrapper adds a field
+name with no second member.
+
+#### 44.4.2 Codec and rule for a dynamic-key section
+
+Two more generic framework additions, both small:
+
+```java
+// Codecs.java
+public static <C> ValueCodec<Map<String, C>> sectionMap(SectionCodec<C> entry);
+//   read : each value via entry.read(v, ctx.child(name)); also ctx.markPresent("kits." + name)
+//   write: LinkedHashMap of name -> entry.toMap(value)
+
+// Rule.java  (sealed — new nested record)
+record NestedMap<S, C>(SectionCodec<C> entry) implements Rule<S, Map<String, C>> {
+    apply: sanitize each value in place, rescoped to "kits." + name
+}
+```
+
+**The `kits` setter merges, it does not replace:**
+`Setting.<WorldzConfig, …>…("kits", c -> c.kits, (c, v) -> c.kits.putAll(v), …)`.
+This is what makes "ship the current 14 pre-named so behavior is identical"
+actually hold: a user `kits.yaml` that defines one new kit does **not** delete
+the 14 shipped names, so every preset that still references a shipped name keeps
+working. At sanitize time `getter` returns the live map and the rule returns the
+same instance, so the setter's `putAll(map, itself)` is a no-op — assert this
+explicitly in a test rather than reasoning about it once. `Setting.group`'s own
+non-assignment setter (`Setting.java:116-123`, and the 25.6a bug it caused) is
+the precedent for both the technique and the caution.
+
+#### 44.4.3 Declaration order is load-bearing
+
+`kits` is declared **first** in `WorldzRootSchema.declare()`
+(`WorldzRootSchema.java:108-247`), ahead of `allowedBiomes`.
+`SchemaSection.sanitize` (`SchemaSection.java:115-122`) runs settings in
+declaration order, so the library is fully sanitized before any
+`Rule.KitReference` reads it through `ctx.root()`. Pin this with an assertion
+(`ROOT.settings().getFirst().key()` equals `"kits"`, with a comment naming
+§44.4.3) — it is the kind of invariant a later reorder would break silently.
+
+It also matches `CONFIG-RESTRUCTURE.md` §3's own file tree, which lists
+`kits.yaml` third, above `world-types/`. Because declaration order **is** emit
+order (§41.1's ordering invariant), the library block leads the generated
+reference file — see 44.9 Q1.
+
+*Rejected: resolving in `WorldzRootSchema.postValidate`* (which would run after
+every section and so be order-independent). It would require the root to
+hardcode all 14 site accessors — a list to forget a site from when a 15th kit
+appears — instead of one `Rule` declared once at each site by the schema that
+already owns it.
+
+#### 44.4.4 The file
+
+One new `ConfigLayout.FILES` entry, inserted after `world-defaults.yaml` to
+match §3's tree:
+
+```java
+new ConfigFile("kits.yaml", List.of("kits"), true)   // unwrapped
+```
+
+Unwrapped ⇒ `kits.yaml`'s root mapping *is* the name→kit map:
+
+```yaml
+# config/jlt_worldz/kits.yaml
+cave-easy:
+  essentials: [minecraft:oak_log:4, minecraft:bread:6, …]
+  extras: [minecraft:cobblestone:16, minecraft:coal:8]
+  extrasCount: 2
+my-brutal-kit:
+  essentials: [minecraft:stick:1]
+  extras: []
+  extrasCount: 0
+```
+
+Everything else in the 25.7 load path works unchanged:
+`WorldzConfig.mergeFile`'s unwrapped branch is
+`root.put(file.rootKeys().get(0), fileMap)` (`WorldzConfig.java:299-302`);
+`readSplit` (`:260-286`) walks `FILES` in declaration order and order is
+irrelevant because owned key sets stay disjoint; the bundle path (`all.yaml`)
+is untouched. `ConfigLayout.owning("kits")` gives the misfile WARN for free.
+
+`ConfigLayoutTest` needs exactly one edit: its
+`applicabilityAgreesWithConfigLayoutsFileAssignment`
+(`ConfigLayoutTest.java:109-129`) currently throws
+`AssertionError("unrecognized file")` for anything that is not `runtime.yaml`,
+`world-defaults.yaml` or `world-types/*`. Add a `kits.yaml` branch asserting
+`Applicability.Scope.WORLD_DEFAULT` — kit contents are read once, at first
+spawn, by `StarterKitDeployment`, for whichever preset is active; they are not
+re-read live like `runtime.yaml`'s three sections, and they are not scoped to
+one preset. Its other four tests already skip non-`world-types/` paths
+(`:71-106`) or are satisfied by the unwrapped/one-key invariant (`:51-59`).
+
+`WorldzConfig.REFERENCE_HEADER`'s file map (`WorldzConfig.java:80-95`) gains
+`# kits -> config/jlt_worldz/kits.yaml`.
+
+### 44.5 The 14 shipped names
+
+`CONFIG-RESTRUCTURE.md` §9 left the naming scheme as a judgement call:
+per-preset (`cave-easy`) or per-role (`underground-easy`). **Per-preset wins by
+§3's own examples** (`cave-easy`/`cave-medium`/`cave-hard`,
+`ocean-island-default`) — and per-role would be actively wrong today, since
+44.2 established that no two kits share contents, so a role name would promise
+a sharing that does not exist. Rule: `<owner>-<role>`, where `<owner>` is the
+owning section's key in kebab-case (identical to its `world-types/*.yaml`
+filename where one exists) and `<role>` is the tier or purpose.
+
+| # | Name | Site |
+|---|---|---|
+| 1 | `cave-easy` | `cave.chest.kits.easy` |
+| 2 | `cave-medium` | `cave.chest.kits.medium` |
+| 3 | `cave-hard` | `cave.chest.kits.hard` |
+| 4 | `sky-island-easy` | `skyIsland.chest.kits.easy` |
+| 5 | `sky-island-medium` | `skyIsland.chest.kits.medium` |
+| 6 | `sky-island-hard` | `skyIsland.chest.kits.hard` |
+| 7 | `nether-start-easy` | `netherStart.chest.kits.easy` |
+| 8 | `nether-start-medium` | `netherStart.chest.kits.medium` |
+| 9 | `nether-start-hard` | `netherStart.chest.kits.hard` |
+| 10 | `end-start-easy` | `endStart.chest.kits.easy` |
+| 11 | `end-start-medium` | `endStart.chest.kits.medium` |
+| 12 | `end-start-hard` | `endStart.chest.kits.hard` |
+| 13 | `ocean-island-default` | `oceanIsland.starterKit` — **§3's own literal name** |
+| 14 | `floating-islands-loot` | `skyIsland.floatingIslands.lootChest.kit` |
+
+Only #14 has no precedent to copy. `floating-islands-loot` follows
+`<owner>-<role>` with the owner being the `floatingIslands` *section* rather
+than the `sky_island` preset — the same choice `ocean-island-default` makes
+(owner = section, role = purpose). The alternative, `sky-island-floating-loot`,
+prefixes by preset instead; rejected as three-part and less greppable against
+the config key it sits under. Cheap to change later: it is one string in
+`KitLibrary` and one in `FloatingIslandsConfig`.
+
+Add a test asserting the 14 names are exactly `KitLibrary.shipped().keySet()`
+**and** that every one of the 14 sites' default `ref` resolves in that map —
+that pair is what mechanically guarantees "existing configs with zero
+kit-related keys resolve to exactly the same defaults they do today".
+
+### 44.6 Resolution timing, end to end
+
+Answering the "cross-file lookup" question explicitly: **there is no cross-file
+lookup.** 25.7b already merges every file into one root `Map` *before* the
+schema walk (`WorldzConfig.load`, `WorldzConfig.java:210-224`; DESIGN §43.4.2),
+so by the time `ROOT.read` runs, `kits` and `cave` are siblings in one map
+regardless of whether they arrived from `kits.yaml` + `world-types/cave.yaml`
+or from a single `all.yaml` bundle. What 25.8 adds is a cross-**section**
+read, not a cross-file one.
+
+| Stage | Site | What happens |
+|---|---|---|
+| merge | `WorldzConfig.readSplit`/`readBundle` (`:232-286`) | `kits.yaml` (unwrapped) contributes `root["kits"] = fileMap`; nothing kit-aware |
+| parse | `SchemaSection.read` → `Codecs.namedOrSection` | each site becomes either an inline `StarterKitConfig` or `StarterKitConfig.reference(name)`; the library becomes `Map<String, StarterKitConfig>` merged over the shipped 14 |
+| presence | `SchemaSection.readOne` (`:98-104`) | unchanged; `present("cave.chest.kits.easy")` true in both forms, `present("kits.cave-easy")` newly available |
+| sanitize #1 | root setting **`kits`** (declared first, 44.4.3) | `Rule.NestedMap` sanitizes all 14+ library entries, including `StarterKitSchema.postValidate`'s `extrasCount` clamp |
+| sanitize #2..n | each preset section, in declaration order | `Rule.KitReference` reads `ctx.root().kits` — the same `SanitizeContext.root` coupling `ExteriorSchema` already uses for its sibling-border read (`SanitizeContext.java:6-17`, DESIGN R2) — and materializes contents, or sanitizes the inline definition exactly as today |
+| unknown name | `Rule.KitReference` | WARN naming the bad name, the dotted path, the substituted default and the defined names; fall back to the site's shipped default. Lenient, matching `Rule.BiomeId`/`Rule.BlankFallback`'s posture (`Rule.java:104-118`, `:272-281`) |
+| emit | `Codecs.namedOrSection.write` | name if referenced, today's inline map otherwise |
+
+Error classification, for consistency with DESIGN §43.4.4:
+
+- **Wrong *type*** at a kit key (a list, a number) → `IllegalArgumentException`
+  from `SchemaSection.read`, aborting `parseMap` to all-defaults. Same as every
+  other value-level error today; deliberately not isolated.
+- **Wrong *name*** (blank, misspelled, deleted) → sanitize-time WARN and
+  fallback. A name is data, not a type; leniency here is what keeps a typo in
+  one kit from discarding the user's entire config.
+
+### 44.7 Summary line and the golden file
+
+`WorldzRootSchema.summary()` is hand-overridden (`WorldzRootSchema.java:258-286`)
+and gains a leading `kits=` segment. Render it as the **name list**, not the
+contents: the WARN for an unknown name lists defined names, and the summary is
+the other place a user checks what exists.
+
+The bigger summary change is at the 14 sites. Today
+`ChestSchema.KitsSchema.declare()`'s `.render(easySchema::summary)`
+(`ChestSchema.java:116-127`) folds every item of every kit into the startup log
+line. With references it renders one short name each. `WorldzConfigTest`'s
+96-line R13 summary assertion must be updated **segment by segment, deliberately
+reviewed** — the recurring 25.6b/c/d/e lesson — not bulk-replaced.
+
+`common/src/test/resources/config/reference-defaults.yaml` is regenerated in
+sub-steps (b), (c) and (d), each time by capturing the real `toYaml()` output
+from the failing golden test rather than hand-transcribing (25.6f's own
+recorded technique), and hand-diffed to confirm only the expected hunks moved.
+
+### 44.8 Sub-step sequence
+
+Eight steps, following 25.2a-h / 25.6a-h / 25.7a-e. Each builds green and is
+independently committable. `a`→`b`→`c`→`d` is a hard chain; `e` needs `b`;
+`f`/`g` need `d`; `h` last.
+
+| Step | Scope | What it proves / gate |
+|---|---|---|
+| **a** | Framework only. `StarterKitConfig.ref` + `reference(...)` (44.3.2); `Codecs.namedOrSection` (44.3.3); `Rule.KitReference` + `Rule.NestedMap` (44.3.4, 44.4.2); `Codecs.sectionMap`; `StarterKitSchema.reference(...)` helper (44.3.5). **No site converted, no root key added.** New `KitReferenceTest` on a synthetic two-site POJO, in `SettingGroupTest`'s style. | The polymorphic leaf round-trips an inline mapping byte-identically (so nothing downstream can have moved yet), a string reads as a reference, and a non-string/non-map still throws today's message. `git diff` **must not touch `reference-defaults.yaml`** — if it does, (a) has a bug |
+| **b** | The library. `KitLibrary` with the 14 shipped entries moved verbatim (44.4.1); `WorldzConfig.kits`; the `kits` root `Setting` declared **first** (44.4.3) with the merging setter; `ConfigLayout` `kits.yaml` entry + `ConfigLayoutTest` branch (44.4.4); `REFERENCE_HEADER` line. **Sites still inline.** | The library parses, sanitizes, merges over defaults and emits, before anything depends on it. Golden file gains only the `kits:` block at the top; every preset block byte-unchanged. Split-load test picks up the 16th file automatically via `ConfigLayout`. New: user entry overrides a shipped name; user entry adds a new name without deleting the 14; sanitize's setter self-`putAll` is a no-op |
+| **c** | The 12 tiered sites. `ChestSchema.KitsSchema` binds `StarterKitSchema.reference(...)`; `CaveConfig`/`SkyIslandConfig`/`NetherStartConfig`/`EndStartConfig` kit fields become `reference("…")`, their 12 `*Defaults()` methods deleted. Migrate `config/tests/90-nether-start-custom-kit.yaml` (inline stays legal — confirm it still parses **unchanged**, which is itself the proof) | Zero-kit-key configs resolve to byte-identical contents (assert the resolved `essentials`/`extras`/`extrasCount` against the pre-25.8 golden values, per site — not just that it parses). Unknown name warns and falls back. Golden regenerated + hand-diffed |
+| **d** | The last 2 sites. `oceanIsland.starterKit` (`OceanIslandSchema.java:77`) and `skyIsland.floatingIslands.lootChest.kit` (`FloatingIslandsSchema.java:300`); `FloatingIslandsConfig.lootKitDefaults` deleted; `ocean-island-default` = `new StarterKitConfig()`, constructor defaults **unchanged** (44.3.2). Fixtures 34 and 47 checked (both inline, both must still parse unchanged) | All 14 sites converted. The partial-inline-kit behavior is provably unchanged: a test writing only `extrasCount:` inline still inherits the constructor's essentials/extras |
+| **e** | Unknown-key gate. `NestedMap` branches in `SchemaKeyWalker.findUnknownKeys` (`SchemaKeyWalker.java:76-94`) and `recurseIfNested` (`:161-170`), so `kits.yaml`'s arbitrary *names* are tolerated while each kit body's `essentials`/`extras`/`extrasCount` **is** checked. `SchemaKeyWalkerFileTest` cases | A stray `essentails:` typo inside a named kit is caught; an arbitrary kit name is not flagged; `layout.roleOverrides`' guard still holds; `ConfigFixturesTest` stays green with `KNOWN_UNKNOWN_KEYS` empty |
+| **f** | Docs. New README "Shared starter kits" subsection (the two forms, the 14 shipped names, merge-over-defaults, unknown-name fallback) + the kit rows in the ocean-island (`README.md:424-426`), cave/sky-island (`:556-558`), floating-islands (`:630-632`) tables. `config/jlt_worldz.example.yaml`: it covers none of these sections today (grep before editing) — add only a short `kits:` example; the rewrite stays 25.10's | README never contradicts the schema; 25.10 still owns the generated tables. `config/tests/README.md`/`MANUAL_TESTING.md` stay 25.11, same deferral as every prior sub-step |
+| **g** | New `config/tests/*.yaml` fixtures — the first Phase 25 sub-step that warrants one, because the YAML users write actually changes here (25.1-25.7 shipped none, correctly, since nothing in-game changed). Two: **(i)** one kit defined once and referenced by two different presets' chests, proving real cross-preset sharing in game; **(ii)** a misspelled kit name, proving the WARN + fallback is visible and the world still generates. Update `ConfigFixturesTest.EXPECTED_FIXTURE_COUNT` (103 → 105) | AGENTS.md's "every phase ships at least one `config/tests/` YAML per covered use case"; **[Jason]** in-game items |
+| **h** | Close-out. Deviation log: F2's 12-vs-14 miscount and the "no net bulk reduction" correction (44.2); **24.5 un-folded back to Phase 24** with 44.1's findings written into TODO 24.5's own text (44.1.4); `StarterKitConfig` constructor defaults deliberately unchanged. Full `./gradlew build` all modules; NeoForge brief check (no loader-level code — `WorldzCommon.java:30-31`'s `load` signature is unchanged). **[Jason]** redeploy both Prism instances *before* asking him to test (MEMORY: deploy-jar-before-requesting-test) | Nothing half-migrated; both loaders green |
+
+### 44.9 Questions for Jason — resolved (2026-07-28)
+
+Two questions were raised during the design pass; both are now resolved.
+
+**Q1 — D6 does not shrink the config; it relocates it.** He was told (F2/D6)
+that named kits "remove ~38% of the config's bulk". 44.2 measured that this is
+not achievable: the 14 kits have no duplicate contents, so nothing merges —
+the ~146 lines move into `kits:` and the generated `jlt_worldz.reference.yaml`
+ends up ~443 lines, slightly *larger* than today's 428. The real wins are
+locality (`cave.yaml` drops ~41 → ~14 lines), reuse, and one-line kit
+swapping.
+
+**Resolved (Jason, 2026-07-28): proceed.** The design goes ahead exactly as
+drafted — named kits ship for locality, reuse and swap-by-name even though the
+total config size does not shrink. That includes the library block leading
+the generated reference file (the consequence of declaring `kits` first,
+44.4.3, and of §3's own file ordering) — no change from the draft.
+
+Two sub-decisions rode on this answer:
+  - the library block leads the reference file (44.4.3) — kept as drafted.
+  - should the generated reference emit the full kit contents at all, or just
+    the 14 names with a pointer to `kits.yaml`? **Resolved (Jason, 2026-07-28):
+    full contents.** The generated `jlt_worldz.reference.yaml` emits all 14
+    kits' full contents inline, so it stays a valid standalone `all.yaml`
+    bundle (DESIGN §43.4.5) rather than trading that property away to save
+    lines.
+
+**Q2 — un-folding 24.5 from this task.** 44.1 recommends returning the
+capsule consolidation to Phase 24, merged with 24.4, because the overlap
+`CONFIG-RESTRUCTURE.md` §7 assumed does not exist (the config half shipped at
+25.2a/25.6e; the remaining half is `logic/`-only and shares no file with
+25.8).
+
+**Resolved (Jason, 2026-07-28): confirmed, un-fold it.** 24.5 returns to
+Phase 24, merged with 24.4, per 44.1.4's design. This required no change to
+§44.1-§44.8's actual design — sub-step **h** (44.8) already logs the
+Deviation and rewrites TODO 24.5's text with 44.1.1-44.1.3's findings, exactly
+as the confirmed decision requires.
+
+Deliberately **not** raised as questions, decided here with citations:
+kit naming scheme (§3's own `cave-easy`/`ocean-island-default`, 44.5); 12 vs 14
+pre-named (§3's `ocean-island-default` example, 44.2); merge-vs-replace for user
+`kits.yaml` (forced by "behavior byte-identical", 44.4.2); unknown-name leniency
+(`Rule.BiomeId`/`BlankFallback` precedent, 44.6); `floating-islands-loot`'s name
+(one string, trivially changed, 44.5).
