@@ -1820,14 +1820,24 @@ tests.
       WARN + fallback is visible and the world still generates. Update
       `ConfigFixturesTest.EXPECTED_FIXTURE_COUNT` (103 → 105).
       **[Jason]** in-game acceptance of both.
-- [ ] 25.8h Close-out: Deviation log (F2's 12-vs-14 miscount and the "named
+- [x] 25.8h Close-out: Deviation log (F2's 12-vs-14 miscount and the "named
       kits relocate, don't shrink" correction, DESIGN §44.2; 24.5 un-folded
       back to Phase 24, already reflected in 24.5's rewritten text above —
       just cross-reference it here rather than re-logging); full
       `./gradlew build` all modules; NeoForge brief check (no loader-level
       code expected — `WorldzCommon.java:30-31`'s `load` signature is
       unchanged). **[Jason]** redeploy both Prism instances before
-      requesting test (memory: deploy-jar-before-requesting-test).
+      requesting test (memory: deploy-jar-before-requesting-test). **Done
+      (bookkeeping half):** three Deviation log entries added above (F2's
+      12-vs-14 miscount, the "named kits relocate, don't shrink" correction,
+      and the 24.5 un-fold record commit e3c6a1d's own task text referenced
+      but had not actually added), all citing DESIGN §44.1/§44.2/§44.9;
+      25.8a-25.8g reverified as accurately checked off. The
+      `./gradlew build`/NeoForge-check/Prism-redeploy portion of this
+      sub-step is being handled separately by `tester` in parallel and is
+      not covered by this check-off. **TODO 25.8 (all of 25.8a-25.8h) is now
+      complete**, pending only `tester`'s build/deploy pass and Jason's
+      in-game acceptance already noted under 25.8g.
 - [ ] 25.9 **Strip world absolute width (D9 — the one behavior change).**
       Design and width/portal table in `CONFIG-RESTRUCTURE.md` §5. `width`
       replaces `widthRadiusBlocks`, minimum 1 block; odd widths symmetric about
@@ -2229,6 +2239,59 @@ tests.
 ## Deviation log
 
 (Record every departure from DESIGN.md/GOALS.md here: what, where, why.)
+
+- 2026-07-28 (Phase 25.8h close-out) — **`CONFIG-RESTRUCTURE.md` F2 miscounted
+  the shared starter-kit blocks as 12; the real count is 14** (DESIGN §44.2).
+  F2 says "145 of the 384 generated lines are 12 near-identical
+  `easyKit`/`mediumKit`/`hardKit`/`starterKit`/`lootKit` blocks" — its own list
+  of shapes includes `starterKit` (`oceanIsland.starterKit`) and `lootKit`
+  (`skyIsland.floatingIslands.lootChest.kit`), but its total only counts the
+  4×3 tiered blocks (`cave`/`skyIsland`/`netherStart`/`endStart` ×
+  `easy`/`medium`/`hard`), silently dropping those same two sites from the
+  sum. `CONFIG-RESTRUCTURE.md` §3's own worked example already assumes the
+  13th site is named (`starterKit: ocean-island-default`), so §3 and F2
+  contradict each other; §44.2 resolves in §3's favor — all 14 sites are
+  pre-named (44.5), and 25.8b-d shipped all 14 as library entries, not 12.
+  No behavior impact; documentation-accuracy only.
+
+- 2026-07-28 (Phase 25.8h close-out) — **"Named kits relocate, don't shrink":
+  D6 does not remove ~38% of the config's bulk, contrary to what F2/D6
+  originally implied** (DESIGN §44.2, §44.9 Q1). Compared field by field, none
+  of the 14 kit blocks share contents with another (closest pair,
+  `netherStart.hard`/`endStart.hard`, shares `essentials` but differs on
+  `extras`) — so nothing merges away. The ~146 lines of item lists do not
+  disappear; they *move* into `kits.yaml`. Measured across the sub-steps: the
+  generated `jlt_worldz.reference.yaml` started at 428 lines (25.7), grew past
+  that once 25.8b added the `kits:` library block while the 14 sites were
+  still inline, then shrank back down as 25.8c/25.8d converted each site to a
+  one-line reference — landing at 443 lines once 25.8d finished, matching
+  §44.9 Q1's ~443 estimate almost exactly. **Jason confirmed proceeding
+  anyway on 2026-07-28** (DESIGN §44.9 Q1): the real value is locality
+  (`cave.yaml` drops ~41→~14 lines), reuse across presets, and one-line kit
+  swapping — not size reduction — and the design went ahead unchanged,
+  including emitting each kit's full contents inline in the generated
+  reference (not just names) so it stays a valid standalone `all.yaml`
+  bundle.
+
+- 2026-07-28 (Phase 25.8h close-out) — **Old TODO 24.5 (capsule-config-field
+  consolidation) is un-folded from Phase 25 and returned to Phase 24, merged
+  with 24.4** (DESIGN §44.1, confirmed by Jason 2026-07-28, DESIGN §44.9 Q2).
+  `CONFIG-RESTRUCTURE.md` §7 justified folding 24.5 into 25.8 with "overlaps
+  D6", but the two touch disjoint file sets: the config-layer duplication
+  24.5 named no longer exists (`NetherStartConfig.capsule`/
+  `EndStartConfig.capsule` already share one `StarterCapsuleConfig`/
+  `StarterCapsuleSchema` since 25.2a/25.6e); the remaining duplication is
+  entirely in `logic/` (`NetherStartPlan`/`EndStartPlan`'s four capsule
+  record components, nine bound constants, four validation blocks, and
+  `centeredCapsuleOffsets`) and is codec-persisted but consolidatable with
+  zero shape change to the saved NBT (DESIGN §44.1.3). 24.4 ("shared capsule
+  *builder*") is 24.5's real pair — doing 24.5 now would mean 24.4 re-opens
+  the same six files later — and Phase 25's own "no world-save-codec change"
+  constraint makes declining the fold-in the conservative direction anyway.
+  TODO 24.5's text above (Phase 24) was rewritten with these findings at the
+  point of the fold (commit e3c6a1d, 2026-07-28) so Phase 24 does not have to
+  re-derive them; this entry is the Deviation-log record that commit's own
+  25.8h task text called for but did not yet add.
 
 - 2026-07-28 (Phase 25.7e close-out) — **`strip`/`stripWorld` merged at file
   level only by 25.7; the key-level merge is deferred to TODO 25.9** (DESIGN
