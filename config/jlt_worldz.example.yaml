@@ -4,6 +4,19 @@
 # defaults apply). See README.md for how the mod-level file relates to
 # per-world settings chosen in the Customize screen.
 
+# Named, reusable starter kits (DESIGN §44) -- shipped with 14 defaults
+# (cave-easy/medium/hard, sky-island-easy/medium/hard, nether-start-
+# easy/medium/hard, end-start-easy/medium/hard, ocean-island-default,
+# floating-islands-loot; see README's "Shared starter kits" section for the
+# full list). Entries here merge over that shipped set -- adding new names
+# or overriding a shipped one -- they never delete it. Any kit-bearing
+# setting (oceanIsland.starterKit, cave.chest.kits.easy, etc.) can then name
+# one of these instead of defining essentials/extras/extrasCount inline,
+# e.g.:
+#   oceanIsland:
+#     starterKit: my-custom-kit
+kits: {}
+
 # Biome ids and/or #tag ids allowed in newly created Worldz overworlds.
 # Default: a desert/badlands/cave biome mix with a plains starter.
 allowedBiomes:

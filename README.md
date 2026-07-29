@@ -406,6 +406,11 @@ oceanIsland:
     extrasCount: 2
 ```
 
+`starterKit` also accepts a bare name from the shared kit library instead of
+the inline block shown above — e.g. `starterKit: ocean-island-default` (its
+own shipped default) — see [Shared starter kits](#shared-starter-kits)
+below.
+
 | Setting | Default | Description |
 |---|---|---|
 | `island.source` | `"artificial"` | `artificial`, `natural`, or `chest_boat` — see above. |
@@ -555,7 +560,7 @@ skyIsland:
 | `thickness` | `6` | How many blocks of solid ground extend below `surfaceY` before hitting void. Clamped to `1..64`. |
 | `chest.tier` | `"medium"` | `easy`, `medium`, or `hard` — which of `chest.kits.easy`/`.medium`/`.hard` the starter chest uses. |
 | `applyToNether` | `false` | Mirrors this exact shape into the Nether too (GOALS 06). |
-| `chest.kits.easy`/`.medium`/`.hard` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit`. |
+| `chest.kits.easy`/`.medium`/`.hard` | see above | Each has its own `essentials`/`extras`/`extrasCount`, same shorthand format as ocean island's `starterKit` — or a bare name from the shared kit library instead (e.g. `easy: cave-easy`, its own shipped default). See [Shared starter kits](#shared-starter-kits). |
 | `exclusionZone.enabled`/`.radius` | `true`/`128` | Whether/how wide a buffer beyond the island's own edge keeps reporting `biome` before the real seed's own biome takes over — a purely cosmetic/F3 distinction; the terrain itself stays void either way. |
 | `underground.biome` | `""` (disabled) | Biome reported at/below `underground.belowSurface` blocks under `surfaceY`, within the island's own footprint (GOAL 42) — same single-fixed-biome shape as `flat`'s identical setting. Blank disables the band entirely. Note the interaction with `thickness`: with the defaults (`thickness: 6`, `underground.belowSurface: 10`), the band starts *below* the slab's own solid ground (in the void beneath it) — for the band to fall within diggable ground, set `underground.belowSurface` smaller than `thickness`. Config-only for now (not yet on the Customize screen). |
 | `underground.belowSurface` | `10` | How many blocks below `surfaceY` the underground band starts. Only takes effect when `underground.biome` is also set; `0` disables the band even with a biome configured. |
@@ -629,7 +634,7 @@ skyIsland:
 | `oreDeposits.enabled` | `false` | Whether each island gets one embedded vanilla ore-vein feature, hash-picked from `oreDeposits.featureIds` and placed once at the island's own center, clamped to its slab's thickness. |
 | `oreDeposits.featureIds` | coal/iron/gold/redstone/lapis/diamond/emerald | Candidate vanilla `ConfiguredFeature` ids (config-only, like `chest.kits.easy`/`.medium`/`.hard` above — not exposed on the Customize screen). |
 | `lootChest.enabled` | `false` | Whether each island gets one placed loot chest at the island's surface, reusing `lootChest.kit`. |
-| `lootChest.kit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `chest.kits.easy`/`.medium`/`.hard` above (config-only, not exposed on the Customize screen). |
+| `lootChest.kit` | bread + iron/emerald/arrow/golden-apple/ender-pearl extras | Same `essentials`/`extras`/`extrasCount` shape as `chest.kits.easy`/`.medium`/`.hard` above (config-only, not exposed on the Customize screen) — or a bare name from the shared kit library instead (default: `floating-islands-loot`). See [Shared starter kits](#shared-starter-kits). |
 
 **Guaranteed village (GOALS 07):** whenever `floatingIslands.enabled` is
 set, one specific scattered island beyond the exclusion zone is always a
@@ -1370,14 +1375,15 @@ to delete, and always showing every setting at its current built-in default.
 
 Settings live under `config/jlt_worldz/`, in either of two shapes:
 
-- **Split, one file per section** — up to 15 files, one per typed preset plus
-  two shared files, each holding only the sections that apply to it:
+- **Split, one file per section** — up to 16 files, one per typed preset plus
+  three shared files, each holding only the sections that apply to it:
 
   ```
   config/jlt_worldz/
     runtime.yaml          # foreverNight, risingLava, structureDistance
     world-defaults.yaml   # overworldBorder, netherBorder, endBorder,
                            # overworldExterior, netherExterior
+    kits.yaml              # kits (see Shared starter kits below)
     world-types/
       worldz.yaml          # allowedBiomes, starter, naturalBiomes, layout, spawn
       strip-world.yaml     # strip, stripWorld
@@ -1394,10 +1400,10 @@ Settings live under `config/jlt_worldz/`, in either of two shapes:
       stacked.yaml         # stacked
   ```
 
-  Each of the 15 files is independently optional — write only the ones you
+  Each of the 16 files is independently optional — write only the ones you
   actually want to change and leave the rest unwritten; a file the mod
   doesn't find just leaves its sections at their built-in defaults, and none
-  of the 15 is ever created for you.
+  of the 16 is ever created for you.
 
 - **Single bundle** — `config/jlt_worldz/all.yaml`, the whole config in one
   file, shaped exactly like `config/jlt_worldz.example.yaml` and the
@@ -1412,11 +1418,90 @@ under `world-types/` (every one except `worldz.yaml` and `strip-world.yaml`,
 which each hold more than one section) only ever hold that one section, so
 their root mapping *is* that section's body directly, with no wrapper key at
 all — `world-types/cave.yaml` starts straight at `spawnY: -32`, not
-`cave: {spawnY: -32}`. The remaining four files (`runtime.yaml`,
-`world-defaults.yaml`, `world-types/worldz.yaml`, `world-types/strip-world.yaml`)
-are **wrapped** instead: their root mapping is a slice of the same
-`key: {...}` shape the settings tables below and the single-bundle form use
-(e.g. `runtime.yaml` still starts with a `foreverNight:` block).
+`cave: {spawnY: -32}`. `kits.yaml` is unwrapped the same way: its root
+mapping *is* the name-to-kit map directly, not `kits: {...}` — see [Shared
+starter kits](#shared-starter-kits) below. The remaining four files
+(`runtime.yaml`, `world-defaults.yaml`, `world-types/worldz.yaml`,
+`world-types/strip-world.yaml`) are **wrapped** instead: their root mapping
+is a slice of the same `key: {...}` shape the settings tables below and the
+single-bundle form use (e.g. `runtime.yaml` still starts with a
+`foreverNight:` block).
+
+### Shared starter kits
+
+Every kit-bearing setting — ocean island's `starterKit`, the tiered
+`chest.kits.easy`/`.medium`/`.hard` cave/sky-island/Nether-start/End-start
+share, and floating islands' `lootChest.kit` — accepts either of two forms
+in that exact key position:
+
+- **A bare name**, referencing an entry in the `kits` library described
+  below:
+
+  ```yaml
+  cave:
+    chest:
+      kits:
+        easy: cave-easy
+  ```
+
+- **A full inline definition**, exactly as before this feature — its own
+  `essentials`/`extras`/`extrasCount`, same shorthand item format as always:
+
+  ```yaml
+  cave:
+    chest:
+      kits:
+        easy:
+          essentials: ['minecraft:bread:4']
+          extras: ['minecraft:torch:8']
+          extrasCount: 1
+  ```
+
+Both forms remain fully legal at all 14 kit sites; nothing about the inline
+form changed.
+
+The library itself lives under a `kits` root section — unwrapped into its
+own `config/jlt_worldz/kits.yaml` file (see [Config file
+layout](#config-file-layout) above), or a `kits:` block in `all.yaml` — a
+plain name-to-kit map, each entry shaped exactly like an inline kit above.
+It ships with 14 pre-named entries, one per site's own previous default, so
+an untouched config resolves to exactly the same kit contents it always has:
+
+| Name | Site |
+|---|---|
+| `cave-easy` | `cave.chest.kits.easy` |
+| `cave-medium` | `cave.chest.kits.medium` |
+| `cave-hard` | `cave.chest.kits.hard` |
+| `sky-island-easy` | `skyIsland.chest.kits.easy` |
+| `sky-island-medium` | `skyIsland.chest.kits.medium` |
+| `sky-island-hard` | `skyIsland.chest.kits.hard` |
+| `nether-start-easy` | `netherStart.chest.kits.easy` |
+| `nether-start-medium` | `netherStart.chest.kits.medium` |
+| `nether-start-hard` | `netherStart.chest.kits.hard` |
+| `end-start-easy` | `endStart.chest.kits.easy` |
+| `end-start-medium` | `endStart.chest.kits.medium` |
+| `end-start-hard` | `endStart.chest.kits.hard` |
+| `ocean-island-default` | `oceanIsland.starterKit` |
+| `floating-islands-loot` | `skyIsland.floatingIslands.lootChest.kit` |
+
+A user's own `kits.yaml` (or `kits:` block in `all.yaml`) **merges over**
+this set — adding new names, or overriding a shipped one by reusing its
+name — rather than replacing it wholesale; the 14 shipped names are never
+deleted, so every site still referencing one keeps working even if you've
+never touched `kits.yaml` at all.
+
+Naming an unknown kit (a typo, or a name you removed) logs a warning and
+falls back to that specific site's own shipped default — an unresolved
+`cave.chest.kits.easy` falls back to `cave-easy`, never to some generic
+empty kit — so one bad reference never blanks out a chest or aborts the
+rest of the config.
+
+This relocates kit contents into one shared file rather than shrinking the
+overall config: none of the 14 shipped kits share contents with another, so
+nothing actually merges away. The benefit is locality — a preset's own file
+gets much shorter once its kits are just names — and reuse: define a kit
+once, point several sites at it, or swap an entire preset's kit tier by
+editing one line.
 
 ### Live vs. baked
 

@@ -1803,7 +1803,7 @@ tests.
       arbitrary kit name is not flagged; `layout.roleOverrides`'s guard
       still holds. `ConfigFixturesTest` stays green, `KNOWN_UNKNOWN_KEYS`
       still empty.
-- [ ] 25.8f Docs (needs 25.8d): new README "Shared starter kits" subsection
+- [x] 25.8f Docs — **Done (0.3.30):** (needs 25.8d): new README "Shared starter kits" subsection
       (the two forms, the 14 shipped names, merge-over-defaults, unknown-name
       fallback) + updated kit rows in the ocean-island/cave/sky-island/
       floating-islands tables; a short `kits:` example added to
