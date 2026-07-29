@@ -56,13 +56,11 @@ public final class StarterKitSchema extends SchemaSection<StarterKitConfig> {
     }
 
     /**
-     * TODO 25.8b: replace with {@code ctx -> ctx.root().kits} once {@code WorldzConfig} gains the
-     * {@code kits} field (DESIGN §44.4.1, §44.3.4) -- there is no library to resolve against yet.
-     * Safe in the meantime because no 25.8a call site invokes {@link #reference} (no site converts
-     * until 25.8c): an always-empty library sends every reference straight through {@link
-     * Rule.KitReference}'s own unknown-name fallback to {@code inline}'s definition.
+     * The real {@code kits} library, resolved through the root config each sanitize call (DESIGN
+     * §44.3.4, §44.4.1; wired at TODO 25.8b once {@code WorldzConfig.kits} existed to compile
+     * against). Still unused by any real site until TODO 25.8c/d converts one.
      */
-    private static final Function<SanitizeContext, Map<String, StarterKitConfig>> NO_LIBRARY_YET = ctx -> Map.of();
+    private static final Function<SanitizeContext, Map<String, StarterKitConfig>> LIBRARY = ctx -> ctx.root().kits;
 
     /**
      * Binds a polymorphic "named reference or inline definition" leaf (DESIGN §44.3.5): the raw
@@ -85,7 +83,7 @@ public final class StarterKitSchema extends SchemaSection<StarterKitConfig> {
         return new Setting.PlainBuilder<>(
             key, new Accessor<>(get, set),
             Codecs.namedOrSection(inline, StarterKitConfig::reference, config -> config.ref),
-            new Rule.KitReference<>(inline, NO_LIBRARY_YET, defaultName)
+            new Rule.KitReference<>(inline, LIBRARY, defaultName)
         );
     }
 }

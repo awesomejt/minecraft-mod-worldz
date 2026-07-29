@@ -1,3 +1,149 @@
+kits:
+  cave-easy:
+    essentials:
+    - minecraft:oak_log:4
+    - minecraft:bread:6
+    - minecraft:wheat_seeds:4
+    - minecraft:oak_sapling:3
+    - minecraft:torch:16
+    - minecraft:dirt:8
+    extras:
+    - minecraft:cobblestone:16
+    - minecraft:coal:8
+    extrasCount: 2
+  cave-medium:
+    essentials:
+    - minecraft:torch:8
+    - minecraft:oak_log:2
+    - minecraft:dirt:4
+    extras:
+    - minecraft:coal:4
+    extrasCount: 1
+  cave-hard:
+    essentials:
+    - minecraft:torch:1
+    - minecraft:wooden_pickaxe:1
+    extras: [
+      ]
+    extrasCount: 0
+  sky-island-easy:
+    essentials:
+    - minecraft:oak_sapling:4
+    - minecraft:bread:8
+    - minecraft:crafting_table:1
+    - minecraft:lava_bucket:1
+    extras:
+    - minecraft:wooden_pickaxe:1
+    - minecraft:wooden_axe:1
+    - minecraft:torch:16
+    - minecraft:cobblestone:32
+    extrasCount: 3
+  sky-island-medium:
+    essentials:
+    - minecraft:oak_sapling:3
+    - minecraft:bread:4
+    - minecraft:lava_bucket:1
+    extras:
+    - minecraft:wooden_pickaxe:1
+    - minecraft:torch:8
+    - minecraft:cobblestone:16
+    extrasCount: 2
+  sky-island-hard:
+    essentials:
+    - minecraft:oak_sapling:2
+    - minecraft:lava_bucket:1
+    extras:
+    - minecraft:bread:2
+    - minecraft:torch:4
+    extrasCount: 1
+  nether-start-easy:
+    essentials:
+    - minecraft:obsidian:10
+    - minecraft:flint_and_steel:1
+    - minecraft:bread:8
+    - minecraft:wooden_pickaxe:1
+    extras:
+    - minecraft:golden_pickaxe:1
+    - minecraft:golden_sword:1
+    - minecraft:gold_ingot:8
+    - minecraft:torch:16
+    extrasCount: 3
+  nether-start-medium:
+    essentials:
+    - minecraft:obsidian:10
+    - minecraft:bread:4
+    - minecraft:wooden_pickaxe:1
+    extras:
+    - minecraft:gold_ingot:4
+    - minecraft:torch:8
+    - minecraft:iron_sword:1
+    extrasCount: 2
+  nether-start-hard:
+    essentials:
+    - minecraft:bread:2
+    - minecraft:wooden_pickaxe:1
+    extras:
+    - minecraft:gold_ingot:2
+    - minecraft:torch:4
+    extrasCount: 1
+  end-start-easy:
+    essentials:
+    - minecraft:firework_rocket:16
+    - minecraft:cobblestone:64
+    - minecraft:bread:8
+    - minecraft:bow:1
+    - minecraft:arrow:32
+    - minecraft:iron_sword:1
+    - minecraft:copper_pickaxe:1
+    extras:
+    - minecraft:iron_chestplate:1
+    - minecraft:iron_helmet:1
+    - minecraft:golden_apple:2
+    - minecraft:ender_pearl:4
+    extrasCount: 3
+  end-start-medium:
+    essentials:
+    - minecraft:firework_rocket:8
+    - minecraft:cobblestone:32
+    - minecraft:bread:4
+    - minecraft:iron_sword:1
+    - minecraft:stone_pickaxe:1
+    extras:
+    - minecraft:arrow:16
+    - minecraft:bow:1
+    - minecraft:ender_pearl:2
+    extrasCount: 2
+  end-start-hard:
+    essentials:
+    - minecraft:bread:2
+    - minecraft:wooden_pickaxe:1
+    extras:
+    - minecraft:arrow:8
+    - minecraft:ender_pearl:1
+    extrasCount: 1
+  ocean-island-default:
+    essentials:
+    - minecraft:lily_pad:1
+    - minecraft:dirt:4
+    - minecraft:grass_block:2
+    - minecraft:oak_sapling:3
+    extras:
+    - minecraft:bread:3
+    - minecraft:wooden_axe:1
+    - minecraft:wooden_pickaxe:1
+    - minecraft:torch:8
+    - minecraft:water_bucket:1
+    extrasCount: 2
+  floating-islands-loot:
+    essentials:
+    - minecraft:bread:2
+    extras:
+    - minecraft:iron_ingot:2
+    - minecraft:emerald:1
+    - minecraft:arrow:8
+    - minecraft:golden_apple:1
+    - minecraft:ender_pearl:1
+    extrasCount: 2
 allowedBiomes:
 - minecraft:desert
 - minecraft:beach

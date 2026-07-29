@@ -80,6 +80,7 @@ public final class WorldzConfig {
         # foreverNight/risingLava/structureDistance -> config/jlt_worldz/runtime.yaml
         # overworldBorder/netherBorder/endBorder/overworldExterior/netherExterior ->
         #   config/jlt_worldz/world-defaults.yaml
+        # kits -> config/jlt_worldz/kits.yaml
         # allowedBiomes/starter/naturalBiomes/layout/spawn -> config/jlt_worldz/world-types/worldz.yaml
         # strip/stripWorld -> config/jlt_worldz/world-types/strip-world.yaml
         # singleBiome -> config/jlt_worldz/world-types/single-biome.yaml
@@ -105,6 +106,12 @@ public final class WorldzConfig {
      */
     private static final WorldzRootSchema ROOT = new WorldzRootSchema();
 
+    /** Named, reusable starter kits (DESIGN §44.4.1, D6): every preset's chest kit either names one
+     * of these or defines its own inline. User {@code kits.yaml} entries merge over the shipped set
+     * (the setting's own merging setter, not replacement) -- see {@link KitLibrary#shipped()} for
+     * the 14 shipped names. Declared <strong>first</strong> in {@code WorldzRootSchema.declare()}
+     * (DESIGN §44.4.3): sanitized before any preset's own {@code Rule.KitReference} reads it. */
+    public Map<String, StarterKitConfig> kits = KitLibrary.shipped();
     /** Biome ids and biome-tag ids allowed in new Worldz worlds. */
     public List<String> allowedBiomes = new ArrayList<>(List.of(
         "minecraft:desert",
@@ -193,7 +200,7 @@ public final class WorldzConfig {
     /**
      * Loads {@code <configDir>/<modId>/} (DESIGN §43.4.2, TODO 25.7b) when present. Two shapes are
      * accepted: a single {@code all.yaml} bundle (DESIGN §43.4.5), which wins wholesale over every
-     * split file when it exists, or the 15 split files {@link ConfigLayout#FILES} describes, merged
+     * split file when it exists, or the 16 split files {@link ConfigLayout#FILES} describes, merged
      * into one root map before the schema ever sees them. Both shapes -- and an absent directory --
      * are optional: when nothing is found, code defaults apply directly and no file is ever created.
      * A file the mod did read is never rewritten -- comments and omitted settings survive every
@@ -250,7 +257,7 @@ public final class WorldzConfig {
      * keys into one root map (DESIGN §43.4.2). Merge order is irrelevant -- each file owns a
      * disjoint key set ({@code ConfigLayoutTest}) -- so files are simply walked in declaration
      * order. Each file's own YAML-loading step is isolated (DESIGN §43.4.3-4): an absent file is
-     * skipped silently (15 optional files; a WARN per absent file would be noise), a blank/{@code
+     * skipped silently (16 optional files; a WARN per absent file would be noise), a blank/{@code
      * null} document is skipped silently (a deliberate per-file refinement -- unlike a blank {@code
      * all.yaml}, which still throws), and a non-mapping root or YAML syntax error costs only that
      * file's sections, WARNing and continuing rather than aborting the whole load. Value-level

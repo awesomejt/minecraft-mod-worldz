@@ -17,8 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Proves {@link ConfigLayout#FILES} totally and correctly partitions {@link
- * WorldzRootSchema#declare()}'s 26 root keys (DESIGN §43.9 row a, TODO 25.7a). No load-path
- * change is exercised here -- that is TODO 25.7b's {@code ConfigDirectoryLoadTest}.
+ * WorldzRootSchema#declare()}'s 27 root keys (DESIGN §43.9 row a, TODO 25.7a; {@code kits} added
+ * at TODO 25.8b). No load-path change is exercised here -- that is TODO 25.7b's {@code
+ * ConfigDirectoryLoadTest}.
  */
 class ConfigLayoutTest {
     private static final WorldzRootSchema ROOT = new WorldzRootSchema();
@@ -43,7 +44,7 @@ class ConfigLayoutTest {
             new LinkedHashSet<>(owned).size(), owned.size(), "ConfigLayout.FILES owns a root key more than once"
         );
         assertEquals(
-            new LinkedHashSet<>(rootKeys), new LinkedHashSet<>(owned), "ConfigLayout.FILES does not exactly partition the 26 root keys"
+            new LinkedHashSet<>(rootKeys), new LinkedHashSet<>(owned), "ConfigLayout.FILES does not exactly partition the 27 root keys"
         );
     }
 
@@ -115,6 +116,13 @@ class ConfigLayoutTest {
                 } else if (file.relativePath().equals("world-defaults.yaml")) {
                     assertEquals(
                         Applicability.Scope.WORLD_DEFAULT, applies.scope(), key + " should be a world default (world-defaults.yaml)"
+                    );
+                } else if (file.relativePath().equals("kits.yaml")) {
+                    // Kit contents are read once, at first spawn, by StarterKitDeployment, for
+                    // whichever preset is active -- not re-read live like runtime.yaml's three
+                    // sections, and not scoped to one preset (DESIGN §44.4.4).
+                    assertEquals(
+                        Applicability.Scope.WORLD_DEFAULT, applies.scope(), key + " should be a world default (kits.yaml)"
                     );
                 } else if (file.relativePath().startsWith("world-types/")) {
                     assertEquals(Applicability.Scope.PRESET, applies.scope(), key + " should be preset-scoped (" + file.relativePath() + ")");

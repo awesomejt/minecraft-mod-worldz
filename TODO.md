@@ -1757,7 +1757,7 @@ tests.
       a non-string/non-map still throws today's exact message.
       **`reference-defaults.yaml` must not change** — if it does, (a) has a
       bug.
-- [ ] 25.8b The library (DESIGN §44.4): `KitLibrary` with the 14 shipped
+- [x] 25.8b The library (DESIGN §44.4) — **done**. `KitLibrary` with the 14 shipped
       entries moved **verbatim** (not retyped) from `CaveConfig`/
       `SkyIslandConfig`/`NetherStartConfig`/`EndStartConfig`'s private
       `*Defaults()` methods and `FloatingIslandsConfig.lootKitDefaults`;

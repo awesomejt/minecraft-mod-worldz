@@ -31,6 +31,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WorldzConfigTest {
@@ -245,6 +246,68 @@ class WorldzConfigTest {
         WorldzConfig config = WorldzConfig.load(notADirectory, "jlt_worldz", LOGGER);
 
         assertEquals(DEFAULT_ALLOWED_BIOMES, config.allowedBiomes);
+    }
+
+    /**
+     * DESIGN §44.4.2's own caution (the 25.6a {@code Setting.group} bug precedent): at sanitize
+     * time {@code kits}' getter and its {@code Rule.NestedMap} both hand back the exact same map
+     * instance, so the setter's {@code putAll(map, itself)} must be a genuine no-op -- asserted
+     * explicitly here rather than only reasoned about.
+     */
+    @Test
+    void kitsSanitizeSelfPutAllIsAGenuineNoOp() {
+        WorldzConfig config = new WorldzConfig();
+        Map<String, StarterKitConfig> beforeSanitize = config.kits;
+        int sizeBefore = beforeSanitize.size();
+
+        config.sanitize(LOGGER);
+
+        assertEquals(14, sizeBefore, "sanity check: the shipped library has 14 entries before sanitize");
+        assertSame(beforeSanitize, config.kits, "sanitize must not replace the kits map instance");
+        assertEquals(sizeBefore, config.kits.size(), "self-putAll(map, itself) must not duplicate or drop entries");
+    }
+
+    /**
+     * A user {@code kits} entry overrides a shipped name: the setter merges (DESIGN §44.4.2), so
+     * the override's contents win for that one name while every other shipped kit is untouched.
+     */
+    @Test
+    void kitsSectionUserEntryOverridesAShippedName() {
+        WorldzConfig config = WorldzConfig.parse("""
+            kits:
+              cave-easy:
+                essentials: [minecraft:diamond:1]
+                extras: []
+                extrasCount: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(14, config.kits.size(), "overriding an existing name must not change the entry count");
+        assertEquals(List.of("minecraft:diamond:1"), config.kits.get("cave-easy").essentials);
+        assertEquals(
+            List.of("minecraft:torch:8", "minecraft:oak_log:2", "minecraft:dirt:4"), config.kits.get("cave-medium").essentials,
+            "every other shipped kit must be untouched"
+        );
+    }
+
+    /**
+     * A user {@code kits} entry adds a brand-new name: the setter merges rather than replaces
+     * (DESIGN §44.4.2), so the 14 shipped names survive alongside it.
+     */
+    @Test
+    void kitsSectionUserEntryAddsANewNameWithoutDeletingTheFourteenShipped() {
+        WorldzConfig config = WorldzConfig.parse("""
+            kits:
+              my-brutal-kit:
+                essentials: [minecraft:stick:1]
+                extras: []
+                extrasCount: 0
+            """, LOGGER).sanitize(LOGGER);
+
+        assertEquals(15, config.kits.size());
+        assertTrue(config.kits.containsKey("my-brutal-kit"));
+        assertEquals(List.of("minecraft:stick:1"), config.kits.get("my-brutal-kit").essentials);
+        assertTrue(config.kits.containsKey("cave-easy"), "the shipped 14 must survive a user addition");
+        assertTrue(config.kits.containsKey("floating-islands-loot"), "the shipped 14 must survive a user addition");
     }
 
     @Test
@@ -657,7 +720,10 @@ class WorldzConfigTest {
             """, LOGGER).sanitize(LOGGER);
 
         assertEquals(
-            "allowedBiomes=[minecraft:plains, #minecraft:is_overworld]"
+            "kits=[cave-easy, cave-medium, cave-hard, sky-island-easy, sky-island-medium, sky-island-hard,"
+                + " nether-start-easy, nether-start-medium, nether-start-hard, end-start-easy, end-start-medium,"
+                + " end-start-hard, ocean-island-default, floating-islands-loot]"
+                + ", allowedBiomes=[minecraft:plains, #minecraft:is_overworld]"
                 + ", starter=biome=<none>, radius=256, land=transition=128, foundation=48"
                 + ", naturalBiomes=rivers=false, oceans=false"
                 + ", overworldBorder=<disabled>, netherBorder=<disabled>, endBorder=<disabled>"

@@ -19,17 +19,21 @@ import media.jlt.minecraft.mods.worldz.config.SingleBiomeConfig;
 import media.jlt.minecraft.mods.worldz.config.SkyIslandConfig;
 import media.jlt.minecraft.mods.worldz.config.SpawnConfig;
 import media.jlt.minecraft.mods.worldz.config.StackedConfig;
+import media.jlt.minecraft.mods.worldz.config.StarterKitConfig;
 import media.jlt.minecraft.mods.worldz.config.StripConfig;
 import media.jlt.minecraft.mods.worldz.config.StripWorldConfig;
 import media.jlt.minecraft.mods.worldz.config.StructureDistanceConfig;
 import media.jlt.minecraft.mods.worldz.config.WorldzConfig;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * Root schema for {@link WorldzConfig} itself (DESIGN §41.7; TODO 25.2g). Declares one top-level
- * scalar ({@code allowedBiomes}), the {@code starter}/{@code naturalBiomes} groups (TODO 25.6b),
- * then a {@code Setting.section(...)} entry for each of the 23 already-converted sections, in
+ * Root schema for {@link WorldzConfig} itself (DESIGN §41.7; TODO 25.2g). Declares the {@code
+ * kits} library first of all (TODO 25.8b, DESIGN §44.4.3 -- load-bearing declaration order), one
+ * top-level scalar ({@code allowedBiomes}), the {@code starter}/{@code naturalBiomes} groups
+ * (TODO 25.6b), then a {@code Setting.section(...)} entry for each of the 23 already-converted
+ * sections, in
  * today's exact {@code toYaml()} emit order (DESIGN §41.1's ordering invariant) -- the same order
  * {@code WorldzConfig.parse} checked {@code containsKey} in and {@code WorldzConfig.sanitize}
  * processed fields in (re-verified against the current code, not DESIGN's line numbers, which
@@ -60,6 +64,10 @@ import java.util.List;
  * table).
  */
 public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
+    /** The {@code kits} library's shared per-entry schema (DESIGN §44.4.2), bound by both {@link
+     * Codecs#sectionMap} and {@link Rule.NestedMap} below -- one instance, matching {@code
+     * KitReferenceTest}'s own convention (TODO 25.8a) of a single {@code StarterKitSchema("kits")}. */
+    private final StarterKitSchema kitEntry = new StarterKitSchema("kits");
     private final StarterLandSchema starterLand = new StarterLandSchema("starter.land");
     private final StarterSchema<WorldzConfig> starter = new StarterSchema<>(
         "starter", WorldzConfig::new,
@@ -107,6 +115,23 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
     @Override
     protected List<Setting<WorldzConfig, ?>> declare() {
         return List.of(
+            // Declared FIRST -- load-bearing (DESIGN §44.4.3, pinned by
+            // WorldzRootSchemaTest.kitsIsDeclaredFirst): SchemaSection.sanitize runs settings in
+            // declaration order, so the kits library is fully sanitized before any preset's own
+            // Rule.KitReference reads it through ctx.root().kits. The setter merges rather than
+            // replaces (c.kits.putAll(v), never c.kits = v) -- both at parse time (a user kits.yaml
+            // entry adds to/overrides the shipped 14, never deletes them) and at sanitize time,
+            // where getter and rule both hand back the very same map instance, making the setter's
+            // self-putAll(map, itself) a deliberate no-op (the Setting.group / 25.6a precedent this
+            // cites, DESIGN §44.4.2).
+            new Setting.PlainBuilder<WorldzConfig, Map<String, StarterKitConfig>>(
+                "kits", new Accessor<>(c -> c.kits, (c, v) -> c.kits.putAll(v)), Codecs.sectionMap(kitEntry), new Rule.NestedMap<>(kitEntry)
+            )
+                .doc(
+                    "Named, reusable starter kits (D6); every preset's chest kit either names one of "
+                        + "these or defines its own inline. User entries merge over the shipped set."
+                )
+                .build(),
             Setting.<WorldzConfig>stringList("allowedBiomes", c -> c.allowedBiomes, (c, v) -> c.allowedBiomes = v)
                 .rule(new Rule.BiomeIdList<>(
                     Rule.BiomeIdList.Mode.ALLOW_TAGS, "Ignoring invalid allowed biome or tag '{}'.", null, null, null
@@ -253,11 +278,15 @@ public final class WorldzRootSchema extends SchemaSection<WorldzConfig> {
      * {@link #naturalBiomes}'s own group summaries (the {@code land=} sub-segment inside {@code
      * starter=} still folds three fields into one, via {@link StarterLandSchema}'s own override,
      * matching pre-rename's {@code starterLand=} exactly except for the renamed labels), so the
-     * whole line is hand-assembled here rather than derived from {@link #declare()}.
+     * whole line is hand-assembled here rather than derived from {@link #declare()}. The new
+     * leading {@code kits=} segment (TODO 25.8b, DESIGN §44.7) renders the library's <em>name
+     * list</em>, not each kit's contents -- matching {@link Rule.KitReference}'s own unknown-name
+     * WARN, the other place a user checks what names exist.
      */
     @Override
     public String summary(WorldzConfig value) {
-        return "allowedBiomes=" + value.allowedBiomes
+        return "kits=" + value.kits.keySet()
+            + ", allowedBiomes=" + value.allowedBiomes
             + ", starter=" + starter.summary(value)
             + ", naturalBiomes=" + naturalBiomes.summary(value)
             + ", overworldBorder=" + overworldBorder.summary(value.overworldBorder)
