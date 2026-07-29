@@ -60,12 +60,13 @@ class ConfigFixturesTest {
     // Hardcoded rather than derived from testConfigFileNames()'s own size, so a fixture silently
     // added to or removed from config/tests/ fails this assertion instead of passing unnoticed.
     // NOTE: TODO.md/DESIGN.md/CONFIG-RESTRUCTURE.md/GOALS.md all say "104" fixtures -- verified
-    // empirically here (`ls config/tests/*.yaml`, 2026-07-28) that the real, current count is 103
+    // empirically here (`ls config/tests/*.yaml`, 2026-07-28) that the real, current count was 103
     // (101 numbered files, two of which -- 27, 29 -- also have an "a"-suffixed sibling). No commit
-    // has ever deleted a config/tests/*.yaml file, so "104" looks like a stale count in the prose
+    // has ever deleted a config/tests/*.yaml file, so "104" looked like a stale count in the prose
     // rather than a fixture that used to exist; flagged for Jason rather than silently reconciled
-    // (TODO Deviation log, 2026-07-28).
-    private static final int EXPECTED_FIXTURE_COUNT = 103;
+    // (TODO Deviation log, 2026-07-28). TODO 25.8g added configs 102/103 (kits-library cross-site
+    // sharing and unknown-name fallback, DESIGN §44.8 row g), bringing the real count to 105.
+    private static final int EXPECTED_FIXTURE_COUNT = 105;
 
     private static final Map<String, Set<String>> KNOWN_UNKNOWN_KEYS = Map.of();
 

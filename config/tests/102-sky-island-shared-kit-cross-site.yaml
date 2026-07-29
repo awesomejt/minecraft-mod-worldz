@@ -1,0 +1,62 @@
+# GOALS 05/08 (TODO 25.8g row i, DESIGN §44.8): real in-game proof that a
+# single `kits:` library entry can be shared across more than one chest
+# site -- not just merged over defaults in unit tests. Only one World Type
+# can be active per save, so this can't literally test "two different
+# presets'" chests side by side; instead it uses the closest realistic
+# analog within one active preset -- "Worldz: Sky Island" -- since it's the
+# only preset with two genuinely independent chest-placement mechanisms
+# live at once: the tiered starter chest (`skyIsland.chest`) and the
+# scattered floating-islands loot chest (`skyIsland.floatingIslands.
+# lootChest`). Both are pointed at the same `sky-shared-kit` entry, defined
+# exactly once in the top-level `kits:` library.
+# **Select "Worldz: Sky Island"**. Requires 0.3.29+ (25.8e's unknown-key
+# gate, the last piece needed for an arbitrary custom kits: name to be
+# tolerated instead of misflagged).
+#
+# Steps once in-game:
+#  1. Confirm you spawn on the starter sky island as usual (see config 38
+#     for the general shape checks -- not repeated here).
+#  2. Open the starter chest. Confirm its contents: 4 diamonds, 2 emeralds
+#     as essentials, plus 1 golden apple as the (only, so deterministic --
+#     no per-position random draw to account for) extra -- this is
+#     `sky-shared-kit`'s own contents, not the built-in `sky-island-hard`
+#     default (2 oak saplings, 1 lava bucket, plus an extra from
+#     bread/torches).
+#  3. Bridge to 2-3 scattered floating islands (moderate scatter, same
+#     shape as config 44/47). Confirm each has a surface loot chest.
+#  4. Open a floating-island loot chest. Confirm it holds the exact same
+#     4 diamonds, 2 emeralds, 1 golden apple as the starter chest from
+#     step 2 -- proving the same named kit really resolved identically at
+#     both sites, not two coincidentally-similar inline definitions. Since
+#     `extras` here has only one entry, this comparison is byte-exact, not
+#     just "drawn from the same pool."
+#  5. Confirm no ore vein appears on any island (oreDeposits stays off, not
+#     under test here -- see config 46 for that layer in isolation).
+kits:
+  sky-shared-kit:
+    essentials:
+      - 'minecraft:diamond:4'
+      - 'minecraft:emerald:2'
+    extras:
+      - 'minecraft:golden_apple:1'
+    extrasCount: 1
+skyIsland:
+  chest:
+    tier: hard
+    kits:
+      hard: sky-shared-kit
+  floatingIslands:
+    enabled: true
+    radius:
+      min: 14
+      max: 28
+    shapeAmplitude: 0.3
+    cellSize: 160
+    spawnChance: 0.7
+    biomeVariety: false
+    exclusionZone:
+      enabled: true
+      radius: 128
+    lootChest:
+      enabled: true
+      kit: sky-shared-kit

@@ -1811,7 +1811,7 @@ tests.
       today — confirm via grep before editing; the full rewrite stays
       25.10's). `config/tests/README.md`/`MANUAL_TESTING.md` stay deferred
       to 25.11, same as every prior 25.7/25.8 sub-step.
-- [ ] 25.8g Test configs (needs 25.8d) — **the first Phase 25 sub-step that
+- [x] 25.8g Test configs (needs 25.8d) — **the first Phase 25 sub-step that
       warrants one**, since this is the first time the YAML users actually
       write changes (25.1-25.7 correctly shipped none). Two new
       `config/tests/*.yaml`: (i) one kit defined once in `kits.yaml`,

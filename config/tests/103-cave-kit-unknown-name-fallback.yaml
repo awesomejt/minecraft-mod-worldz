@@ -1,0 +1,31 @@
+# GOALS 25 (TODO 25.8g row ii, DESIGN §44.8): real in-game proof that
+# naming an unknown/misspelled `kits:` library entry warns and falls back
+# to that site's own shipped default, per `Rule.KitReference` (DESIGN
+# §44.3.4) -- rather than crashing world creation or leaving the chest
+# empty. `cave.chest.kits.easy` is set to `cave-eazy`, a deliberate typo
+# of the real shipped `cave-easy` entry.
+# **Select "Worldz: Cave"**. Requires 0.3.29+ (25.8e's unknown-key gate,
+# the last piece needed for the `kits:` reference plumbing to be exercised
+# without unrelated schema noise).
+#
+# Steps once in-game:
+#  1. Before/while the world loads, check the log for a WARN naming the
+#     bad kit name, of the shape: `Unknown starter kit 'cave-eazy' at
+#     cave.chest.kits.easy; using 'cave-easy' instead. Defined kits: [...]`
+#     -- confirming the typo was actually detected, not silently ignored.
+#  2. Confirm the world still generates successfully -- no crash, no
+#     aborted load.
+#  3. Confirm you spawn in a real, searched-out natural cave as usual (see
+#     config 53 for the general checks -- not repeated here).
+#  4. Confirm a chest exists in the floor beneath spawn (chestEnabled is
+#     on, easy tier). Open it and confirm it holds the shipped
+#     `cave-easy` default's contents -- 4 oak logs, 6 bread, 4 wheat
+#     seeds, 3 oak saplings, 16 torches, 8 dirt as essentials, plus 2
+#     extras drawn from (16 cobblestone, 8 coal) -- **not** an empty
+#     chest, and not accidentally the medium/hard tier's contents either.
+cave:
+  chest:
+    enabled: true
+    tier: easy
+    kits:
+      easy: cave-eazy
