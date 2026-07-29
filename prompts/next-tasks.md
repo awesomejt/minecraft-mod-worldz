@@ -1,10 +1,12 @@
-Let's continue to the next tasks for the `worldz` project (`~/projects/minecraft/worldz/`) - currently working throught the configuration restructure (phase 25). Stop at the end of this phase for manual review and testing.
+Your role is the orchestrator for a multi-agent workflow iterating through mutliple tasks.
 
-Your role is the orchestrator for a multi-agent workflow working on the task.
+Let's continue to the next tasks for the `worldz` project (`~/projects/minecraft/worldz/`) - currently working throught the configuration restructure (phase 25). Stop at the end of this phase for manual review and testing.
 
 Read AGENTS.md and follow it exactly. GOALS.md is the source of truth for features and goals. The TODO.md has all the tasks organized by phase. MEMORY.md contains all important decisions.
 
-Using the subagents as mentioned:
+For each iteration, using the subagents as mentioned:
+* Clear the previous context to start over (if possible)
+* Read AGENTS, GOALS, and TODO files (only if context was reset).
 * Use the `project-manager` to select the next task to work
 * Once the task has been selected, delegate to `researcher` to find possible solutions to work the task
 * Delegate to `planner` to plan the approach to implement the task
